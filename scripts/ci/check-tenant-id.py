@@ -19,6 +19,7 @@ EXEMPT_TABLES = {
     "flyway_schema_history",      # Flyway's own history
     "spring_session",             # Spring Session JDBC (architecture.md section 5)
     "spring_session_attributes",  # Spring Session JDBC
+    "tenant",                     # The team table itself (D-18): it is what tenant_id points to
 }
 
 CREATE_RE = re.compile(
