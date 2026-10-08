@@ -15,6 +15,7 @@ import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -95,5 +96,20 @@ class InvitationRejectTest extends BareAppTest {
 
         assertThat(status(admin, customer.accountId())).isEqualTo("ACTIVE");
         assertThat(pending(admin, customer.email())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("S0-AC-34 an email that differs only in letter case from an existing account is 409 EMAIL_TAKEN")
+    void emailDifferingOnlyInCase() {
+        Session admin = fixtures.signInAdmin();
+        Invitation first = fixtures.invite(admin, Role.AGENT);
+        String upper = first.email().toUpperCase(Locale.ROOT);
+
+        assertError(invite(admin, upper, "Upper", "AGENT", List.of()), 409, "EMAIL_TAKEN");
+        assertError(invite(admin, ADMIN_EMAIL.toUpperCase(Locale.ROOT), "Upper admin", "AGENT", List.of()),
+                409, "EMAIL_TAKEN");
+
+        assertThat(pending(admin, upper)).isEmpty();
+        assertThat(pending(admin, first.email())).hasSize(1);
     }
 }

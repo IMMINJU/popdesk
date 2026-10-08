@@ -82,6 +82,20 @@ class InvitationAcceptTest extends BareAppTest {
         assertThat(console.get("/api/console/me").send().status()).isEqualTo(401);
     }
 
+    @Test
+    @DisplayName("S0-AC-36 after a 400 for a weak password the same token accepts with a valid password")
+    void sameTokenWorksAfterWeakPassword() {
+        Session admin = fixtures.signInAdmin();
+        Invitation invitation = fixtures.invite(admin, Role.AGENT);
+        ApiClient console = console();
+        assertFieldError(accept(console, invitation.token(), "short-Pw1"), 400, "password", "TOO_SHORT");
+
+        accept(console, invitation.token(), Fixtures.PASSWORD).expectStatus(204);
+
+        assertThat(console.get("/api/console/me").expect(200).jsonLong("id")).isEqualTo(invitation.accountId());
+        assertThat(status(admin, invitation.accountId())).isEqualTo("ACTIVE");
+    }
+
     private static ApiResponse accept(ApiClient client, String token, String password) {
         return client.post("/api/public/invitations/accept")
                 .json(Map.of("token", token, "password", password))
