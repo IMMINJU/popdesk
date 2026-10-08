@@ -17,6 +17,7 @@ TEST_GLOBS = [
     "web/**/*.test.ts",
     "web/**/*.test.tsx",
     "web/**/__tests__/**",
+    "web/**/test-setup.ts",
     "web/**/e2e/**",
     "**/__snapshots__/**",
     "**/__screenshots__/**",
@@ -26,7 +27,7 @@ TEST_GLOBS = [
 GENERATED_GLOBS = [
     "docs/integrate/openapi-portal.json",
     "docs/integrate/openapi-console.json",
-    "web/packages/api/**",
+    "web/packages/api/src/generated/**",
 ]
 
 # Test runner, mutation, and lint settings. Changing them can drop tests or lower a bar

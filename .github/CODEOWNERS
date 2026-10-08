@@ -31,13 +31,18 @@
 # Contract files (D-21, D-43) and the generated clients
 /docs/integrate/openapi-portal.json         @IMMINJU
 /docs/integrate/openapi-console.json        @IMMINJU
-# Check the path when the code lands.
-/web/packages/api/                          @IMMINJU
+/web/packages/api/src/generated/            @IMMINJU
 
 # Web tests and snapshots (unit, E2E, visual regression, webhook message snapshots)
-# Check the paths when the code lands.
 /web/**/*.test.ts                           @IMMINJU
 /web/**/*.test.tsx                          @IMMINJU
 /web/**/e2e/                                @IMMINJU
 **/__snapshots__/                           @IMMINJU
 **/__screenshots__/                         @IMMINJU
+/web/**/test-setup.ts                       @IMMINJU
+
+# Test runner and lint settings (scripts/ci/lockrules.py TEST_CONFIG_GLOBS)
+/web/**/vitest.config.*                     @IMMINJU
+/web/**/playwright.config.*                 @IMMINJU
+/web/eslint.config.js                       @IMMINJU
+/web/**/tsconfig*.json                      @IMMINJU

@@ -29,6 +29,7 @@ jobs:
       migrations: ${{ steps.filter.outputs.migrations }}
       server: ${{ steps.filter.outputs.server }}
       web: ${{ steps.filter.outputs.web }}
+      webroot: ${{ steps.filter.outputs.webroot }}
       locked: ${{ steps.filter.outputs.locked }}
     steps:
       - uses: actions/checkout@v5
@@ -51,6 +52,11 @@ jobs:
             web:
               - *ci
               - 'web/**'
+              - 'docs/integrate/openapi-*.json'
+            # Files that every web package depends on: a change here runs all of web.
+            webroot:
+              - *ci
+              - 'web/*'
               - 'docs/integrate/openapi-*.json'
             locked:
               - *ci
@@ -82,6 +88,45 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: python3 scripts/ci/check-tenant-id.py
+
+  # Web: typecheck, lint, test, build. Only the changed packages and their dependents (D-48),
+  # unless a shared web file changed or this is a tag or manual run.
+  web:
+    name: Web
+    needs: changes
+    if: needs.changes.outputs.all == 'true' || needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: web/.nvmrc
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Generated client matches the contract files (D-21, D-43)
+        run: pnpm gen:api && git diff --exit-code -- packages/api/src/generated
+      - id: scope
+        run: |
+          if [ "${{ needs.changes.outputs.all }}" = "true" ] || [ "${{ needs.changes.outputs.webroot }}" = "true" ]; then
+            echo "filter=" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "filter=--filter ...[origin/${{ github.base_ref }}]" >> "$GITHUB_OUTPUT"
+          else
+            echo "filter=--filter ...[${{ github.event.before }}]" >> "$GITHUB_OUTPUT"
+          fi
+      - run: pnpm -r ${{ steps.scope.outputs.filter }} run typecheck
+      - run: pnpm -r ${{ steps.scope.outputs.filter }} run lint
+      - run: pnpm -r --workspace-concurrency=1 ${{ steps.scope.outputs.filter }} run test
+      - run: pnpm -r ${{ steps.scope.outputs.filter }} run build
 
   # Locked tests, merged migrations, and the split between the side that writes tests and the
   # side that implements (design/process.md section C, guard table). The scripts run from the base

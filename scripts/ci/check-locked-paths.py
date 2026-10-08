@@ -33,9 +33,8 @@ from lockrules import (
 DEPENDENCY_GLOBS = [
     "**/pom.xml",
     "**/package.json",
-    "pnpm-lock.yaml",
     "**/pnpm-lock.yaml",
-    "pnpm-workspace.yaml",
+    "**/pnpm-workspace.yaml",
     "**/Dockerfile",
     "compose*.yaml",
     "**/compose*.yaml",
