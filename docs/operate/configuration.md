@@ -11,10 +11,11 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `POPDESK_DB_URL`, `POPDESK_DB_USER`, `POPDESK_DB_PASSWORD` | Database connection | Set by the Compose file |
 | `POPDESK_PORTAL_HOST`, `POPDESK_CONSOLE_HOST` | Host names of the customer portal and the agent console | `portal.localhost`, `console.localhost` |
 | `POPDESK_PUBLIC_SCHEME`, `POPDESK_PUBLIC_PORT` | Scheme and port used to build links in emails | `http`, `8080` |
-| `POPDESK_ADMIN_EMAIL`, `POPDESK_ADMIN_PASSWORD` | First admin, created on first start | None. Without them, the first start stops and logs what to set |
+| `POPDESK_ADMIN_EMAIL`, `POPDESK_ADMIN_PASSWORD` | First admin, created on first start | None. If the database has no admin and these are missing (or the password breaks the password rules), popdesk does not serve requests: the process keeps running, logs what to set, and its health check stays unhealthy. It does not exit, so the container does not restart in a loop |
 | `POPDESK_TIMEZONE` | Time zone used to judge dates (for example whether a due date has passed) | `UTC` |
 | `POPDESK_LOCALE` | Default language of emails and server messages | `en` |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | Outgoing email | None. Without them, nothing is sent and popdesk writes one log line in place of each email |
+| `SMTP_ALLOW_PLAINTEXT` | `true` allows an unencrypted SMTP connection when the server does not offer STARTTLS. popdesk logs a warning at startup while it is on. Use it only for local test servers such as Mailpit | `false` |
 | `NOTIFY_WEBHOOK_URL` | Team notification webhook | None. Without it, no webhook is sent |
 | `POPDESK_ATTACHMENT_QUOTA` | Total size limit for all attachments | `10GB` |
 | `POPDESK_STORAGE` | Where attachment files are stored: `db`, `disk`, or `s3` | `db` |
@@ -24,6 +25,7 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `POPDESK_ISSUE_RETENTION` | How long after closing an issue it is moved to the trash. At least `P90D`; a shorter value stops startup | None (off) |
 | `AUDIT_FORWARD_URL` | Address that receives a copy of every audit log entry | None (off) |
 | `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` | Incoming email | None. Without them, incoming email is off. `IMAP_FOLDER` defaults to `INBOX` |
+| `IMAP_ALLOW_PLAINTEXT` | `true` allows an unencrypted IMAP connection when the server does not offer STARTTLS. popdesk logs a warning at startup while it is on | `false` |
 | `IMAP_PROCESSED_FOLDER` | Folder that processed email is moved to. popdesk reads every message in `IMAP_FOLDER`, so use a mailbox that only popdesk reads | `popdesk-processed` |
 | `IMAP_QUARANTINE_FOLDER` | Folder for email that failed 5 times or went over the rate limit | `popdesk-quarantine` |
 | `MAIL_INBOUND_ADDRESS` | Address customers send issues to; used as `Reply-To` on notification emails | None |
@@ -49,7 +51,7 @@ The names and meanings of the variables above are a public contract. When one is
 These values are secrets: `POPDESK_DB_PASSWORD`, `POPDESK_ADMIN_PASSWORD`, `SMTP_PASSWORD`, `IMAP_PASSWORD`, `NOTIFY_WEBHOOK_URL`, `S3_SECRET_KEY`, `OIDC_CLIENT_SECRET`.
 
 - popdesk has no default for any of them.
-- Each can also be given as a file: set `<NAME>_FILE` to a path (for example `POPDESK_DB_PASSWORD_FILE=/run/secrets/db_password`) and popdesk reads the value from it. Setting both is an error. Use this for Docker secrets, or when a value contains `$`, which Compose would otherwise substitute.
+- Each can also be given as a file: set `<NAME>_FILE` to a path (for example `POPDESK_DB_PASSWORD_FILE=/run/secrets/db_password`) and popdesk reads the value from it. Setting both is an error. One line break at the end of the file (`\n` or `\r\n`) is removed, because most editors and secret tools add one; anything else in the file, including other whitespace, is part of the value. Use this for Docker secrets, or when a value contains `$`, which Compose would otherwise substitute.
 - popdesk never writes them to the log or the database.
 - Keep them in an `.env` file or your secret store, not in the Compose file.
 
@@ -101,6 +103,18 @@ POPDESK_CONSOLE_HOST=console.example.com
 POPDESK_PUBLIC_SCHEME=https
 POPDESK_PUBLIC_PORT=443
 ```
+
+### Mail servers
+
+popdesk always encrypts its connections to the SMTP and IMAP servers unless you turn that off (ADR D-51).
+
+- Port `465` (SMTP) or `993` (IMAP): TLS from the start of the connection (implicit TLS).
+- Any other port: popdesk requires STARTTLS. If the server does not offer it, popdesk does not connect and does not fall back to plain text.
+- Plain text is used only when `SMTP_ALLOW_PLAINTEXT=true` or `IMAP_ALLOW_PLAINTEXT=true`. popdesk logs a warning at startup while either is on.
+
+### Webhook and audit copy
+
+`NOTIFY_WEBHOOK_URL` and `AUDIT_FORWARD_URL` may use `http`, because many internal receivers do not have TLS. popdesk accepts them and logs a warning at startup (without the address). Use `https` when the receiver is outside your network.
 
 ## Commands
 
