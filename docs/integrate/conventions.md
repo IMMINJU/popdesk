@@ -130,16 +130,20 @@ Limits are per account over a 60-second window:
 | List with a search term | 60 |
 | Customer manager sends an invitation | 20 |
 | Sign-in attempts | 20 per IP address |
+| Password reset requests | 20 per IP address; at most one reset email per account every 15 minutes |
 
 - Over the limit, the response is 429 with a `Retry-After` header and the error body.
 - Counts are kept in the app's memory; popdesk runs one app instance (D-23).
 - The count is taken right after the sign-in check and before the target is looked up, so a 429 never tells whether a target exists.
+- Issues and comments created from incoming email count against the sender's account in the same way. Email over the limit is not turned into issues or comments; it is moved to the quarantine folder.
 
-## Time and time zone
+## Time and time zone (TIME-1)
 
 - Timestamps are stored in UTC and returned as ISO-8601 with an offset, in UTC: `2026-10-08T03:15:00Z` (D-10).
 - Timestamps sent to the API must include an offset. A timestamp without one is 400.
 - Date-only values (for example due dates) are `YYYY-MM-DD`. "Today" for these values is judged in the installation time zone (`POPDESK_TIMEZONE`, default `UTC`).
+
+- Periods (24 hours, 7, 14, or 30 days, retention periods) are measured as a difference of UTC times. Daylight saving time and changes to `POPDESK_TIMEZONE` do not change their length. The installation time zone is used only to judge dates: due dates and SLA business hours and holidays.
 
 ## Missing values and `null`
 
