@@ -1,3 +1,10 @@
+import { BrowserRouter } from 'react-router';
+import { AppRoutes } from './AppRoutes';
+
 export function App() {
-  return <h1>Popdesk Portal</h1>;
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
+  );
 }

@@ -1,0 +1,220 @@
+/*
+ * Design tokens from design/slices/0-first/tokens.md.
+ * Values only: no component uses them yet (C-9 does).
+ *
+ * Theme: <html data-theme="light|dark">. Without it, prefers-color-scheme
+ * decides. Colors are light-dark(light, dark) and follow color-scheme.
+ * Density: data-density="portal|console" on <html> or any ancestor.
+ *
+ * Breakpoints cannot be variables in media queries, so they are noted here:
+ *   bp-mobile  < 640px   portal one column, table -> cards
+ *   bp-narrow  < 1024px  console side menu collapses
+ */
+
+:root {
+  color-scheme: light dark;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+:root {
+  /* Surfaces and text */
+  --bg: light-dark(#ffffff, #191817);
+  --surface: light-dark(#f7f6f3, #201f1d);
+  --surface-raised: light-dark(#ffffff, #2a2826);
+  --sunken: light-dark(#f1f0ed, #121110);
+  --field: light-dark(#f4f3f0, #24221f);
+  --border: light-dark(#e6e4df, #36332f);
+  --border-strong: light-dark(#8c8984, #8a857e);
+  --text: light-dark(#2f2d2a, #eceae6);
+  --text-muted: light-dark(#6b6862, #ada8a0);
+  --text-disabled: light-dark(#a3a09a, #6e6a64);
+  /* Separate from accent; branding does not change it (D-50). */
+  --focus: light-dark(#1b4fd6, #8ab0ff);
+
+  /* Accent, changed by branding (D-50). Emerald is a candidate, not final. */
+  --accent: light-dark(#047857, #34d399);
+  --accent-hover: light-dark(#065f46, #6ee7b7);
+  --on-accent: light-dark(#ffffff, #032016);
+  --accent-subtle: light-dark(#e3f5ee, #0d2e23);
+
+  /* Feedback, fixed */
+  --danger: light-dark(#c0262d, #ff8a8a);
+  --danger-bg: light-dark(#fdecec, #3a1517);
+  --on-danger: light-dark(#ffffff, #2a0a0b);
+  --danger-hover: light-dark(#a11f25, #ffa3a3);
+  --warning: light-dark(#8a5a00, #f2c14e);
+  --warning-bg: light-dark(#fff4db, #33270a);
+  --success: light-dark(#1f7a3a, #6fd08c);
+  --success-bg: light-dark(#e6f4ea, #12301c);
+  --info: light-dark(#245fb0, #86b4ff);
+  --info-bg: light-dark(#e8f0fb, #14243d);
+
+  /* Toast: filled, no shadow, no border */
+  --toast-success-bg: light-dark(#1f7a3a, #6fd08c);
+  --toast-success-fg: light-dark(#ffffff, #0b2414);
+  --toast-info-bg: light-dark(#245fb0, #86b4ff);
+  --toast-info-fg: light-dark(#ffffff, #0b1a33);
+
+  /* Internal notes (console) */
+  --internal-bg: light-dark(#fff6e0, #2a2312);
+  --internal-text: light-dark(#7a5500, #e0b04a);
+  --internal-border: light-dark(#b07a00, #c9962a);
+  --on-internal: light-dark(#1a1305, #1a1305);
+
+  /* Issue status badges (text / background). Project and account status use
+     success, warning and the RECEIVED neutral. */
+  --status-received: light-dark(#45423d, #d3cfc8);
+  --status-received-bg: light-dark(#efeeea, #2b2926);
+  --status-confirmed: light-dark(#245fb0, #86b4ff);
+  --status-confirmed-bg: light-dark(#e8f0fb, #14243d);
+  --status-in-progress: light-dark(#7a4e00, #f2c14e);
+  --status-in-progress-bg: light-dark(#fff1d6, #33270a);
+  --status-resolved: light-dark(#1f7a3a, #6fd08c);
+  --status-resolved-bg: light-dark(#e6f4ea, #12301c);
+  --status-closed: light-dark(#5e5b55, #ada8a0);
+  --status-closed-bg: light-dark(#f2f1ee, #262422);
+
+  /* Avatar photo placeholder (tokens.md 9절) */
+  --avatar-photo-bg: light-dark(#e2ded7, #3a3733);
+  --avatar-photo-fg: light-dark(#a29e97, #77726b);
+
+  --overlay: light-dark(rgba(16, 24, 40, 0.45), rgba(0, 0, 0, 0.6));
+
+  /* Shadows are not colors, so they switch below. */
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.1);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.16);
+}
+
+/* In dark, shadow-sm is replaced by a border; raised parts use surface-raised. */
+[data-theme='dark'] {
+  --shadow-sm: none;
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --shadow-sm: none;
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+  }
+}
+
+:root {
+  /* Type. Pretendard is bundled with the app (D-41), not loaded from a CDN. */
+  --font-sans: 'Pretendard Variable', system-ui, -apple-system, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'D2Coding', monospace;
+
+  --text-xs: 0.75rem;
+  --text-xs-line: 16px;
+  --text-xs-weight: 400;
+  --text-sm: 0.875rem;
+  --text-sm-line: 20px;
+  --text-sm-weight: 400;
+  --text-md: 1rem;
+  --text-md-line: 24px;
+  --text-md-weight: 400;
+  --text-lg: 1.125rem;
+  --text-lg-line: 28px;
+  --text-lg-weight: 600;
+  --text-xl: 1.25rem;
+  --text-xl-line: 28px;
+  --text-xl-weight: 600;
+  --text-2xl: 1.5rem;
+  --text-2xl-line: 32px;
+  --text-2xl-weight: 700;
+  --text-3xl: 1.875rem;
+  --text-3xl-line: 38px;
+  --text-3xl-weight: 700;
+
+  /* Space, 4px steps */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius (tokens.md 4절) */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+  /* tokens.md 9절, newer than 4절: alert 4px, dialog 8px, bottom sheet top 12px */
+  --radius-alert: 4px;
+  --radius-dialog: 8px;
+  --radius-sheet: 12px;
+
+  /* Motion and layers */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --easing: cubic-bezier(0.2, 0, 0, 1);
+  --z-dropdown: 100;
+  --z-dialog: 200;
+  --z-toast: 300;
+
+  /* Sizes that do not change with density (tokens.md 7·9절) */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --status-dot-size: 8px;
+  --status-dot-border: 1.5px;
+  --control-size: 18px;
+  --control-border: 1.5px;
+  --scrollbar-width: 8px;
+  --toast-height: 44px;
+  --filter-height-mobile: 32px;
+}
+
+/* Density. Portal (roomy) is the default. */
+:root,
+[data-density='portal'] {
+  --body-text: var(--text-md);
+  --body-line: var(--text-md-line);
+  --button-height: 44px;
+  --button-height-sm: 36px;
+  --field-height: 44px;
+  --row-height: 56px;
+  --form-gap: var(--space-5);
+  --page-gutter-mobile: 16px;
+  --page-gutter: 32px;
+  --content-max: 720px;
+  /* P-4 body editor on PC; on mobile width at least half the screen height */
+  --issue-editor-min-height: 420px;
+  --comment-editor-min-height: 112px;
+  --filter-height: 40px;
+}
+
+[data-density='console'] {
+  --body-text: var(--text-sm);
+  --body-line: var(--text-sm-line);
+  --button-height: 36px;
+  --button-height-sm: 28px;
+  --field-height: 36px;
+  --row-height: 40px;
+  --form-gap: var(--space-4);
+  --page-gutter: 24px;
+  --content-max: 1280px;
+  --comment-editor-min-height: 112px;
+  --filter-height: 34px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}

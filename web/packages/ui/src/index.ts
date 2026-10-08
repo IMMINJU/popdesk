@@ -1,2 +1,43 @@
-// Design system parts land here slice by slice.
-export {};
+// Shared components (screens.md 5절). Props are the contract; shells render
+// minimal markup until C-9 fills in looks and behavior. Tokens: `@popdesk/ui/tokens.css`.
+
+export type * from './types';
+
+export { Alert, type AlertProps, type AlertTone } from './components/Alert';
+export { AppShell, type AppShellProps, type NavItem } from './components/AppShell';
+export { AttachmentList, type AttachmentItem, type AttachmentListProps } from './components/AttachmentList';
+export { Avatar, type AvatarProps } from './components/Avatar';
+export { Badge, type BadgeProps, type BadgeTone } from './components/Badge';
+export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './components/Button';
+export { Checkbox, type CheckboxProps } from './components/Checkbox';
+export { CheckboxGroup, type CheckboxGroupProps } from './components/CheckboxGroup';
+export { CommentItem, type CommentAuthor, type CommentItemProps } from './components/CommentItem';
+export { ConfirmDialog, type ConfirmDialogProps } from './components/ConfirmDialog';
+export { CopyField, type CopyFieldProps } from './components/CopyField';
+export { DataTable, type DataTableColumn, type DataTableProps } from './components/DataTable';
+export { Dialog, type DialogProps } from './components/Dialog';
+export { EmptyState, type EmptyStateProps } from './components/EmptyState';
+export {
+  FileUpload,
+  type FileRejectReason,
+  type FileUploadLimits,
+  type FileUploadProps,
+  type UploadItem,
+} from './components/FileUpload';
+export { FormErrorSummary, type FieldError, type FormErrorSummaryProps } from './components/FormErrorSummary';
+export { IconButton, type IconButtonProps } from './components/IconButton';
+export { IssueList, type IssueListItem, type IssueListProps } from './components/IssueList';
+export { MarkdownEditor, type MarkdownEditorProps, type MarkdownTool } from './components/MarkdownEditor';
+export { MarkdownView, type MarkdownViewProps } from './components/MarkdownView';
+export { Pagination, type PaginationProps } from './components/Pagination';
+export { PasswordField, type PasswordFieldProps } from './components/PasswordField';
+export { PriorityLabel, type PriorityLabelProps } from './components/PriorityLabel';
+export { PriorityPicker, type PriorityPickerProps } from './components/PriorityPicker';
+export { ProgressBar, type ProgressBarProps } from './components/ProgressBar';
+export { RadioGroup, type RadioGroupProps } from './components/RadioGroup';
+export { RelativeTime, type RelativeTimeProps } from './components/RelativeTime';
+export { Select, type SelectProps } from './components/Select';
+export { Skeleton, type SkeletonProps } from './components/Skeleton';
+export { StatusBadge, type StatusBadgeProps } from './components/StatusBadge';
+export { TextField, type TextFieldProps } from './components/TextField';
+export { Toast, type ToastMessage, type ToastProps } from './components/Toast';

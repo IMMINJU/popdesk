@@ -8,6 +8,7 @@ packages:
 catalog:
   '@eslint/js': 10.0.1
   '@playwright/test': 1.64.0
+  '@storybook/react-vite': 10.6.1
   '@testing-library/dom': 10.4.2
   '@testing-library/jest-dom': 7.0.1
   '@testing-library/react': 16.3.3
@@ -24,7 +25,14 @@ catalog:
   openapi-typescript: 7.13.0
   react: 19.3.0
   react-dom: 19.3.0
+  react-router: 8.4.0
+  storybook: 10.6.1
   typescript: 5.9.3
   typescript-eslint: 8.71.1
   vite: 8.3.3
   vitest: 5.0.3
+
+# esbuild (via Storybook) works from its platform package; its install script
+# only checks that binary, so it is not run.
+allowBuilds:
+  esbuild: false

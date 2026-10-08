@@ -15,7 +15,8 @@
     "@popdesk/i18n": "workspace:*",
     "@popdesk/ui": "workspace:*",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "react-router": "catalog:"
   },
   "devDependencies": {
     "@testing-library/dom": "catalog:",
