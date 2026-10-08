@@ -148,12 +148,12 @@
 | ID | 기준 |
 |---|---|
 | S0-AC-13 | If 포털 호스트로 `/api/console/**`가, 콘솔 호스트로 `/api/portal/**`가 오면, then the system shall 404로 답한다. (D-43, TM-18) |
-| S0-AC-14 | If 설정된 두 호스트가 아닌 Host로 요청이 오면, then the system shall 404와 함께 설정된 호스트 이름과 받은 Host를 적은 안내를 낸다. 응답 형식은 `Accept`와 상관없이 `text/plain; charset=utf-8`로 고정하고, 받은 Host는 글자 그대로 넣으며, 이 응답에도 nosniff와 CSP를 붙인다(S0-AC-16). `Host: <svg onload=1>`과 따옴표가 섞인 값으로 확인한다. (부검 1, S0 부검 5) |
+| S0-AC-14 | If 설정된 두 호스트가 아닌 Host로 요청이 오면, then the system shall 404와 함께 설정된 호스트 이름과 받은 Host를 적은 안내를 낸다. 호스트 판정은 믿는 프록시(S0-AC-18)가 넘긴 `X-Forwarded-Host`가 있으면 그것으로, 없으면 `Host`로 하고, 포트를 떼고 비교한다. 응답 형식은 `Accept`와 상관없이 `text/plain; charset=utf-8`로 고정하고, 받은 값은 포트까지 글자 그대로 넣으며, 이 응답에도 nosniff와 CSP를 붙인다(S0-AC-16). Tomcat은 영문·숫자·`.`·`-`가 아닌 글자가 든 `Host`를 앱에 넘기기 전에 400으로 막으므로, `<svg onload=1>`과 따옴표가 섞인 값은 믿는 프록시의 `X-Forwarded-Host`로 보내 확인한다. (부검 1, S0 부검 5, C-5에서 정함) |
 | S0-AC-15 | The system shall `/actuator/**`를 관리 포트 8081에서만 내고, 8080으로 온 `/actuator/**`는 404로 답한다. (D-45, TM-46) |
-| S0-AC-16 | The system shall 모든 응답에 CSP(`default-src 'self'`, 인라인 스크립트 없음, `frame-ancestors 'none'`), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`를 붙인다. (D-41, TM-21) |
-| S0-AC-17 | When 로그인하면, the system shall 세션 ID를 새로 만들고, 세션 쿠키는 `HttpOnly`·`SameSite=Lax`·호스트 전용으로, CSRF 쿠키는 `HttpOnly` 없이 `SameSite=Lax`·호스트 전용으로 낸다. Where `POPDESK_PUBLIC_SCHEME`이 `https`이면 둘 다 `Secure`를 붙인다. If 쓰기 요청에 CSRF 토큰이 없거나 틀리면, then 403이다. (D-41, D-40, TM-12, TM-13) |
+| S0-AC-16 | The system shall 모든 응답에 CSP(`default-src 'self'`, 인라인 스크립트 없음, `frame-ancestors 'none'`), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`를 붙인다. 앱에 닿기 전에 Tomcat이 요청 해석 오류로 낸 400은 뺀다. (D-41, TM-21, C-5에서 정함) |
+| S0-AC-17 | When 로그인하면, the system shall 세션 ID를 새로 만들고, 세션 쿠키는 `HttpOnly`·`SameSite=Lax`·호스트 전용으로, CSRF 쿠키는 `HttpOnly` 없이 `SameSite=Lax`·호스트 전용으로 낸다. Where `POPDESK_PUBLIC_SCHEME`이 `https`이면 둘 다 `Secure`를 붙이고, `http`이면 붙이지 않는다. If 쓰기 요청에 CSRF 토큰이 없거나 틀리면, then 403이다. (D-41, D-40, TM-12, TM-13) |
 | S0-AC-18 | The system shall `X-Forwarded-*`를 `POPDESK_TRUSTED_PROXIES`(기본 루프백과 사설 대역)에서 온 요청에서만 믿고, 그 밖에서 온 머리글은 무시한다. 로그인 요청 수 제한의 IP도 이 규칙으로 정한다. (D-46, TM-28) |
-| S0-AC-19 | When 믿는 프록시가 넘긴 `X-Forwarded-Proto`나 Host가 공개 주소 설정과 다르면, the system shall 경고 로그를 같은 값 쌍마다 한 번 남긴다. (부검 1) |
+| S0-AC-19 | When 믿는 프록시가 넘긴 scheme(`X-Forwarded-Proto`)이 `POPDESK_PUBLIC_SCHEME`과 다르거나, 넘긴 포트(`X-Forwarded-Port`, 없으면 `X-Forwarded-Host`의 포트, 그것도 없으면 scheme의 기본값)가 `POPDESK_PUBLIC_PORT`와 다르면, the system shall 경고 로그를 받은 (scheme, 포트) 쌍마다 한 번 남긴다. 호스트 이름이 다른 것은 S0-AC-14가 다룬다. (부검 1, C-5에서 정함) |
 | S0-AC-20 | When 메일에 넣을 링크를 만들면, the system shall `POPDESK_PUBLIC_SCHEME`, 받는 사람에 맞는 호스트(고객이면 포털, 아니면 콘솔), `POPDESK_PUBLIC_PORT`로 만들고, 포트가 scheme의 기본값(http 80, https 443)이면 뺀다. (MAIL-1, 부검 1) |
 
 ### 4.3 로그인과 세션
@@ -163,7 +163,7 @@
 | S0-AC-21 | When 고객이 포털에서, 상담원·관리자가 콘솔에서 맞는 이메일과 비밀번호로 로그인하면, the system shall 세션을 만든다. 이메일은 앞뒤 공백과 대소문자를 무시한다. (AUTH-1) |
 | S0-AC-22 | If 이메일이 없거나, 비밀번호가 틀리거나, 계정이 `INVITED`·`SUSPENDED`·잠김이거나, 반대쪽 앱의 계정이면, then the system shall 모두 같은 401 본문으로 답하고, 없는 계정도 비밀번호 해시를 한 번 계산한다. (AUTH-1, AUTH-2, INVITE-5, TM-10, TM-14) |
 | S0-AC-23 | If 비밀번호가 5번 연속 틀리면, then the system shall 계정을 15분 잠그고 그동안은 맞는 비밀번호도 401로 답한다. 성공하면 횟수를 0으로 되돌린다. (AUTH-3, TM-09) |
-| S0-AC-24 | If 한 IP에서 60초 안에 로그인 시도가 20번을 넘으면, then the system shall 429와 `Retry-After`로 답한다. 횟수는 메모리에서만 세고 IP를 저장하지 않는다. (COM-8, PII-1, TM-09) |
+| S0-AC-24 | If 한 IP에서 60초 안에 로그인 시도가 20번을 넘으면, then the system shall 429와 `Retry-After`로 답한다. 횟수는 메모리에서만 세고 IP를 저장하지 않는다. 60초는 주입한 `Clock`으로 잰다(S0-AC-12). 이 묶음의 다른 수 제한(S0-AC-50·55·65)도 같다. (COM-8, PII-1, TM-09, C-5에서 정함) |
 | S0-AC-25 | When 로그인하고 8시간이 지나면, the system shall 세션을 끝내고 다음 요청에 401로 답한다. 화면은 로그인으로 돌아간다. (AUTH-4) |
 | S0-AC-26 | The system shall 고객사 소속과 상담원 배정을 세션에 담지 않고 요청마다 DB에서 읽는다. 로그인한 상담원을 새 고객사에 배정하면 다음 요청부터 그 고객사의 문의가 보인다. (AUTH-4, TM-06) |
 | S0-AC-27 | When 로그아웃하면, the system shall 그 세션을 지운다. (spec에 없음, 2.3절) |
