@@ -102,7 +102,7 @@
 | `POPDESK_SANDBOX` | 부검 4, D-46 | 미룸(부검은 0) | 흐름이 아니고, 새 키를 더하는 것은 계약을 깨지 않는다. 메일·웹훅을 채우는 묶음에서 넣는다 | 4 |
 | 메일 대기 행은 계정 ID만 | 부검 4, MAIL-5 | 넣음 | 모델 | S0-AC-66, S0-AC-69 |
 | 문의 아래 쓰기는 문의 행을 잠그고 상태를 다시 봄 | 부검 7, STATUS-7 | 넣음 | 흐름: 댓글·첨부. 꼴을 처음 정한다 | S0-AC-51, S0-AC-56 |
-| 순번은 트랜잭션 끝에서 `UPDATE … RETURNING`. 순번 칸에 유니크 색인은 두지 않는다(S0 부검 2) | 부검 7, ISSUE-3 | 넣음 | 모델 | S0-AC-44 |
+| 순번은 트랜잭션 끝에서 `UPDATE … RETURNING`. 고객사 행의 순번 카운터 칸에 유니크 색인은 두지 않는다. 문의의 (고객사, 번호) 유니크는 둔다(S0 부검 2) | 부검 7, ISSUE-3 | 넣음 | 모델 | S0-AC-44 |
 | 문의 `version` | D-47(부검 7은 3) | 칸만 넣음. 409는 미룸 | 모델: 칸. 409는 수정 API가 생기는 묶음 | S0-AC-45, 3 |
 | `Idempotency-Key` | 부검 7 | 미룸 | 부검 칸도 3. 머리글을 나중에 더해도 계약을 깨지 않는다 | 3 |
 | 첨부 `pending` 행과 저장소 종류·위치 | D-47(부검 6은 5) | 넣음 | 모델 | S0-AC-56, S0-AC-62 |
@@ -199,7 +199,7 @@
 | S0-AC-41 | When 고객이 소속된 고객사에 제목, 내용, 우선순위, 비공개 여부로 문의를 올리면, the system shall 키 `{고객사 코드}-{순번}`, 상태 `RECEIVED`, 올린 사람은 그 고객, 받은 경로 `PORTAL`로 만든다. 우선순위가 없으면 `NORMAL`, 비공개 여부가 없으면 공개다. (ISSUE-1, ISSUE-2, ISSUE-3, D-34) |
 | S0-AC-42 | If 제목이 1~200자가 아니거나, 내용이 10,000자를 넘거나, 우선순위가 모르는 값이면, then the system shall 400과 틀린 칸 전부를 `fields`로 답한다. 길이는 NFC로 맞추고 제목의 앞뒤 공백을 자른 뒤 코드 포인트로 센다. (ISSUE-2, D-44, COM-3, conventions 글자 입력) |
 | S0-AC-43 | If 고객이 소속되지 않은 고객사에 문의를 올리면, then the system shall 404로 답한다. If 상담원·관리자가 포털 등록 API를 부르면 콘솔 호스트에 그 경로가 없으므로 404다. (ISSUE-1, COM-1, D-43) |
-| S0-AC-44 | The system shall 순번을 고객사마다 1부터 비지 않게 매기고, 등록 트랜잭션의 끝(첨부 처리를 마친 뒤)에서 고객사 행을 `UPDATE … RETURNING`으로 올려 받는다. 순번 칸에는 유니크 색인을 두지 않는다(외래 키 INSERT의 `FOR KEY SHARE`와 엇갈려 교착이 난다). 번호가 겹치지 않는 것은 고객사 행 잠금이 지킨다. 문의 ID는 앱에서 먼저 정하고 첨부의 외래 키를 `DEFERRABLE INITIALLY DEFERRED`로 두어, 문의 행의 번호 칸에 NOT NULL을 건다. 실패한 등록은 번호를 쓰지 않는다. 같은 고객사에 첨부를 섞은 등록 20건을 동시에 보내면 모두 성공하고, 순번은 1~20에 빈칸이 없으며, 40P01이 없다. 스키마 테스트로 순번 칸에 유니크 색인이 없는지 본다. (ISSUE-3, 부검 7, S0 부검 2) |
+| S0-AC-44 | The system shall 순번을 고객사마다 1부터 비지 않게 매기고, 등록 트랜잭션의 끝(첨부 처리를 마친 뒤)에서 고객사 행을 `UPDATE … RETURNING`으로 올려 받는다. 고객사 행의 순번 카운터 칸에는 유니크 색인을 두지 않는다(외래 키 INSERT의 `FOR KEY SHARE`와 엇갈려 교착이 난다). 번호가 겹치지 않는 것은 고객사 행 잠금이 지키고, 문의 테이블의 (고객사, 번호)에 유니크 제약을 마지막 방어선으로 둔다. 문의 ID는 앱에서 먼저 정하고 첨부의 외래 키를 `DEFERRABLE INITIALLY DEFERRED`로 두어, 문의 행의 번호 칸에 NOT NULL을 건다. 실패한 등록은 번호를 쓰지 않는다. 같은 고객사에 첨부를 섞은 등록 20건을 동시에 보내면 모두 성공하고, 순번은 1~20에 빈칸이 없으며, 40P01이 없다. 스키마 테스트로 카운터 칸에 유니크 색인이 없고 문의 테이블에 (고객사, 번호) 유니크 제약이 있는지 본다. (ISSUE-3, 부검 7, S0 부검 2) |
 | S0-AC-45 | The system shall 문의에 `version`을 두고 문의 행이 바뀔 때마다 1씩 올려 응답에 담는다. 맞지 않는 `version`의 409는 수정 API와 함께 3번 묶음에서 한다. (ISSUE-6, D-47) |
 | S0-AC-46 | When 상담 쪽의 첫 공개 댓글이 달리면, the system shall 그 시각을 문의의 첫 응답 시각으로 `WHERE first_response_at IS NULL` 조건부 UPDATE로 한 번만 쓴다. 이 값은 상담 쪽 응답에만 있다. (ISSUE-10, D-36) |
 | S0-AC-47 | When 문의 목록이나 상세를 요청하면, the system shall 고객에게는 자기 고객사의 공개 문의와 자기가 올린 문의를, 상담원에게는 배정된 고객사의 문의 전부를, 관리자에게는 모든 문의를 준다. 비공개 문의는 올린 고객과 상담 쪽만 본다. 목록은 최신순이고 COM-4로 쪽을 나눈다. (ISSUE-4, ISSUE-5 일부, RULE-02, RULE-03) |
@@ -272,7 +272,7 @@
 | ID | 기준 |
 |---|---|
 | S0-AC-88 | The system shall 릴리스 compose 파일에 서비스 `app`·`db`(PostgreSQL 16 고정)를 두고, `app`의 8080만 모든 인터페이스에 열며, 관리 포트와 DB 포트는 열지 않고, 볼륨 `popdesk-db`·`popdesk-attachments`, `restart: unless-stopped`, 로그 `max-size: 10m`·`max-file: 5`, 정확한 버전의 이미지를 둔다. compose 파일은 릴리스에 붙인다. (D-45, D-46, configuration.md) |
-| S0-AC-89 | When 컨테이너 안에서 `popdesk backup <file>`을 돌리면, the system shall 서버와 맞는 `pg_dump`로 덤프를 쓴다. When `popdesk restore <file>`을 돌리면, the system shall 빈 DB이고 앱이 요청을 받기 전일 때만 복원하고, 아니면 아무것도 바꾸지 않고 실패한다. (D-46, configuration.md Commands) |
+| S0-AC-89 | When 컨테이너 안에서 `popdesk backup <file>`을 돌리면, the system shall 서버와 맞는 `pg_dump`로 덤프를 쓴다. When `popdesk restore <file>`을 돌리면, the system shall 빈 DB이고 앱 단일 인스턴스 잠금을 아무도 쥐지 않았을 때만 복원하고, 아니면 아무것도 바꾸지 않고 실패한다. 백업과 관리자 복구 명령은 앱이 떠 있는 동안 돌아야 하므로 앱 잠금을 잡지 않는다. (D-46, configuration.md Commands) |
 | S0-AC-90 | Where 개발용 compose 파일로 띄우면, the system shall Mailpit 컨테이너를 함께 띄우고 SMTP가 그쪽을 가리키게 한다(평문이므로 `SMTP_ALLOW_PLAINTEXT=true`). 릴리스 compose 파일에는 Mailpit을 넣지 않는다. (부검 1, D-51, 5절 9) |
 | S0-AC-91 | When 이 묶음의 엔드포인트를 더하거나 바꾸면, the system shall springdoc이 만든 `docs/integrate/openapi-portal.json`·`openapi-console.json`이 커밋된 파일과 같아야 하고, `web/packages/api`의 클라이언트 둘을 그 파일에서 만든다. (D-21, D-43) |
 | S0-AC-97 | When 컨테이너 안에서 `popdesk admin reset-password <이메일>`을 돌리면, the system shall 새 비밀번호를 화면에 보이지 않게 두 번 묻고, AUTH-5에 맞으면 그 관리자의 비밀번호로 정하고, 잠금을 풀고, 그 계정의 세션을 모두 지우고, 감사 로그에 남긴다(한 사람은 시스템 0). If 그 이메일의 계정이 없거나 `ADMIN`이 아니거나, 명령에 터미널이 붙어 있지 않으면(`docker compose exec -T`처럼), then the system shall 아무것도 바꾸지 않고 실패한다. 새 비밀번호는 로그와 명령 출력에 남기지 않고, 메일 링크를 쓰지 않으며, 이 명령에 대응하는 HTTP 경로는 없다. (ACCT-6, D-46, TM-45, 부검 13, 5절 1) |
