@@ -21,7 +21,8 @@ class PublicInvitationController {
                     + "The response has `Cache-Control: no-store` (S0-AC-101).")
     @ApiResponse(responseCode = "204", description = "Accepted and signed in. The session cookie is set.")
     @ApiResponse(responseCode = "400", description = "`INVITATION_INVALID`: the token is unknown, expired, used, or "
-            + "replaced by a newer one; one body for all (S0-AC-37). `INVALID_INPUT`: the password breaks AUTH-5 "
+            + "replaced by a newer one, or the token is sent to the other app's host (a customer's token on the console "
+            + "host, a staff token on the portal host); one body for all (S0-AC-37). `INVALID_INPUT`: the password breaks AUTH-5 "
             + "(field `password`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`).")
     @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
     @PostMapping("/accept")

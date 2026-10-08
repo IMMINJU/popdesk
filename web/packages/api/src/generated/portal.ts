@@ -269,7 +269,8 @@ export interface components {
             /** Format: date-time */
             deletedAt: string | null;
             deletedBy: components["schemas"]["Person"] | null;
-            fileName: string;
+            /** @description Cleared to null when the attachment is deleted (COM-7, ATT-5). */
+            fileName: string | null;
             /**
              * Format: uuid
              * @description Hard to guess, but not a permission check (ATT-7).
@@ -1168,7 +1169,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description `INVITATION_INVALID`: the token is unknown, expired, used, or replaced by a newer one; one body for all (S0-AC-37). `INVALID_INPUT`: the password breaks AUTH-5 (field `password`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`). */
+            /** @description `INVITATION_INVALID`: the token is unknown, expired, used, or replaced by a newer one, or the token is sent to the other app's host (a customer's token on the console host, a staff token on the portal host); one body for all (S0-AC-37). `INVALID_INPUT`: the password breaks AUTH-5 (field `password`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`). */
             400: {
                 headers: {
                     [name: string]: unknown;

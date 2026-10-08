@@ -7,7 +7,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -103,19 +102,6 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
     @PutMapping("/{code}/agents/{accountId}")
     CompanyMember assignAgent(@PathVariable String code, @PathVariable long accountId) {
-        throw new NotImplementedException();
-    }
-
-    @Operation(operationId = "unassignAgent", summary = "Unassign an agent from a company",
-            description = "The agent loses access to the company's issues at once; assignees stay (PROJ-4). "
-                    + "Unassigning an agent who is not assigned is 204 too.")
-    @ApiResponse(responseCode = "204", description = "Unassigned.")
-    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
-    @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
-    @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
-    @DeleteMapping("/{code}/agents/{accountId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    void unassignAgent(@PathVariable String code, @PathVariable long accountId) {
         throw new NotImplementedException();
     }
 }

@@ -93,7 +93,8 @@
             } ]
           },
           "fileName" : {
-            "type" : "string"
+            "description" : "Cleared to null when the attachment is deleted (COM-7, ATT-5).",
+            "type" : [ "string", "null" ]
           },
           "id" : {
             "description" : "Hard to guess, but not a permission check (ATT-7).",
@@ -1202,63 +1203,6 @@
       }
     },
     "/api/console/companies/{code}/agents/{accountId}" : {
-      "delete" : {
-        "description" : "The agent loses access to the company's issues at once; assignees stay (PROJ-4). Unassigning an agent who is not assigned is 204 too.",
-        "operationId" : "unassignAgent",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "code",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "path",
-          "name" : "accountId",
-          "required" : true,
-          "schema" : {
-            "format" : "int64",
-            "type" : "integer"
-          }
-        } ],
-        "responses" : {
-          "204" : {
-            "description" : "Unassigned."
-          },
-          "401" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description" : "`UNAUTHENTICATED`."
-          },
-          "403" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description" : "`FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`."
-          },
-          "404" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description" : "`NOT_FOUND`: no such company or account."
-          }
-        },
-        "summary" : "Unassign an agent from a company",
-        "tags" : [ "Companies" ]
-      },
       "put" : {
         "description" : "The agent, invited ones included, sees the company's issues from the next request. Assigning again is 200 too (S0-AC-31).",
         "operationId" : "assignAgent",
@@ -2598,7 +2542,7 @@
                 }
               }
             },
-            "description" : "`INVITATION_INVALID`: the token is unknown, expired, used, or replaced by a newer one; one body for all (S0-AC-37). `INVALID_INPUT`: the password breaks AUTH-5 (field `password`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`)."
+            "description" : "`INVITATION_INVALID`: the token is unknown, expired, used, or replaced by a newer one, or the token is sent to the other app's host (a customer's token on the console host, a staff token on the portal host); one body for all (S0-AC-37). `INVALID_INPUT`: the password breaks AUTH-5 (field `password`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`)."
           },
           "403" : {
             "content" : {

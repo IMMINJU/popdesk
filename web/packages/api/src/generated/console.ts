@@ -96,11 +96,7 @@ export interface paths {
          */
         put: operations["assignAgent"];
         post?: never;
-        /**
-         * Unassign an agent from a company
-         * @description The agent loses access to the company's issues at once; assignees stay (PROJ-4). Unassigning an agent who is not assigned is 204 too.
-         */
-        delete: operations["unassignAgent"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -523,7 +519,8 @@ export interface components {
             /** Format: date-time */
             deletedAt: string | null;
             deletedBy: components["schemas"]["Person"] | null;
-            fileName: string;
+            /** @description Cleared to null when the attachment is deleted (COM-7, ATT-5). */
+            fileName: string | null;
             /**
              * Format: uuid
              * @description Hard to guess, but not a permission check (ATT-7).
@@ -1197,54 +1194,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiError"];
                 };
-            };
-            /** @description `UNAUTHENTICATED`. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description `FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description `NOT_FOUND`: no such company or account. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    unassignAgent: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-                accountId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Unassigned. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description `UNAUTHENTICATED`. */
             401: {
@@ -2282,7 +2231,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description `INVITATION_INVALID`: the token is unknown, expired, used, or replaced by a newer one; one body for all (S0-AC-37). `INVALID_INPUT`: the password breaks AUTH-5 (field `password`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`). */
+            /** @description `INVITATION_INVALID`: the token is unknown, expired, used, or replaced by a newer one, or the token is sent to the other app's host (a customer's token on the console host, a staff token on the portal host); one body for all (S0-AC-37). `INVALID_INPUT`: the password breaks AUTH-5 (field `password`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`). */
             400: {
                 headers: {
                     [name: string]: unknown;

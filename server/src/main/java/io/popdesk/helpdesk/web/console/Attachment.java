@@ -7,7 +7,8 @@ import java.util.UUID;
 /** A file on an issue or a comment. A deleted attachment stays in the list as a trace (COM-7). */
 public record Attachment(
         @Schema(description = "Hard to guess, but not a permission check (ATT-7).") UUID id,
-        String fileName,
+        @Schema(description = "Cleared to null when the attachment is deleted (COM-7, ATT-5).", nullable = true)
+                String fileName,
         @Schema(description = "Bytes.") long size,
         String contentType,
         @Schema(description = "The comment it belongs to; null for a file on the issue itself.", nullable = true)
