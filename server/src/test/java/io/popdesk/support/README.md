@@ -35,7 +35,7 @@ Within a context, data from other test classes stays in the database. Never assu
 | `fixtures` | `Fixtures`: test data through the API |
 | `clock` | `TestClock`, the app's `Clock` bean. Stands still; `clock.advance(Duration)` moves it forward |
 | `log` | `AppLog`: the app's standard output since this context started |
-| `db` | `DbInspector`: read-only JDBC for schema, `pg_locks`, and single rows |
+| `db` | `DbInspector`: read-only JDBC for schema, `pg_locks`, and single rows. It works in the app's schema, `current_schema()` of the app's `DataSource` (`db.schema()`), and sets it on its own connections, so unqualified table names work |
 | `mail()` | `MailServer`: GreenMail, `awaitMessageTo(email)` |
 | `webhook()` | `WebhookReceiver`: requests the app posted, `respondWith(500)` to make it fail |
 | `port` | The app's HTTP port |

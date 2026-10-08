@@ -1,5 +1,6 @@
 package io.popdesk.support;
 
+import javax.sql.DataSource;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -19,7 +20,7 @@ class SupportConfiguration {
     }
 
     @Bean
-    DbInspector dbInspector(PostgreSQLContainer postgres) {
-        return new DbInspector(postgres);
+    DbInspector dbInspector(PostgreSQLContainer postgres, DataSource dataSource) {
+        return new DbInspector(postgres, dataSource);
     }
 }

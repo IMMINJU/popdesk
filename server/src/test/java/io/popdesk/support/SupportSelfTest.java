@@ -19,8 +19,10 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Properties;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Checks that the test support works: the app starts in a named setup, clients send their own Host
@@ -34,6 +36,9 @@ class SupportSelfTest extends ConnectedAppTest {
 
     @Autowired
     Clock appClock;
+
+    @Autowired
+    DataSource appDataSource;
 
     @Test
     void appAnswersOnBothHosts() {
@@ -221,8 +226,15 @@ class SupportSelfTest extends ConnectedAppTest {
         assertThat(db.count("select 1")).isEqualTo(1);
         assertThat(db.row("select current_setting('server_version') as v").get("v").toString()).startsWith("16.");
         assertThat(db.tables()).isNotNull();
+        assertThat(db.schema()).isEqualTo(appSchema());
+        assertThat(db.row("select current_schema() as s").get("s")).isEqualTo(db.schema());
         assertThat(db.advisoryLocks()).isNotNull();
         assertThatThrownBy(() -> db.row("select 1 where false")).isInstanceOf(AssertionError.class);
+    }
+
+    /** {@code current_schema()} as the app's own pool sees it. */
+    private String appSchema() {
+        return new JdbcTemplate(appDataSource).queryForObject("select current_schema()", String.class);
     }
 
     @Test

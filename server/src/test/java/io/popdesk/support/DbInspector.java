@@ -2,12 +2,14 @@ package io.popdesk.support;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import javax.sql.DataSource;
 import org.springframework.jdbc.core.ColumnMapRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
@@ -16,6 +18,11 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 /**
  * Looks into the test context's database for what HTTP cannot show: the schema
  * ({@code information_schema}), locks ({@code pg_locks}), and the state of single rows.
+ *
+ * <p>The schema is the one the app's own connections use: {@code current_schema()} of a connection
+ * from the app's {@code DataSource}, read once. No schema name is written here. Every connection of
+ * this class sets that schema, so unqualified table names in {@link #rows} and {@link #count} find
+ * the app's tables.
  *
  * <p>Reads run on a read-only connection of their own, outside the app's pool. Do not use this to
  * create business data; fixtures go through the API ({@link Fixtures}). The one write it allows is
@@ -30,31 +37,53 @@ public final class DbInspector {
     public record AdvisoryLock(long classid, long objid, int objsubid, boolean granted, int pid) {}
 
     private final PostgreSQLContainer postgres;
+    private final DataSource appDataSource;
+    private volatile String schema;
 
-    public DbInspector(PostgreSQLContainer postgres) {
+    public DbInspector(PostgreSQLContainer postgres, DataSource appDataSource) {
         this.postgres = postgres;
+        this.appDataSource = appDataSource;
     }
 
-    /** Base tables in the {@code public} schema, by name. */
+    /** The app's schema: {@code current_schema()} on a connection from the app's {@code DataSource}. */
+    public String schema() {
+        String known = schema;
+        if (known != null) {
+            return known;
+        }
+        try (Connection c = appDataSource.getConnection();
+                Statement s = c.createStatement();
+                ResultSet rs = s.executeQuery("select current_schema()")) {
+            if (!rs.next() || rs.getString(1) == null) {
+                throw new IllegalStateException("The app's connection has no current schema");
+            }
+            schema = rs.getString(1);
+            return schema;
+        } catch (SQLException e) {
+            throw new IllegalStateException("Could not read the app's current schema", e);
+        }
+    }
+
+    /** Base tables in the app's schema, by name. */
     public List<String> tables() {
         return read(jdbc -> jdbc.queryForList(
                 "select table_name from information_schema.tables "
-                        + "where table_schema = 'public' and table_type = 'BASE TABLE' order by table_name",
-                String.class));
+                        + "where table_schema = ? and table_type = 'BASE TABLE' order by table_name",
+                String.class, schema()));
     }
 
     public List<Column> columns(String table) {
         return read(jdbc -> jdbc.query(
                 "select column_name, data_type, is_nullable, column_default from information_schema.columns "
-                        + "where table_schema = 'public' and table_name = ? order by ordinal_position",
+                        + "where table_schema = ? and table_name = ? order by ordinal_position",
                 (rs, n) -> new Column(rs.getString(1), rs.getString(2), "YES".equals(rs.getString(3)),
                         rs.getString(4)),
-                table));
+                schema(), table));
     }
 
     /** Index names and definitions ({@code pg_indexes}). */
     public Map<String, String> indexes(String table) {
-        return pairs("select indexname, indexdef from pg_indexes where schemaname = 'public' and tablename = ? "
+        return pairs("select indexname, indexdef from pg_indexes where schemaname = ? and tablename = ? "
                 + "order by indexname", table);
     }
 
@@ -62,7 +91,7 @@ public final class DbInspector {
     public Map<String, String> constraints(String table) {
         return pairs("select c.conname, pg_get_constraintdef(c.oid) from pg_constraint c "
                 + "join pg_class t on t.oid = c.conrelid join pg_namespace s on s.oid = t.relnamespace "
-                + "where s.nspname = 'public' and t.relname = ? order by c.conname", table);
+                + "where s.nspname = ? and t.relname = ? order by c.conname", table);
     }
 
     /** Advisory locks held or waited for right now, by any session. */
@@ -119,12 +148,16 @@ public final class DbInspector {
     }
 
     private Connection connect() throws SQLException {
-        return DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+        String appSchema = schema();
+        Connection c = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(),
+                postgres.getPassword());
+        c.setSchema(appSchema);
+        return c;
     }
 
     private Map<String, String> pairs(String sql, String table) {
         Map<String, String> out = new LinkedHashMap<>();
-        read(jdbc -> jdbc.query(sql, (rs, n) -> out.put(rs.getString(1), rs.getString(2)), table));
+        read(jdbc -> jdbc.query(sql, (rs, n) -> out.put(rs.getString(1), rs.getString(2)), schema(), table));
         return out;
     }
 }
