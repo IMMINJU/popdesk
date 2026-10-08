@@ -59,6 +59,7 @@ TEST_SIDE_EXTRA_GLOBS = [
     LOCK_FILE,
     "design/slices/*/questions.md",
     "design/slices/*/red.md",
+    "design/slices/*/red-allow.txt",
 ]
 
 SKIP_DIRS = {".git", "node_modules", "target", "build", "dist", ".gradle", ".claude"}

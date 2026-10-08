@@ -48,7 +48,7 @@
 | 스크립트 | 단계 | 하는 일 |
 |---|---|---|
 | `check-test-style.py --all-strict` | 5 | `@Disabled`·`.skip`·`.only`, 늘 참인 단언, mock(`@MockBean`, `Mockito`, `vi.mock` 등), 고정 대기(`Thread.sleep` 등)를 실패로 본다. 바깥 시스템은 mock 대신 실제 대역(Testcontainers Postgres, GreenMail, MinIO, 테스트용 웹훅 받는 쪽, 고정 `Clock`)을 쓴다 |
-| `check-red.py --out design/slices/{묶음}/red.md` | 6 | 이번 묶음의 새 테스트 결과(JUnit XML)가 모두 단언 실패인지 본다 |
+| `check-red.py --allow design/slices/{묶음}/red-allow.txt --out design/slices/{묶음}/red.md` | 6 | 이번 묶음의 새 테스트 결과(JUnit XML)가 모두 단언 실패인지 본다. 바닥이나 프레임워크 기본값이 이미 하는 일이라 처음부터 통과하는 테스트는 `red-allow.txt`에 `테스트 이름 \| 이유`로 적는다. 이유가 없거나 결과에 없는 이름이면 실패다. 허용한 통과는 `red.md`에 이유와 함께 남고 C-7에서 사람이 본다 |
 | `tests-lock.py write` | 6 | 테스트 파일마다 sha256을 `tests.lock`에 적는다 |
 | `trace.py design/slices/{묶음} --search <숨긴 E2E 저장소>` | 7 | 대응표. 테스트 없는 기준과 없는 기준 ID를 실패로 본다 |
 | `check-locked-paths.py --base main --role tests` | 테스트 쪽 합치기 | 테스트 쪽 브랜치가 테스트 경로 밖을 고쳤는지 본다 |
@@ -108,6 +108,8 @@
 | `premortem.md` | 사전 부검(전체 경로일 때만) | `archive/`로 |
 | `screens.md` | 화면 상태 목록 | story로 옮기고 지운다 |
 | `tasks.md` | 한 세션 크기의 작업 목록 | 지운다 |
+| `questions.md` | 테스트 쪽이 테스트를 쓰다 만난 모호한 기준(C-5) | 답을 수용 기준에 옮기고 지운다 |
+| `red-allow.txt`, `red.md` | 처음부터 통과해도 되는 테스트와 이유, 실패 확인 결과(C-6) | `archive/`로 |
 
 묶음을 시작할 때 `design/spec/`에서 그 묶음에 해당하는 절을 이 폴더로 옮기고, `spec/`에서는 지운다. `spec/`이 비면 폴더를 지운다.
 
