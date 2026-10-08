@@ -186,7 +186,7 @@
 | S0-AC-34 | If 고객 초대에 고객사가 없거나 관리자가 고를 수 없는 고객사가 들어 있으면, then the system shall 400으로 답한다. If 같은 이메일의 계정이 있으면, then 409다. (INVITE-1) |
 | S0-AC-35 | The system shall 초대 토큰을 32바이트 난수로 만들고 DB에는 SHA-256 해시만 두며, 7일 뒤 만료되고 한 번 쓰면 끝나게 한다. 토큰은 링크의 URL 조각(`#` 뒤)에만 두고 경로·쿼리에 두지 않는다. 토큰이나 링크를 담거나 받는 모든 응답에 `Cache-Control: no-store`를 붙인다. (INVITE-2, TM-11, TM-44) |
 | S0-AC-36 | When 초대 링크를 연 사람이 AUTH-5에 맞는 비밀번호를 정하면(수락 API는 토큰을 요청 본문으로 받는다), the system shall 계정을 `ACTIVE`로 바꾸고 그 사람의 앱(고객은 포털, 상담 쪽은 콘솔)에 로그인시킨다. (INVITE-4) |
-| S0-AC-37 | If 토큰이 없거나, 만료됐거나, 이미 썼거나, 새 토큰으로 무효가 됐으면, then the system shall 모두 같은 400으로 답한다. (INVITE-4) |
+| S0-AC-37 | If 토큰이 없거나, 만료됐거나, 이미 썼거나, 새 토큰으로 무효가 됐거나, 그 사람의 앱이 아닌 호스트(고객 토큰을 콘솔 호스트로)로 왔으면, then the system shall 모두 같은 400으로 답하고 계정을 바꾸지 않는다. (INVITE-4, C-4에서 정함) |
 | S0-AC-38 | Where SMTP 설정이 없으면, the system shall 관리자의 수락 전 계정 목록에서 "초대 링크 복사"를 쓸 수 있게 한다. 누르면 새 토큰을 만들어 이전 링크를 무효로 하고, 링크를 그 응답에서 한 번만 주며(`Cache-Control: no-store`, S0-AC-101), 만든 일을 감사 로그에 남기되 링크와 토큰은 넣지 않는다. (INVITE-6, TM-44, S0 부검 7) |
 | S0-AC-101 | 토큰 응답 캐시 금지. The system shall 초대 토큰을 담거나 받는 모든 엔드포인트(초대, 초대 링크 복사, 초대 수락)의 응답에 `Cache-Control: no-store`를 붙인다. 컨트롤러는 `Cache-Control`을 따로 쓰지 않는다(쓰면 Spring Security의 기본 `no-store`가 빠진다). 세 엔드포인트마다 단언하고, 모든 `/api` 응답에 `no-store`가 있는지 묶어서 단언하는 테스트를 하나 둔다. E2E 뒤 프록시 액세스 로그에 토큰이 없는지 본다. (INVITE-2, INVITE-6, TM-44, S0 부검 7) |
 | S0-AC-39 | If SMTP 설정이 있는데 초대 링크 복사 API를 부르면, then the system shall 404로 답한다. (INVITE-6, TM-44) |
@@ -226,7 +226,7 @@
 | S0-AC-58 | If 팀 전체 첨부 합이 `POPDESK_ATTACHMENT_QUOTA`를 넘게 되면, then the system shall 400으로 답한다. When 합이 한도의 80%를 넘으면, the system shall 경고 로그를 남기고 운영 경보(S0-AC-80)를 남긴다. (ATT-3, OPS-1) |
 | S0-AC-59 | When 문의를 볼 수 있는 사람이 첨부를 내려받으면, the system shall 늘 `Content-Disposition: attachment`와 `X-Content-Type-Options: nosniff`로 주고, 파일 내용을 메모리에 통째로 올리지 않는다. `db` 저장소는 `substring(data from ? for ?)`로 1MB 조각씩 읽어 응답에 바로 쓴다. 첨부 경로는 문의 아래(`/api/{앱}/issues/{key}/attachments/{id}`)다. (ATT-4, TM-19, 부검 15, S0 부검 1·10) |
 | S0-AC-60 | If 고객이 내부 댓글의 첨부를 목록에서 찾거나 그 첨부에 요청하면, then the system shall 목록에서 빼고 모든 첨부 엔드포인트에서 S0-AC-102의 같은 404로 답한다. (ATT-4, TM-39, S0 부검 10) |
-| S0-AC-61 | When 올린 사람이나 관리자가 첨부를 지우면, the system shall 행을 `purging`으로 바꿔 커밋하고, 저장소의 파일을 지운 뒤 `purged`로 바꾸며 지운 시각과 사람을 남긴다. 저장소에서 지우기가 실패해도 요청은 성공한다. (ATT-5, ATT-10, COM-7) |
+| S0-AC-61 | When 올린 사람이나 관리자가 첨부를 지우면, the system shall 행을 `purging`으로 바꿔 커밋하고, 저장소의 파일을 지운 뒤 `purged`로 바꾸며 지운 시각과 사람을 남긴다. 목록에는 흔적으로 남되 파일 이름은 `null`로 비운다(이름에 개인정보가 들 수 있다). 저장소에서 지우기가 실패해도 요청은 성공한다. (ATT-5, ATT-10, COM-7, C-4에서 정함) |
 | S0-AC-62 | When 첨부 정리 작업이 돌면(하루 한 번), the system shall 만든 지 1시간이 지난 `pending` 행과 `purging` 행의 파일을 지우고 ATT-10의 ③을 한다. 파일이 이미 없으면 지운 것으로 본다. 저장소를 훑어 DB에 없는 파일을 지우는 방식은 쓰지 않는다. (ATT-11) |
 | S0-AC-63 | If 첨부를 붙인 문의 등록이 실패하면, then the system shall 그 요청의 첨부를 아무에게도 보이지 않게 두고 `pending`으로 남겨 정리 작업이 지우게 한다. 순번을 받기 직전에 실패를 넣으면 순번이 쓰이지 않고 첨부는 `pending`으로 남는다. 정리 작업과 ③이 같은 `pending` 행을 두고 겨루면 하나만 이긴다. (ATT-10, ISSUE-3, S0 부검 2) |
 | S0-AC-64 | When 10MB 첨부 올리기와 내려받기가 동시에 10건 들어오면, the system shall 메모리 부족 없이 처리한다. 테스트는 실제 앱 이미지를 `-Xmx384m`와 운영과 같은 GC 옵션으로 돌리고, 앱을 막 띄운 직후(연결마다 첫 실행)에도 돈다. 내려받은 내용의 해시가 올린 것과 같은지 보고, 힙 최대값을 묶음 보고에 적는다. (부검 15, architecture 7절, S0 부검 1, 5절 11) |
