@@ -74,6 +74,51 @@ A 400 for invalid input may also list every invalid field (D-44):
 - `message` is a default text in the installation language (`POPDESK_LOCALE`).
 - The body never contains exception names, stack traces, or SQL.
 
+### Error codes
+
+Each endpoint lists the codes it can return in the OpenAPI files. A new code is added to this table first.
+
+| Status | `code` | When |
+|---|---|---|
+| 400 | `INVALID_INPUT` | One or more request fields or query parameters are invalid. `fields` lists all of them |
+| 400 | `INVITATION_INVALID` | The invitation token is unknown, expired, already used, or replaced by a newer one. One body for all of these |
+| 400 | `COMPANY_NOT_ACTIVE` | The customer company is not `ACTIVE`, so nothing can be filed in or added to it |
+| 400 | `ISSUE_CLOSED` | The issue is `CLOSED`: no comments, attachments, or edits |
+| 400 | `FILE_EMPTY` | The uploaded file has 0 bytes |
+| 400 | `FILE_TOO_LARGE` | The uploaded file is over 10 MB |
+| 400 | `ISSUE_ATTACHMENTS_TOO_LARGE` | The public attachments of the issue (on the issue and its public comments) would pass 50 MB |
+| 400 | `ATTACHMENT_QUOTA_EXCEEDED` | All attachments of the team would pass `POPDESK_ATTACHMENT_QUOTA` |
+| 401 | `UNAUTHENTICATED` | No session, or the session ended |
+| 401 | `SIGN_IN_FAILED` | Sign-in failed. The same body whatever the reason: unknown email, wrong password, invited, suspended, or locked account, or an account of the other app |
+| 403 | `FORBIDDEN` | The caller may not do this: the action is for other roles, or the caller can see the target but may not act on it |
+| 403 | `CSRF_TOKEN_INVALID` | A request that changes data has no CSRF token or a wrong one |
+| 404 | `NOT_FOUND` | The target does not exist or the caller may not see it (`COM-1`). Also a path the host does not serve |
+| 409 | `COMPANY_CODE_TAKEN` | Another customer company has this code |
+| 409 | `EMAIL_TAKEN` | An account has this email |
+| 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit. A proxy in front may answer 413 first with its own body |
+| 429 | `RATE_LIMITED` | Over a rate limit (`COM-8`). `Retry-After` says when to try again |
+| 500 | `INTERNAL_ERROR` | An unexpected server error |
+| 501 | `NOT_IMPLEMENTED` | The endpoint is in the contract but not built yet. Only before a slice is finished; never in a release |
+| 503 | `SERVER_BUSY` | 16 uploads, or 16 downloads, are already running. `Retry-After` says when to try again |
+| 503 | `SETUP_REQUIRED` | The first admin could not be created, so the app takes no requests yet. The log says what to set |
+
+A request to a host that is neither the portal host nor the console host gets 404 with a plain text note, not this body.
+
+Codes in `fields[].code`:
+
+| `code` | When |
+|---|---|
+| `REQUIRED` | The value is missing or empty |
+| `BLANK` | The value has only whitespace |
+| `TOO_SHORT` | Under the minimum length |
+| `TOO_LONG` | Over the maximum length |
+| `INVALID_FORMAT` | Does not match the expected form, for example an email address or a company code |
+| `UNKNOWN_VALUE` | Not one of the allowed values, or names something that does not exist or the caller cannot choose |
+| `OUT_OF_RANGE` | A number outside its range, for example `page` below 1 or `size` above 100 |
+| `NOT_ALLOWED` | The field must be left out here, for example companies when inviting staff |
+| `SAME_AS_EMAIL` | The password is the same as the account's email |
+| `UNKNOWN_PARAMETER` | The query parameter is not accepted on this endpoint, for example a staff-only filter on a customer list |
+
 ## Attachment paths
 
 Attachments are always addressed under their issue:

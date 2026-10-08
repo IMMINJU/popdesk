@@ -1,9 +1,2705 @@
 {
-  "components" : { },
+  "components" : {
+    "schemas" : {
+      "AcceptInvitationRequest" : {
+        "properties" : {
+          "password" : {
+            "description" : "10 to 72 characters, not only whitespace, not the same as the email (AUTH-5).",
+            "type" : "string"
+          },
+          "token" : {
+            "description" : "The token from the invitation link's fragment (after `#`). Sent only in the body.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "password", "token" ],
+        "type" : "object"
+      },
+      "Account" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "INVITED", "ACTIVE", "SUSPENDED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "createdAt", "email", "id", "name", "role", "status" ],
+        "type" : "object"
+      },
+      "ApiError" : {
+        "description" : "Error body. Clients choose the text they show by `code`; `message` is a default text for a `code` they do not know.",
+        "properties" : {
+          "code" : {
+            "description" : "Stable error key. See docs/integrate/conventions.md for the list.",
+            "type" : "string"
+          },
+          "fields" : {
+            "description" : "Present only when the error is about specific fields (400 `INVALID_INPUT`).",
+            "items" : {
+              "$ref" : "#/components/schemas/FieldError"
+            },
+            "type" : "array"
+          },
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "message" ],
+        "type" : "object"
+      },
+      "Attachment" : {
+        "properties" : {
+          "commentId" : {
+            "description" : "The comment it belongs to; null for a file on the issue itself.",
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
+          "contentType" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "deleted" : {
+            "type" : "boolean"
+          },
+          "deletedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "deletedBy" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/Person"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "fileName" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "Hard to guess, but not a permission check (ATT-7).",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "internal" : {
+            "description" : "On an internal comment.",
+            "type" : "boolean"
+          },
+          "size" : {
+            "description" : "Bytes.",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "uploadedBy" : {
+            "$ref" : "#/components/schemas/Person"
+          }
+        },
+        "required" : [ "commentId", "contentType", "createdAt", "deleted", "deletedAt", "deletedBy", "fileName", "id", "internal", "size", "uploadedBy" ],
+        "type" : "object"
+      },
+      "ChannelStatus" : {
+        "properties" : {
+          "enabled" : {
+            "description" : "Configured.",
+            "type" : "boolean"
+          },
+          "failed" : {
+            "description" : "Rows that stopped retrying.",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lastSuccessAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "queued" : {
+            "description" : "Rows waiting to be sent.",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "enabled", "failed", "lastSuccessAt", "queued" ],
+        "type" : "object"
+      },
+      "Comment" : {
+        "properties" : {
+          "author" : {
+            "$ref" : "#/components/schemas/Person"
+          },
+          "content" : {
+            "description" : "Markdown, as written (COM-6).",
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "internal" : {
+            "description" : "Internal comments do not exist for customers (CMT-2).",
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "author", "content", "createdAt", "id", "internal" ],
+        "type" : "object"
+      },
+      "Company" : {
+        "properties" : {
+          "code" : {
+            "description" : "2 to 10 capital letters and digits. Unique, never changes.",
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "legalName" : {
+            "description" : "The company's legal name.",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "ACTIVE", "SUSPENDED", "ARCHIVED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "createdAt", "legalName", "name", "status" ],
+        "type" : "object"
+      },
+      "CompanyMember" : {
+        "properties" : {
+          "accountId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "INVITED", "ACTIVE", "SUSPENDED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "accountId", "email", "name", "status" ],
+        "type" : "object"
+      },
+      "CompanyRef" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "name" ],
+        "type" : "object"
+      },
+      "CreateCommentRequest" : {
+        "properties" : {
+          "content" : {
+            "description" : "Markdown, 1 to 4,000 characters.",
+            "type" : "string"
+          },
+          "internal" : {
+            "description" : "An internal comment, hidden from customers. Public when left out.",
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "content" ],
+        "type" : "object"
+      },
+      "CreateCompanyRequest" : {
+        "properties" : {
+          "code" : {
+            "description" : "2 to 10 capital letters and digits, unique. Cannot be changed later.",
+            "type" : "string"
+          },
+          "legalName" : {
+            "description" : "1 to 100 characters.",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "1 to 100 characters.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "legalName", "name" ],
+        "type" : "object"
+      },
+      "CreateInvitationRequest" : {
+        "properties" : {
+          "companyCodes" : {
+            "description" : "Codes of the companies a customer joins. At least one for `CUSTOMER`; left out or empty for staff.",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "email" : {
+            "description" : "Up to 100 characters.",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "1 to 50 characters.",
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "email", "name", "role" ],
+        "type" : "object"
+      },
+      "FailedDelivery" : {
+        "properties" : {
+          "channel" : {
+            "enum" : [ "MAIL", "WEBHOOK" ],
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lastErrorKind" : {
+            "description" : "Kind of the last error, for example `CONNECTION_REFUSED`; never the error text.",
+            "type" : "string"
+          },
+          "recipientAccountId" : {
+            "description" : "The receiving account of an email; null for a webhook.",
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          }
+        },
+        "required" : [ "channel", "createdAt", "id", "lastErrorKind", "recipientAccountId" ],
+        "type" : "object"
+      },
+      "FieldError" : {
+        "properties" : {
+          "code" : {
+            "description" : "Stable field error key, for example `TOO_LONG`.",
+            "type" : "string"
+          },
+          "field" : {
+            "description" : "Name of the request field or query parameter.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "field" ],
+        "type" : "object"
+      },
+      "InvitationLink" : {
+        "properties" : {
+          "inviteLink" : {
+            "description" : "Shown once; the token is in the fragment after `#`.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "inviteLink" ],
+        "type" : "object"
+      },
+      "InvitationResult" : {
+        "properties" : {
+          "accountId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "inviteLink" : {
+            "description" : "The invitation link, only when SMTP is not configured; shown once. `null` when the invitation email is sent.",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "accountId", "inviteLink" ],
+        "type" : "object"
+      },
+      "Issue" : {
+        "properties" : {
+          "channel" : {
+            "enum" : [ "PORTAL", "EMAIL", "PHONE", "OTHER" ],
+            "type" : "string"
+          },
+          "companyCode" : {
+            "type" : "string"
+          },
+          "companyName" : {
+            "type" : "string"
+          },
+          "content" : {
+            "description" : "Markdown, as written (COM-6).",
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "firstResponseAt" : {
+            "description" : "When staff first commented publicly (S0-AC-46).",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "key" : {
+            "description" : "`{company code}-{number}`, for example `ACME-7`.",
+            "type" : "string"
+          },
+          "priority" : {
+            "enum" : [ "LOW", "NORMAL", "HIGH", "URGENT" ],
+            "type" : "string"
+          },
+          "private" : {
+            "type" : "boolean"
+          },
+          "reporter" : {
+            "$ref" : "#/components/schemas/Person"
+          },
+          "status" : {
+            "enum" : [ "RECEIVED", "CONFIRMED", "IN_PROGRESS", "RESOLVED", "CLOSED" ],
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "version" : {
+            "description" : "Goes up by 1 on every change to the issue (S0-AC-45).",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "channel", "companyCode", "companyName", "content", "createdAt", "firstResponseAt", "key", "priority", "private", "reporter", "status", "title", "updatedAt", "version" ],
+        "type" : "object"
+      },
+      "IssueSummary" : {
+        "properties" : {
+          "companyCode" : {
+            "type" : "string"
+          },
+          "companyName" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "key" : {
+            "description" : "`{company code}-{number}`, for example `ACME-7`.",
+            "type" : "string"
+          },
+          "priority" : {
+            "enum" : [ "LOW", "NORMAL", "HIGH", "URGENT" ],
+            "type" : "string"
+          },
+          "private" : {
+            "type" : "boolean"
+          },
+          "reporter" : {
+            "$ref" : "#/components/schemas/Person"
+          },
+          "status" : {
+            "enum" : [ "RECEIVED", "CONFIRMED", "IN_PROGRESS", "RESOLVED", "CLOSED" ],
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "companyCode", "companyName", "createdAt", "key", "priority", "private", "reporter", "status", "title" ],
+        "type" : "object"
+      },
+      "Me" : {
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "email", "id", "name", "role" ],
+        "type" : "object"
+      },
+      "Notification" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "kind" : {
+            "enum" : [ "DELIVERY_FAILED", "ATTACHMENT_QUOTA_WARNING" ],
+            "type" : "string"
+          },
+          "readAt" : {
+            "description" : "When the caller marked it read.",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "createdAt", "id", "kind", "readAt" ],
+        "type" : "object"
+      },
+      "PagedAccount" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Account"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PagedAttachment" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Attachment"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PagedComment" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Comment"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PagedCompany" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Company"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PagedCompanyMember" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CompanyMember"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PagedFailedDelivery" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FailedDelivery"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PagedIssueSummary" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/IssueSummary"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PagedNotification" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Notification"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PagedPendingInvitation" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PendingInvitation"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PendingInvitation" : {
+        "properties" : {
+          "accountId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "companies" : {
+            "description" : "The companies a customer was invited to; `[]` for staff.",
+            "items" : {
+              "$ref" : "#/components/schemas/CompanyRef"
+            },
+            "type" : "array"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "expired" : {
+            "description" : "The current link is past its 7 days.",
+            "type" : "boolean"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "invitedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "accountId", "companies", "email", "expired", "expiresAt", "invitedAt", "name", "role" ],
+        "type" : "object"
+      },
+      "Person" : {
+        "properties" : {
+          "accountId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "accountId", "name", "role" ],
+        "type" : "object"
+      },
+      "SignInRequest" : {
+        "properties" : {
+          "email" : {
+            "description" : "Leading and trailing whitespace and case are ignored.",
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "email", "password" ],
+        "type" : "object"
+      },
+      "SystemStatus" : {
+        "properties" : {
+          "mail" : {
+            "$ref" : "#/components/schemas/ChannelStatus"
+          },
+          "webhook" : {
+            "$ref" : "#/components/schemas/ChannelStatus"
+          }
+        },
+        "required" : [ "mail", "webhook" ],
+        "type" : "object"
+      },
+      "UnreadCount" : {
+        "properties" : {
+          "count" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "count" ],
+        "type" : "object"
+      }
+    }
+  },
   "info" : {
-    "title" : "OpenAPI definition",
-    "version" : "v0"
+    "description" : "The agent console: `/api/console/**` on the console host, and `/api/public/**`. Conventions: docs/integrate/conventions.md.",
+    "license" : {
+      "identifier" : "Apache-2.0",
+      "name" : "Apache-2.0"
+    },
+    "title" : "popdesk console API",
+    "version" : "0.1.0"
   },
   "openapi" : "3.1.0",
-  "paths" : { }
+  "paths" : {
+    "/api/console/accounts" : {
+      "get" : {
+        "description" : "Every account, newest first (C-10). `role` narrows it, for example to pick an agent to assign (C-9).",
+        "operationId" : "listAccounts",
+        "parameters" : [ {
+          "description" : "Only accounts with this role.",
+          "in" : "query",
+          "name" : "role",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedAccount"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `role` (`UNKNOWN_VALUE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only."
+          }
+        },
+        "summary" : "Accounts",
+        "tags" : [ "Accounts" ]
+      }
+    },
+    "/api/console/companies" : {
+      "get" : {
+        "description" : "All companies for admins, assigned ones for agents (S0-AC-32), in code order.",
+        "operationId" : "listCompanies",
+        "parameters" : [ {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedCompany"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          }
+        },
+        "summary" : "Companies the caller can see",
+        "tags" : [ "Companies" ]
+      },
+      "post" : {
+        "description" : "Creates an `ACTIVE` company (S0-AC-29).",
+        "operationId" : "createCompany",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateCompanyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Company"
+                }
+              }
+            },
+            "description" : "Created."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `name` or `legalName` empty or over 100, `code` not 2 to 10 capital letters and digits (`INVALID_FORMAT`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`."
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`COMPANY_CODE_TAKEN`: another company has this code."
+          }
+        },
+        "summary" : "Create a company",
+        "tags" : [ "Companies" ]
+      }
+    },
+    "/api/console/companies/{code}" : {
+      "get" : {
+        "operationId" : "getCompany",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Company"
+                }
+              }
+            },
+            "description" : "The company."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the caller cannot see it."
+          }
+        },
+        "summary" : "One company",
+        "tags" : [ "Companies" ]
+      }
+    },
+    "/api/console/companies/{code}/agents" : {
+      "get" : {
+        "description" : "In name order (C-9).",
+        "operationId" : "listCompanyAgents",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedCompanyMember"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30)."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the caller cannot see it."
+          }
+        },
+        "summary" : "Agents assigned to a company",
+        "tags" : [ "Companies" ]
+      }
+    },
+    "/api/console/companies/{code}/agents/{accountId}" : {
+      "delete" : {
+        "description" : "The agent loses access to the company's issues at once; assignees stay (PROJ-4). Unassigning an agent who is not assigned is 204 too.",
+        "operationId" : "unassignAgent",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Unassigned."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company or account."
+          }
+        },
+        "summary" : "Unassign an agent from a company",
+        "tags" : [ "Companies" ]
+      },
+      "put" : {
+        "description" : "The agent, invited ones included, sees the company's issues from the next request. Assigning again is 200 too (S0-AC-31).",
+        "operationId" : "assignAgent",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyMember"
+                }
+              }
+            },
+            "description" : "Assigned."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: the account is not an agent (field `accountId` `UNKNOWN_VALUE`). `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED`."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company or account."
+          }
+        },
+        "summary" : "Assign an agent to a company",
+        "tags" : [ "Companies" ]
+      }
+    },
+    "/api/console/companies/{code}/customers" : {
+      "get" : {
+        "description" : "Customers who belong to the company, invited ones included, in name order (C-9).",
+        "operationId" : "listCompanyCustomers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedCompanyMember"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30)."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the caller cannot see it."
+          }
+        },
+        "summary" : "Customers of a company",
+        "tags" : [ "Companies" ]
+      }
+    },
+    "/api/console/invitations" : {
+      "get" : {
+        "description" : "`INVITED` accounts, newest invitation first (S0-AC-40).",
+        "operationId" : "listPendingInvitations",
+        "parameters" : [ {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedPendingInvitation"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only."
+          }
+        },
+        "summary" : "Accounts that have not accepted yet",
+        "tags" : [ "Invitations" ]
+      },
+      "post" : {
+        "description" : "Creates an `INVITED` account and queues the invitation email (S0-AC-33). A customer joins the given companies. Without SMTP the response carries the link instead, once. The response has `Cache-Control: no-store` (S0-AC-101).",
+        "operationId" : "invite",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateInvitationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InvitationResult"
+                }
+              }
+            },
+            "description" : "Invited."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `email` malformed or over 100, `name` empty or over 50, `role` unknown, `companyCodes` empty for a customer (`REQUIRED`), given for staff (`NOT_ALLOWED`), or naming a company that does not exist or is not `ACTIVE` (`UNKNOWN_VALUE`) (S0-AC-34)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`EMAIL_TAKEN`: an account has this email (S0-AC-34)."
+          }
+        },
+        "summary" : "Invite a person",
+        "tags" : [ "Invitations" ]
+      }
+    },
+    "/api/console/invitations/{accountId}/link" : {
+      "post" : {
+        "description" : "Only without SMTP. Makes a new token, so the previous link stops working, and returns the link once (S0-AC-38). The response has `Cache-Control: no-store` (S0-AC-101).",
+        "operationId" : "createInvitationLink",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InvitationLink"
+                }
+              }
+            },
+            "description" : "The new link."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: SMTP is configured (S0-AC-39), or no `INVITED` account has this ID."
+          }
+        },
+        "summary" : "Make a new invitation link to copy",
+        "tags" : [ "Invitations" ]
+      }
+    },
+    "/api/console/issues" : {
+      "get" : {
+        "description" : "All issues of assigned companies for agents, all issues for admins, newest first (S0-AC-47).",
+        "operationId" : "listIssues",
+        "parameters" : [ {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedIssueSummary"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          }
+        },
+        "summary" : "Issues the caller can see",
+        "tags" : [ "Issues" ]
+      }
+    },
+    "/api/console/issues/{key}" : {
+      "get" : {
+        "operationId" : "getIssue",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description" : "The issue."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4)."
+          }
+        },
+        "summary" : "One issue",
+        "tags" : [ "Issues" ]
+      }
+    },
+    "/api/console/issues/{key}/attachments" : {
+      "get" : {
+        "description" : "Files on the issue and on all its comments, oldest first. Deleted attachments stay as traces (`deleted`).",
+        "operationId" : "listAttachments",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedAttachment"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or the caller cannot see it."
+          }
+        },
+        "summary" : "Attachments of an issue",
+        "tags" : [ "Attachments" ]
+      },
+      "post" : {
+        "description" : "Attaches a file to the issue, or to the caller's own comment with `commentId` (S0-AC-56). A file on an internal comment counts only against the team quota (S0-AC-57).",
+        "operationId" : "uploadAttachment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "commentId" : {
+                    "description" : "Attach to this comment of the caller instead of the issue.",
+                    "format" : "int64",
+                    "type" : "integer"
+                  },
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Attachment"
+                }
+              }
+            },
+            "description" : "Stored."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `ISSUE_ATTACHMENTS_TOO_LARGE` (public attachments of the issue over 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), `INVALID_INPUT` (field `file` `TOO_LONG`: name over 255; field `commentId` `UNKNOWN_VALUE`: not the caller's comment on this issue) (S0-AC-57, S0-AC-58). `ISSUE_CLOSED`."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or the caller cannot see it."
+          },
+          "413" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`PAYLOAD_TOO_LARGE`: the request is over the upload limit."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 30 uploads in 60 seconds (S0-AC-65)."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`SERVER_BUSY`: 16 uploads are running; try again after `Retry-After` (S0-AC-99)."
+          }
+        },
+        "summary" : "Attach a file",
+        "tags" : [ "Attachments" ]
+      }
+    },
+    "/api/console/issues/{key}/attachments/{id}" : {
+      "delete" : {
+        "description" : "The uploader or an admin may delete. The list keeps a trace (S0-AC-61, COM-7).",
+        "operationId" : "deleteAttachment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Deleted."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: an agent who did not upload it. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: one identical response for an unknown ID, an issue the caller cannot see, an attachment of another issue, and a pending or deleted attachment (S0-AC-102)."
+          }
+        },
+        "summary" : "Delete a file",
+        "tags" : [ "Attachments" ]
+      },
+      "get" : {
+        "description" : "Always `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff` (S0-AC-59). Takes `Range` requests.",
+        "operationId" : "downloadAttachment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Range",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/octet-stream" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "The file."
+          },
+          "206" : {
+            "content" : {
+              "application/octet-stream" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Part of the file, for a `Range` request."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: one identical response for an unknown ID, an issue the caller cannot see, an attachment of another issue, and a pending or deleted attachment (S0-AC-102)."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`SERVER_BUSY`: 16 downloads are running; try again after `Retry-After` (S0-AC-99)."
+          }
+        },
+        "summary" : "Download a file",
+        "tags" : [ "Attachments" ]
+      },
+      "head" : {
+        "description" : "The headers `downloadAttachment` would send, without the body.",
+        "operationId" : "headAttachment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The file exists and the caller may download it."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: one identical response for an unknown ID, an issue the caller cannot see, an attachment of another issue, and a pending or deleted attachment (S0-AC-102)."
+          }
+        },
+        "summary" : "Headers of a file download",
+        "tags" : [ "Attachments" ]
+      }
+    },
+    "/api/console/issues/{key}/comments" : {
+      "get" : {
+        "description" : "Public and internal comments, oldest first, with author names (S0-AC-54).",
+        "operationId" : "listComments",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedComment"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or the caller cannot see it."
+          }
+        },
+        "summary" : "Comments of an issue",
+        "tags" : [ "Comments" ]
+      },
+      "post" : {
+        "description" : "A public comment emails the reporter and sets the first response time once (S0-AC-46, S0-AC-70). An internal comment is hidden from customers (S0-AC-53).",
+        "operationId" : "createComment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateCommentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Comment"
+                }
+              }
+            },
+            "description" : "Created."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `content` empty or over 4,000. `ISSUE_CLOSED`: the issue is closed."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or the caller cannot see it."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 30 comments in 60 seconds (S0-AC-55)."
+          }
+        },
+        "summary" : "Add a public or internal comment",
+        "tags" : [ "Comments" ]
+      }
+    },
+    "/api/console/me" : {
+      "get" : {
+        "description" : "Also tells whether the session is still valid.",
+        "operationId" : "getMe",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Me"
+                }
+              }
+            },
+            "description" : "Signed in."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`: no session, or it ended (S0-AC-25)."
+          }
+        },
+        "summary" : "The signed-in agent or admin",
+        "tags" : [ "Session" ]
+      }
+    },
+    "/api/console/notifications" : {
+      "get" : {
+        "description" : "Own items only, newest first (S0-AC-80, INBOX-3).",
+        "operationId" : "listNotifications",
+        "parameters" : [ {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedNotification"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          }
+        },
+        "summary" : "The caller's inbox",
+        "tags" : [ "Notifications" ]
+      }
+    },
+    "/api/console/notifications/unread-count" : {
+      "get" : {
+        "operationId" : "countUnreadNotifications",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UnreadCount"
+                }
+              }
+            },
+            "description" : "The count."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          }
+        },
+        "summary" : "Unread items in the caller's inbox",
+        "tags" : [ "Notifications" ]
+      }
+    },
+    "/api/console/notifications/{id}/read" : {
+      "post" : {
+        "description" : "Marking a read item again is 204 too.",
+        "operationId" : "markNotificationRead",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Read."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such item in the caller's inbox."
+          }
+        },
+        "summary" : "Mark an item read",
+        "tags" : [ "Notifications" ]
+      }
+    },
+    "/api/console/system/failed-deliveries" : {
+      "get" : {
+        "description" : "Newest first (S0-AC-81). Read only in the first slice.",
+        "operationId" : "listFailedDeliveries",
+        "parameters" : [ {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedFailedDelivery"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only."
+          }
+        },
+        "summary" : "Outbox rows that stopped retrying",
+        "tags" : [ "System" ]
+      }
+    },
+    "/api/console/system/status" : {
+      "get" : {
+        "description" : "For mail and webhook: configured or not, last success, queued and failed rows (S0-AC-81). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10).",
+        "operationId" : "getSystemStatus",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SystemStatus"
+                }
+              }
+            },
+            "description" : "The status."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only."
+          }
+        },
+        "summary" : "Outgoing channels",
+        "tags" : [ "System" ]
+      }
+    },
+    "/api/public/csrf" : {
+      "get" : {
+        "description" : "Sets the readable CSRF cookie before the first request that changes data (sign-in, accepting an invitation). Clients send its value back in a request header.",
+        "operationId" : "getCsrfToken",
+        "responses" : {
+          "204" : {
+            "description" : "The CSRF cookie is set."
+          }
+        },
+        "summary" : "Set the CSRF cookie",
+        "tags" : [ "Session" ]
+      }
+    },
+    "/api/public/invitations/accept" : {
+      "post" : {
+        "description" : "Sets the password, makes the account `ACTIVE`, and signs it in to its app (S0-AC-36). The response has `Cache-Control: no-store` (S0-AC-101).",
+        "operationId" : "acceptInvitation",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AcceptInvitationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Accepted and signed in. The session cookie is set."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVITATION_INVALID`: the token is unknown, expired, used, or replaced by a newer one; one body for all (S0-AC-37). `INVALID_INPUT`: the password breaks AUTH-5 (field `password`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`)."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          }
+        },
+        "summary" : "Accept an invitation",
+        "tags" : [ "Invitations" ]
+      }
+    },
+    "/api/public/sign-in" : {
+      "post" : {
+        "description" : "Signs in to the app of the host the request came to: customers on the portal host, agents and admins on the console host. Creates a new session (S0-AC-17, S0-AC-21).",
+        "operationId" : "signIn",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SignInRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Signed in. The session cookie is set."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: email or password is empty."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`SIGN_IN_FAILED`: the same body whether the email is unknown, the password is wrong, the account is invited, suspended, or locked, or it belongs to the other app (S0-AC-22, S0-AC-23)."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 20 attempts from one IP address in 60 seconds. `Retry-After` says when to try again (S0-AC-24)."
+          }
+        },
+        "summary" : "Sign in",
+        "tags" : [ "Session" ]
+      }
+    },
+    "/api/public/sign-out" : {
+      "post" : {
+        "description" : "Deletes the caller's session (S0-AC-27). Succeeds also without a session.",
+        "operationId" : "signOut",
+        "responses" : {
+          "204" : {
+            "description" : "Signed out."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          }
+        },
+        "summary" : "Sign out",
+        "tags" : [ "Session" ]
+      }
+    }
+  }
 }

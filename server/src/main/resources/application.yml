@@ -17,9 +17,5 @@ springdoc:
   api-docs:
     enabled: false
   writer-with-order-by-keys: true
-  # One contract per app (ADR D-43). Both apps call the public API before sign-in.
-  group-configs:
-    - group: portal
-      paths-to-match: /api/portal/**, /api/public/**
-    - group: console
-      paths-to-match: /api/console/**, /api/public/**
+  default-produces-media-type: application/json
+  # The two groups, one contract per app (ADR D-43), are defined in io.popdesk.OpenApiConfig.
