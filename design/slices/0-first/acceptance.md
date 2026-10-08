@@ -2,7 +2,7 @@
 
 > 첫 묶음(`roadmap.md` 6절 0번, `process.md` B)의 EARS 수용 기준이다. 묶음이 끝나면 `design/archive/0-first/`로 옮긴다(D-27).
 > 이 묶음은 전체 경로다. 마이그레이션, 고객사 경계, 개인정보 흐름, 공개 계약(설정 키, compose, 문서화된 API)을 모두 건드린다. 사전 부검은 같은 폴더의 `premortem.md`에 있다.
-> 꼴: 일이 생길 때는 `When …, the system shall …`, 상태가 이어지는 동안은 `While …`, 설정에 따라 켜지는 것은 `Where …`, 막아야 할 일은 `If …, then the system shall …`, 늘 지키는 것은 `The system shall …`. 괄호 안은 근거 규칙 ID다. `부검 n`은 프로젝트 `design/premortem.md`의 절, `S0 부검 n`은 같은 폴더 `premortem.md`(첫 묶음 사전 부검)의 절이다. 기준 ID(`S0-AC-nn`)는 대응표(C-6)와 테스트 이름에 쓴다.
+> 꼴: 일이 생길 때는 `When …, the system shall …`, 상태가 이어지는 동안은 `While …`, 설정에 따라 켜지는 것은 `Where …`, 막아야 할 일은 `If …, then the system shall …`, 늘 지키는 것은 `The system shall …`. 괄호 안은 근거 규칙 ID다. `부검 n`은 프로젝트 `design/premortem.md`의 절, `S0 부검 n`은 같은 폴더 `premortem.md`(첫 묶음 사전 부검)의 절이다. 기준 ID(`S0-AC-nn`)는 대응표(C-7)와 테스트 이름에 쓴다.
 > 2절과 3절의 넣음·미룸은 사용자가 확인했다. 무엇을 어떻게 정했는지는 5절에 있다. spec 초안(`design/spec/`)은 그대로 둔다. 첫 묶음은 기능을 얇게 만들고 뒤 묶음이 마저 채우기 때문이다(`roadmap.md` 6절).
 
 ## 1. 흐름은 빈 설치에서 Grafana 지표까지 열한 단계다
@@ -247,7 +247,7 @@
 | S0-AC-72 | When 초대하면, the system shall 초대받은 사람의 언어로 그 사람의 앱 주소를 가리키는 초대 메일을 보낸다. (INVITE-2, MAIL-1) |
 | S0-AC-73 | Where SMTP 설정이 없으면, the system shall 메일을 보내지 않고 메일마다 로그 한 줄(받는 주소는 첫 글자 뒤를 가린다)을 남긴 뒤 행을 지운다. 초대 링크와 토큰은 어떤 로그에도 남기지 않는다. (MAIL-3, PII-2) |
 | S0-AC-74 | Where SMTP 설정이 있으면, the system shall 포트 465에는 암묵적 TLS를, 그 밖의 포트에는 STARTTLS를 요구하고, 서버가 STARTTLS를 지원하지 않으면 평문으로 넘어가지 않고 연결하지 않는다. Where `SMTP_ALLOW_PLAINTEXT=true`이면, the system shall 평문 SMTP를 쓸 수 있게 하고 앱이 뜰 때 경고 로그를 남긴다. (D-51, 위협 모델 3절, 5절 5) |
-| S0-AC-75 | Where `NOTIFY_WEBHOOK_URL`이 있으면, When 고객이 문의를 올리거나 고객이 댓글을 달면, the system shall 그 주소로 `{"text": "..."}`를 POST하는 대기 행을 넣는다. 글에는 일의 종류, 문의 키, 제목, 고객사 코드, 콘솔 링크를 담고, 고객 이름·이메일과 문의·댓글 내용은 담지 않는다. 메시지는 스냅샷 테스트로 고정한다. (HOOK-1, features 10절 표, process C-9) |
+| S0-AC-75 | Where `NOTIFY_WEBHOOK_URL`이 있으면, When 고객이 문의를 올리거나 고객이 댓글을 달면, the system shall 그 주소로 `{"text": "..."}`를 POST하는 대기 행을 넣는다. 글에는 일의 종류, 문의 키, 제목, 고객사 코드, 콘솔 링크를 담고, 고객 이름·이메일과 문의·댓글 내용은 담지 않는다. 메시지는 스냅샷 테스트로 고정한다. (HOOK-1, features 10절 표, process C-10) |
 | S0-AC-76 | The system shall 웹훅 주소를 로그, 화면, 오류 본문, 지표 어디에도 남기지 않는다. Where 주소가 `http`이면 받되 앱이 뜰 때 경고 로그를 남긴다(주소는 빼고). (HOOK-1, TM-30, D-51, 5절 6) |
 | S0-AC-77 | Where `NOTIFY_WEBHOOK_URL`이 없으면, the system shall 웹훅 대기 행을 넣지 않는다. (HOOK-1) |
 
