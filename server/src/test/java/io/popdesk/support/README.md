@@ -49,6 +49,7 @@ console().post("/api/console/companies").json(Map.of("code", "AB")).expect(400);
 ```
 
 - Sends `Host: <host>` (without a port) to 127.0.0.1 on the app's port. `.header("Host", "<svg onload=1>")` sends any value.
+- Sends `X-Forwarded-For` with an address of its own from 198.18.0.0/15. Loopback is a trusted proxy by default (`POPDESK_TRUSTED_PROXIES`), so the app counts every client as a different IP, and fixtures that sign in many times stay under the sign-in limit per IP. `client.forwardedFor("203.0.113.9")` picks the address, `client.withoutForwardedFor()` sends none (the app then sees 127.0.0.1), and `.header("X-Forwarded-For", ip)` replaces it for one request. Tests about the limit or about trusted proxies fix the address one of these ways.
 - Keeps its own cookies. `cookie(name)`, `setCookie`, `clearCookies()`; `response.setCookie(name)` is the raw `Set-Cookie` with its attributes.
 - POST, PUT, PATCH, DELETE send the CSRF token in `X-XSRF-TOKEN`, from the `XSRF-TOKEN` cookie. Without that cookie the client first calls `GET /api/public/csrf` and expects 204. `.withoutCsrf()` and `.csrfToken("wrong")` change that for one request.
 - Multipart: `.jsonPart("issue", map).file("files", name, type, bytes)`, `.part("commentId", "7")`. Range and HEAD: `.header("Range", "bytes=0-99")`, `client.head(path)`.

@@ -41,7 +41,10 @@ public final class ApiRequest {
         this.csrf = WRITES.contains(method);
     }
 
-    /** Adds a header. A {@code Host} header here replaces the client's host for this request. */
+    /**
+     * Adds a header. A {@code Host} or {@code X-Forwarded-For} header here replaces the client's own
+     * for this request.
+     */
     public ApiRequest header(String name, String value) {
         headers.computeIfAbsent(name, k -> new ArrayList<>()).add(value);
         return this;
@@ -109,6 +112,10 @@ public final class ApiRequest {
         boolean hostGiven = headers.keySet().stream().anyMatch("Host"::equalsIgnoreCase);
         if (!hostGiven) {
             builder.header("Host", client.host());
+        }
+        boolean forwardedGiven = headers.keySet().stream().anyMatch(ApiClient.FORWARDED_FOR::equalsIgnoreCase);
+        if (!forwardedGiven && client.forwardedFor() != null) {
+            builder.header(ApiClient.FORWARDED_FOR, client.forwardedFor());
         }
         headers.forEach((name, values) -> values.forEach(v -> builder.header(name, v)));
         if (csrf) {

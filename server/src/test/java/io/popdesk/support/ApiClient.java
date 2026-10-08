@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * An HTTP client that talks to the app as one browser on one host: it sends {@code Host: <host>} on
@@ -24,6 +25,12 @@ import java.util.Optional;
  *
  * <p>Connections always go to 127.0.0.1 on the app's port; only the {@code Host} header changes. The
  * header is sent without the port, as a reverse proxy in front of the app would pass it on.
+ *
+ * <p>Each client also sends {@code X-Forwarded-For} with an address of its own from 198.18.0.0/15
+ * (reserved for testing). Loopback is a trusted proxy by default, so the app counts each client as a
+ * different IP and the sign-in limit per IP does not catch fixtures that sign in many
+ * times. {@link #forwardedFor(String)} picks the address, {@link #withoutForwardedFor()} sends none,
+ * and an {@code X-Forwarded-For} header on one request replaces it for that request.
  */
 public final class ApiClient {
 
@@ -34,6 +41,10 @@ public final class ApiClient {
 
     public static final String CSRF_PATH = "/api/public/csrf";
 
+    public static final String FORWARDED_FOR = "X-Forwarded-For";
+
+    private static final AtomicInteger NEXT_ADDRESS = new AtomicInteger(1);
+
     static {
         JdkHttp.allowHostHeader();
     }
@@ -42,6 +53,7 @@ public final class ApiClient {
     private final URI base;
     private final HttpClient http;
     private final Map<String, String> cookies = new LinkedHashMap<>();
+    private volatile String forwardedFor = nextAddress();
 
     public ApiClient(String host, int port) {
         this.host = host;
@@ -60,6 +72,23 @@ public final class ApiClient {
 
     public int port() {
         return base.getPort();
+    }
+
+    /** The {@code X-Forwarded-For} this client sends, or null when it sends none. */
+    public String forwardedFor() {
+        return forwardedFor;
+    }
+
+    /** Sends {@code X-Forwarded-For: ip} from now on: this client is a browser at that address. */
+    public ApiClient forwardedFor(String ip) {
+        this.forwardedFor = ip;
+        return this;
+    }
+
+    /** Sends no {@code X-Forwarded-For} from now on: the app sees the request come from 127.0.0.1. */
+    public ApiClient withoutForwardedFor() {
+        this.forwardedFor = null;
+        return this;
     }
 
     public ApiRequest get(String path) {
@@ -126,6 +155,17 @@ public final class ApiClient {
         return cookie(CSRF_COOKIE).orElseThrow(() -> new AssertionError(
                 "GET " + CSRF_PATH + " on " + host + " set no " + CSRF_COOKIE + " cookie. Set-Cookie: "
                         + response.headers("Set-Cookie")));
+    }
+
+    /** The next unused address in 198.18.0.0/15, skipping .0 and .255. */
+    private static String nextAddress() {
+        int n = NEXT_ADDRESS.getAndIncrement();
+        int host = n % 254 + 1;
+        int net = n / 254;
+        if (net >= 512) {
+            throw new IllegalStateException("More than 130,000 clients in one JVM");
+        }
+        return "198." + (18 + net / 256) + "." + (net % 256) + "." + host;
     }
 
     URI base() {

@@ -67,6 +67,30 @@ class SupportSelfTest extends ConnectedAppTest {
     }
 
     @Test
+    void eachClientSendsItsOwnForwardedFor() {
+        webhook().respond(r -> Reply.status(204));
+        ApiClient first = new ApiClient(AppTest.PORTAL_HOST, webhook().port());
+        ApiClient second = new ApiClient(AppTest.PORTAL_HOST, webhook().port());
+        ApiClient chosen = new ApiClient(AppTest.PORTAL_HOST, webhook().port()).forwardedFor("203.0.113.9");
+        ApiClient none = new ApiClient(AppTest.PORTAL_HOST, webhook().port()).withoutForwardedFor();
+
+        first.get("/xff-first").send();
+        second.get("/xff-second").send();
+        chosen.get("/xff-chosen").send();
+        none.get("/xff-none").send();
+        first.get("/xff-override").header(ApiClient.FORWARDED_FOR, "198.51.100.7").send();
+
+        String firstIp = received("/xff-first").header(ApiClient.FORWARDED_FOR);
+        assertThat(firstIp).isEqualTo(first.forwardedFor()).startsWith("198.1");
+        assertThat(received("/xff-second").header(ApiClient.FORWARDED_FOR))
+                .isEqualTo(second.forwardedFor())
+                .isNotEqualTo(firstIp);
+        assertThat(received("/xff-chosen").header(ApiClient.FORWARDED_FOR)).isEqualTo("203.0.113.9");
+        assertThat(received("/xff-none").header(ApiClient.FORWARDED_FOR)).isNull();
+        assertThat(received("/xff-override").header(ApiClient.FORWARDED_FOR)).isEqualTo("198.51.100.7");
+    }
+
+    @Test
     void expiredCookieIsDropped() {
         webhook().respond(r -> new Reply(204, Map.of("Set-Cookie",
                 r.path().equals("/set") ? "SESSION=abc; Path=/" : "SESSION=; Max-Age=0; Path=/"), ""));
