@@ -18,7 +18,7 @@ Order of authority when documents disagree: roadmap → ADR → canonical docs (
 - Migrations only move forward. Never edit a merged migration.
 - Every business table has `tenant_id bigint NOT NULL`. Do not filter by it yet (ADR D-18).
 - Any query that returns customer data respects the customer-company boundary, with a negative test (company A cannot see company B).
-- Never put secrets, tokens, invitation links, or email addresses in logs.
+- Never put secrets, tokens, invitation links, or message content in logs. Email addresses only masked after the first character (PII-2).
 - The API is split by app: `/api/portal/**` for the customer portal, `/api/console/**` for the agent console, `/api/public/**` for both (ADR D-43). springdoc generates one contract per app into `docs/integrate/openapi-portal.json` and `docs/integrate/openapi-console.json`; regenerate them and the TypeScript clients when endpoints change.
 - If a change touches a migration, the customer-company boundary, personal data, a public contract, or a shared component API, it is on the full path (`design/process.md`); say so.
 
