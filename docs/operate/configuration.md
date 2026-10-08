@@ -20,13 +20,16 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `POPDESK_STORAGE` | Where attachment files are stored: `db`, `disk`, or `s3` | `db` |
 | `POPDESK_STORAGE_DIR` | Folder for attachments when `POPDESK_STORAGE=disk` (mount a volume here) | `/data/attachments` |
 | `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | S3-compatible storage when `POPDESK_STORAGE=s3` | None |
-| `POPDESK_AUDIT_RETENTION` | How long audit log entries are kept (ISO-8601 duration) | `P365D` |
-| `POPDESK_ISSUE_RETENTION` | How long after closing an issue it is moved to the trash | None (off) |
+| `POPDESK_AUDIT_RETENTION` | How long audit log entries are kept (ISO-8601 duration). At least `P30D`; a shorter value stops startup | `P365D` |
+| `POPDESK_ISSUE_RETENTION` | How long after closing an issue it is moved to the trash. At least `P90D`; a shorter value stops startup | None (off) |
 | `AUDIT_FORWARD_URL` | Address that receives a copy of every audit log entry | None (off) |
 | `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` | Incoming email | None. Without them, incoming email is off. `IMAP_FOLDER` defaults to `INBOX` |
 | `MAIL_INBOUND_ADDRESS` | Address customers send issues to; used as `Reply-To` on notification emails | None |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Sign-in with an OIDC provider | None. Without them, OIDC sign-in is off |
 | `OIDC_APPS` | Which apps show the OIDC sign-in button: `console`, `portal`, or `both` | `console` |
+| `POPDESK_TRUSTED_PROXIES` | Addresses (IPs or CIDR ranges, comma-separated) whose `X-Forwarded-*` headers popdesk trusts | Loopback and private ranges (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `::1`, `fc00::/7`) |
+| `POPDESK_SANDBOX` | `true` for a copy of a real installation: all email goes to `POPDESK_SANDBOX_MAIL_TO` only, and incoming email, the webhook, and the audit copy are off | `false` |
+| `POPDESK_SANDBOX_MAIL_TO` | The only address that receives email when `POPDESK_SANDBOX=true` | None (with sandbox on and no address, nothing is sent) |
 
 Changing the attachment storage does not move existing files. Each attachment records where it is stored, and popdesk keeps reading old files from there.
 
@@ -44,21 +47,31 @@ The names and meanings of the variables above are a public contract. When one is
 These values are secrets: `POPDESK_DB_PASSWORD`, `POPDESK_ADMIN_PASSWORD`, `SMTP_PASSWORD`, `IMAP_PASSWORD`, `NOTIFY_WEBHOOK_URL`, `S3_SECRET_KEY`, `OIDC_CLIENT_SECRET`.
 
 - popdesk has no default for any of them.
+- Each can also be given as a file: set `<NAME>_FILE` to a path (for example `POPDESK_DB_PASSWORD_FILE=/run/secrets/db_password`) and popdesk reads the value from it. Setting both is an error. Use this for Docker secrets, or when a value contains `$`, which Compose would otherwise substitute.
 - popdesk never writes them to the log or the database.
 - Keep them in an `.env` file or your secret store, not in the Compose file.
 
 ## Docker Compose
 
-> **Proposed, waiting for maintainer confirmation.** The names below become a public contract once confirmed.
+These names and values are a public contract (ADR D-45).
 
 | Item | Value |
 |---|---|
-| Services | `app` (popdesk), `db` (PostgreSQL 16) |
-| Published ports | `app` port `8080` only. The `db` port is not published |
+| Services | `app` (popdesk), `db` (PostgreSQL 16; the major version is fixed per release) |
+| Published ports | `app` port `8080` only, on all interfaces. The `db` port and the management port are not published |
+| Management port | `8081` inside the Compose network: health checks (`/actuator/health`) and metrics (`/actuator/prometheus`). Not served on `8080` |
 | Volumes | `popdesk-db` (database files), `popdesk-attachments` (attachment files when `POPDESK_STORAGE=disk`, mounted at `/data/attachments`) |
 | Restart policy | `unless-stopped` for both services |
+| Logs | JSON lines on standard output, with a size limit per container (`max-size: 10m`, `max-file: 5`) |
+| Images | Each release publishes `amd64` and `arm64` images. The Compose file attached to a release points at that exact version; do not use `latest` |
 
 Volume names are set explicitly in the Compose file, so they do not change with the Compose project name.
+
+Get the Compose file from the release you install, not from the `main` branch.
+
+popdesk runs as one app instance (ADR D-23). On start it takes a database lock; a second instance waits briefly and then stops with a message. On Kubernetes, use the `Recreate` strategy.
+
+If the database schema is newer than the app (for example after going back to an older image), the app does not start. Restore the backup you took before upgrading.
 
 Optional observability tools are started with a second file: `docker compose -f deploy/compose.yml -f deploy/compose.obs.yml up`.
 
@@ -66,7 +79,7 @@ Optional observability tools are started with a second file: `docker compose -f 
 
 popdesk serves plain HTTP only. Terminate TLS at a reverse proxy in front of it (ADR D-40).
 
-- popdesk trusts the `X-Forwarded-*` headers that the proxy sets. Make sure only the proxy can reach port `8080`; otherwise a client can send these headers itself. If the proxy runs on the same machine, publish the port on the loopback address only (`127.0.0.1:8080:8080`).
+- popdesk trusts `X-Forwarded-*` headers only from `POPDESK_TRUSTED_PROXIES`. If your proxy or load balancer has a public address, add it. Make sure clients cannot reach port `8080` from a trusted address without going through the proxy. If the proxy runs on the same machine, you can publish the port on the loopback address only (`127.0.0.1:8080:8080`).
 - Set `POPDESK_PUBLIC_SCHEME=https` and `POPDESK_PUBLIC_PORT=443`. With `https`, cookies get the `Secure` attribute and email links use `https`.
 - Traffic between `app` and `db` stays on the Compose internal network and is not encrypted. If you run the database elsewhere, add `sslmode` to `POPDESK_DB_URL` (for example `?sslmode=verify-full`).
 
@@ -86,3 +99,15 @@ POPDESK_CONSOLE_HOST=console.example.com
 POPDESK_PUBLIC_SCHEME=https
 POPDESK_PUBLIC_PORT=443
 ```
+
+## Commands
+
+Run these inside the app container, for example `docker compose exec app popdesk <command>`. Each one is recorded in the audit log.
+
+| Command | What it does |
+|---|---|
+| `popdesk admin reset-password <email>` | Sets a new password for an admin account and prints it once. Use it when no admin can sign in |
+| `popdesk backup <file>` | Writes a database dump, using the `pg_dump` that matches the server |
+| `popdesk restore <file>` | Restores a dump into an empty database only, before the app starts serving |
+
+When `POPDESK_STORAGE` is `disk` or `s3`, back up the attachment folder or bucket after the database dump.

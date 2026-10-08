@@ -55,6 +55,21 @@ Every error response has the same body:
 }
 ```
 
+A 400 for invalid input may also list every invalid field (D-44):
+
+```json
+{
+  "code": "INVALID_INPUT",
+  "message": "Some fields are invalid.",
+  "fields": [
+    { "field": "title", "code": "TOO_LONG" },
+    { "field": "priority", "code": "UNKNOWN_VALUE" }
+  ]
+}
+```
+
+`fields` is present only when the error is about specific fields. Clients match `fields[].field` to their inputs and choose the text by `fields[].code`.
+
 - `code` is a stable key. Clients choose the text they show by `code` and use `message` only for a `code` they do not know.
 - `message` is a default text in the installation language (`POPDESK_LOCALE`).
 - The body never contains exception names, stack traces, or SQL.
@@ -128,7 +143,7 @@ Limits are per account over a 60-second window:
 
 ## Missing values and `null`
 
-> **Proposed, waiting for maintainer confirmation.** Not yet in force.
+Decided in ADR D-44.
 
 - In responses, a field without a value is present with `null`. Fields are never left out.
 - A list field without items is `[]`, never `null`.
