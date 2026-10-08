@@ -10,7 +10,9 @@
           └─ console.<호스트> ─┤
                               ▼
                  popdesk 앱 (Spring Boot, 컨테이너 하나)
-                 ├─ API (/api/**)
+                 ├─ API: /api/portal/** (portal 호스트만)
+                 │       /api/console/** (console 호스트만)
+                 │       /api/public/** (둘 다, 로그인 전)
                  ├─ 고객 포털 정적 파일 (portal 호스트)
                  ├─ 상담 콘솔 정적 파일 (console 호스트)
                  └─ 정기 작업 · 보내기 루프
@@ -78,10 +80,8 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 
 1. 요청이 바꾼 내용과 보내기 대기 행을 같은 트랜잭션에 저장한다.
 2. 보내기 루프(채널마다 스레드 하나)가 오래된 행부터 `FOR UPDATE SKIP LOCKED`로 잡아 트랜잭션 밖에서 보낸다. 커밋 직후 깨우고, 깨우지 않아도 1초마다 돈다.
-3. 성공하면 행을 지운다. 실패하면 시도 횟수와 다음 시도 시각을 남긴다. 다음 시도는 1초에서 두 배씩 늘려 10분까지 기다린다.
-4. 처음 실패하고 24시간이 지나면 더 보내지 않고 `failed`로 남긴다. `failed` 행은 7일 뒤 지운다.
-5. 보낸 뒤 행을 지우기 전에 앱이 죽으면 한 번 더 나갈 수 있다(최소 한 번 보내기). 이 중복은 받아들인다.
-6. 대기 행 수와 실패 수를 지표로 낸다(6절).
+3. 성공하면 행을 지운다. 실패하면 시도 횟수와 다음 시도 시각을 남긴다. 다시 보내는 간격, 포기하는 시점, 중복을 받아들이는 범위는 D-39에 있다.
+4. 대기 행 수와 실패 수를 지표로 낸다(6절).
 
 ### 메일 받기
 
@@ -161,6 +161,6 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 ## 8. 개발과 CI
 
 - 테스트: 서버는 JUnit과 Testcontainers(Postgres, 그리고 그 기능의 테스트에서만 MinIO·Keycloak·GreenMail), 포털은 Vitest와 Playwright. 이 컨테이너들은 테스트에서만 뜬다. 로컬에서는 바뀐 곳만 순차로 돌리고 전체는 CI가 돈다.
-- API 계약: 코드에서 만든다. springdoc이 OpenAPI 문서를 만들고, 그 문서로 `web/packages/api`의 TypeScript 클라이언트를 만든다. 만든 OpenAPI 파일은 `docs/integrate/openapi.json`으로 커밋하고, 코드와 파일이 다르면 CI가 실패시킨다. "계약 먼저"는 컨트롤러 껍데기(경로·요청·응답 타입만)를 먼저 커밋하는 것으로 지킨다(D-21).
+- API 계약: 코드에서 만든다. springdoc이 앱별 그룹으로 OpenAPI 문서 둘을 만들고, 그 문서로 `web/packages/api`의 TypeScript 클라이언트 둘(portal, console)을 만든다. 만든 OpenAPI 파일은 `docs/integrate/openapi-portal.json`과 `openapi-console.json`으로 커밋하고(D-43), 코드와 파일이 다르면 CI가 실패시킨다. "계약 먼저"는 컨트롤러 껍데기(경로·요청·응답 타입만)를 먼저 커밋하는 것으로 지킨다(D-21).
 - CI 관문: 빌드, 테스트, 모듈 경계 검사, 아키텍처 규칙(업무 테이블의 `tenant_id NOT NULL`), OpenAPI 차이, 비밀값(gitleaks), 의존성 취약점(osv-scanner), 의존성 라이선스, SBOM 생성(CycloneDX, 서버·웹·이미지, 릴리스에 붙인다, D-29), 이미지 빌드. 시각 회귀는 Docker로 고정한 렌더 환경에서만 찍는다. 진행 절차는 `../process.md`에 있다.
 - 시각은 주입한 `Clock`으로 읽는다. 테스트는 고정 시각을 쓴다.

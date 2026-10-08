@@ -8,7 +8,7 @@
 |---|---|---|
 | 0 바탕 | 루트 안내 파일(README 영어·한국어, LICENSE, SECURITY, CONTRIBUTING, AI_POLICY, CODE_OF_CONDUCT, `AGENTS.md`와 그것을 가리키는 `CLAUDE.md`) — 끝남(행동 강령 연락처만 남음). `CODEOWNERS`(테스트·스냅샷·마이그레이션·권한 코드), CI 관문(아키텍처 규칙 `tenant_id NOT NULL`, 의존성·비밀값·라이선스 검사, SBOM, OpenAPI 차이), 시각 회귀 렌더 환경 Docker 고정, springdoc → TypeScript 클라이언트 생성, 디자인 토큰·공용 컴포넌트 | 할 일 |
 | 1 되묻기 | 제품 범위와 범위 밖, 기능 묶음 목록과 순서 | 끝남: `roadmap.md` |
-| 2 설계 | 결정 기록: 인스턴스 하나(D-23), `tenant_id` 칸만(D-18), 첨부 `bytea`와 상한(D-19), 보내기 대기 재시도 규칙(`spec/architecture.md` 4절, ADR로 옮길 것), 마이그레이션은 앞으로만(D-24). 고객사 단위 권한 모델, 감사 로그(D-20), 개인정보 항목(D-25), 간단한 위협 모델. 위협 모델에는 보안 질문지에 답할 자료를 함께 둔다: 데이터 흐름도, 암호화 위치 표(전송 구간 TLS를 어디서 끝내는지, 저장 구간, 비밀번호·토큰 해시, 비밀값 보관), 신뢰 경계 | 결정은 끝남. 권한 모델 표와 위협 모델은 할 일 |
+| 2 설계 | 결정 기록: 인스턴스 하나(D-23), `tenant_id` 칸만(D-18), 첨부 저장소 셋과 상한(D-38), 보내기 대기 재시도 규칙(D-39), TLS는 앞단 프록시(D-40), 마이그레이션은 앞으로만(D-24). 고객사 단위 권한 모델, 감사 로그(D-20), 개인정보 항목(D-25), 간단한 위협 모델. 위협 모델에는 보안 질문지에 답할 자료를 함께 둔다: 데이터 흐름도, 암호화 위치 표(전송 구간 TLS를 어디서 끝내는지, 저장 구간, 비밀번호·토큰 해시, 비밀값 보관), 신뢰 경계 | 끝남: `docs/use/permissions.md`, `threat-model.md`. 위협 모델 6절의 정할 것 셋은 남음 |
 | 3 사전 부검 | "업그레이드하다 데이터가 깨졌다", "A사가 B사 문의를 봤다" 같은 실패를 가정하고 막을 장치를 적는다 | 할 일 |
 | 4 공통 규약 | 오류 응답 모양, 쪽 나누기, 시간대, null의 뜻. 공개 계약: 환경변수·설정 키, compose 서비스·포트·볼륨, 문서화된 REST API | 초안만 있음(`spec/features.md` 0절, `spec/architecture.md` 6절). `docs/integrate/conventions.md`와 `docs/operate/configuration.md`로 옮기는 것과 null의 뜻, compose 계약은 할 일 |
 
@@ -30,7 +30,7 @@
 | 1 되묻기 | 수용 기준, 포털·콘솔 화면 상태 | 함께 |
 | 2 설계 | 쓸 토큰·컴포넌트, 새 결정 기록이 필요한지 | 함께 |
 | 3 사전 부검 | 전체 경로 조건(아래)에 걸릴 때만 | 함께 |
-| 4 계약 | 컨트롤러 껍데기로 엔드포인트 추가 → `docs/integrate/openapi.json`과 클라이언트 다시 생성, props·story 껍데기 | 계약 먼저 |
+| 4 계약 | 컨트롤러 껍데기로 엔드포인트 추가 → `docs/integrate/openapi-portal.json`·`openapi-console.json`과 클라이언트 다시 생성, props·story 껍데기 | 계약 먼저 |
 | 5 테스트 | 백엔드 API 테스트와 고객사 경계 부정 테스트, 프런트 role·axe 테스트, 구현하는 쪽에 보이지 않는 E2E 하나 | 동시에 써도 됨 |
 | 6 점검 | 수용 기준 ↔ 테스트 ↔ story ↔ E2E 대응표 | 함께 |
 | 7 작업 분해 | 한 세션 크기로, 모델 → 서비스 → API → 화면 | 백엔드 앞 |
@@ -60,7 +60,7 @@
 
 | 처리 | 산출물 | 자리 |
 |---|---|---|
-| 계속 고쳐 쓰는 정본 | OpenAPI | `docs/integrate/openapi.json`(코드에서 만든다) |
+| 계속 고쳐 쓰는 정본 | OpenAPI | `docs/integrate/openapi-portal.json`, `openapi-console.json`(코드에서 만든다, D-43) |
 | | 공통 규약 | `docs/integrate/conventions.md` |
 | | ADR | `design/adr.md` |
 | | 고객사 권한 모델 | `docs/use/permissions.md`(권한표) |

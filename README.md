@@ -14,7 +14,7 @@ Customers raise and follow requests in a customer portal; agents answer, track i
 - **Clear boundaries.** A customer never sees another customer company's requests. Internal notes, tasks, and assignees never reach customers.
 - **Traceable.** Every request keeps its conversation, status history, and internal work log in one place. Admin actions are audited.
 
-Planned features: requests with public and private visibility, public and internal comments, mentions, attachments and inline images, labels, due dates, internal tasks, status history, trash and auto-close, per-company counts, in-app inbox, email notifications, team webhooks (Slack, Teams, Mattermost), OIDC sign-in, and creating requests by email.
+Planned features: requests with public and private visibility, public and internal comments, mentions, attachments and inline images, labels, due dates, internal tasks with assignees and due dates, linked duplicate and related requests across companies, status history, trash and auto-close, per-company counts, in-app inbox, email notifications, team webhooks (Slack, Teams, Mattermost), OIDC sign-in, and creating requests by email.
 
 ## Not goals
 
