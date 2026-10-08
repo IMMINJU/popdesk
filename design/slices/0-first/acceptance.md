@@ -183,9 +183,9 @@
 | ID | 기준 |
 |---|---|
 | S0-AC-33 | When 관리자가 이메일, 이름, 역할(`CUSTOMER`·`AGENT`·`ADMIN`)로 초대하면, the system shall `INVITED` 계정을 만들고 같은 트랜잭션에 초대 메일 대기 행을 넣는다. 고객이면 고른 고객사에 소속시킨다. 계정의 언어는 `POPDESK_LOCALE`이다. 초대 응답이 링크를 바로 담으면(SMTP가 없을 때, 계약에서 정한다) 그 응답에 `Cache-Control: no-store`를 붙인다(S0-AC-101). (INVITE-1, INVITE-2, INVITE-6, PROJ-4, D-10, S0 부검 7) |
-| S0-AC-34 | If 고객 초대에 고객사가 없거나 관리자가 고를 수 없는 고객사가 들어 있으면, then the system shall 400으로 답한다. If 같은 이메일의 계정이 있으면, then 409다. (INVITE-1) |
+| S0-AC-34 | If 고객 초대에 고객사가 없거나 관리자가 고를 수 없는 고객사가 들어 있으면, then the system shall 400으로 답한다. If 같은 이메일의 계정이 있으면(대소문자와 앞뒤 공백은 무시한다, AUTH-1), then 409다. (INVITE-1, C-5에서 정함) |
 | S0-AC-35 | The system shall 초대 토큰을 32바이트 난수로 만들고 DB에는 SHA-256 해시만 두며, 7일 뒤 만료되고 한 번 쓰면 끝나게 한다. 토큰은 링크의 URL 조각(`#` 뒤)에만 두고 경로·쿼리에 두지 않는다. 토큰이나 링크를 담거나 받는 모든 응답에 `Cache-Control: no-store`를 붙인다. (INVITE-2, TM-11, TM-44) |
-| S0-AC-36 | When 초대 링크를 연 사람이 AUTH-5에 맞는 비밀번호를 정하면(수락 API는 토큰을 요청 본문으로 받는다), the system shall 계정을 `ACTIVE`로 바꾸고 그 사람의 앱(고객은 포털, 상담 쪽은 콘솔)에 로그인시킨다. (INVITE-4) |
+| S0-AC-36 | When 초대 링크를 연 사람이 AUTH-5에 맞는 비밀번호를 정하면(수락 API는 토큰을 요청 본문으로 받는다), the system shall 계정을 `ACTIVE`로 바꾸고 그 사람의 앱(고객은 포털, 상담 쪽은 콘솔)에 로그인시킨다. 비밀번호가 AUTH-5에 맞지 않아 400이 나면 토큰은 쓰지 않은 것으로 남아 다시 수락할 수 있다. (INVITE-4, C-5에서 정함) |
 | S0-AC-37 | If 토큰이 없거나, 만료됐거나, 이미 썼거나, 새 토큰으로 무효가 됐거나, 그 사람의 앱이 아닌 호스트(고객 토큰을 콘솔 호스트로)로 왔으면, then the system shall 모두 같은 400으로 답하고 계정을 바꾸지 않는다. (INVITE-4, C-4에서 정함) |
 | S0-AC-38 | Where SMTP 설정이 없으면, the system shall 관리자의 수락 전 계정 목록에서 "초대 링크 복사"를 쓸 수 있게 한다. 누르면 새 토큰을 만들어 이전 링크를 무효로 하고, 링크를 그 응답에서 한 번만 주며(`Cache-Control: no-store`, S0-AC-101), 만든 일을 감사 로그에 남기되 링크와 토큰은 넣지 않는다. (INVITE-6, TM-44, S0 부검 7) |
 | S0-AC-101 | 토큰 응답 캐시 금지. The system shall 초대 토큰을 담거나 받는 모든 엔드포인트(초대, 초대 링크 복사, 초대 수락)의 응답에 `Cache-Control: no-store`를 붙인다. 컨트롤러는 `Cache-Control`을 따로 쓰지 않는다(쓰면 Spring Security의 기본 `no-store`가 빠진다). 세 엔드포인트마다 단언하고, 모든 `/api` 응답에 `no-store`가 있는지 묶어서 단언하는 테스트를 하나 둔다. E2E 뒤 프록시 액세스 로그에 토큰이 없는지 본다. (INVITE-2, INVITE-6, TM-44, S0 부검 7) |
