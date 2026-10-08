@@ -113,6 +113,7 @@ jobs:
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - name: Generated client matches the contract files (D-21, D-43)
+        if: hashFiles('docs/integrate/openapi-portal.json', 'docs/integrate/openapi-console.json') != ''
         run: pnpm gen:api && git diff --exit-code -- packages/api/src/generated
       - id: scope
         run: |
