@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    name: Secrets (gitleaks)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  migrations:
+    name: Migrations have tenant_id (D-18)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 scripts/ci/check-tenant-id.py
+
+  # Gates to add once there is code (design/spec/architecture.md section 8):
+  # - build: server (Maven, Java 25) and web (pnpm)
+  # - tests: JUnit + Testcontainers, Vitest, Playwright
+  # - module boundaries: Spring Modulith ApplicationModules.verify()
+  # - OpenAPI diff: regenerate docs/integrate/openapi-portal.json and
+  #   openapi-console.json and the TypeScript clients, fail on any difference (D-21, D-43)
+  # - dependency vulnerabilities: osv-scanner
+  # - dependency licenses
+  # - SBOM: CycloneDX for server, web, and image, attached to releases (D-29)
+  # - image build
+  # - visual regression in the pinned Docker render environment
