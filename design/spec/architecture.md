@@ -102,31 +102,7 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 
 ### 설정
 
-| 환경변수 | 뜻 | 기본값 |
-|---|---|---|
-| `POPDESK_DB_URL`, `POPDESK_DB_USER`, `POPDESK_DB_PASSWORD` | DB 연결 | compose가 넣는다 |
-| `POPDESK_PORTAL_HOST`, `POPDESK_CONSOLE_HOST` | 두 포털의 호스트 이름 | `portal.localhost`, `console.localhost` |
-| `POPDESK_PUBLIC_SCHEME`, `POPDESK_PUBLIC_PORT` | 메일 링크를 만들 때 쓰는 주소 | `http`, `8080` |
-| `POPDESK_ADMIN_EMAIL`, `POPDESK_ADMIN_PASSWORD` | 첫 실행 때 만들 첫 관리자 | 없음(없으면 첫 실행이 멈추고 안내를 남긴다) |
-| `POPDESK_TIMEZONE` | 날짜 판정 시간대 | `UTC` |
-| `POPDESK_LOCALE` | 메일·문구 기본 언어 | `en` |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | 메일 | 없으면 메일 대신 로그 한 줄 |
-| `NOTIFY_WEBHOOK_URL` | 팀 알림 웹훅 | 없으면 보내지 않는다 |
-| `POPDESK_ATTACHMENT_QUOTA` | 첨부 총량 한도 | `10GB` |
-| `POPDESK_STORAGE` | 첨부 저장소: `db`, `disk`, `s3` | `db` |
-| `POPDESK_STORAGE_DIR` | `disk`일 때 폴더(볼륨) | `/data/attachments` |
-| `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | `s3`일 때 | 없음 |
-| `POPDESK_AUDIT_RETENTION` | 감사 로그 보관 기간 | `P365D` |
-| `POPDESK_ISSUE_RETENTION` | 종료된 문의를 휴지통으로 옮길 기간(PII-6) | 없음(끔) |
-| `AUDIT_FORWARD_URL` | 감사 로그 바깥 사본을 보낼 주소(AUDIT-9) | 없음(끔) |
-| `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` | 메일 받기 | 없으면 메일 받기를 끈다 |
-| `MAIL_INBOUND_ADDRESS` | 고객이 문의를 보낼 주소(알림 메일의 `Reply-To`) | 없음 |
-| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | OIDC 로그인 | 없으면 끈다 |
-| `OIDC_APPS` | OIDC 버튼을 둘 앱: `console`, `portal`, `both` | `console` |
-
-- 이 표의 환경변수 이름과 뜻은 공개 계약이다. 바꾸거나 없애면 릴리스 노트에 적고, 한 릴리스 동안은 옛 이름도 받는다.
-- 비밀값(DB·SMTP·IMAP 비밀번호, 관리자 비밀번호, 웹훅 주소, S3 비밀키, OIDC 클라이언트 비밀)에는 기본값을 두지 않고 로그에 남기지 않는다.
-- 첫 관리자는 DB에 관리자가 하나도 없을 때만 만든다. 만든 뒤에는 `POPDESK_ADMIN_PASSWORD`를 지워도 된다.
+→ `docs/operate/configuration.md`로 옮김(환경변수 표, 공개 계약 규칙, 비밀값 규칙, compose 계약 제안, TLS).
 
 ### 관측
 
