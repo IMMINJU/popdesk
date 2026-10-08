@@ -8,7 +8,7 @@ popdesk is not released yet. Values here are the planned contract and may change
 
 | Variable | Meaning | Default |
 |---|---|---|
-| `POPDESK_DB_URL`, `POPDESK_DB_USER`, `POPDESK_DB_PASSWORD` | Database connection | Set by the Compose file |
+| `POPDESK_DB_URL`, `POPDESK_DB_USER`, `POPDESK_DB_PASSWORD` | Database connection | Set by the Compose file. The URL includes `logServerErrorDetail=false`; keep it when you change the URL, or database errors can copy values such as email addresses into the log |
 | `POPDESK_PORTAL_HOST`, `POPDESK_CONSOLE_HOST` | Host names of the customer portal and the agent console | `portal.localhost`, `console.localhost` |
 | `POPDESK_PUBLIC_SCHEME`, `POPDESK_PUBLIC_PORT` | Scheme and port used to build links in emails | `http`, `8080` |
 | `POPDESK_ADMIN_EMAIL`, `POPDESK_ADMIN_PASSWORD` | First admin, created on first start | None. If the database has no admin and these are missing (or the password breaks the password rules), popdesk does not serve requests: the process keeps running, logs what to set, and its health check stays unhealthy. It does not exit, so the container does not restart in a loop |
@@ -77,6 +77,14 @@ popdesk runs as one app instance (ADR D-23). On start it takes a database lock; 
 
 If the database schema is newer than the app (for example after going back to an older image), the app does not start. Restore the backup you took before upgrading.
 
+### Health checks while starting
+
+popdesk starts in this order: it takes the single-instance database lock, runs database migrations, creates the first admin if needed, and only then opens its ports. While migrations run, health checks cannot connect at all; this can take a long time on an upgrade.
+
+- The Compose file gives the `app` health check a `start_period`, so connection failures during migrations do not mark it unhealthy.
+- On Kubernetes, use a `startupProbe` on `/actuator/health/liveness` (port `8081`) with a generous failure threshold, then `livenessProbe` and `readinessProbe` (`/actuator/health/readiness`).
+- If the first admin is not configured, the app stays running with readiness down (see `POPDESK_ADMIN_EMAIL`).
+
 Optional observability tools are started with a second file: `docker compose -f deploy/compose.yml -f deploy/compose.obs.yml up`.
 
 ## TLS
@@ -122,7 +130,7 @@ Run these inside the app container, for example `docker compose exec app popdesk
 
 | Command | What it does |
 |---|---|
-| `popdesk admin reset-password <email>` | Sets a new password for an admin account and prints it once. Use it when no admin can sign in |
+| `popdesk admin reset-password <email>` | Asks twice for a new password for an admin account, without showing it, and sets it. The password is never printed or logged. It also unlocks the account and ends its sessions. It needs a terminal: run it as `docker compose exec app popdesk admin reset-password <email>` (without `-T`); without a terminal it fails. Use it when no admin can sign in |
 | `popdesk backup <file>` | Writes a database dump, using the `pg_dump` that matches the server |
 | `popdesk restore <file>` | Restores a dump into an empty database only, before the app starts serving |
 

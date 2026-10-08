@@ -74,6 +74,24 @@ A 400 for invalid input may also list every invalid field (D-44):
 - `message` is a default text in the installation language (`POPDESK_LOCALE`).
 - The body never contains exception names, stack traces, or SQL.
 
+## Attachment paths
+
+Attachments are always addressed under their issue:
+
+```
+/api/portal/issues/{key}/attachments/{id}
+/api/console/issues/{key}/attachments/{id}
+```
+
+- The server finds the attachment with the same query that checks the issue: the caller must be able to see the issue, the attachment must belong to that issue, and for customers it must not belong to an internal comment.
+- Every attachment endpoint (download, delete, `HEAD`, range requests) answers 404 with the same status, headers, and body in all of these cases: the ID does not exist, the caller cannot see the issue, the attachment belongs to another issue, a customer asks for an attachment on an internal comment, or the attachment is still being written or already deleted (`pending`, `purging`, `purged`). The response does not tell these cases apart (`COM-1`).
+- Attachment IDs are hard to guess (`ATT-7`), but that is not a permission check.
+- Uploads and downloads are each limited to 16 at a time. Over the limit, the response is 503 with a `Retry-After` header.
+
+## Retrying on lock conflicts
+
+Each database connection has `lock_timeout` set to 5 seconds. When a transaction fails with a deadlock (`40P01`) or a lock timeout (`55P03`), the server retries the whole transaction once. If the retry also fails, the request fails like any other server error; clients see a 5xx and may try again later.
+
 ## Pagination (COM-4)
 
 List endpoints take:
