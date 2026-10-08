@@ -1,9 +1,14 @@
 name: CI
 
+# Jobs run only for the parts a change touches (ADR D-48).
+# Release tags and manual runs check everything.
+
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,6 +18,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Which parts changed
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      all: ${{ steps.all.outputs.all }}
+      migrations: ${{ steps.filter.outputs.migrations }}
+      server: ${{ steps.filter.outputs.server }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: all
+        run: echo "all=${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}" >> "$GITHUB_OUTPUT"
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            ci: &ci
+              - '.github/workflows/**'
+              - 'scripts/ci/**'
+            migrations:
+              - *ci
+              - 'server/src/main/resources/db/migration/**'
+            server:
+              - *ci
+              - 'server/**'
+              - 'docs/integrate/openapi-*.json'
+            web:
+              - *ci
+              - 'web/**'
+              - 'docs/integrate/openapi-*.json'
+
+  # Secrets can land in any file, so this always runs. On a push it scans only
+  # the pushed commits; on a pull request, only the pull request's commits.
   secrets:
     name: Secrets (gitleaks)
     runs-on: ubuntu-24.04
@@ -29,19 +70,24 @@ jobs:
 
   migrations:
     name: Migrations have tenant_id (D-18)
+    needs: changes
+    if: needs.changes.outputs.all == 'true' || needs.changes.outputs.migrations == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - run: python3 scripts/ci/check-tenant-id.py
 
-  # Gates to add once there is code (design/spec/architecture.md section 8):
-  # - build: server (Maven, Java 25) and web (pnpm)
-  # - tests: JUnit + Testcontainers, Vitest, Playwright
-  # - module boundaries: Spring Modulith ApplicationModules.verify()
-  # - OpenAPI diff: regenerate docs/integrate/openapi-portal.json and
+  # Gates to add once there is code (design/spec/architecture.md section 8).
+  # Each one gets `needs: changes` and an `if:` on `all` plus its area
+  # (`server` or `web`), and runs only the affected modules or packages:
+  # - server: Maven with -pl for the changed modules and -amd for what depends on them;
+  #   build, JUnit + Testcontainers, module boundaries (ApplicationModules.verify())
+  # - web: pnpm --filter "...[origin/main]" for the changed packages and their dependents;
+  #   build, Vitest
+  # - OpenAPI diff when server or web changed: regenerate openapi-portal.json and
   #   openapi-console.json and the TypeScript clients, fail on any difference (D-21, D-43)
-  # - dependency vulnerabilities: osv-scanner
-  # - dependency licenses
-  # - SBOM: CycloneDX for server, web, and image, attached to releases (D-29)
-  # - image build
-  # - visual regression in the pinned Docker render environment
+  # - E2E (Playwright, compose) when server or web changed
+  # - dependency vulnerabilities (osv-scanner) and licenses when a lockfile changed
+  # - visual regression when web/packages/ui or a story changed
+  # On release tags only (all == 'true'): every job above in full, upgrade tests,
+  # SBOM (D-29), multi-arch image build (D-45)

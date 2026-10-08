@@ -136,7 +136,7 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 
 ## 8. 개발과 CI
 
-- 테스트: 서버는 JUnit과 Testcontainers(Postgres, 그리고 그 기능의 테스트에서만 MinIO·Keycloak·GreenMail), 포털은 Vitest와 Playwright. 이 컨테이너들은 테스트에서만 뜬다. 로컬에서는 바뀐 곳만 순차로 돌리고 전체는 CI가 돈다.
+- 테스트: 서버는 JUnit과 Testcontainers(Postgres, 그리고 그 기능의 테스트에서만 MinIO·Keycloak·GreenMail), 포털은 Vitest와 Playwright. 이 컨테이너들은 테스트에서만 뜬다. 로컬에서는 바뀐 곳만 순차로 돌린다. CI도 바뀐 영역의 잡만 돌리고, 전체는 릴리스 태그와 손으로 돌릴 때만 돈다(D-48).
 - API 계약: 코드에서 만든다. springdoc이 앱별 그룹으로 OpenAPI 문서 둘을 만들고, 그 문서로 `web/packages/api`의 TypeScript 클라이언트 둘(portal, console)을 만든다. 만든 OpenAPI 파일은 `docs/integrate/openapi-portal.json`과 `openapi-console.json`으로 커밋하고(D-43), 코드와 파일이 다르면 CI가 실패시킨다. "계약 먼저"는 컨트롤러 껍데기(경로·요청·응답 타입만)를 먼저 커밋하는 것으로 지킨다(D-21).
 - CI 관문: 빌드, 테스트, 모듈 경계 검사, 아키텍처 규칙(업무 테이블의 `tenant_id NOT NULL`), OpenAPI 차이, 비밀값(gitleaks), 의존성 취약점(osv-scanner), 의존성 라이선스, SBOM 생성(CycloneDX, 서버·웹·이미지, 릴리스에 붙인다, D-29), 이미지 빌드. 시각 회귀는 Docker로 고정한 렌더 환경에서만 찍는다. 진행 절차는 `../process.md`에 있다.
 - 시각은 주입한 `Clock`으로 읽는다. 테스트는 고정 시각을 쓴다.

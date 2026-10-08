@@ -24,7 +24,7 @@ Order of authority when documents disagree: roadmap → ADR → canonical docs (
 
 ## Running things
 
-- Run only the tests for what you changed, one runner at a time (the dev machine has 16 GB). CI runs everything.
+- Run only the tests for what you changed, one runner at a time (the dev machine has 16 GB). CI also runs only the jobs for the parts a change touches; release tags run everything (ADR D-48). When you add a CI job, give it a path filter.
 - Commands will be listed here once the first slice lands.
 
 ## Writing
