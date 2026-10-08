@@ -89,6 +89,30 @@ jobs:
       - uses: actions/checkout@v5
       - run: python3 scripts/ci/check-tenant-id.py
 
+  # Server: build and all tests. The server modules are packages in one Maven project
+  # (Spring Modulith), and they call each other's public API, so a server change runs
+  # the whole server (D-48: changed modules plus their dependents).
+  server:
+    name: Server
+    needs: changes
+    if: needs.changes.outputs.all == 'true' || needs.changes.outputs.server == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - run: ./mvnw -B verify
+      - name: OpenAPI files match the code (D-21, D-43)
+        run: |
+          ./mvnw -B -Popenapi test
+          git diff --exit-code -- ../docs/integrate/openapi-portal.json ../docs/integrate/openapi-console.json
+
   # Web: typecheck, lint, test, build. Only the changed packages and their dependents (D-48),
   # unless a shared web file changed or this is a tag or manual run.
   web:
@@ -165,12 +189,6 @@ jobs:
   # Gates to add once there is code (design/spec/architecture.md section 8).
   # Each one gets `needs: changes` and an `if:` on `all` plus its area
   # (`server` or `web`), and runs only the affected modules or packages:
-  # - server: Maven with -pl for the changed modules and -amd for what depends on them;
-  #   build, JUnit + Testcontainers, module boundaries (ApplicationModules.verify())
-  # - web: pnpm --filter "...[origin/main]" for the changed packages and their dependents;
-  #   build, Vitest
-  # - OpenAPI diff when server or web changed: regenerate openapi-portal.json and
-  #   openapi-console.json and the TypeScript clients, fail on any difference (D-21, D-43)
   # - E2E (Playwright, compose) when server or web changed
   # - dependency vulnerabilities (osv-scanner) and licenses when a lockfile changed
   # - visual regression when web/packages/ui or a story changed
