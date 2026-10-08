@@ -43,13 +43,28 @@
 
 ### 막는 장치
 
-글로 쓴 지침만으로는 테스트를 고치거나 끄는 일을 막지 못한다. 구현 쪽에는 세 겹을 둔다.
+글로 쓴 지침만으로는 테스트를 고치거나 끄는 일, 테스트 입력만 따로 처리하는 일을 막지 못한다. 스크립트는 `scripts/ci/`에 있고, 무엇을 잠그는지는 `lockrules.py` 한 곳에 적는다.
 
-- 구현 탭의 Claude Code 설정에 테스트 경로로 가는 Edit·Write를 거부하는 PreToolUse 훅. Bash로 고치는 것은 이 훅을 지나간다.
-- C-6의 잠금 목록. 검사 스크립트가 테스트 파일 해시를 대조하므로 어떤 도구로 고쳤든 잡힌다.
-- 합치기 전 검사. 메인은 로컬에서 fast-forward로 합치므로 GitHub의 `CODEOWNERS`가 막아 주지 않는다. 메인이 합치기 전에 잠긴 경로(테스트, 스냅샷, 병합된 마이그레이션, 생성 파일)가 바뀌었는지 보는 스크립트를 돌리고, 같은 스크립트를 CI에도 건다.
+| 스크립트 | 단계 | 하는 일 |
+|---|---|---|
+| `check-test-style.py --all-strict` | 5 | `@Disabled`·`.skip`·`.only`, 늘 참인 단언, mock(`@MockBean`, `Mockito`, `vi.mock` 등), 고정 대기(`Thread.sleep` 등)를 실패로 본다. 바깥 시스템은 mock 대신 실제 대역(Testcontainers Postgres, GreenMail, MinIO, 테스트용 웹훅 받는 쪽, 고정 `Clock`)을 쓴다 |
+| `check-red.py --out design/slices/{묶음}/red.md` | 6 | 이번 묶음의 새 테스트 결과(JUnit XML)가 모두 단언 실패인지 본다 |
+| `tests-lock.py write` | 6 | 테스트 파일마다 sha256을 `tests.lock`에 적는다 |
+| `trace.py design/slices/{묶음} --search <숨긴 E2E 저장소>` | 7 | 대응표. 테스트 없는 기준과 없는 기준 ID를 실패로 본다 |
+| `check-locked-paths.py --base main --role tests` | 테스트 쪽 합치기 | 테스트 쪽 브랜치가 테스트 경로 밖을 고쳤는지 본다 |
+| `check-locked-paths.py --base main --role impl` | 구현 쪽 합치기 | 구현 쪽 브랜치가 잠근 테스트, 잠금 목록, 병합된 마이그레이션, 생성 계약 파일, 관문, 테스트 실행·린트 설정을 고쳤는지 본다. 빌드·의존성 파일이 바뀌면 사람이 보라고 알린다 |
+| `tests-lock.py check`, `check-test-style.py` | 구현 쪽 합치기, CI | 잠근 테스트가 그대로인지 본다. 구현 쪽이 더한 단위 테스트의 mock·고정 대기는 경고만 한다 |
+| `check-fixture-literals.py` | 10 | 잠근 테스트의 데이터 값이 운영 코드에 그대로 있으면 알린다. 사람이 읽고 판단한다 |
 
-숨긴 E2E는 레포 밖 로컬 git 저장소(`C:\Users\minju\popdesk-holdout\`, 원격 없음)에 둔다. 같은 레포의 다른 브랜치는 탭 worktree가 `.git`을 같이 써서 `git log --all`로 보이므로 쓰지 않는다. 구현 탭의 훅은 이 경로로 가는 Read·Grep·Glob과 이 경로가 들어간 Bash도 거부한다. C-10에서 메인이 합친 `main` 위에서 돌리고, 통과하면 `web/e2e/`로 옮겨 커밋한다. 그 뒤로는 보통 회귀 테스트다.
+구현 쪽에는 세 겹을 둔다.
+
+- 구현 탭은 `start-tab.ps1 -Role impl`로 띄운다. 그러면 PreToolUse 훅(`C:\Users\minju\.claude\popdesk\hooks\impl-guard.py`)이 붙는다. 훅은 위의 잠긴 경로로 가는 Edit·Write, worktree 밖 쓰기, 숨긴 E2E 저장소 접근, 쓰기로 보이면서 잠긴 경로를 적은 Bash를 거부한다. 규칙은 worktree가 아니라 원래 레포의 `lockrules.py`에서 읽는다. Bash 판정은 짐작이라 빠지는 것이 있다.
+- C-6의 잠금 목록. 해시를 대조하므로 어떤 도구로 고쳤든 잡힌다.
+- 합치기 전 검사. 메인은 로컬에서 fast-forward로 합치므로 GitHub의 `CODEOWNERS`가 막아 주지 않는다. 메인이 위 표의 합치기 검사를 돌린다. CI의 `locked` 잡도 같은 검사를 한다(`--role any`: 한 브랜치가 잠근 테스트와 운영 코드를 함께 고치면 실패). CI는 검사 스크립트를 기준 커밋에서 가져와 돌린다. 바뀐 쪽이 자기를 판정하는 스크립트를 느슨하게 하지 못하게 하려는 것이다.
+
+숨긴 E2E는 레포 밖 로컬 git 저장소(`C:\Users\minju\popdesk-holdout\`, 원격 없음)에 둔다. 같은 레포의 다른 브랜치는 탭 worktree가 `.git`을 같이 써서 `git log --all`로 보이므로 쓰지 않는다. C-10에서 메인이 합친 `main` 위에서 돌리고, 통과하면 `web/e2e/`로 옮겨 커밋한다. 그 뒤로는 보통 회귀 테스트다.
+
+코드가 생기면 운영 코드 쪽 정적 검사를 붙인다(`.github/workflows/ci.yml` 주석 목록). 예외 삼키기, 쓰지 않는 코드, 새 중복, 인가 검사가 빠진 컨트롤러, 서비스 밖 `@Transactional`, 운영 코드의 `System.exit`·호출 스택 검사·`Thread.sleep`·테스트 프로필 빈 같은 것을 잡는다. 거짓 완료를 막는 Stop 훅(바뀐 모듈 테스트와 `trace.py`가 실패하면 끝내지 못하게)도 빌드 명령이 정해지면 구현 탭에 더한다.
 
 ### 경로
 

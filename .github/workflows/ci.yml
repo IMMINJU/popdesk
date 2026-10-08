@@ -29,6 +29,7 @@ jobs:
       migrations: ${{ steps.filter.outputs.migrations }}
       server: ${{ steps.filter.outputs.server }}
       web: ${{ steps.filter.outputs.web }}
+      locked: ${{ steps.filter.outputs.locked }}
     steps:
       - uses: actions/checkout@v5
       - id: all
@@ -49,6 +50,11 @@ jobs:
               - 'docs/integrate/openapi-*.json'
             web:
               - *ci
+              - 'web/**'
+              - 'docs/integrate/openapi-*.json'
+            locked:
+              - *ci
+              - 'server/**'
               - 'web/**'
               - 'docs/integrate/openapi-*.json'
 
@@ -77,6 +83,39 @@ jobs:
       - uses: actions/checkout@v5
       - run: python3 scripts/ci/check-tenant-id.py
 
+  # Locked tests, merged migrations, and the split between the side that writes tests and the
+  # side that implements (design/process.md section C, guard table). The scripts run from the base
+  # commit, so a change cannot loosen the checks that judge it.
+  locked:
+    name: Locked tests and test style
+    needs: changes
+    if: needs.changes.outputs.all == 'true' || needs.changes.outputs.locked == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "ref=origin/${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ startsWith(github.ref, 'refs/heads/') }}" = "true" ] \
+               && ! echo "${{ github.event.before }}" | grep -qE '^0+$'; then
+            echo "ref=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Take the gate scripts from the base commit
+        run: |
+          if [ -n "${{ steps.base.outputs.ref }}" ] && git cat-file -e "${{ steps.base.outputs.ref }}:scripts/ci/lockrules.py" 2>/dev/null; then
+            git worktree add -q "$RUNNER_TEMP/gate" "${{ steps.base.outputs.ref }}"
+            echo "GATE=$RUNNER_TEMP/gate/scripts/ci" >> "$GITHUB_ENV"
+          else
+            echo "GATE=$PWD/scripts/ci" >> "$GITHUB_ENV"
+          fi
+      - run: python3 "$GATE/tests-lock.py" check
+      - run: python3 "$GATE/check-test-style.py"
+      - if: steps.base.outputs.ref != ''
+        run: python3 "$GATE/check-locked-paths.py" --base "${{ steps.base.outputs.ref }}" --role any
+
   # Gates to add once there is code (design/spec/architecture.md section 8).
   # Each one gets `needs: changes` and an `if:` on `all` plus its area
   # (`server` or `web`), and runs only the affected modules or packages:
@@ -89,5 +128,11 @@ jobs:
   # - E2E (Playwright, compose) when server or web changed
   # - dependency vulnerabilities (osv-scanner) and licenses when a lockfile changed
   # - visual regression when web/packages/ui or a story changed
+  # - static checks on production code (design/process.md C-10): Error Prone (empty catch,
+  #   unused code), SpotBugs with FindSecBugs, ArchUnit and Modulith verify for ADR rules
+  #   (every controller method carries an authorization check, @Transactional only in services),
+  #   Semgrep (no System.exit, stack inspection, Thread.sleep, or @Profile("test") beans in
+  #   src/main; catch (Exception) only in the global handler), PMD CPD and jscpd for new duplication,
+  #   eslint no-empty, no-floating-promises, ban-ts-comment, playwright no-wait-for-timeout
   # On release tags only (all == 'true'): every job above in full, upgrade tests,
   # SBOM (D-29), multi-arch image build (D-45)
