@@ -93,19 +93,24 @@ class CommentTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-51 an empty comment or one of 4,001 code points is 400 with field content")
+    @DisplayName("S0-AC-51 an empty comment is 400 REQUIRED, one of only spaces 400 BLANK, one of 4,001 code points 400 TOO_LONG")
     void commentLengthLimitsOutside() {
         Scene s = steps.scene();
         Session agent = fixtures.agent(s.admin(), s.code());
         Issue issue = fixtures.fileIssue(s.customer(), s.code());
 
         ApiResponse empty = comment(s.customer(), issue.key(), Map.of("content", ""));
+        ApiResponse blank = comment(s.customer(), issue.key(), Map.of("content", "   
+  "));
         ApiResponse tooLong = comment(s.customer(), issue.key(), Map.of("content", "a".repeat(4_001)));
         ApiResponse tooLongByAgent = comment(agent, issue.key(), Map.of("content", "a".repeat(4_001)));
 
         assertThat(empty.status()).isEqualTo(400);
         assertThat(empty.errorCode()).isEqualTo("INVALID_INPUT");
-        assertThat(fieldCode(empty, "content")).isIn("REQUIRED", "TOO_SHORT", "BLANK");
+        assertThat(fieldCode(empty, "content")).isEqualTo("REQUIRED");
+        assertThat(blank.status()).isEqualTo(400);
+        assertThat(blank.errorCode()).isEqualTo("INVALID_INPUT");
+        assertThat(fieldCode(blank, "content")).isEqualTo("BLANK");
         for (ApiResponse r : List.of(tooLong, tooLongByAgent)) {
             assertThat(r.status()).as(r.request()).isEqualTo(400);
             assertThat(r.errorCode()).isEqualTo("INVALID_INPUT");

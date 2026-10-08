@@ -146,7 +146,7 @@ class IssueCreateTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-42 a title that is empty after trimming is 400 with field title")
+    @DisplayName("S0-AC-42 an empty title is 400 REQUIRED, a title of only spaces is 400 BLANK")
     void titleEmptyAfterTrimming() {
         Scene s = steps.scene();
 
@@ -156,8 +156,9 @@ class IssueCreateTest extends BareAppTest {
         for (ApiResponse rejected : new ApiResponse[] {blank, empty}) {
             assertThat(rejected.status()).as(rejected.request()).isEqualTo(400);
             assertThat(rejected.errorCode()).isEqualTo("INVALID_INPUT");
-            assertThat(fieldCode(rejected, "title")).isIn("REQUIRED", "BLANK", "TOO_SHORT");
         }
+        assertThat(fieldCode(empty, "title")).isEqualTo("REQUIRED");
+        assertThat(fieldCode(blank, "title")).isEqualTo("BLANK");
         assertNothingFiled(s);
     }
 
