@@ -84,3 +84,16 @@
 - 계약은 공개 계약이라 전체 경로다(AGENTS.md). 메인은 `s0-c4-server`의 엔드포인트 표를 사용자에게 보이고 확인을 받은 뒤 병합한다.
 - 껍데기의 컨트롤러는 Spring Security 없이 둔다. 보안 설정은 S0-AC-13~20의 구현이라 `s0-i-web`이 한다(바닥과 같은 까닭, `process.md` B).
 - `s0-c4-web`은 생성된 클라이언트를 쓰지 않는 props로 짠다. 두 C-4 탭이 같은 파일을 고치지 않게 하려는 것이다. 화면 탭(3절 7)이 둘을 잇는다.
+
+## 5. 테스트 도움 코드가 정한 것은 구현이 받쳐야 한다
+
+`s0-t0-base`가 만든 `server/src/test/java/io/popdesk/support/`(쓰는 법은 같은 폴더 `README.md`)가 아래를 가정한다. 구현 탭 지시서에 넣는다.
+
+- 설정은 Spring `Environment`에서 키 이름 그대로 읽는다(`${POPDESK_PORTAL_HOST}`나 `environment.getProperty`). `System.getenv()`를 바로 읽거나 `@ConfigurationProperties`의 느슨한 묶기에만 기대면 테스트 값이 닿지 않는다. 모르는 키 경고(S0-AC-06)와 `*_FILE`(S0-AC-04)도 `Environment`의 속성 출처를 훑는다.
+- 시각은 모두 주입한 `Clock` 빈으로 읽는다. 앱의 `Clock` 빈은 `@Primary`가 아니고 이름이 `testClock`이 아니다. DB 기본값 `now()`로 업무 시각을 정하지 않는다.
+- Host는 포트를 떼고 호스트 이름만 비교한다.
+- CSRF는 쿠키 `XSRF-TOKEN`, 머리글 `X-XSRF-TOKEN`이고 쿠키 값을 그대로 받는다(conventions "Sessions and CSRF").
+- 메일 TLS는 JVM 기본 신뢰 저장소를 쓴다. 메일 연결에 따로 신뢰 저장소나 `mail.smtp.ssl.trust`를 두지 않는다.
+- 로그는 logback `ConsoleAppender`로 표준 출력에 쓴다.
+- 포트 465의 암묵적 TLS(S0-AC-74 앞부분)는 앱을 JVM 안에서 띄우는 테스트로는 시험하지 못한다(빈 포트에 뜨는 테스트 서버). `s0-t-deploy`가 앱 이미지와 같은 Docker 네트워크의 메일 서버 컨테이너(465)로 시험한다.
+- C-6의 `red-allow.txt`에 `SupportSelfTest` 15건을 "도움 코드 자기 시험, 업무 동작을 보지 않는다"로 올린다.
