@@ -17,6 +17,8 @@ await mkdir(outDir, { recursive: true });
 for (const app of ['portal', 'console']) {
   const spec = JSON.parse(await readFile(resolve(specDir, `openapi-${app}.json`), 'utf8'));
   const ast = await openapiTS(spec);
-  await writeFile(resolve(outDir, `${app}.ts`), header.replace('%s', app) + astToString(ast));
+  // LF on every OS, so a run on Windows leaves no line-ending changes.
+  const text = (header.replace('%s', app) + astToString(ast)).replace(/\r\n/g, '\n');
+  await writeFile(resolve(outDir, `${app}.ts`), text);
   console.log(`generated src/generated/${app}.ts`);
 }
