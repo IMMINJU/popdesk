@@ -26,7 +26,11 @@ CI fails when the committed files differ from the code. The TypeScript clients i
 ## Sessions and CSRF
 
 - Sign-in creates a server session held in an `HttpOnly` cookie. Cookies are host-only, so a portal session does not work on the console host and the reverse (D-9).
-- Requests that change data must send the CSRF token: the server sets it in a readable cookie and the client returns it in a request header.
+- Requests that change data must send the CSRF token: the server sets it in a readable cookie and the client returns it in a request header. Before sign-in, `GET /api/public/csrf` sets the cookie.
+
+## Invitation links
+
+An invitation link has the form `{scheme}://{host}[:{port}]/invite#token={token}` (INVITE-2). The host is the portal host for customers and the console host for agents and admins, and the port is left out when it is the default for the scheme (S0-AC-20). The token is only in the fragment after `#`, so browsers and proxies never send it in a request line or a `Referer`. The page reads it and sends it in the body of `POST /api/public/invitations/accept`.
 
 ## Order of checks and status codes (COM-1, COM-2)
 
