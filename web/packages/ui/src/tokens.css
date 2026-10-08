@@ -148,16 +148,12 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  /* Radius (tokens.md 4절) */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-full: 9999px;
-  /* tokens.md 9절, newer than 4절: alert 4px, dialog 8px, bottom sheet top 12px */
-  --radius-alert: 4px;
-  --radius-dialog: 8px;
-  --radius-sheet: 12px;
+  /* Radius (tokens.md 4·9절) */
+  --radius-sm: 4px; /* buttons, fields, badges, priority tags, checkboxes, alerts */
+  --radius-md: 6px; /* dropdowns, code blocks, internal comment box, toast */
+  --radius-lg: 8px; /* dialogs */
+  --radius-xl: 12px; /* bottom sheet top corners */
+  --radius-full: 9999px; /* avatars, status dots, scrollbar thumb */
 
   /* Motion and layers */
   --duration-fast: 120ms;

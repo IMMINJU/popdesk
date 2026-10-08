@@ -9,7 +9,7 @@ const meta = {
     displayName: 'popdesk',
     nav: [
       { href: '/issues', label: '문의', current: true },
-      { href: '/projects', label: '고객사' },
+      { href: '/companies', label: '고객사' },
       { href: '/members', label: '구성원' },
       { href: '/system', label: '시스템 상태' },
     ],
