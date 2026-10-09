@@ -54,25 +54,41 @@
 - 자기 테스트만 돌린다. `check-test-style.py --all-strict`를 자기 경로에 돌려 통과시킨다.
 - 테스트는 계약의 501 위에서 돈다. 픽스처 단계의 실패도 단언 실패(`AssertionError`)로 나게 짠다. 그래야 C-6의 `check-red.py`가 "단언 실패"로 읽는다.
 
-## 3. 구현은 모델부터 화면까지 일곱 탭이고, C-7 뒤에 테스트 이름을 채운다
+## 3. 구현은 일곱 차례로 돌고, 테스트 클래스는 쓰는 픽스처까지 선 탭에 맡긴다
 
-`process.md` C-8. 같은 파일을 두 탭이 고치지 않게 마이그레이션은 한 탭이 모두 쓴다. 작업마다 "이 테스트들을 통과시킨다"로 적고, 테스트 클래스 이름은 C-6 잠금 뒤에 채운다.
+`process.md` C-8. 같은 파일을 두 탭이 고치지 않게 마이그레이션은 한 탭이 모두 쓴다.
 
-| 차례 | 탭 | 맡는 것 | 통과시킬 기준 |
-|---|---|---|---|
-| 1 | `s0-i-schema` | 마이그레이션 전부(이 묶음의 모든 테이블), 앱 잠금, 기동 순서, 팀 1, 첫 관리자, `*_FILE`, 시작 로그, `Clock`, `tenant_id` 예외 목록(`server/README`) | S0-AC-01~12·103 |
-| 2 | `s0-i-web` | 호스트 나누기, 관리 포트, 보안 머리글, 쿠키·CSRF, 믿는 프록시, 링크 만들기, 오류 본문·확인 순서·재시도, JSON 로그와 가리기 | S0-AC-13~20·85·86 |
-| 3 | `s0-i-account` | 로그인·세션·잠금·수 제한, 고객사·배정, 초대·수락·링크 복사, 감사 로그와 정해진 JSON | S0-AC-21~40·83·100·101 |
-| 4 | `s0-i-issue` | 문의·댓글, 범위를 받는 저장소 꼴 | S0-AC-41~55·84 |
-| 4 | `s0-i-notify` | `notification` 모듈: 보내기 대기, 메일, 웹훅, 운영 경보, 시스템 상태, 정리 작업 기록, 지표 | S0-AC-66~78·80~82 |
-| 5 | `s0-i-att` | 첨부 저장·내려받기·지우기·정리, 동시 수 상한 | S0-AC-56~63·65·99·102 |
-| 6 | `s0-i-deploy` | Dockerfile, 릴리스·개발·관측 compose, Grafana 대시보드, `popdesk` 명령, 업그레이드 틀, 견본 데이터 생성기, 운영 문서의 프록시 문단 | S0-AC-64·79·87(문서)·88~91·95~97·104 |
-| 7 | `s0-i-portal`, `s0-i-console` | 포털·콘솔 화면, 공용 컴포넌트 | 웹 테스트 전부, S0-AC-87 |
-| 끝 | 메인 | 경계·상담 쪽 정보·빈 설치 E2E를 합친 `main`에서 돌림 | S0-AC-92~94·98 |
+| 차례 | 탭 | 맡는 것 | 기준 | 클래스 수 |
+|---|---|---|---|---|
+| 1 | `s0-i-schema` | 마이그레이션 전부(이 묶음의 모든 테이블), 앱 잠금, 기동 순서, 팀 1, 첫 관리자, `*_FILE`, 시작 로그, `Clock`, `tenant_id` 예외 목록(`server/README`) | S0-AC-01~12·103 | 7 |
+| 2 | `s0-i-account` | 호스트 나누기, 관리 포트, 보안 머리글, 쿠키·CSRF, 믿는 프록시, 링크 만들기, 오류 본문·확인 순서·재시도, JSON 로그와 가리기, 로그인·세션·잠금·수 제한, 고객사·배정, 초대·수락·링크 복사, 감사 로그와 정해진 JSON | S0-AC-13~40·83·85·86·100·101 | 36 |
+| 3 | `s0-i-issue` | 문의·댓글, 범위를 받는 저장소 꼴 | S0-AC-41~55·84 | 11 |
+| 4 | `s0-i-notify` | `notification` 모듈: 보내기 대기, 메일, 웹훅, 운영 경보, 시스템 상태, 정리 작업 기록, 지표 | S0-AC-66~78·80~82 | 20 |
+| 5 | `s0-i-att` | 첨부 저장·내려받기·지우기·정리, 동시 수 상한 | S0-AC-56~63·65·99·102 | 17 |
+| 6 | `s0-i-deploy` | Dockerfile, 릴리스·개발·관측 compose, Grafana 대시보드, `popdesk` 명령, 업그레이드 틀, 견본 데이터 생성기, 운영 문서의 프록시 문단 | S0-AC-64·79·87(문서)·88~91·95~97·104 | 10 |
+| 6 | `s0-i-console` | 콘솔 화면, 공용 컴포넌트(`web/packages/ui`) | `web/console`, `web/packages/ui`의 웹 테스트 전부 | 웹 |
+| 7 | `s0-i-portal` | 포털 화면 | `web/portal`의 웹 테스트 전부, S0-AC-87 | 웹 |
+| 끝 | 메인 | 경계·상담 쪽 정보·빈 설치 E2E를 합친 `main`에서 돌림 | S0-AC-92~94·98 | 4 |
 
-- 4의 둘은 같이 돈다. `s0-i-issue`는 `helpdesk`, `s0-i-notify`는 `notification` 패키지만 고친다. 댓글이 메일 대기 행을 넣는 자리는 `notification`의 공개 API이고, 그 인터페이스는 `s0-i-account`(초대 메일 대기 행)가 먼저 만든다.
+- 클래스를 맡기는 규칙: 그 클래스가 보는 기준의 탭과 그 클래스가 쓰는 픽스처(`Fixtures`의 로그인·고객사·초대는 account, 문의·댓글은 issue, 첨부는 att, 메일 서버·웹훅 받는 쪽은 notify)의 탭 가운데 가장 늦은 탭이 맡는다. 클래스가 통째로 초록이 되는 첫 탭이 그 탭이다.
+- "기준 일부는 X"라고 적힌 클래스는 X 탭이 코드를 쓰지만 X 탭에서는 픽스처가 없어 돌지 않는다. 맡은 탭이 그 클래스를 초록으로 만들다 앞 탭 코드의 잘못을 찾으면 고쳐도 되고, 고친 것을 보고에 적는다. 탭은 차례대로 돌아서 같은 파일을 동시에 고치지 않는다.
+- 처음 계획은 `s0-i-web`과 `s0-i-account`를 나누고 `s0-i-issue`·`s0-i-notify`를 같이 돌렸다. 테스트 클래스를 대 보니 web 쪽 클래스는 `ManagementPortTest` 하나 말고는 모두 로그인이나 고객사 픽스처를 써서 account 없이는 돌지 않았다. notify 쪽 클래스도 댓글 픽스처를 쓴다. 그래서 web과 account를 한 탭으로 합치고 issue 뒤에 notify를 둔다. 첫 관리자 비밀번호 규칙(`FirstAdminPassword*Test`)과 `FirstStartTest`·`SecretFileTest`·`TimeTest`도 로그인을 써서 account가 맡는다.
+- 각 탭은 맡은 클래스와 함께 이미 초록인 테스트(바닥 테스트, `red-allow.txt`의 통과, 앞 탭이 맡은 클래스)를 깨지 않는다.
 - 마이그레이션을 한 탭에 몬 까닭: 버전 번호가 겹치지 않게 하고, 잠금 순서(`architecture.md` 4절)를 지키는 외래 키·제약을 한 사람이 같이 본다. 뒤 탭이 칸을 더 바라면 새 버전으로 더하고 이미 병합한 파일은 고치지 않는다(D-24).
-- 화면 탭은 실제 API가 선 뒤에 돈다(C-9). 공용 컴포넌트(`web/packages/ui`)는 `s0-i-console`만 고치고, 포털 탭은 쓰기만 한다. 포털 탭이 먼저 필요하면 메인이 순서를 바꾼다.
+- 댓글이 메일 대기 행을 넣는 자리는 `notification`의 공개 API이고, 그 인터페이스는 `s0-i-account`(초대 메일 대기 행)가 먼저 만든다.
+- 화면 탭은 실제 API가 선 뒤에 돈다(C-9). Vitest라 가벼워 `s0-i-console`은 `s0-i-deploy`와 같이 돈다. 공용 컴포넌트는 `s0-i-console`만 고치고 포털 탭은 쓰기만 해서 포털이 뒤다. `pending.txt`의 웹 줄은 두 앱이 같은 글롭을 써서 두 화면 탭이 모두 병합된 뒤 지운다.
+
+### 탭마다 통과시킬 서버 테스트 클래스
+
+`io.popdesk.` 아래 패키지 이름부터 적는다. `trace.py design/slices/0-first`와 `tests.lock`(C-6 잠금, 0215e1b)에서 뽑았다. 추상 클래스와 `support` 패키지는 빠진다.
+
+- `s0-i-schema`(7): `start.DatabasePrivilegeTest`, `start.FirstAdminMissingTest`, `start.InstanceLockTest`, `start.MigrationHistoryTest`, `start.MigrationPortsTest`, `start.StartLogTest`, `start.TenantIdGateTest`
+- `s0-i-account`(36): `auth.FirstAdminPasswordNineCharactersTest`, `auth.FirstAdminPasswordOnlyWhitespaceTest`, `auth.FirstAdminPasswordSameAsEmailTest`, `auth.FirstAdminPasswordSeventyThreeCharactersTest`, `auth.ForwardedHeadersTest`, `auth.HostRoutingTest`, `auth.HttpsPublicAddressTest`, `auth.InvitationLinkTest`, `auth.LockoutTest`, `auth.ManagementPortTest`, `auth.PasswordRulesTest`, `auth.SecurityHeadersTest`, `auth.SessionCookieTest`, `auth.SignInRateLimitTest`, `auth.SignInTest`, `auth.UntrustedProxyTest`, `ops.AuditLogTest`, `ops.CanonicalAuditJsonTest`, `ops.CheckOrderTest`, `ops.DatabaseConflictTest`, `ops.ErrorBodyTest`, `project.CompanyCreateTest`, `project.CompanyListTest`, `project.CompanyPermissionTest`, `project.InvitationAcceptTest`, `project.InvitationInvalidTokenTest`, `project.InvitationLinkCopyTest`, `project.InvitationLocaleTest`, `project.InvitationRejectTest`, `project.InvitationTest`, `project.InvitationTokenTest`, `project.InvitationWithSmtpTest`, `project.PendingInvitationListTest`, `start.FirstStartTest`(기준 일부는 s0-i-schema), `start.SecretFileTest`(기준 일부는 s0-i-schema), `start.TimeTest`(기준 일부는 s0-i-schema)
+- `s0-i-issue`(11): `auth.SessionLifetimeTest`(기준 일부는 s0-i-account), `issue.CommentTest`, `issue.InternalCommentMailTest`, `issue.IssueCreateTest`, `issue.IssueListTest`, `issue.IssueNumberTest`, `issue.IssueRateLimitTest`, `issue.PortalIssueFieldsTest`, `ops.LogPrivacyTest`(기준 일부는 s0-i-account), `ops.ScopedReadRulesTest`, `project.AgentAssignmentTest`(기준 일부는 s0-i-account)
+- `s0-i-notify`(20): `deploy.ImplicitTlsMailTest`, `notify.CommentMailTest`, `notify.InvitationMailTest`, `notify.KoreanMailTest`, `notify.MailQueueRowTest`, `notify.NoSmtpMailLogTest`, `notify.NoWebhookTest`, `notify.QueueTransactionTest`, `notify.RetryTest`, `notify.SendLoopTest`, `notify.SmtpPlainAllowedTest`, `notify.SmtpStartTlsTest`, `notify.StrictTransportTest`, `notify.WebhookMessageTest`, `notify.WebhookSecretTest`, `ops.CleanupRecordTest`, `ops.LogSecretsWithSmtpTest`(기준 일부는 s0-i-account), `ops.OutboxMetricsTest`, `ops.SystemStatusTest`, `ops.SystemStatusWithSmtpTest`
+- `s0-i-att`(17): `attachment.AttachmentArchitectureTest`, `attachment.AttachmentCleanupTest`(기준 일부는 s0-i-notify), `attachment.AttachmentConcurrencyLimitTest`, `attachment.AttachmentDeleteTest`, `attachment.AttachmentDownloadTest`, `attachment.AttachmentLimitsTest`, `attachment.AttachmentNotFoundTest`, `attachment.AttachmentQuotaTest`, `attachment.AttachmentRateLimitTest`, `attachment.AttachmentStatementLogTest`, `attachment.AttachmentStorageTest`, `issue.IssueConcurrencyTest`(기준 일부는 s0-i-issue), `issue.IssueVersionTest`(기준 일부는 s0-i-issue), `ops.MetricsTest`(기준 일부는 s0-i-notify), `ops.OpsAlertTest`(기준 일부는 s0-i-notify), `project.NoStoreTest`(기준 일부는 s0-i-account), `start.TenantIdTest`(기준 일부는 s0-i-schema)
+- `s0-i-deploy`(10): `deploy.AttachmentLoadTest`, `deploy.BackupRestoreTest`, `deploy.ContractClientsTest`, `deploy.DevComposeTest`, `deploy.ObservabilityComposeTest`, `deploy.ReleaseComposeTest`, `deploy.ResetPasswordTest`, `deploy.UpgradeHarnessTest`, `issue.PortalIssueContractTest`(기준 일부는 s0-i-issue), `ops.EndpointMappingsTest`
+- 메인(끝)(4): `boundary.BoundaryListTest`(기준 일부는 s0-i-deploy), `boundary.CompanyBoundaryTest`(기준 일부는 s0-i-att), `boundary.QueuedMailBoundaryTest`, `boundary.StaffIdentityTest`
 
 ## 4. C-4 계약 탭은 둘이고, 서버 탭의 엔드포인트 목록은 사용자에게 보인 뒤 병합한다
 
@@ -82,7 +98,7 @@
 | `s0-c4-web` | `screens.md` 5절 공용 컴포넌트의 props·story 껍데기와 두 앱의 화면 경로 껍데기 | `web/packages/ui/src/**`, `web/portal/src/**`, `web/console/src/**`(테스트 파일 아님) |
 
 - 계약은 공개 계약이라 전체 경로다(AGENTS.md). 메인은 `s0-c4-server`의 엔드포인트 표를 사용자에게 보이고 확인을 받은 뒤 병합한다.
-- 껍데기의 컨트롤러는 Spring Security 없이 둔다. 보안 설정은 S0-AC-13~20의 구현이라 `s0-i-web`이 한다(바닥과 같은 까닭, `process.md` B).
+- 껍데기의 컨트롤러는 Spring Security 없이 둔다. 보안 설정은 S0-AC-13~20의 구현이라 `s0-i-account`가 한다(바닥과 같은 까닭, `process.md` B).
 - `s0-c4-web`은 생성된 클라이언트를 쓰지 않는 props로 짠다. 두 C-4 탭이 같은 파일을 고치지 않게 하려는 것이다. 화면 탭(3절 7)이 둘을 잇는다.
 
 ## 5. 테스트 도움 코드가 정한 것은 구현이 받쳐야 한다

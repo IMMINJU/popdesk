@@ -2,15 +2,128 @@
 # 구현 탭이 이 테스트들을 통과시키고 병합되면 메인이 그 줄을 지운다. 묶음이 끝나면 파일이 빈다.
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
-server io/popdesk/auth/**
-server io/popdesk/project/**
-server io/popdesk/issue/**
-server io/popdesk/attachment/**
-server io/popdesk/notify/**
-server io/popdesk/ops/**
-server io/popdesk/start/**
-server io/popdesk/boundary/**
-server io/popdesk/deploy/**
+# 서버 줄은 구현 탭(tasks.md 3절)마다 묶었다. 탭이 병합되면 그 묶음을 지운다.
+
+# s0-i-schema
+server io/popdesk/start/DatabasePrivilegeTest.java
+server io/popdesk/start/FirstAdminMissingTest.java
+server io/popdesk/start/InstanceLockTest.java
+server io/popdesk/start/MigrationHistoryTest.java
+server io/popdesk/start/MigrationPortsTest.java
+server io/popdesk/start/StartLogTest.java
+server io/popdesk/start/TenantIdGateTest.java
+
+# s0-i-account
+server io/popdesk/auth/FirstAdminPasswordNineCharactersTest.java
+server io/popdesk/auth/FirstAdminPasswordOnlyWhitespaceTest.java
+server io/popdesk/auth/FirstAdminPasswordSameAsEmailTest.java
+server io/popdesk/auth/FirstAdminPasswordSeventyThreeCharactersTest.java
+server io/popdesk/auth/ForwardedHeadersTest.java
+server io/popdesk/auth/HostRoutingTest.java
+server io/popdesk/auth/HttpsPublicAddressTest.java
+server io/popdesk/auth/InvitationLinkTest.java
+server io/popdesk/auth/LockoutTest.java
+server io/popdesk/auth/ManagementPortTest.java
+server io/popdesk/auth/PasswordRulesTest.java
+server io/popdesk/auth/SecurityHeadersTest.java
+server io/popdesk/auth/SessionCookieTest.java
+server io/popdesk/auth/SignInRateLimitTest.java
+server io/popdesk/auth/SignInTest.java
+server io/popdesk/auth/UntrustedProxyTest.java
+server io/popdesk/ops/AuditLogTest.java
+server io/popdesk/ops/CanonicalAuditJsonTest.java
+server io/popdesk/ops/CheckOrderTest.java
+server io/popdesk/ops/DatabaseConflictTest.java
+server io/popdesk/ops/ErrorBodyTest.java
+server io/popdesk/project/CompanyCreateTest.java
+server io/popdesk/project/CompanyListTest.java
+server io/popdesk/project/CompanyPermissionTest.java
+server io/popdesk/project/InvitationAcceptTest.java
+server io/popdesk/project/InvitationInvalidTokenTest.java
+server io/popdesk/project/InvitationLinkCopyTest.java
+server io/popdesk/project/InvitationLocaleTest.java
+server io/popdesk/project/InvitationRejectTest.java
+server io/popdesk/project/InvitationTest.java
+server io/popdesk/project/InvitationTokenTest.java
+server io/popdesk/project/InvitationWithSmtpTest.java
+server io/popdesk/project/PendingInvitationListTest.java
+server io/popdesk/start/FirstStartTest.java
+server io/popdesk/start/SecretFileTest.java
+server io/popdesk/start/TimeTest.java
+
+# s0-i-issue
+server io/popdesk/auth/SessionLifetimeTest.java
+server io/popdesk/issue/CommentTest.java
+server io/popdesk/issue/InternalCommentMailTest.java
+server io/popdesk/issue/IssueCreateTest.java
+server io/popdesk/issue/IssueListTest.java
+server io/popdesk/issue/IssueNumberTest.java
+server io/popdesk/issue/IssueRateLimitTest.java
+server io/popdesk/issue/PortalIssueFieldsTest.java
+server io/popdesk/ops/LogPrivacyTest.java
+server io/popdesk/ops/ScopedReadRulesTest.java
+server io/popdesk/project/AgentAssignmentTest.java
+
+# s0-i-notify
+server io/popdesk/deploy/ImplicitTlsMailTest.java
+server io/popdesk/notify/CommentMailTest.java
+server io/popdesk/notify/InvitationMailTest.java
+server io/popdesk/notify/KoreanMailTest.java
+server io/popdesk/notify/MailQueueRowTest.java
+server io/popdesk/notify/NoSmtpMailLogTest.java
+server io/popdesk/notify/NoWebhookTest.java
+server io/popdesk/notify/QueueTransactionTest.java
+server io/popdesk/notify/RetryTest.java
+server io/popdesk/notify/SendLoopTest.java
+server io/popdesk/notify/SmtpPlainAllowedTest.java
+server io/popdesk/notify/SmtpStartTlsTest.java
+server io/popdesk/notify/StrictTransportTest.java
+server io/popdesk/notify/WebhookMessageTest.java
+server io/popdesk/notify/WebhookSecretTest.java
+server io/popdesk/ops/CleanupRecordTest.java
+server io/popdesk/ops/LogSecretsWithSmtpTest.java
+server io/popdesk/ops/OutboxMetricsTest.java
+server io/popdesk/ops/SystemStatusTest.java
+server io/popdesk/ops/SystemStatusWithSmtpTest.java
+
+# s0-i-att
+server io/popdesk/attachment/AttachmentArchitectureTest.java
+server io/popdesk/attachment/AttachmentCleanupTest.java
+server io/popdesk/attachment/AttachmentConcurrencyLimitTest.java
+server io/popdesk/attachment/AttachmentDeleteTest.java
+server io/popdesk/attachment/AttachmentDownloadTest.java
+server io/popdesk/attachment/AttachmentLimitsTest.java
+server io/popdesk/attachment/AttachmentNotFoundTest.java
+server io/popdesk/attachment/AttachmentQuotaTest.java
+server io/popdesk/attachment/AttachmentRateLimitTest.java
+server io/popdesk/attachment/AttachmentStatementLogTest.java
+server io/popdesk/attachment/AttachmentStorageTest.java
+server io/popdesk/issue/IssueConcurrencyTest.java
+server io/popdesk/issue/IssueVersionTest.java
+server io/popdesk/ops/MetricsTest.java
+server io/popdesk/ops/OpsAlertTest.java
+server io/popdesk/project/NoStoreTest.java
+server io/popdesk/start/TenantIdTest.java
+
+# s0-i-deploy
+server io/popdesk/deploy/AttachmentLoadTest.java
+server io/popdesk/deploy/BackupRestoreTest.java
+server io/popdesk/deploy/ContractClientsTest.java
+server io/popdesk/deploy/DevComposeTest.java
+server io/popdesk/deploy/ObservabilityComposeTest.java
+server io/popdesk/deploy/ReleaseComposeTest.java
+server io/popdesk/deploy/ResetPasswordTest.java
+server io/popdesk/deploy/UpgradeHarnessTest.java
+server io/popdesk/issue/PortalIssueContractTest.java
+server io/popdesk/ops/EndpointMappingsTest.java
+
+# main-end
+server io/popdesk/boundary/BoundaryListTest.java
+server io/popdesk/boundary/CompanyBoundaryTest.java
+server io/popdesk/boundary/QueuedMailBoundaryTest.java
+server io/popdesk/boundary/StaffIdentityTest.java
+
+# s0-i-console, s0-i-portal: 두 앱이 같은 글롭을 쓰니 두 탭이 모두 병합된 뒤 지운다
 web src/screens/**
 web src/components/**
 web src/App.test.tsx
