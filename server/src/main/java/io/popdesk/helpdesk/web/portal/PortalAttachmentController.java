@@ -1,7 +1,10 @@
 package io.popdesk.helpdesk.web.portal;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.attachment.AttachmentHeaders;
+import io.popdesk.helpdesk.attachment.AttachmentRepository.AttachmentRow;
+import io.popdesk.helpdesk.attachment.AttachmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -42,6 +45,21 @@ class PortalAttachmentController {
     static final String NOT_FOUND = "`NOT_FOUND`: one identical response for an unknown ID, an issue the caller "
             + "cannot see, an attachment of another issue, and a pending or deleted attachment (S0-AC-102).";
 
+    private final AttachmentService attachments;
+
+    PortalAttachmentController(AttachmentService attachments) {
+        this.attachments = attachments;
+    }
+
+    static Attachment attachment(AttachmentRow row) {
+        return new Attachment(row.id(), row.fileName(), row.size(), row.contentType(), row.commentId(),
+                PortalIssueController.person(row.uploadedById(), row.uploadedByName(), row.uploadedByRole()),
+                PortalIssueController.utc(row.createdAt()), row.deleted(),
+                row.deletedAt() == null ? null : PortalIssueController.utc(row.deletedAt()),
+                row.deletedById() == null ? null
+                        : PortalIssueController.person(row.deletedById(), row.deletedByName(), row.deletedByRole()));
+    }
+
     @Operation(operationId = "uploadAttachment", summary = "Attach a file",
             description = "Attaches a file to the issue, or to the caller's own comment with `commentId` "
                     + "(S0-AC-56). Only the reporter may attach.")
@@ -67,7 +85,7 @@ class PortalAttachmentController {
             @RequestPart("file") MultipartFile file,
             @Parameter(description = "Attach to this comment of the caller instead of the issue.")
                     @RequestPart(name = "commentId", required = false) @Nullable Long commentId) {
-        throw new NotImplementedException();
+        return attachment(attachments.upload(CurrentAccount.get().viewer(), key, file, commentId));
     }
 
     @Operation(operationId = "listAttachments", summary = "Attachments of an issue",
@@ -82,7 +100,8 @@ class PortalAttachmentController {
             @PathVariable String key,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return attachments.list(CurrentAccount.get().viewer(), key, page, size)
+                .map(PortalAttachmentController::attachment);
     }
 
     @Operation(operationId = "downloadAttachment", summary = "Download a file",
@@ -101,7 +120,8 @@ class PortalAttachmentController {
             @PathVariable String key,
             @PathVariable UUID id,
             @RequestHeader(name = HttpHeaders.RANGE, required = false) @Nullable String range) {
-        throw new NotImplementedException();
+        AttachmentService.Download download = attachments.download(CurrentAccount.get().viewer(), key, id);
+        return ResponseEntity.ok().headers(AttachmentHeaders.of(download.attachment())).body(download.contents());
     }
 
     @Operation(operationId = "headAttachment", summary = "Headers of a file download",
@@ -111,7 +131,9 @@ class PortalAttachmentController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @RequestMapping(path = "/{id}", method = RequestMethod.HEAD)
     ResponseEntity<Void> headAttachment(@PathVariable String key, @PathVariable UUID id) {
-        throw new NotImplementedException();
+        AttachmentRow attachment = attachments.get(CurrentAccount.get().viewer(), key, id);
+        return ResponseEntity.ok().headers(AttachmentHeaders.of(attachment))
+                .contentLength(attachment.size()).build();
     }
 
     @Operation(operationId = "deleteAttachment", summary = "Delete a file",
@@ -124,6 +146,6 @@ class PortalAttachmentController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void deleteAttachment(@PathVariable String key, @PathVariable UUID id) {
-        throw new NotImplementedException();
+        attachments.delete(CurrentAccount.get().viewer(), key, id);
     }
 }

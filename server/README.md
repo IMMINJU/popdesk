@@ -63,7 +63,7 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 | `company_agent` | `helpdesk` | Which agents are assigned to which company |
 | `issue` | `helpdesk` | Issues; the key is the company code and `number` |
 | `comment` | `helpdesk` | Comments, public and internal |
-| `attachment` | `helpdesk` | Attachment metadata and state (`pending`, `stored`, `purging`, `purged`), and where the file is stored |
+| `attachment` | `helpdesk` | Attachment metadata and state, and where the file is stored (`storage`, `storage_location`). `pending` (row committed, file being written; no issue yet for a file sent with a new issue), `stored`, `purging` (delete committed, file not removed yet), `purged`. Only `stored` needs an issue (V4): the cleanup ends a failed filing's files without one. Rows stay after a delete as traces; a row the cleanup ended has no `deleted_by` and is not listed |
 | `attachment_content` | `helpdesk` | File contents when `POPDESK_STORAGE=db` |
 | `spring_session`, `spring_session_attributes` | `helpdesk` | Sign-in sessions (Spring Session JDBC) |
 | `outbox` | `notification` | Emails and webhooks waiting to be sent, and the ones that failed. `kind` is `INVITATION` or `STAFF_COMMENT` for `MAIL`, `ISSUE_CREATED` or `CUSTOMER_COMMENT` for `WEBHOOK` (`MailKind`, `WebhookKind`) |

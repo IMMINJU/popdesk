@@ -2,11 +2,11 @@ package io.popdesk.helpdesk.web.portal;
 
 import io.popdesk.ApiError;
 import io.popdesk.ApiException;
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.attachment.AttachmentService;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.helpdesk.issue.IssueService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Set;
+import java.util.UUID;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -41,9 +42,11 @@ class PortalIssueController {
     private static final Set<String> LIST_PARAMETERS = Set.of("page", "size");
 
     private final IssueService issues;
+    private final AttachmentService attachments;
 
-    PortalIssueController(IssueService issues) {
+    PortalIssueController(IssueService issues, AttachmentService attachments) {
         this.issues = issues;
+        this.attachments = attachments;
     }
 
     static Issue issue(IssueRow row) {
@@ -112,17 +115,16 @@ class PortalIssueController {
             @RequestPart("issue") CreateIssueRequest issue,
             @RequestPart(name = "files", required = false) List<MultipartFile> files) {
         Viewer viewer = CurrentAccount.get().viewer();
-        // The company is checked before any file is looked at, and an empty file before a number is taken.
+        // The company and the fields are checked before any file is looked at, every file before any is
+        // written, and the files are written before the filing transaction begins (S0-AC-56, S0-AC-63).
         IssueService.Draft draft = issues.prepare(viewer, received(issue));
-        List<MultipartFile> received = files == null ? List.of() : files;
-        if (received.stream().anyMatch(MultipartFile::isEmpty)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "FILE_EMPTY", "The file is empty.");
+        if (files == null || files.isEmpty()) {
+            return issue(issues.file(viewer, draft));
         }
-        if (!received.isEmpty()) {
-            // Storing the files of a filing is not built yet (s0-i-att).
-            throw new NotImplementedException();
-        }
-        return issue(issues.file(viewer, draft));
+        List<UUID> pending = attachments.writeFiling(viewer, files);
+        IssueRow filed = issues.file(viewer, draft, () -> attachments.storeFiled(pending, draft.id()));
+        attachments.reviewQuota();
+        return issue(filed);
     }
 
     @Operation(operationId = "listIssues", summary = "Issues the caller can see",

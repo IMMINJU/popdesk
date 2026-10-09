@@ -25,6 +25,14 @@ spring:
     timeout: 8h
   jpa:
     open-in-view: false
+  servlet:
+    multipart:
+      # A file over 10 MB still reaches the app and gets 400 FILE_TOO_LARGE (S0-AC-57); larger requests
+      # are 413. A filing carries up to 50 MB of files (S0-AC-99, architecture.md "Attachment storage").
+      max-file-size: 11MB
+      max-request-size: 55MB
+      # Every received file goes to a temporary file at once, never into memory.
+      file-size-threshold: 0
   flyway:
     locations: classpath:db/migration
     postgresql:

@@ -99,15 +99,21 @@ public class IssueService {
                 Boolean.TRUE.equals(input.privateIssue()));
     }
 
+    /** Writes a prepared filing without attachments; see {@link #file(Viewer, Draft, Runnable)}. */
+    public IssueRow file(Viewer viewer, Draft draft) {
+        return file(viewer, draft, () -> {});
+    }
+
     /**
      * Writes a prepared filing in one transaction, retried once on a lock conflict (S0-AC-85), in the
-     * lock order of architecture.md: the webhook row, then the company counter, then the issue row with
-     * the number it got (S0-AC-44). A failed filing uses no number.
+     * lock order of architecture.md: {@code storeAttachments} turns the filing's pending attachments
+     * stored (step 2), then the webhook row, then the company counter, then the issue row with the number
+     * it got (S0-AC-44). A failed filing uses no number, and its attachments stay pending (S0-AC-63).
      */
-    public IssueRow file(Viewer viewer, Draft draft) {
+    public IssueRow file(Viewer viewer, Draft draft, Runnable storeAttachments) {
         return transactions.run(() -> {
             Instant now = now();
-            // Step 2 of the lock order goes here: the filing's attachments turn from pending to stored.
+            storeAttachments.run();
             webhooks.queue(WebhookKind.ISSUE_CREATED, draft.id(), null);
             int number = companies.updateNextIssueNumber(draft.company().id());
             issues.insert(draft.id(), draft.company().id(), number, draft.title(), draft.content(), draft.priority(),

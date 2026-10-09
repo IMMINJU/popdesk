@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import tools.jackson.databind.DatabindException;
@@ -58,6 +59,12 @@ class ApiExceptionHandler {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     ResponseEntity<ApiError> missingParameter(MissingServletRequestParameterException e) {
         return respond(ApiException.invalid(e.getParameterName(), "REQUIRED"));
+    }
+
+    /** A multipart request without a required part, or with a file part that has no file name. */
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    ResponseEntity<ApiError> missingPart(MissingServletRequestPartException e) {
+        return respond(ApiException.invalid(e.getRequestPartName(), "REQUIRED"));
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)

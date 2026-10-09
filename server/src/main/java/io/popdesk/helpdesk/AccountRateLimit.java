@@ -29,7 +29,9 @@ public class AccountRateLimit {
         /** Filing an issue (S0-AC-50). */
         ISSUE(10),
         /** Adding a comment (S0-AC-55). */
-        COMMENT(30);
+        COMMENT(30),
+        /** Uploading an attachment (S0-AC-65). */
+        ATTACHMENT(30);
 
         final int limit;
 

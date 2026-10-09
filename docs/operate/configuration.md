@@ -17,8 +17,8 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | Outgoing email | None. Without `SMTP_HOST`, nothing is sent and popdesk writes one log line (the address masked) in place of each email. `SMTP_PORT` defaults to `587`. Without `SMTP_USER` popdesk does not sign in to the server. Without `MAIL_FROM` the sender is `SMTP_USER` when it is an address, else `popdesk@<console host>` |
 | `SMTP_ALLOW_PLAINTEXT` | `true` allows an unencrypted SMTP connection when the server does not offer STARTTLS. popdesk logs a warning at startup while it is on. Use it only for local test servers such as Mailpit | `false` |
 | `NOTIFY_WEBHOOK_URL` | Team notification webhook | None. Without it, no webhook is sent |
-| `POPDESK_ATTACHMENT_QUOTA` | Total size limit for all attachments | `10GB` |
-| `POPDESK_STORAGE` | Where attachment files are stored: `db`, `disk`, or `s3` | `db` |
+| `POPDESK_ATTACHMENT_QUOTA` | Total size limit for all attachments, internal ones included (`MB` and `GB` are 2^20 and 2^30 bytes). Over 80%, popdesk logs a warning naming this setting and puts an alert in every admin's inbox | `10GB` |
+| `POPDESK_STORAGE` | Where attachment files are stored: `db`, `disk`, or `s3`. This version stores in `db` only; with `disk` or `s3` popdesk does not start, so that files do not land somewhere a backup of the folder or bucket would miss | `db` |
 | `POPDESK_STORAGE_DIR` | Folder for attachments when `POPDESK_STORAGE=disk` (mount a volume here) | `/data/attachments` |
 | `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | S3-compatible storage when `POPDESK_STORAGE=s3` | None |
 | `POPDESK_AUDIT_RETENTION` | How long audit log entries are kept (ISO-8601 duration). At least `P30D`; a shorter value stops startup | `P365D` |
@@ -137,6 +137,15 @@ Emails and webhook messages wait in a queue in the database and are sent by the 
 - Admins see, per channel, whether it is set up, the last successful send, and the queued and failed messages in the console's system status. The metrics `popdesk_outbox_queued`, `popdesk_outbox_failed`, and `popdesk_outbox_sent_total` (label `channel`) show the same.
 - An invitation email gets a new link each time the app restarts before it was sent; the link of an earlier failed attempt then stops working.
 - Any `2xx` answer from the webhook receiver counts as sent. Redirects are not followed.
+
+## Attachments
+
+- One file is at most 10 MB, and the public attachments of one issue (on the issue and its public comments) at most 50 MB. Attachments of internal comments count only against `POPDESK_ATTACHMENT_QUOTA`.
+- The app takes requests of up to 55 MB with files of up to 11 MB, so a file just over 10 MB gets a clear error instead of a cut connection. Received files go to temporary files, never into memory. A reverse proxy in front needs a body limit of at least 55 MB (nginx `client_max_body_size 55m`).
+- At most 16 uploads and, apart from them, 16 downloads run at once. The next one gets 503 `SERVER_BUSY` with `Retry-After`; clients try again.
+- A deleted attachment keeps its row as a trace without the file name. Its file is removed at once; if that fails, the delete still succeeds and the daily attachment cleanup removes the file.
+- The daily cleanup (`attachment-cleanup`) also ends uploads that never finished: a file still pending after an hour is removed. It works from the database rows only and never lists the storage.
+- The metric `popdesk_attachments_bytes` is the total that `POPDESK_ATTACHMENT_QUOTA` limits.
 
 ## Commands
 
