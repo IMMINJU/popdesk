@@ -150,4 +150,82 @@ class MailQueueRowTest extends GatedMailTest {
                 () -> mail().messagesTo(email).isEmpty());
         assertThat(gate().held()).as("attempts that reached the mail server").hasSize(1);
     }
+
+    @Test
+    @DisplayName("S0-AC-69 a comment mail queued for a customer who then leaves the company is not sent, and its row is deleted")
+    void mailForCustomerWhoCannotSeeIssueIsDropped() {
+        Scene s = steps.scene();
+        Issue issue = fixtures.fileIssue(s.customer(), s.code());
+        gate().hold();
+        Snapshot before = rows.snapshot();
+        fixtures.comment(s.agent(), issue.key(), "Answer " + Unique.number());
+        gate().awaitHeldTo(s.customer().email());
+        List<Row> added = rows.added(before);
+
+        new Membership(db).remove(s.customer().accountId(), s.code());
+        assertThat(s.customer().client().get("/api/portal/issues/" + issue.key()).send().status())
+                .as("the customer sees the issue after leaving the company").isEqualTo(404);
+        gate().pass();
+        clock.advance(Duration.ofSeconds(1));
+        List<Row> gone = rows.awaitGone("the mail row handled after the customer lost sight of the issue", added);
+
+        assertThat(gone).as("rows that went away").hasSize(1);
+        Wait.holds("no mail to the customer who cannot see the issue", Duration.ofSeconds(3),
+                () -> NotifySteps.notifications(mail(), s.customer().email()).isEmpty());
+        assertThat(gate().held()).as("attempts that reached the mail server").hasSize(1);
+    }
+
+    /** The table of mail queue rows: the row an invitation adds that goes away once its mail is sent. */
+    private String mailQueueTable(Session admin) {
+        String email = Unique.email("probe");
+        gate().hold();
+        Snapshot before = rows.snapshot();
+        admin.client().post("/api/console/invitations")
+                .json(Map.of("email", email, "name", "Probe " + Unique.number(), "role", "AGENT")).expect(201);
+        gate().awaitHeldTo(email);
+        List<Row> added = rows.added(before);
+        gate().pass();
+        clock.advance(Duration.ofSeconds(1));
+        mail().awaitMessageTo(email);
+        List<Row> gone = rows.awaitGone("the probe's mail row deleted after the mail went out", added);
+        assertThat(gone).as("rows that went away once the probe's mail was sent").hasSize(1);
+        return gone.getFirst().table();
+    }
+
+    @Test
+    @DisplayName("S0-AC-66 when the transaction fails at commit after the queue row was written, neither the change nor the row stays and nothing is sent")
+    void failureAfterQueueRowRollsBackBoth() {
+        Scene s = steps.scene();
+        Issue issue = fixtures.fileIssue(s.customer(), s.code());
+        String table = Rows.quote(mailQueueTable(s.admin()));
+        String email = Unique.email("rolledback");
+        String answer = "Rolled back " + Unique.number();
+        Snapshot before = rows.snapshot();
+        ApiResponse invited;
+        ApiResponse answered;
+        db.schemaFixture("create or replace function test_fail_at_commit() returns trigger language plpgsql as "
+                + "$$ begin raise exception 'test_ failure after the queue row'; end $$");
+        db.schemaFixture("create constraint trigger test_fail_after_queue after insert on " + table
+                + " deferrable initially deferred for each row execute function test_fail_at_commit()");
+        try {
+            invited = s.admin().client().post("/api/console/invitations")
+                    .json(Map.of("email", email, "name", "Rolled " + Unique.number(), "role", "AGENT")).send();
+            answered = s.agent().client().post("/api/console/issues/" + issue.key() + "/comments")
+                    .json(Map.of("content", answer)).send();
+        } finally {
+            db.schemaFixture("drop trigger if exists test_fail_after_queue on " + table);
+            db.schemaFixture("drop function if exists test_fail_at_commit()");
+        }
+
+        for (ApiResponse r : List.of(invited, answered)) {
+            assertThat(r.status()).as(r.toString()).isEqualTo(500);
+            assertThat(r.errorCode()).isEqualTo("INTERNAL_ERROR");
+        }
+        assertThat(rows.added(before)).as("rows left by the failed requests").isEmpty();
+        assertThat(s.agent().client().get("/api/console/issues/" + issue.key() + "/comments").expect(200).text())
+                .doesNotContain(answer);
+        Wait.holds("no mail for the failed requests", Duration.ofSeconds(3),
+                () -> mail().messagesTo(email).isEmpty()
+                        && NotifySteps.notifications(mail(), s.customer().email()).isEmpty());
+    }
 }

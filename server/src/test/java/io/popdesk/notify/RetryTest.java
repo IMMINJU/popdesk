@@ -7,6 +7,7 @@ import io.popdesk.notify.NotifySteps.Scene;
 import io.popdesk.notify.Rows.Row;
 import io.popdesk.notify.Rows.Snapshot;
 import io.popdesk.support.ConnectedAppTest;
+import io.popdesk.support.DbInspector.Column;
 import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Wait;
@@ -14,6 +15,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -149,34 +151,50 @@ class RetryTest extends ConnectedAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-68 a failed row is deleted 7 days after it failed; a younger failed row stays")
-    void failedRowsDeletedAfterSevenDays() {
+    @DisplayName("S0-AC-68 a failed row is kept 1 minute before 7 days after it failed, even when the cleanup runs, and deleted 1 minute after")
+    void failedRowsDeletedSevenDaysAfterFailing() {
         Scene s = steps.scene();
-        Instant start = clock.instant();
-        Caught older = fileWhileFailing(s.customer(), s.code());
-        Session admin = makeFailed(older);
-
-        clock.advance(Duration.ofDays(2));
-        Session customer = fixtures.signInAgain(s.customer());
-        Caught younger = fileWhileFailing(customer, s.code());
-        admin = makeFailed(younger);
-
-        // The older row failed about 1 day after start, the younger about 4 days after; both were made
-        // at least 1 day before they failed. At start + 8 days and 1 minute only the older row is past
-        // 7 days, whether counted from when it failed or from when it was made.
-        clock.advance(Duration.between(clock.instant(), start.plus(Duration.ofDays(8)).plusSeconds(60)));
-
-        rows.awaitGone("the older failed row deleted by the cleanup", List.of(older.row()), Duration.ofSeconds(70));
-        assertThat(rows.exists(younger.row())).as("the younger failed row is kept").isTrue();
-        assertThat(failedIds(admin)).contains(younger.row().key()).doesNotContain(older.row().key());
-    }
-
-    /** Moves the clock past 24 hours after the first failure and waits until the row is failed. */
-    private Session makeFailed(Caught caught) {
+        Caught caught = fileWhileFailing(s.customer(), s.code());
         clock.advance(Duration.ofHours(24).plusSeconds(1));
+        Instant failedAt = clock.instant();
         Session admin = fixtures.signInAdmin();
         Wait.until("the row of " + caught.issue().key() + " listed as failed",
                 () -> failedIds(admin).contains(caught.row().key()) ? caught : null);
-        return admin;
+
+        Instant almost = clock.advance(Duration.ofDays(7).minusSeconds(60));
+        Wait.until("the failed-row cleanup run at or after " + almost, () -> {
+            Instant ran = lastCleanupRun();
+            return ran != null && !ran.isBefore(almost) ? ran : null;
+        });
+        assertThat(rows.exists(caught.row())).as("the failed row 1 minute before 7 days").isTrue();
+
+        clock.advance(Duration.ofSeconds(120));
+        rows.awaitGone("the failed row deleted 7 days after it failed at " + failedAt, List.of(caught.row()));
+        assertThat(failedIds(fixtures.signInAdmin())).doesNotContain(caught.row().key());
+    }
+
+    /**
+     * The latest time in the cleanup record row of {@code outbox-failed-cleanup} (S0-AC-82, tasks.md
+     * 6절), found in any text column of any table; null when there is none yet.
+     */
+    private Instant lastCleanupRun() {
+        Instant latest = null;
+        for (String table : db.tables()) {
+            for (Column c : db.columns(table)) {
+                if (!c.dataType().equals("text") && !c.dataType().equals("character varying")) {
+                    continue;
+                }
+                for (Map<String, Object> row : db.rows("select * from " + Rows.quote(table) + " where "
+                        + Rows.quote(c.name()) + " = 'outbox-failed-cleanup'")) {
+                    for (Object value : row.values()) {
+                        Instant at = Rows.instant(value);
+                        if (at != null && (latest == null || at.isAfter(latest))) {
+                            latest = at;
+                        }
+                    }
+                }
+            }
+        }
+        return latest;
     }
 }

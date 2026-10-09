@@ -108,7 +108,7 @@ class CommentMailTest extends ConnectedAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-71 a line break in the issue title does not break the subject or add a recipient")
+    @DisplayName("S0-AC-71 the issue title in the subject has its line break as a space, and adds no header or recipient")
     void lineBreakInTitleStaysInSubject() {
         Scene s = steps.scene();
         long n = Unique.number();
@@ -120,10 +120,8 @@ class CommentMailTest extends ConnectedAppTest {
 
         ReceivedMail m = awaitNotification(mail(), s.customer().email());
         assertThat(m.subject()).as("subject").doesNotContain("\n").doesNotContain("\r");
-        if (m.subject().contains("Printer " + n)) {
-            assertThat(m.subject()).as("the title in the subject, line break as a space")
-                    .contains("Printer " + n + " Bcc: " + victim);
-        }
+        assertThat(m.subject()).as("the title in the subject, line break as a space")
+                .contains("Printer " + n + " Bcc: " + victim);
         assertThat(m.to()).containsExactly(s.customer().email());
         assertThat(m.cc()).isEmpty();
         assertThat(m.header("Bcc")).isEmpty();
