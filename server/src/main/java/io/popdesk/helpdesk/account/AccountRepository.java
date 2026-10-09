@@ -130,10 +130,6 @@ public class AccountRepository {
                 .params(tokenHash, Timestamp.from(expiresAt), accountId).update();
     }
 
-    void deleteInvitation(long accountId) {
-        jdbc.sql("delete from invitation where account_id = ?").param(accountId).update();
-    }
-
     /** {@code INVITED} accounts with an open invitation, newest invitation first. */
     List<PendingRow> listPending(long offset, int limit) {
         return jdbc.sql("select a.id, a.email, a.name, a.role, i.invited_at, i.expires_at from invitation i "

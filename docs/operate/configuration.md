@@ -14,7 +14,7 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `POPDESK_ADMIN_EMAIL`, `POPDESK_ADMIN_PASSWORD` | First admin, created on first start | None. If the database has no admin and these are missing (or the password breaks the password rules), popdesk does not serve requests: the process keeps running, logs what to set, and its health check stays unhealthy. It does not exit, so the container does not restart in a loop |
 | `POPDESK_TIMEZONE` | Time zone used to judge dates (for example whether a due date has passed) | `UTC` |
 | `POPDESK_LOCALE` | Default language of emails and server messages | `en` |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | Outgoing email | None. Without them, nothing is sent and popdesk writes one log line in place of each email |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | Outgoing email | None. Without `SMTP_HOST`, nothing is sent and popdesk writes one log line (the address masked) in place of each email. `SMTP_PORT` defaults to `587`. Without `SMTP_USER` popdesk does not sign in to the server. Without `MAIL_FROM` the sender is `SMTP_USER` when it is an address, else `popdesk@<console host>` |
 | `SMTP_ALLOW_PLAINTEXT` | `true` allows an unencrypted SMTP connection when the server does not offer STARTTLS. popdesk logs a warning at startup while it is on. Use it only for local test servers such as Mailpit | `false` |
 | `NOTIFY_WEBHOOK_URL` | Team notification webhook | None. Without it, no webhook is sent |
 | `POPDESK_ATTACHMENT_QUOTA` | Total size limit for all attachments | `10GB` |
@@ -128,6 +128,15 @@ popdesk always encrypts its connections to the SMTP and IMAP servers unless you 
 ### Webhook and audit copy
 
 `NOTIFY_WEBHOOK_URL` and `AUDIT_FORWARD_URL` may use `http`, because many internal receivers do not have TLS. popdesk accepts them and logs a warning at startup (without the address). Use `https` when the receiver is outside your network.
+
+## Sending email and webhook messages
+
+Emails and webhook messages wait in a queue in the database and are sent by the app in the background, oldest first. The address, the language, and the text are read when a message is sent, not when it is queued.
+
+- A message that fails is tried again after 1 second, then 2, 4, and so on, at most every 10 minutes. 24 hours after its first failure it is given up: it stays in the queue as failed, every admin gets an item in the console inbox, and it is deleted 7 days later.
+- Admins see, per channel, whether it is set up, the last successful send, and the queued and failed messages in the console's system status. The metrics `popdesk_outbox_queued`, `popdesk_outbox_failed`, and `popdesk_outbox_sent_total` (label `channel`) show the same.
+- An invitation email gets a new link each time the app restarts before it was sent; the link of an earlier failed attempt then stops working.
+- Any `2xx` answer from the webhook receiver counts as sent. Redirects are not followed.
 
 ## Commands
 

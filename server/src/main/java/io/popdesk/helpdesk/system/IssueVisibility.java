@@ -3,6 +3,7 @@ package io.popdesk.helpdesk.system;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.account.AccountRepository;
 import io.popdesk.helpdesk.issue.IssueRepository;
+import io.popdesk.notification.IssueAccess;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Component;
  * the console: a reporter who left the company still sees their issue (permissions.md rule 2).
  */
 @Component
-public class IssueVisibility {
+public class IssueVisibility implements IssueAccess {
 
     private final AccountRepository accounts;
     private final IssueRepository issues;
@@ -24,6 +25,7 @@ public class IssueVisibility {
     }
 
     /** Whether the account exists and may see the issue. Says nothing about the account's status. */
+    @Override
     public boolean canSee(long accountId, UUID issueId) {
         return accounts.findById(accountId)
                 .map(account -> issues.visible(new Viewer(account.id(), account.role()), issueId))

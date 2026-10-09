@@ -56,7 +56,7 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 |---|---|---|
 | `tenant` | `helpdesk` | The team. One row, `id` 1, made on the first start |
 | `account` | `helpdesk` | Accounts: email, name, role, status, Argon2id hash, language, sign-in lockout |
-| `invitation` | `helpdesk` | The open invitation of an `INVITED` account: SHA-256 of the token, when it was sent and expires |
+| `invitation` | `helpdesk` | The invitation of an account: SHA-256 of the token, when it was sent and expires. The row stays after acceptance; a token works only while the account is `INVITED` |
 | `audit_log` | `helpdesk` | Audit rows: action, person (`{accountId, name, email}`), target, changes, time |
 | `company` | `helpdesk` | Customer companies, and the number of each company's last issue |
 | `company_member` | `helpdesk` | Which customers belong to which company |
@@ -66,11 +66,13 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 | `attachment` | `helpdesk` | Attachment metadata and state (`pending`, `stored`, `purging`, `purged`), and where the file is stored |
 | `attachment_content` | `helpdesk` | File contents when `POPDESK_STORAGE=db` |
 | `spring_session`, `spring_session_attributes` | `helpdesk` | Sign-in sessions (Spring Session JDBC) |
-| `outbox` | `notification` | Emails and webhooks waiting to be sent, and the ones that failed |
-| `delivery_status` | `notification` | Last successful send per channel |
-| `ops_alert` | `notification` | Operations alerts that are raised |
-| `notification` | `notification` | Inbox items of staff accounts |
-| `cleanup_run` | `notification` | One row per cleanup job: when it last ran and how many rows it deleted. `helpdesk`'s jobs write theirs through `notification`'s public API |
+| `outbox` | `notification` | Emails and webhooks waiting to be sent, and the ones that failed. `kind` is `INVITATION` or `STAFF_COMMENT` for `MAIL`, `ISSUE_CREATED` or `CUSTOMER_COMMENT` for `WEBHOOK` (`MailKind`, `WebhookKind`) |
+| `delivery_status` | `notification` | Last successful send per channel; both rows are made at startup |
+| `ops_alert` | `notification` | Operations alerts that are raised, one row per kind (`OpsAlerts.Kind`) until resolved |
+| `notification` | `notification` | Inbox items of staff accounts. `kind` is `DELIVERY_FAILED` or `ATTACHMENT_QUOTA_WARNING` |
+| `cleanup_run` | `notification` | One row per cleanup job: when it last ran and how many rows it deleted. `helpdesk`'s jobs are `CleanupJob` beans that `notification` runs and records |
+
+`notification` reads accounts and issues only through interfaces it declares and `helpdesk` implements (`Recipients`, `IssueFacts`, `IssueAccess`, `InvitationLinks`), so it does not depend on `helpdesk`.
 
 Migrations live in `src/main/resources/db/migration/` and only move forward (ADR D-24). A file is `V<n>__<what_it_does>.sql`, with `n` the next whole number. Versions 999 and up belong to test fixtures; the app's own stay below.
 

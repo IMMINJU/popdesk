@@ -16,11 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 class OutboxMailQueue implements MailQueue {
 
     private final OutboxRepository repository;
+    private final Wakeups wakeups;
     private final Clock clock;
     private final boolean enabled;
 
-    OutboxMailQueue(OutboxRepository repository, Clock clock, Environment environment) {
+    OutboxMailQueue(OutboxRepository repository, Wakeups wakeups, Clock clock, Environment environment) {
         this.repository = repository;
+        this.wakeups = wakeups;
         this.clock = clock;
         String host = environment.getProperty("SMTP_HOST");
         this.enabled = host != null && !host.isBlank();
@@ -36,5 +38,6 @@ class OutboxMailQueue implements MailQueue {
     public void queue(MailKind kind, long recipientAccountId, @Nullable UUID issueId, @Nullable Long commentId) {
         repository.insert(OutboxRepository.MAIL, kind.name(), recipientAccountId, issueId, commentId,
                 clock.instant().truncatedTo(ChronoUnit.MICROS));
+        wakeups.afterCommit(OutboxRepository.MAIL);
     }
 }

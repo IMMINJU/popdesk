@@ -51,6 +51,11 @@ management:
   server:
     # Health checks and metrics; not served on 8080 (docs/operate/configuration.md).
     port: 8081
+  endpoints:
+    web:
+      exposure:
+        # Metrics for Prometheus (S0-AC-78); still only on the management port.
+        include: health,prometheus
   endpoint:
     health:
       probes:

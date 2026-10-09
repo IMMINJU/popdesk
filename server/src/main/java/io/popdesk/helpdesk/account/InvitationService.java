@@ -16,6 +16,7 @@ import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.company.CompanyRepository;
 import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
 import io.popdesk.helpdesk.company.CompanyRepository.MembershipRow;
+import io.popdesk.notification.InvitationLinks;
 import io.popdesk.notification.MailKind;
 import io.popdesk.notification.MailQueue;
 import java.security.MessageDigest;
@@ -32,6 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -49,7 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
  * shown only in the link, in the response when there is no SMTP, and never logged.
  */
 @Service
-public class InvitationService {
+public class InvitationService implements InvitationLinks {
 
     /** How long a link works (INVITE-2). */
     static final Duration VALIDITY = Duration.ofDays(7);
@@ -155,8 +157,9 @@ public class InvitationService {
             PasswordRules.broken(password, pending.email()).ifPresent(rule -> {
                 throw ApiException.invalid("password", rule);
             });
+            // The invitation row stays as the record of the invitation; its token stops working because every
+            // lookup by token needs an INVITED account (S0-AC-35).
             accounts.updateActivated(pending.accountId(), passwords.encode(password), now);
-            accounts.deleteInvitation(pending.accountId());
             return pending.accountId();
         });
         log.info("Account {} accepted its invitation.", accountId);
@@ -183,6 +186,20 @@ public class InvitationService {
         });
         log.info("A new invitation link was made for account {}.", accountId);
         return link;
+    }
+
+    /**
+     * A new token for the invitation email the send loop is about to send (S0-AC-72): the database keeps
+     * only token hashes, so the token made at {@link #invite} cannot be mailed. The previous link stops
+     * working; the invitation keeps its expiry. Empty when the account has accepted meanwhile.
+     */
+    @Override
+    public Optional<String> renew(long accountId) {
+        String token = newToken();
+        return transactions.run(() -> accounts.lockInvitation(accountId).map(pending -> {
+            accounts.updateInvitationToken(accountId, tokenHash(token), pending.expiresAt());
+            return address.invitationLink(appOf(pending.role()), token);
+        }));
     }
 
     /** {@code INVITED} accounts, newest invitation first, with their companies (S0-AC-40). */

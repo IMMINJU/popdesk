@@ -16,11 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 class OutboxWebhookQueue implements WebhookQueue {
 
     private final OutboxRepository repository;
+    private final Wakeups wakeups;
     private final Clock clock;
     private final boolean enabled;
 
-    OutboxWebhookQueue(OutboxRepository repository, Clock clock, Environment environment) {
+    OutboxWebhookQueue(OutboxRepository repository, Wakeups wakeups, Clock clock, Environment environment) {
         this.repository = repository;
+        this.wakeups = wakeups;
         this.clock = clock;
         String url = environment.getProperty("NOTIFY_WEBHOOK_URL");
         this.enabled = url != null && !url.isBlank();
@@ -39,5 +41,6 @@ class OutboxWebhookQueue implements WebhookQueue {
         }
         repository.insert(OutboxRepository.WEBHOOK, kind.name(), null, issueId, commentId,
                 clock.instant().truncatedTo(ChronoUnit.MICROS));
+        wakeups.afterCommit(OutboxRepository.WEBHOOK);
     }
 }

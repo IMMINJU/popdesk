@@ -1,11 +1,15 @@
 package io.popdesk.notification.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.notification.ops.Inbox;
+import io.popdesk.notification.ops.OpsRepository.InboxRow;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +24,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/console/notifications")
 class ConsoleNotificationController {
 
+    private final Inbox inbox;
+
+    ConsoleNotificationController(Inbox inbox) {
+        this.inbox = inbox;
+    }
+
     @Operation(operationId = "listNotifications", summary = "The caller's inbox",
             description = "Own items only, newest first (S0-AC-80, INBOX-3).")
     @ApiResponse(responseCode = "200", description = "One page.")
@@ -29,7 +39,7 @@ class ConsoleNotificationController {
     Paged<Notification> listNotifications(
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return inbox.list(Caller.accountId(), page, size).map(ConsoleNotificationController::notification);
     }
 
     @Operation(operationId = "countUnreadNotifications", summary = "Unread items in the caller's inbox")
@@ -37,7 +47,7 @@ class ConsoleNotificationController {
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @GetMapping("/unread-count")
     UnreadCount countUnreadNotifications() {
-        throw new NotImplementedException();
+        return new UnreadCount(inbox.unread(Caller.accountId()));
     }
 
     @Operation(operationId = "markNotificationRead", summary = "Mark an item read",
@@ -49,6 +59,14 @@ class ConsoleNotificationController {
     @PostMapping("/{id}/read")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void markNotificationRead(@PathVariable long id) {
-        throw new NotImplementedException();
+        inbox.markRead(Caller.accountId(), id);
+    }
+
+    private static Notification notification(InboxRow row) {
+        return new Notification(row.id(), NotificationKind.valueOf(row.kind()), utc(row.createdAt()), utc(row.readAt()));
+    }
+
+    private static OffsetDateTime utc(Instant at) {
+        return at == null ? null : at.atOffset(ZoneOffset.UTC);
     }
 }
