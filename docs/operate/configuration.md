@@ -62,6 +62,7 @@ These names and values are a public contract (ADR D-45).
 
 | Item | Value |
 |---|---|
+| Requires | Docker Engine 25 or later (the health checks use `start_interval`) with Compose v2 |
 | Services | `app` (popdesk), `db` (PostgreSQL 16; the major version is fixed per release) |
 | Published ports | `app` port `8080` only, on all interfaces. The `db` port and the management port are not published |
 | Management port | `8081` inside the Compose network: health checks (`/actuator/health`) and metrics (`/actuator/prometheus`). Not served on `8080` |
@@ -104,7 +105,7 @@ popdesk starts in this order: it takes the single-instance database lock, runs d
 
 ### Memory and JVM options
 
-The image sets its JVM options itself, so the app behaves the same on every host: the G1 garbage collector and a heap of at most 384 MB. Measured before the first release, on a development machine: the app container used about 0.4 GB right after start and up to about 0.6 GB with 20 transfers of 10 MB at once; PostgreSQL up to about 0.35 GB. To change the heap, set `JDK_JAVA_OPTIONS` (for example `JDK_JAVA_OPTIONS=-Xmx768m`); an `-Xmx` there wins over the image's default.
+The image sets its JVM options itself, so the app behaves the same on every host: the G1 garbage collector and a heap of at most 384 MB. Measured before the first release, on a development machine: the app container used about 0.4 GB right after start and up to about 0.6 GB with 20 transfers of 10 MB at once; PostgreSQL up to about 0.35 GB. To change the heap, set `JDK_JAVA_OPTIONS` (for example `JDK_JAVA_OPTIONS=-Xmx768m`); an `-Xmx` there wins over the image's default. The heap does not shrink to a container memory limit, so if you set one (`mem_limit`, Kubernetes `resources.limits.memory`), give the app at least 0.75 GB or lower `-Xmx` with it.
 
 ### More Compose files
 
@@ -118,6 +119,7 @@ These go on top of the release file, which stays as it is:
 popdesk serves plain HTTP only. Terminate TLS at a reverse proxy in front of it (ADR D-40).
 
 - popdesk trusts `X-Forwarded-*` headers only from `POPDESK_TRUSTED_PROXIES`. If your proxy or load balancer has a public address, add it. Make sure clients cannot reach port `8080` from a trusted address without going through the proxy. If the proxy runs on the same machine, you can publish the port on the loopback address only (`127.0.0.1:8080:8080`).
+- Use TLS 1.2 or later at the proxy and let it send `Strict-Transport-Security`. popdesk receives plain HTTP from the proxy, so it does not add that header itself.
 - Set `POPDESK_PUBLIC_SCHEME=https` and `POPDESK_PUBLIC_PORT=443`. With `https`, cookies get the `Secure` attribute and email links use `https`.
 - The proxy must pass the original host (`Host` or `X-Forwarded-Host`). A request for any other host gets a plain text 404 that names the two configured hosts and the host it came for.
 - When a trusted proxy forwards a scheme or port (`X-Forwarded-Proto`, `X-Forwarded-Port`, or a port in `X-Forwarded-Host`) other than `POPDESK_PUBLIC_SCHEME` and `POPDESK_PUBLIC_PORT`, popdesk logs one warning for each such pair. Links in emails always use the configured values, so fix the setting the warning names.

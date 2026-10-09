@@ -37,8 +37,8 @@ A failed queue row is deleted by the app 7 days after it failed, so the outbox c
 
 ## At a release
 
-1. Run `make-sample.py` with the released image (by digest).
-2. Attach `sample.dump`, `sample.image`, and `sample.expected.json` to the release, and record the image's `RepoDigests` next to them.
+1. On the day of the release, run `make-sample.py` with the released image (by digest). A sample made that day still holds its failed queue row, which the app deletes 7 days after it failed.
+2. Attach `sample.dump`, `sample.image`, and `sample.expected.json` to the release. `sample.image` is the local image ID, so also attach `sample.repodigest` with the image's registry digest (`docker image inspect --format '{{index .RepoDigests 0}}'`).
 3. Later versions run `upgrade-test.py` with each kept sample and the new image.
 
 The self test is `server/src/test/java/io/popdesk/deploy/UpgradeHarnessTest.java`: a broken migration `V999` must make every check fail.
