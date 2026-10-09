@@ -191,3 +191,4 @@ C-7 점검(`s0-c7-review`)으로 정한 것:
 - `POPDESK_STORAGE`는 이번 판에 `db`만 받고 `disk`·`s3`면 뜨지 않는다(acceptance 53줄, 5번 묶음에서 연다).
 - 화면 정적 파일: 앱이 호스트별로 포털·콘솔 빌드를 내준다(GET/HEAD, `/api/`·관리 포트 밖, 없는 경로는 index.html). 맡은 탭이 없어서 `s0-i-deploy`가 Dockerfile 웹 빌드와 함께 넣는다(그 탭 질문).
 - 공용 컴포넌트에서 고칠 것 셋(`s0-i-portal` 보고 5절): `IssueList`가 받은 올린 사람을 그리지 않음, `Select readOnly`가 Tab 자리를 가져감, `MarkdownEditor` `minHeight`가 숫자만 받음. 첫 묶음 테스트는 모두 통과해서 지금 고치지 않고 1번 묶음의 공용 컴포넌트 작업에 넣는다. 두 앱의 `app/` 공통 코드 사본도 그때 공용 패키지로 옮길지 정한다.
+- C-9 끝(2026-10-09): 구현 탭 여덟을 모두 합쳤고 메인이 합친 `main`에서 경계 테스트 넷(S0-AC-92·93·98)을 돌려 통과했다. `boundary.StaffIdentityTest`의 순서에 기대던 단언 하나를 메인이 고치고 다시 잠갔다. `pending.txt`가 비었다. 남은 것은 C-10(숨긴 E2E S0-AC-94 포함)이다.
