@@ -407,3 +407,8 @@ a.pd-issue-row:focus-visible {
     padding: 0 var(--page-gutter-mobile);
   }
 }
+
+/* "문의 올리기" is a link drawn as a button. */
+a.pd-button {
+  text-decoration: none;
+}
