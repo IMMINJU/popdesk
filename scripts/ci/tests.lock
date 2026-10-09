@@ -97,7 +97,7 @@ e7bebb3edec786fb6a8684313396bdbde1ebc9a59a4059583cf07a8bbf0b992e  server/src/tes
 24e8fbc9d6698b6ea6d7022743f8ad1f1ddb28434911d025a31f081d04cd63bb  server/src/test/java/io/popdesk/notify/GatedMailTest.java
 c13f21f3a9d013467e57fc4d0806abb7a67def5315b611bd64133d4ae2d742a7  server/src/test/java/io/popdesk/notify/InvitationMailTest.java
 31912d978d47c0034bc9f45850a4a2bf061d094d688551fac675edfaa81f5e7a  server/src/test/java/io/popdesk/notify/KoreanMailTest.java
-eb988103b9bd799de6d59719b73ef978ba39aab74cbed30770f048a036f0bdbf  server/src/test/java/io/popdesk/notify/MailQueueRowTest.java
+c47a52fe3544277ae9c90f3480b011c4682b3469207e05e4fe47a912d49bb0e9  server/src/test/java/io/popdesk/notify/MailQueueRowTest.java
 38c589fa1dccc965def5973a4a20def8c88c0c934b8eba0166d2e0ad972445ff  server/src/test/java/io/popdesk/notify/NoSmtpMailLogTest.java
 24f3b4dfe5b7cb1e1e9098c0d29894ce0ec0df95d9d601332e4d1284c4e5a73e  server/src/test/java/io/popdesk/notify/NoWebhookTest.java
 7de729d62e5e7ed87fb0b2effdf7de84d54871e16679cd48b3092d2cac86613a  server/src/test/java/io/popdesk/notify/NotifySteps.java

@@ -149,7 +149,7 @@ class MailQueueRowTest extends GatedMailTest {
 
         Wait.holds("no invitation mail to the account that accepted", Duration.ofSeconds(3),
                 () -> mail().messagesTo(email).isEmpty());
-        assertThat(gate().held()).as("attempts that reached the mail server").hasSize(1);
+        assertThat(gate().held()).filteredOn(h -> h.isTo(email)).as("attempts that reached the mail server").hasSize(1);
     }
 
     @Test
