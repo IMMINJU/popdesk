@@ -1,7 +1,9 @@
 package io.popdesk.helpdesk.web.portal;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
+import io.popdesk.helpdesk.company.CompanyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,6 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 class PortalCompanyController {
 
+    private final CompanyService companies;
+
+    PortalCompanyController(CompanyService companies) {
+        this.companies = companies;
+    }
+
     @Operation(operationId = "listMyCompanies", summary = "Companies the caller belongs to",
             description = "Only the companies the caller belongs to (S0-AC-32), in code order.")
     @ApiResponse(responseCode = "200", description = "One page.")
@@ -23,6 +31,8 @@ class PortalCompanyController {
     Paged<Company> listMyCompanies(
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        Paged<CompanyRow> rows = companies.list(CurrentAccount.get().viewer(), page, size);
+        return new Paged<>(rows.items().stream().map(c -> new Company(c.code(), c.name(), c.status())).toList(),
+                rows.page(), rows.size(), rows.totalElements(), rows.totalPages());
     }
 }

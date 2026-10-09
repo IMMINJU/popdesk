@@ -1,11 +1,16 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.Role;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
+import io.popdesk.helpdesk.company.CompanyRepository.MemberRow;
+import io.popdesk.helpdesk.company.CompanyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.ZoneOffset;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +27,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/console/companies")
 class ConsoleCompanyController {
 
+    private final CompanyService companies;
+
+    ConsoleCompanyController(CompanyService companies) {
+        this.companies = companies;
+    }
+
+    static Company company(CompanyRow row) {
+        return new Company(row.code(), row.name(), row.legalName(), row.status(),
+                row.createdAt().atOffset(ZoneOffset.UTC));
+    }
+
+    static CompanyMember member(MemberRow row) {
+        return new CompanyMember(row.accountId(), row.name(), row.email(), row.status());
+    }
+
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only (S0-AC-30).";
     static final String NOT_FOUND = "`NOT_FOUND`: no such company, or the caller cannot see it.";
     static final String PAGE_400 = "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`).";
@@ -35,7 +55,9 @@ class ConsoleCompanyController {
     Paged<Company> listCompanies(
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        Paged<CompanyRow> rows = companies.list(CurrentAccount.get().viewer(), page, size);
+        return new Paged<>(rows.items().stream().map(ConsoleCompanyController::company).toList(), rows.page(),
+                rows.size(), rows.totalElements(), rows.totalPages());
     }
 
     @Operation(operationId = "createCompany", summary = "Create a company",
@@ -49,7 +71,8 @@ class ConsoleCompanyController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     Company createCompany(@RequestBody CreateCompanyRequest request) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        return company(companies.create(admin.actor(), request.code(), request.name(), request.legalName()));
     }
 
     @Operation(operationId = "getCompany", summary = "One company")
@@ -58,7 +81,7 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @GetMapping("/{code}")
     Company getCompany(@PathVariable String code) {
-        throw new NotImplementedException();
+        return company(companies.get(CurrentAccount.get().viewer(), code));
     }
 
     @Operation(operationId = "listCompanyCustomers", summary = "Customers of a company",
@@ -73,7 +96,7 @@ class ConsoleCompanyController {
             @PathVariable String code,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return members(code, Role.CUSTOMER, page, size);
     }
 
     @Operation(operationId = "listCompanyAgents", summary = "Agents assigned to a company",
@@ -88,7 +111,7 @@ class ConsoleCompanyController {
             @PathVariable String code,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return members(code, Role.AGENT, page, size);
     }
 
     @Operation(operationId = "assignAgent", summary = "Assign an agent to a company",
@@ -102,6 +125,13 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
     @PutMapping("/{code}/agents/{accountId}")
     CompanyMember assignAgent(@PathVariable String code, @PathVariable long accountId) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        return member(companies.assignAgent(admin.viewer(), admin.actor(), code, accountId));
+    }
+
+    private Paged<CompanyMember> members(String code, Role role, int page, int size) {
+        Paged<MemberRow> rows = companies.members(CurrentAccount.get().viewer(), code, role, page, size);
+        return new Paged<>(rows.items().stream().map(ConsoleCompanyController::member).toList(), rows.page(),
+                rows.size(), rows.totalElements(), rows.totalPages());
     }
 }

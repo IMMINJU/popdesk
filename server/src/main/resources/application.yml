@@ -1,12 +1,28 @@
 spring:
   application:
     name: popdesk
+  main:
+    # Every line on standard output is one JSON object (S0-AC-86); the banner is not.
+    banner-mode: off
+  autoconfigure:
+    # popdesk signs people in itself; Spring Boot's generated user would log a password.
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   datasource:
     # logServerErrorDetail=false keeps values from database errors (for example an email
     # address in a unique key violation) out of exception messages and the log.
     url: ${POPDESK_DB_URL:jdbc:postgresql://localhost:5432/popdesk?logServerErrorDetail=false}
     username: ${POPDESK_DB_USER:popdesk}
     password: ${POPDESK_DB_PASSWORD}
+    hikari:
+      # A transaction waits at most 5 seconds for a row lock, then is retried once (S0-AC-85).
+      connection-init-sql: SET lock_timeout = '5s'
+  session:
+    # The tables come from the migrations (V1), never from Spring Session's script.
+    jdbc:
+      initialize-schema: never
+    # The session ends 8 hours after sign-in by the app's clock (io.popdesk.helpdesk.account.Sessions);
+    # this only lets the database forget it afterwards.
+    timeout: 8h
   jpa:
     open-in-view: false
   flyway:
@@ -18,6 +34,18 @@ spring:
 
 server:
   port: 8080
+  servlet:
+    session:
+      timeout: 8h
+
+logging:
+  structured:
+    format:
+      # One JSON object per line, emails masked (PII-2, S0-AC-86).
+      console: io.popdesk.JsonLogFormat
+  level:
+    # Its WARN line quotes the database's message, which can hold a value (S0 premortem 4).
+    org.hibernate.engine.jdbc.spi.SqlExceptionHelper: ERROR
 
 management:
   server:

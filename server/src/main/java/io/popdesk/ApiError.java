@@ -1,5 +1,6 @@
 package io.popdesk;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
@@ -13,7 +14,7 @@ public record ApiError(
         @Schema(description = "Stable error key. See docs/integrate/conventions.md for the list.") String code,
         String message,
         @Schema(description = "Present only when the error is about specific fields (400 `INVALID_INPUT`).")
-                List<FieldError> fields) {
+                @JsonInclude(JsonInclude.Include.NON_NULL) List<FieldError> fields) {
 
     public record FieldError(
             @Schema(description = "Name of the request field or query parameter.") String field,

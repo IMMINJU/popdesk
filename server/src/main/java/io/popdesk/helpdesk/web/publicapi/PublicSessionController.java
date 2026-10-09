@@ -1,10 +1,13 @@
 package io.popdesk.helpdesk.web.publicapi;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.helpdesk.account.SignInFlow;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,14 +20,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/public")
 class PublicSessionController {
 
+    private final SignInFlow flow;
+
+    PublicSessionController(SignInFlow flow) {
+        this.flow = flow;
+    }
+
     @Operation(operationId = "getCsrfToken", summary = "Set the CSRF cookie",
             description = "Sets the readable CSRF cookie before the first request that changes data (sign-in, "
                     + "accepting an invitation). Clients send its value back in a request header.")
     @ApiResponse(responseCode = "204", description = "The CSRF cookie is set.")
     @GetMapping("/csrf")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void csrf() {
-        throw new NotImplementedException();
+    void csrf(HttpServletRequest request) {
+        // Reading the token makes the CSRF filter set the cookie when the browser has none.
+        if (request.getAttribute(CsrfToken.class.getName()) instanceof CsrfToken token) {
+            token.getToken();
+        }
     }
 
     @Operation(operationId = "signIn", summary = "Sign in",
@@ -40,8 +52,8 @@ class PublicSessionController {
             + "seconds. `Retry-After` says when to try again (S0-AC-24).")
     @PostMapping("/sign-in")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void signIn(@RequestBody SignInRequest request) {
-        throw new NotImplementedException();
+    void signIn(@RequestBody SignInRequest request, HttpServletRequest http, HttpServletResponse response) {
+        flow.signIn(request.email(), request.password(), http, response);
     }
 
     @Operation(operationId = "signOut", summary = "Sign out",
@@ -50,7 +62,7 @@ class PublicSessionController {
     @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
     @PostMapping("/sign-out")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void signOut() {
-        throw new NotImplementedException();
+    void signOut(HttpServletRequest request) {
+        flow.signOut(request);
     }
 }

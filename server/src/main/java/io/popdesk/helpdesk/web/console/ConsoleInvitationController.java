@@ -1,11 +1,13 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.account.InvitationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.ZoneOffset;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +22,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/console/invitations")
 class ConsoleInvitationController {
+
+    private final InvitationService invitations;
+
+    ConsoleInvitationController(InvitationService invitations) {
+        this.invitations = invitations;
+    }
 
     @Operation(operationId = "invite", summary = "Invite a person",
             description = "Creates an `INVITED` account and queues the invitation email (S0-AC-33). A customer joins "
@@ -36,7 +44,9 @@ class ConsoleInvitationController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     InvitationResult invite(@RequestBody CreateInvitationRequest request) {
-        throw new NotImplementedException();
+        InvitationService.Invited invited = invitations.invite(CurrentAccount.get(), request.email(), request.name(),
+                request.role(), request.companyCodes());
+        return new InvitationResult(invited.accountId(), invited.inviteLink());
     }
 
     @Operation(operationId = "listPendingInvitations", summary = "Accounts that have not accepted yet",
@@ -49,7 +59,12 @@ class ConsoleInvitationController {
     Paged<PendingInvitation> listPendingInvitations(
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        Paged<InvitationService.Pending> rows = invitations.pending(CurrentAccount.get(), page, size);
+        return new Paged<>(rows.items().stream().map(p -> new PendingInvitation(p.row().accountId(), p.row().email(),
+                p.row().name(), p.row().role(),
+                p.companies().stream().map(c -> new CompanyRef(c.code(), c.name())).toList(),
+                p.row().invitedAt().atOffset(ZoneOffset.UTC), p.row().expiresAt().atOffset(ZoneOffset.UTC),
+                p.expired())).toList(), rows.page(), rows.size(), rows.totalElements(), rows.totalPages());
     }
 
     @Operation(operationId = "createInvitationLink", summary = "Make a new invitation link to copy",
@@ -62,6 +77,6 @@ class ConsoleInvitationController {
             + "account has this ID.")
     @PostMapping("/{accountId}/link")
     InvitationLink createInvitationLink(@PathVariable long accountId) {
-        throw new NotImplementedException();
+        return new InvitationLink(invitations.newLink(CurrentAccount.get(), accountId));
     }
 }

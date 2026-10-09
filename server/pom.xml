@@ -89,6 +89,16 @@
             <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
             <version>${springdoc.version}</version>
         </dependency>
+        <!-- Sessions, CSRF, security headers, and role checks (architecture.md section 5). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <!-- Server sessions in the database: tables spring_session and spring_session_attributes (V1). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-session-jdbc</artifactId>
+        </dependency>
         <!-- Argon2id password hashes (AUTH-5). Spring Security's Argon2 encoder needs Bouncy Castle. -->
         <dependency>
             <groupId>org.springframework.security</groupId>

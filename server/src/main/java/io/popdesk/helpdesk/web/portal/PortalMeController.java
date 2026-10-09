@@ -1,6 +1,6 @@
 package io.popdesk.helpdesk.web.portal;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.helpdesk.account.CurrentAccount;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,6 +17,7 @@ class PortalMeController {
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`: no session, or it ended (S0-AC-25).")
     @GetMapping("/api/portal/me")
     Me getMe() {
-        throw new NotImplementedException();
+        CurrentAccount account = CurrentAccount.get();
+        return new Me(account.id(), account.email(), account.name());
     }
 }

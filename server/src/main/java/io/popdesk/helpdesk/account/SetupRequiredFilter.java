@@ -8,14 +8,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * While there is no first admin, every API request gets 503 {@code SETUP_REQUIRED} (conventions,
  * S0-AC-02). The log says what to set.
+ *
+ * <p>Not a bean: the security filter chain runs it after the header writer, so the 503 carries the
+ * security headers (S0-AC-16).
  */
-@Component
 class SetupRequiredFilter extends OncePerRequestFilter {
 
     static final String BODY = "{\"code\":\"SETUP_REQUIRED\",\"message\":\"popdesk is not set up yet: the first admin "

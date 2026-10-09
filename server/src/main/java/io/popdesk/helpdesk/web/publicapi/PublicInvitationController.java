@@ -1,9 +1,11 @@
 package io.popdesk.helpdesk.web.publicapi;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.helpdesk.account.SignInFlow;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,6 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/public/invitations")
 class PublicInvitationController {
 
+    private final SignInFlow flow;
+
+    PublicInvitationController(SignInFlow flow) {
+        this.flow = flow;
+    }
+
     @Operation(operationId = "acceptInvitation", summary = "Accept an invitation",
             description = "Sets the password, makes the account `ACTIVE`, and signs it in to its app (S0-AC-36). "
                     + "The response has `Cache-Control: no-store` (S0-AC-101).")
@@ -27,7 +35,8 @@ class PublicInvitationController {
     @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
     @PostMapping("/accept")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void acceptInvitation(@RequestBody AcceptInvitationRequest request) {
-        throw new NotImplementedException();
+    void acceptInvitation(@RequestBody AcceptInvitationRequest request, HttpServletRequest http,
+            HttpServletResponse response) {
+        flow.accept(request.token(), request.password(), http, response);
     }
 }
