@@ -148,6 +148,7 @@ describe('P-5 문의 상세', () => {
     await link(/log\.txt/);
     expect(commentForm()).toBeNull();
     expect(uploadInput()).toBeUndefined();
+    expect(screen.queryAllByRole('button', { name: /지우기/ }), '내가 올린 첨부의 지우기 버튼').toHaveLength(0);
   });
 
   test('P-5 CLOSED: 댓글 쓰기와 첨부 올리기를 숨기고 "종료된 문의입니다", 상태는 "종료됨"', async () => {

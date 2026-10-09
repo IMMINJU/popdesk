@@ -13,6 +13,7 @@ import {
   errors,
   eventually,
   expectFieldError,
+  expectNoAxeViolations,
   fieldState,
   field,
   found,
@@ -255,6 +256,7 @@ describe('2절 400', () => {
     await expectFieldError(content, beforeContent);
     expect(document.activeElement).toBe(title);
     expect(title).toHaveValue('프린터가 안 됩니다');
+    await expectNoAxeViolations();
   });
 
   test('P-4 2절 400 fields: 화면에 없는 칸이 있으면 요약 띠에 서버 message를 함께 보인다', async () => {

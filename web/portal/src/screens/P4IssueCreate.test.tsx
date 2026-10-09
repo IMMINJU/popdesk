@@ -146,7 +146,7 @@ describe('P-4 문의 등록', () => {
     await found(() => screen.queryAllByRole('progressbar')[0], '파일 줄의 진행 막대');
     const create = callsTo('POST', '/api/portal/issues')[0];
     const createBody = await create?.body;
-    const filesInCreate = Array.isArray(createBody) ? (createBody as Part[]).filter((p) => p.name === 'files') : [];
+    const filesInCreate = Array.isArray(createBody) ? (createBody as Part[]).filter((p) => p.filename !== null) : [];
     expect(filesInCreate, '문의 등록 요청에 파일을 싣지 않는다').toEqual([]);
 
     release.open();
