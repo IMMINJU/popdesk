@@ -100,8 +100,7 @@ class CommentTest extends BareAppTest {
         Issue issue = fixtures.fileIssue(s.customer(), s.code());
 
         ApiResponse empty = comment(s.customer(), issue.key(), Map.of("content", ""));
-        ApiResponse blank = comment(s.customer(), issue.key(), Map.of("content", "   
-  "));
+        ApiResponse blank = comment(s.customer(), issue.key(), Map.of("content", "   \n  "));
         ApiResponse tooLong = comment(s.customer(), issue.key(), Map.of("content", "a".repeat(4_001)));
         ApiResponse tooLongByAgent = comment(agent, issue.key(), Map.of("content", "a".repeat(4_001)));
 
