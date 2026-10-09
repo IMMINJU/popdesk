@@ -124,6 +124,30 @@ class AttachmentDeleteTest extends BareAppTest {
         assertStays(agent, issue.key(), id, content);
     }
 
+    @Test
+    @DisplayName("S0-AC-61 when removing the file fails, the delete still answers 204, the row stays purging, and the list shows the trace")
+    void storageFailureStillSucceeds() {
+        Scene s = steps.scene();
+        Issue issue = fixtures.fileIssue(s.customer(), s.code());
+        byte[] content = bytes(1_000, Unique.number());
+        String id = upload(s.customer(), issue.key(), Unique.text("cannot-remove") + ".bin", content)
+                .expectStatus(201).jsonText("id");
+
+        ApiResponse deleted;
+        try (FailureTriggers triggers = new FailureTriggers(db)) {
+            triggers.failRemovingContent(content);
+            deleted = s.customer().client().delete(path(s.customer(), issue.key(), id)).send();
+        }
+
+        assertThat(deleted.status()).isEqualTo(204);
+        assertThat(rows.byId(id).state()).isEqualTo("purging");
+        JsonNode trace = entry(s.customer(), issue.key(), id);
+        assertThat(trace).isNotNull();
+        assertThat(trace.path("deleted").booleanValue()).isTrue();
+        assertThat(trace.path("fileName").isNull()).isTrue();
+        assertThat(download(s.customer(), issue.key(), id).status()).isEqualTo(404);
+    }
+
     private void assertStays(Session owner, String key, String id, byte[] content) {
         assertThat(download(owner, key, id).body()).isEqualTo(content);
         JsonNode item = entry(owner, key, id);

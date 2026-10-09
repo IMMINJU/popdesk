@@ -5,7 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Reads attachment rows for what HTTP cannot show: the file state ({@code pending}, {@code stored},
@@ -36,6 +38,15 @@ final class AttachmentRows {
             throw new AssertionError("No column of " + table + " holds a file state " + STATES + ": " + values);
         }
 
+        /** The attachment ID: column {@code id}, else the row's first {@code uuid} value. Fails with an AssertionError when there is none. */
+        String id() {
+            if (values.get("id") instanceof UUID id) {
+                return id.toString();
+            }
+            return values.values().stream().filter(v -> v instanceof UUID).map(Object::toString).findFirst()
+                    .orElseThrow(() -> new AssertionError("No uuid column in " + table + ": " + values));
+        }
+
         /** Whether a column holds {@code value}, ignoring case. */
         boolean holds(String value) {
             return values.values().stream().anyMatch(v -> v != null && v.toString().equalsIgnoreCase(value));
@@ -55,6 +66,34 @@ final class AttachmentRows {
             throw new AssertionError("Expected one attachment row with ID " + id + " and a file state, found: " + found);
         }
         return found.getFirst();
+    }
+
+    /** The metadata row of an attachment, or empty when there is none (a row that was removed). */
+    Optional<Row> findById(String id) {
+        List<Row> found = find(id, Set.of("uuid", "text", "character varying"));
+        if (found.size() > 1) {
+            throw new AssertionError("More than one attachment row with ID " + id + ": " + found);
+        }
+        return found.stream().findFirst();
+    }
+
+    /** The one table (other than attachment_content) with a text column equal to {@code value}. */
+    String tableHolding(String value) {
+        List<String> tables = new ArrayList<>();
+        for (String table : db.tables()) {
+            for (DbInspector.Column column : db.columns(table)) {
+                if (Set.of("text", "character varying").contains(column.dataType())
+                        && db.count("select count(*) from " + quote(table) + " where " + quote(column.name())
+                                + " = ?", value) > 0
+                        && !tables.contains(table)) {
+                    tables.add(table);
+                }
+            }
+        }
+        if (tables.size() != 1) {
+            throw new AssertionError("Expected one table holding '" + value + "' but found " + tables);
+        }
+        return tables.getFirst();
     }
 
     /** Metadata rows whose text columns hold {@code fileName}. Empty when there is none. */

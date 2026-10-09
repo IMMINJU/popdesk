@@ -5,7 +5,6 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 
 import com.tngtech.archunit.base.DescribedPredicate;
-import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -23,9 +22,12 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The classes are read by package name from the compiled production code; this test imports no
  * production class. A rule whose classes are all missing fails (ArchUnit's
- * {@code failOnEmptyShould}), so it fails until there are entities and JDBC code to check.
+ * {@code failOnEmptyShould}), so it fails until there are entities and a storage package to check.
  */
 class AttachmentArchitectureTest {
+
+    /** The attachment storage (tasks.md section 6, the package name s0-t-ops proposed). */
+    private static final String STORAGE_PACKAGE = "io.popdesk.helpdesk.attachment.storage..";
 
     private static final JavaClasses PRODUCTION = new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
@@ -46,18 +48,12 @@ class AttachmentArchitectureTest {
     }
 
     @Test
-    @DisplayName("S0-AC-56 code that uses a JDBC PreparedStatement never calls setBytes")
-    void jdbcCodeDoesNotCallSetBytes() {
-        noClasses().that(callMethodsOn(PreparedStatement.class))
+    @DisplayName("S0-AC-56 the attachment storage package never calls PreparedStatement.setBytes")
+    void storageDoesNotCallSetBytes() {
+        noClasses().that().resideInAPackage(STORAGE_PACKAGE)
                 .should().callMethodWhere(setBytes())
                 .because("attachment content is written with setBinaryStream(in, length)")
                 .check(PRODUCTION);
-    }
-
-    private static DescribedPredicate<JavaClass> callMethodsOn(Class<?> type) {
-        return DescribedPredicate.describe("call methods of " + type.getSimpleName(),
-                c -> c.getMethodCallsFromSelf().stream()
-                        .anyMatch(call -> call.getTargetOwner().isAssignableTo(type)));
     }
 
     private static DescribedPredicate<JavaMethodCall> setBytes() {

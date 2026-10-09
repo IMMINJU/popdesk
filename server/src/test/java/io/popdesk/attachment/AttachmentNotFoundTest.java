@@ -11,6 +11,7 @@ import static io.popdesk.attachment.AttachmentSteps.uploadToComment;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.attachment.AttachmentSteps.Scene;
+import io.popdesk.attachment.StuckAttachments.Stuck;
 import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
@@ -32,8 +33,8 @@ import org.junit.jupiter.api.Test;
  * an ID that does not exist, on an issue the caller can see. Status, headers but {@code Date}, and
  * body bytes are compared, request by request, on the same client.
  *
- * <p>{@code pending} and {@code purging} attachments are not here: no API call leaves an attachment
- * in either state for long enough to ask for it (see the report).
+ * <p>{@code pending} and {@code purging} attachments are made with {@code test_} triggers
+ * ({@link StuckAttachments}).
  */
 class AttachmentNotFoundTest extends BareAppTest {
 
@@ -153,6 +154,28 @@ class AttachmentNotFoundTest extends BareAppTest {
         s.customer().client().delete(path(s.customer(), issue.key(), id)).expect(204);
 
         assertSameAsUnknownId(s.customer(), issue.key(), issue.key(), id);
+    }
+
+    @Test
+    @DisplayName("S0-AC-102 an attachment left pending answers like an unknown ID on every endpoint, to the uploader and to staff")
+    void pendingAttachment() {
+        Scene s = steps.scene();
+        Issue issue = fixtures.fileIssue(s.customer(), s.code());
+        Stuck pending = new StuckAttachments(db).pending(s.customer(), issue.key());
+
+        assertSameAsUnknownId(s.customer(), issue.key(), issue.key(), pending.id());
+        assertSameAsUnknownId(s.admin(), issue.key(), issue.key(), pending.id());
+    }
+
+    @Test
+    @DisplayName("S0-AC-102 an attachment left purging answers like an unknown ID on every endpoint, to the uploader and to staff")
+    void purgingAttachment() {
+        Scene s = steps.scene();
+        Issue issue = fixtures.fileIssue(s.customer(), s.code());
+        Stuck purging = new StuckAttachments(db).purging(s.customer(), issue.key());
+
+        assertSameAsUnknownId(s.customer(), issue.key(), issue.key(), purging.id());
+        assertSameAsUnknownId(s.admin(), issue.key(), issue.key(), purging.id());
     }
 
     @Test
