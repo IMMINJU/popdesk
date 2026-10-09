@@ -64,11 +64,12 @@ describe('2절 401', () => {
     await field(/^제목/, 'input');
   });
 
-  test('P-5 2절 401 불러올 때: 로그인하지 않고 문의 주소를 열면 로그인 뒤 그 문의로 돌아온다', async () => {
+  test('P-5 2절 401 불러올 때: 로그인하지 않고 문의 주소를 열면 /login?next=로 가고 로그인 뒤 그 문의로 돌아온다', async () => {
     state.signedIn = false;
     const { user } = renderAt('/issues/ACME-7');
 
     await atPath('/login');
+    expect(new URLSearchParams(window.location.search).get('next')).toBe('/issues/ACME-7');
     await signIn(user);
 
     await atPath('/issues/ACME-7');
@@ -88,6 +89,85 @@ describe('2절 401', () => {
     expect(hrefPath(loginLink as Element)).toBe('/login');
     expect(window.location.pathname).toBe('/issues/new');
     expect(await field(/^제목/, 'input')).toHaveValue('프린터가 안 됩니다');
+  });
+});
+
+describe('2절 401 돌아갈 주소', () => {
+  test('P-1 2절 401 next: 같은 앱 경로면 로그인 뒤 그 경로로 간다', async () => {
+    state.signedIn = false;
+    const { user } = renderAt(`/login?next=${encodeURIComponent('/issues/ACME-7')}`);
+    await signIn(user);
+
+    await atPath('/issues/ACME-7');
+  });
+
+  for (const next of ['//evil.example/issues', '/\\evil.example/issues', 'https://evil.example/issues', 'javascript:alert(1)']) {
+    test(`P-1 2절 401 next 부정: "${next}"는 버리고 목록으로 간다`, async () => {
+      state.signedIn = false;
+      const origin = window.location.origin;
+      const { user } = renderAt(`/login?next=${encodeURIComponent(next)}`);
+      await signIn(user);
+
+      await atPath('/issues');
+      expect(window.location.origin).toBe(origin);
+    });
+  }
+});
+
+describe('2절 처음 불러옴', () => {
+  const skeletons = (main: Element) => main.querySelectorAll('[aria-hidden="true"]').length;
+
+  test('P-5 2절 처음 불러옴: 300ms 안에 오면 뼈대를 보이지 않고, 불러오는 동안 main은 aria-busy', async () => {
+    useFakeClock();
+    const release = gate();
+    on('get', '/api/portal/issues/:key', async () => {
+      await release.opened;
+      return HttpResponse.json(state.issue);
+    });
+    renderAt('/issues/ACME-7', { fakeTimers: true });
+
+    const main = await found(() => screen.queryByRole('main'), '본문 main');
+    await eventually(() => {
+      expect(main).toHaveAttribute('aria-busy', 'true');
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(skeletons(main), '300ms 전의 뼈대').toBe(0);
+    release.open();
+
+    await found(() => screen.queryByRole('heading', { name: /로그인이 안 됩니다/ }), '문의 제목');
+    await eventually(() => {
+      expect(main).not.toHaveAttribute('aria-busy', 'true');
+    });
+  });
+
+  test('P-5 2절 처음 불러옴: 300ms가 넘으면 aria-hidden 뼈대가 보이고, 다 오면 aria-busy를 푼다', async () => {
+    useFakeClock();
+    const release = gate();
+    on('get', '/api/portal/issues/:key', async () => {
+      await release.opened;
+      return HttpResponse.json(state.issue);
+    });
+    renderAt('/issues/ACME-7', { fakeTimers: true });
+
+    const main = await found(() => screen.queryByRole('main'), '본문 main');
+    await eventually(() => {
+      expect(main).toHaveAttribute('aria-busy', 'true');
+    });
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    await eventually(() => {
+      expect(skeletons(main), '300ms 뒤의 뼈대(aria-hidden)').toBeGreaterThan(0);
+    });
+    expect(main).toHaveAttribute('aria-busy', 'true');
+    release.open();
+
+    await found(() => screen.queryByRole('heading', { name: /로그인이 안 됩니다/ }), '문의 제목');
+    await eventually(() => {
+      expect(main).not.toHaveAttribute('aria-busy', 'true');
+    });
   });
 });
 

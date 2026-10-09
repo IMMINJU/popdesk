@@ -313,6 +313,25 @@ describe('P-5 문의 상세', () => {
     });
   });
 
+  test('P-5 내려받기: 누르면 먼저 HEAD로 묻고, 200이면 띠 없이 내려받는다', async () => {
+    state.attachments = [attachment({ id: MINE_ID, fileName: 'log.txt' })];
+    const { user } = renderAt(URL_7);
+    await user.click(await link(/log\.txt/));
+
+    await sent('HEAD', `/api/portal/issues/ACME-7/attachments/${MINE_ID}`);
+    expect(screen.queryAllByRole('alert').filter((el) => text(el).includes('파일을 찾을 수 없습니다'))).toHaveLength(0);
+  });
+
+  test('P-5 내려받기 404: HEAD가 404면 "파일을 찾을 수 없습니다" 띠', async () => {
+    state.attachments = [attachment({ id: MINE_ID, fileName: 'log.txt' })];
+    on('head', '/api/portal/issues/:key/attachments/:id', () => new HttpResponse(null, { status: 404 }));
+    const { user } = renderAt(URL_7);
+    await user.click(await link(/log\.txt/));
+
+    await sent('HEAD', `/api/portal/issues/ACME-7/attachments/${MINE_ID}`);
+    await alertWith('파일을 찾을 수 없습니다');
+  });
+
   test('P-5 마크다운 보기 안의 링크는 새 탭, rel="noopener noreferrer"(COM-6)', async () => {
     state.issue = issue({ content: '[설치 안내](https://example.com/help) 를 따라 했습니다.' });
     renderAt(URL_7);

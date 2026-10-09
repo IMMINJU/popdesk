@@ -295,6 +295,12 @@ const defaultHandlers = [
     return denied ?? HttpResponse.json(paged(state.attachments));
   }),
   http.post('*/api/portal/issues/:key/attachments', async ({ request }) => requireSession() ?? (await acceptUpload(request))),
+  http.head('*/api/portal/issues/:key/attachments/:id', ({ params }) => {
+    const denied = requireSession() ?? unknownIssue(params.key);
+    if (denied) return denied;
+    const found = state.attachments.some((a) => a.id === params.id && !a.deleted);
+    return new HttpResponse(null, { status: found ? 200 : 404 });
+  }),
   http.delete('*/api/portal/issues/:key/attachments/:id', ({ params }) => {
     const denied = requireSession();
     if (denied) return denied;
