@@ -1,0 +1,13 @@
+# The proxy in front of the installation, in the form of the Caddy example in
+# docs/operate/configuration.md. Two differences: `tls internal`, because the test host names
+# cannot get public certificates, and the upstream is the Compose service `app`, because Caddy
+# runs in a container on the Compose network instead of on the same machine.
+{
+	skip_install_trust
+}
+
+portal.e2e.test, console.e2e.test {
+	tls internal
+	log
+	reverse_proxy app:8080
+}

@@ -164,8 +164,8 @@ jobs:
       - run: pnpm -r ${{ steps.scope.outputs.filter }} run build
 
   # The app image and the tests that run it (@Tag("deploy"): compose files, popdesk command,
-  # upgrade harness, load test). The server job leaves this tag out. Do not run the hidden
-  # E2E on the same runner: they share the compose volume names.
+  # upgrade harness, load test, and the empty-install E2E in io.popdesk.e2e). The server job
+  # leaves this tag out. They share the compose volume names, so they run one class at a time.
   image:
     name: Image and deploy tests
     needs: changes
@@ -185,7 +185,7 @@ jobs:
         working-directory: server
         env:
           POPDESK_PYTHON: python3
-        run: ./mvnw -B test -Dtest='io.popdesk.deploy.**' -Dtest.excludedGroups=openapi -Dsurefire.failIfNoSpecifiedTests=false
+        run: ./mvnw -B test -Dtest='io.popdesk.deploy.**,io.popdesk.e2e.**' -Dtest.excludedGroups=openapi -Dsurefire.failIfNoSpecifiedTests=false
 
   # Locked tests, merged migrations, and the split between the side that writes tests and the
   # side that implements (design/process.md section C, guard table). The scripts run from the base
