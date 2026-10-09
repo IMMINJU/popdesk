@@ -7,18 +7,6 @@
 
 
 
-# s0-i-deploy
-server io/popdesk/deploy/AttachmentLoadTest.java
-server io/popdesk/deploy/BackupRestoreTest.java
-server io/popdesk/deploy/ContractClientsTest.java
-server io/popdesk/deploy/DevComposeTest.java
-server io/popdesk/deploy/ImplicitTlsMailTest.java
-server io/popdesk/deploy/ObservabilityComposeTest.java
-server io/popdesk/deploy/ReleaseComposeTest.java
-server io/popdesk/deploy/ResetPasswordTest.java
-server io/popdesk/deploy/UpgradeHarnessTest.java
-server io/popdesk/issue/PortalIssueContractTest.java
-server io/popdesk/ops/EndpointMappingsTest.java
 
 # main-end
 server io/popdesk/boundary/BoundaryListTest.java

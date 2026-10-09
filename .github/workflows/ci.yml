@@ -31,6 +31,7 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       webroot: ${{ steps.filter.outputs.webroot }}
       locked: ${{ steps.filter.outputs.locked }}
+      image: ${{ steps.filter.outputs.image }}
     steps:
       - uses: actions/checkout@v5
       - id: all
@@ -64,6 +65,13 @@ jobs:
               - 'server/**'
               - 'web/**'
               - 'docs/integrate/openapi-*.json'
+            image:
+              - *ci
+              - 'Dockerfile'
+              - '.dockerignore'
+              - 'deploy/**'
+              - 'server/**'
+              - 'web/**'
 
   # Secrets can land in any file, so this always runs. On a push it scans only
   # the pushed commits; on a pull request, only the pull request's commits.
@@ -154,6 +162,30 @@ jobs:
       - run: pnpm -r ${{ steps.scope.outputs.filter }} run lint
       - run: pnpm -r --workspace-concurrency=1 ${{ steps.scope.outputs.filter }} run test $(python3 ../scripts/ci/pending.py web)
       - run: pnpm -r ${{ steps.scope.outputs.filter }} run build
+
+  # The app image and the tests that run it (@Tag("deploy"): compose files, popdesk command,
+  # upgrade harness, load test). The server job leaves this tag out. Do not run the hidden
+  # E2E on the same runner: they share the compose volume names.
+  image:
+    name: Image and deploy tests
+    needs: changes
+    if: needs.changes.outputs.all == 'true' || needs.changes.outputs.image == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the image
+        run: docker buildx build --load -t popdesk:test .
+      - name: Deploy tests
+        working-directory: server
+        env:
+          POPDESK_PYTHON: python3
+        run: ./mvnw -B test -Dtest='io.popdesk.deploy.**' -Dtest.excludedGroups=openapi -Dsurefire.failIfNoSpecifiedTests=false
 
   # Locked tests, merged migrations, and the split between the side that writes tests and the
   # side that implements (design/process.md section C, guard table). The scripts run from the base

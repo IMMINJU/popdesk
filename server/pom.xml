@@ -33,8 +33,8 @@
         <bouncycastle.version>1.86</bouncycastle.version>
         <!-- Small heap and one JVM for tests: the dev machine has 16 GB (ADR D-3). -->
         <test.argLine>-Xmx512m -XX:+UseSerialGC -XX:TieredStopAtLevel=1</test.argLine>
-        <!-- Tags left out of a normal test run. -->
-        <test.excludedGroups>openapi</test.excludedGroups>
+        <!-- Tags left out of a normal test run. deploy: needs the app image, runs in the CI image job. -->
+        <test.excludedGroups>openapi,deploy</test.excludedGroups>
         <test.groups></test.groups>
     </properties>
 
