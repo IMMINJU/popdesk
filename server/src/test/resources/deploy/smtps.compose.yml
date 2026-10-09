@@ -1,0 +1,32 @@
+# Added after deploy/compose.yml by ImplicitTlsMailTest.
+# A GreenMail server on the same network as the app: implicit TLS (SMTPS) on 465 with the key in
+# mail-tls/mail-server.p12 (self-signed for the host name "mail"), and plain SMTP without STARTTLS
+# on 3025. Its HTTP API (8080) lists received mail.
+# The app gets only the matching trust store file; ImplicitTlsMailTest points the JVM's default
+# trust store at it with JDK_JAVA_OPTIONS, so no app setting is added.
+services:
+  mail:
+    image: greenmail/standalone:2.1.14
+    environment:
+      GREENMAIL_OPTS: >-
+        -Dgreenmail.hostname=0.0.0.0
+        -Dgreenmail.smtp.port=3025
+        -Dgreenmail.smtps.port=465
+        -Dgreenmail.api.hostname=0.0.0.0
+        -Dgreenmail.api.port=8080
+        -Dgreenmail.users=popdesk:mail-password
+        -Dgreenmail.tls.keystore.file=/tls/mail-server.p12
+        -Dgreenmail.tls.keystore.password=popdesk-test
+    volumes:
+      - type: bind
+        source: ${POPDESK_TEST_RESOURCES}/mail-tls
+        target: /tls
+        read_only: true
+    ports:
+      - "8080"
+  app:
+    volumes:
+      - type: bind
+        source: ${POPDESK_TEST_RESOURCES}/mail-tls/mail-trust.p12
+        target: /popdesk-test/mail-trust.p12
+        read_only: true

@@ -1,0 +1,13 @@
+# Given to the upgrade harness with --compose-file by UpgradeHarnessTest (S0 premortem section 8).
+# Adds upgrade/v999 as a second Flyway location next to the app's own migrations, with Spring
+# Boot's standard property; the app gets no new setting of its own. Assumes the app keeps its
+# migrations in Flyway's default location, classpath:db/migration, with versions below 999.
+services:
+  app:
+    environment:
+      SPRING_FLYWAY_LOCATIONS: "classpath:db/migration,filesystem:/popdesk-test/migration"
+    volumes:
+      - type: bind
+        source: ${POPDESK_TEST_RESOURCES}/upgrade/v999
+        target: /popdesk-test/migration
+        read_only: true
