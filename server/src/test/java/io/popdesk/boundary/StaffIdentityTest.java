@@ -154,8 +154,10 @@ class StaffIdentityTest extends GatedMailTest {
         Pages own = allPages(s.customer(), issuePath(s.issue().key()) + "/comments");
         Pages colleagues = allPages(s.customer(), issuePath(s.colleagueIssue().key()) + "/comments");
 
+        // Only the scene's answers: mailHoldsNoStaff adds more to the shared issue when it runs first.
         assertThat(own.items()).as("staff answers the customer sees")
-                .filteredOn(n -> "SUPPORT_TEAM".equals(n.path("author").path("kind").asString(null))).hasSize(2);
+                .filteredOn(n -> n.path("content").asString("").startsWith("Answer from support, ")).hasSize(2)
+                .allSatisfy(n -> assertThat(n.path("author").path("kind").asString(null)).isEqualTo("SUPPORT_TEAM"));
         assertThat(colleagues.items()).as("authors of comments on the colleague's issue")
                 .anySatisfy(n -> assertThat(n.path("author").path("name").asString(null))
                         .isEqualTo(s.colleague().name()));

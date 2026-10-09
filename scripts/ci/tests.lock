@@ -53,7 +53,7 @@ e36b8708bbbfcfb3150fe5c663ee1f2318962e544030a96cb3dbf61b9747e3c5  server/src/tes
 c4fa50c3acdeed135e65364bb28007c893d29659abacb9228191cf0155ab2bf0  server/src/test/java/io/popdesk/boundary/Membership.java
 2db2ba53fcc8e4e66713ccd9e5822290c5cfe0b769d85c902d92c1707fbed49c  server/src/test/java/io/popdesk/boundary/QueuedMailBoundaryTest.java
 544b453c8f5f44c10a65333655679869a7e8ea799f680967d3d2df21ef196e66  server/src/test/java/io/popdesk/boundary/SmtpGate.java
-ae17773863dd4e39b0003b16558871ebc2e1c122fa4697e4647e0fa372a557f5  server/src/test/java/io/popdesk/boundary/StaffIdentityTest.java
+225352b6512ff262db514d762ec00da8f70374da435567db575d863cabd7631e  server/src/test/java/io/popdesk/boundary/StaffIdentityTest.java
 3a4cfe56a36b1cba9da957a02efc82d87b6bf945ce7331111e0ffa36af260c89  server/src/test/java/io/popdesk/deploy/AppSteps.java
 ecf9889646be40e9fff453363690816ed6c1c0f2ea4ac10dbfe7ac6d43ff1427  server/src/test/java/io/popdesk/deploy/AttachmentLoadTest.java
 5a7f0b96f8ecf04e0a580e6d7602bb6df70b1bda5cabc4e257d610a2440d8ca9  server/src/test/java/io/popdesk/deploy/BackupRestoreTest.java
