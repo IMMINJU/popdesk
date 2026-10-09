@@ -1,0 +1,160 @@
+package io.popdesk.boundary;
+
+import java.util.List;
+
+/**
+ * The boundary test list: every operation of both contract files, with the test methods
+ * that check its boundary, or the reason it has none. {@link BoundaryListTest} holds this list to
+ * the contract files and to the test classes.
+ *
+ * <p>A test is written {@code package.Class#method}, under {@code io.popdesk}. "Boundary" here is
+ * what the caller may see or do: another customer company, a colleague's private issue, internal
+ * comments, an agent's assigned companies, and actions for admins only.
+ */
+final class BoundaryList {
+
+    /** One operation of the contract: method and path as the contract writes them. */
+    record Entry(String method, String path, List<String> tests, String noBoundary) {
+
+        String operation() {
+            return method + " " + path;
+        }
+    }
+
+    private BoundaryList() {}
+
+    private static Entry tested(String method, String path, String... tests) {
+        return new Entry(method, path, List.of(tests), null);
+    }
+
+    private static Entry none(String method, String path, String reason) {
+        return new Entry(method, path, List.of(), reason);
+    }
+
+    private static final String ISSUE = "/api/portal/issues/{key}";
+    private static final String STAFF_ISSUE = "/api/console/issues/{key}";
+    private static final String BOUNDARY = "boundary.CompanyBoundaryTest#";
+    private static final String STAFF = "boundary.StaffIdentityTest#";
+
+    static final List<Entry> ENTRIES = List.of(
+            // Before sign-in, both hosts
+            none("GET", "/api/public/csrf", "sets the CSRF cookie before sign-in; no customer data"),
+            none("POST", "/api/public/sign-in", "named by the criterion as unrelated to the boundary: sign-in"),
+            none("POST", "/api/public/sign-out", "named by the criterion as unrelated to the boundary: sign-out"),
+            none("POST", "/api/public/invitations/accept", "named by the criterion as unrelated to the boundary: accepting an invitation"),
+
+            // Portal
+            none("GET", "/api/portal/me", "answers with the caller's own account; no input picks a target"),
+            tested("GET", "/api/portal/companies",
+                    BOUNDARY + "customerCompanyListHasNothingOfB",
+                    STAFF + "companiesHoldNoStaff",
+                    "project.CompanyListTest#customerSeesOwn"),
+            tested("GET", "/api/portal/issues",
+                    BOUNDARY + "customerIssueListHasNothingOfB",
+                    BOUNDARY + "colleagueSeesNoPrivateIssue",
+                    STAFF + "issuesHoldNoStaff",
+                    "issue.IssueListTest#customerList"),
+            tested("POST", "/api/portal/issues",
+                    BOUNDARY + "customerOfACannotFileInB",
+                    "issue.IssueCreateTest#customerOfOtherCompanyGets404",
+                    "issue.IssueCreateTest#staffOnConsoleHostGet404"),
+            tested("GET", ISSUE,
+                    BOUNDARY + "customerOfASeesNoIssueOfB",
+                    BOUNDARY + "colleagueSeesNoPrivateIssue",
+                    STAFF + "issuesHoldNoStaff",
+                    "issue.IssueListTest#customerDetail"),
+            tested("GET", ISSUE + "/comments",
+                    BOUNDARY + "customerOfASeesNoIssueOfB",
+                    BOUNDARY + "colleagueSeesNoPrivateIssue",
+                    BOUNDARY + "internalCommentNotListedForCustomers",
+                    STAFF + "commentsHoldNoStaff",
+                    "issue.CommentTest#internalCommentHiddenFromCustomer"),
+            tested("POST", ISSUE + "/comments",
+                    BOUNDARY + "customerOfACannotCommentOnB",
+                    BOUNDARY + "colleagueCannotCommentOnPublicIssue",
+                    "issue.CommentTest#colleagueGets403",
+                    "issue.CommentTest#colleagueOnPrivateIssueGets404"),
+            tested("GET", ISSUE + "/attachments",
+                    BOUNDARY + "customerOfASeesNoIssueOfB",
+                    BOUNDARY + "internalAttachmentNotListedForCustomers",
+                    STAFF + "attachmentsHoldNoStaff",
+                    "attachment.AttachmentNotFoundTest#internalAttachmentNotListed"),
+            tested("POST", ISSUE + "/attachments",
+                    BOUNDARY + "customerOfACannotAttachToB",
+                    BOUNDARY + "colleagueCannotAttachToPublicIssue"),
+            tested("GET", ISSUE + "/attachments/{id}",
+                    BOUNDARY + "customerOfAGetsNoAttachmentOfB",
+                    BOUNDARY + "colleagueGetsNoPrivateAttachment",
+                    BOUNDARY + "internalAttachmentIsNotFoundForCustomers",
+                    "attachment.AttachmentNotFoundTest#otherCompanysIssue"),
+            tested("HEAD", ISSUE + "/attachments/{id}",
+                    BOUNDARY + "customerOfAGetsNoAttachmentOfB",
+                    BOUNDARY + "colleagueGetsNoPrivateAttachment",
+                    BOUNDARY + "internalAttachmentIsNotFoundForCustomers"),
+            tested("DELETE", ISSUE + "/attachments/{id}",
+                    BOUNDARY + "customerOfAGetsNoAttachmentOfB",
+                    BOUNDARY + "colleagueGetsNoPrivateAttachment",
+                    BOUNDARY + "internalAttachmentIsNotFoundForCustomers"),
+
+            // Console
+            none("GET", "/api/console/me", "answers with the caller's own account; no input picks a target"),
+            tested("GET", "/api/console/accounts",
+                    "ops.CheckOrderTest#roleBeforeTargetAndInput"),
+            tested("GET", "/api/console/companies",
+                    BOUNDARY + "agentCompanyListHasNothingOfB",
+                    "project.CompanyListTest#agentSeesAssigned",
+                    "project.CompanyListTest#unassignedAgentSeesNone"),
+            tested("POST", "/api/console/companies",
+                    "project.CompanyPermissionTest#agentCannotCreateCompany"),
+            tested("GET", "/api/console/companies/{code}",
+                    BOUNDARY + "agentOfASeesNoIssueOfB",
+                    "ops.CheckOrderTest#scopeBeforePermissionAndInput"),
+            tested("GET", "/api/console/companies/{code}/agents",
+                    "ops.CheckOrderTest#roleBeforeTargetAndInput"),
+            tested("PUT", "/api/console/companies/{code}/agents/{accountId}",
+                    "project.CompanyPermissionTest#agentCannotAssign",
+                    "project.CompanyPermissionTest#agentGets403BeforeTargetCheck"),
+            tested("GET", "/api/console/companies/{code}/customers",
+                    "ops.CheckOrderTest#roleBeforeTargetAndInput"),
+            tested("GET", "/api/console/invitations",
+                    "project.PendingInvitationListTest#agentCannotList"),
+            tested("POST", "/api/console/invitations",
+                    "project.InvitationTest#agentCannotInvite"),
+            tested("POST", "/api/console/invitations/{accountId}/link",
+                    "project.InvitationLinkCopyTest#copyOnlyForPendingByAdmin"),
+            tested("GET", "/api/console/issues",
+                    BOUNDARY + "agentListHasNothingOfB",
+                    "issue.IssueListTest#agentSeesAssignedCompanies"),
+            tested("GET", STAFF_ISSUE,
+                    BOUNDARY + "agentOfASeesNoIssueOfB",
+                    "issue.IssueListTest#agentSeesAssignedCompanies"),
+            tested("GET", STAFF_ISSUE + "/comments",
+                    BOUNDARY + "agentOfASeesNoIssueOfB"),
+            tested("POST", STAFF_ISSUE + "/comments",
+                    BOUNDARY + "agentOfACannotWriteOnB",
+                    "issue.CommentTest#unassignedAgentGets404"),
+            tested("GET", STAFF_ISSUE + "/attachments",
+                    BOUNDARY + "agentOfASeesNoIssueOfB"),
+            tested("POST", STAFF_ISSUE + "/attachments",
+                    BOUNDARY + "agentOfACannotWriteOnB"),
+            tested("GET", STAFF_ISSUE + "/attachments/{id}",
+                    BOUNDARY + "agentOfAGetsNoAttachmentOfB",
+                    "attachment.AttachmentNotFoundTest#unassignedAgent"),
+            tested("HEAD", STAFF_ISSUE + "/attachments/{id}",
+                    BOUNDARY + "agentOfAGetsNoAttachmentOfB",
+                    "attachment.AttachmentNotFoundTest#unassignedAgent"),
+            tested("DELETE", STAFF_ISSUE + "/attachments/{id}",
+                    BOUNDARY + "agentOfAGetsNoAttachmentOfB",
+                    "attachment.AttachmentNotFoundTest#unassignedAgent"),
+            tested("GET", "/api/console/notifications",
+                    "ops.OpsAlertTest#failedRowAlertsEveryAdmin"),
+            none("GET", "/api/console/notifications/unread-count",
+                    "counts the caller's own inbox; no input picks a target, and the only items of this slice are ops alerts, which hold no customer data"),
+            tested("POST", "/api/console/notifications/{id}/read",
+                    "ops.OpsAlertTest#cannotReadOthersItem"),
+            none("GET", "/api/console/system/status",
+                    "named by the criterion as unrelated to the boundary: system status (admins only is checked by ops.SystemStatusTest#agentForbidden)"),
+            tested("GET", "/api/console/system/failed-deliveries",
+                    "ops.SystemStatusTest#agentForbidden",
+                    "ops.CheckOrderTest#roleBeforeTargetAndInput"));
+}
