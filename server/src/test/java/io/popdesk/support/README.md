@@ -23,7 +23,7 @@ All setups set:
 
 The SMTP setups also set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM`, and `NOTIFY_WEBHOOK_URL`. Received mail and webhook requests are cleared before each test.
 
-To change a key for one class, add `@TestPropertySource(properties = "KEY=value")`. Each different set of keys starts another context and another database, so do this only when the criterion is about that key. Keys set with `@DynamicPropertySource` in a setup (SMTP host and port, webhook URL) win over `@TestPropertySource`; override them with your own `@DynamicPropertySource`. At most 3 contexts stay open (`src/test/resources/spring.properties`).
+To change a key for one class, add `@TestPropertySource(properties = "KEY=value")`. Each different set of keys starts another context and another database, so do this only when the criterion is about that key. Keys set with `@DynamicPropertySource` in a setup (SMTP host and port, webhook URL) win over `@TestPropertySource`, and also over a `@DynamicPropertySource` in your subclass; to change one, put a `DynamicPropertyRegistrar` bean in a `@TestConfiguration` and `@Import` it on your class (`notify/StrictTransportTest`). At most 3 contexts stay open (`src/test/resources/spring.properties`).
 
 Within a context, data from other test classes stays in the database. Never assume an empty table or a count from zero; use the unique values the fixtures make (`Unique`).
 
