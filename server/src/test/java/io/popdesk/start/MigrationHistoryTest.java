@@ -16,8 +16,8 @@ import org.junit.jupiter.api.Test;
  */
 class MigrationHistoryTest extends OwnStartTest {
 
-    /** What the log points at for recovery: the operations documentation. */
-    static final String RECOVERY_DOC = "docs/operate";
+    /** The recovery steps for a failed migration (tasks.md section 7). */
+    static final String RECOVERY_DOC = "docs/operate/upgrade.md";
 
     @Test
     @DisplayName("S0-AC-07 a database with a migration newer than the app stops the start and says to restore the backup")
