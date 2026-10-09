@@ -148,3 +148,9 @@ C-7 점검(`s0-c7-review`)으로 정한 것:
 - 범위 없는 읽기 규칙(S0-AC-84)은 고객 데이터 저장소(`issue`·`comment`·`attachment`·`company` 패키지)에만 건다. 보내기 대기, 운영 경보, 정리 기록 저장소는 `findById`를 써도 된다. `account` 패키지는 계정 저장소만 범위 없이 읽는다.
 - 보내기 직전 다시 보기(S0-AC-69)는 `notification`이 인터페이스를 두고 `helpdesk.system`이 구현한다(`notification`이 `helpdesk.system`에 기대지 않게).
 - 같은 트랜잭션 기준(S0-AC-56 ②, S0-AC-66, S0-AC-83)은 6절의 `test_` 트리거로 업무 쪽 쓰기를 실패시켜 양쪽을 본다.
+- 첨부 합 80% 경고 로그(S0-AC-58)에는 설정 키 이름 `POPDESK_ATTACHMENT_QUOTA`를 넣는다.
+- 정리 작업은 실행 기록(S0-AC-82)을 지우기를 끝낸 뒤에 쓴다.
+- 정리 작업이 `pending`을 먼저 끝낸 뒤 늦게 끝난 올리기의 상태 코드는 정하지 않는다(테스트는 400 이상과 `stored`가 아님만 본다). 그때 ②가 쓴 내용 행이 남는지는 C-10에서 코드로 본다.
+- `helpdesk` 모듈의 DB 접근(`EntityManager`, `JdbcTemplate`)은 저장소 클래스에서만 한다(`ScopedReadRulesTest.rawDatabaseAccessOnlyInRepositories`).
+- 표 이름에는 `issue`, `outbox`, `audit`이 들어간다. 업그레이드 틀 테스트(V999, 견본 경계값)가 이 꼴로 표를 찾는다.
+- 409 본문(중복 초대 등)에 입력한 이메일을 되돌려 넣지 않는다.

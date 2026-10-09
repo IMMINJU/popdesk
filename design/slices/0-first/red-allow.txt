@@ -124,3 +124,6 @@ src/components/TextField.test.tsx.TextField > TextField axe: 기본·오류·도
 src/components/Toast.test.tsx.Toast > Toast 영역: role="status"와 aria-live="polite" 하나에 메시지를 쌓는다 | 껍데기가 role="status" 영역 하나와 셋까지 자르기를 이미 한다
 src/components/Toast.test.tsx.Toast > Toast 셋까지: 넷이면 가장 오래된 것이 빠지고 새 셋이 남는다 | 껍데기가 role="status" 영역 하나와 셋까지 자르기를 이미 한다
 src/components/Toast.test.tsx.Toast > Toast axe: 성공·안내에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+io.popdesk.ops.EndpointMappingsTest.apiMappingsAreTheContract | S0-AC-91 C-4 껍데기 컨트롤러가 계약 연산을 그대로 매핑한다. @Hidden·그룹 밖 엔드포인트를 더하면 빨개진다(s0-tfix-c가 직접 확인)
+io.popdesk.ops.EndpointMappingsTest.otherMappingsOnlyRead | S0-AC-91 C-4 껍데기에 /api/ 밖 쓰기 매핑이 없다
+io.popdesk.ops.EndpointMappingsTest.noPasswordResetPath | S0-AC-97 C-4 껍데기에 비밀번호 복구 경로가 없다
