@@ -129,3 +129,4 @@
 - 시작을 막는 로그 문구(S0-AC-07·10)에는 기준이 적은 것만 넣는다: S0-AC-07은 DB 버전과 "backup", S0-AC-10은 빠진 권한(`CREATE`)과 DB 사용자 이름.
 - `tenant_id` 예외 목록(S0-AC-103)은 `server/README.md`의 `| Table | Reason |` 표다.
 - 계정 상태 값은 `INVITED`·`ACTIVE`·`SUSPENDED`이고 상태 칸은 이 묶음에서 `SUSPENDED`를 받는다(정지 기능은 뒤 묶음, 테스트가 SQL로 넣는다). 정지된 계정의 로그인은 401이다.
+- 릴리스 compose(S0-AC-88·94): 설정 키는 Compose 환경(`${KEY}` 치환이나 `env_file: .env`)으로 받고, `.env` 말고 compose 파일 기준의 상대 경로(바인드 마운트 등)를 두지 않는다. `app` 상태 확인은 `start_period + interval × retries`가 5분보다 짧다(첫 관리자 값이 없으면 5분 안에 `unhealthy`). 관리 포트 8081은 컨테이너의 모든 인터페이스에서 받되 compose가 호스트로 열지 않는다.
