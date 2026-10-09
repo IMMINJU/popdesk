@@ -9,6 +9,7 @@ import io.popdesk.support.ApiResponse;
 import io.popdesk.support.AppTest;
 import io.popdesk.support.BareAppTest;
 import io.popdesk.support.Unique;
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,24 @@ class SignInRateLimitTest extends BareAppTest {
         assertError(rightPassword, 429, "RATE_LIMITED");
         assertRetryAfter(rightPassword);
         assertError(browser.get("/api/console/me").send(), 401, "UNAUTHENTICATED");
+    }
+
+    @Test
+    @DisplayName("S0-AC-24 the limit counts 60 seconds on the app's clock: after they pass, sign-in works again")
+    void limitEndsAfterSixtySeconds() {
+        String ip = AuthChecks.freshIp();
+        String email = Unique.email("nobody");
+        ApiClient browser = console();
+        for (int attempt = 1; attempt <= 20; attempt++) {
+            assertError(AuthChecks.signIn(browser, email, "wrong-Password-1", ip), 401, "SIGN_IN_FAILED");
+        }
+        assertError(AuthChecks.signIn(browser, email, "wrong-Password-1", ip), 429, "RATE_LIMITED");
+
+        clock.advance(Duration.ofSeconds(61));
+
+        assertError(AuthChecks.signIn(browser, email, "wrong-Password-1", ip), 401, "SIGN_IN_FAILED");
+        AuthChecks.signIn(browser, AppTest.ADMIN_EMAIL, AppTest.ADMIN_PASSWORD, ip).expectStatus(204);
+        browser.get("/api/console/me").expect(200);
     }
 
     @Test

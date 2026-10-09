@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.popdesk.support.ApiClient;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.AppLog;
+import io.popdesk.support.AppTest;
 import io.popdesk.support.BareAppTest;
 import io.popdesk.support.Unique;
 import io.popdesk.support.Wait;
@@ -42,7 +43,7 @@ class ForwardedHeadersTest extends BareAppTest {
 
     @Test
     @DisplayName("S0-AC-19 a trusted proxy's X-Forwarded-Proto that differs from POPDESK_PUBLIC_SCHEME "
-            + "logs one warning per value pair")
+            + "logs one warning per (scheme, port) pair")
     void schemeMismatchWarnsOncePerPair() {
         AppLog.Mark mark = log.mark();
 
@@ -50,23 +51,49 @@ class ForwardedHeadersTest extends BareAppTest {
             client.get("/api/public/csrf").header("X-Forwarded-Proto", "https").expect(204);
         }
 
-        Wait.until("a warning naming https", () -> warningsWith(mark, "https").isEmpty() ? null : true);
-        Wait.holds("only one warning for the pair (https, http)", Duration.ofSeconds(3),
-                () -> warningsWith(mark, "https").size() <= 1);
-        assertThat(warningsWith(mark, "https")).as("warnings since the first request").hasSize(1);
+        awaitOneWarning(mark, "https");
     }
 
     @Test
-    @DisplayName("S0-AC-19 X-Forwarded-Proto equal to POPDESK_PUBLIC_SCHEME logs no warning")
-    void matchingSchemeDoesNotWarn() {
+    @DisplayName("S0-AC-19 a forwarded port that differs from POPDESK_PUBLIC_PORT logs one warning per pair, "
+            + "from X-Forwarded-Port or else from the port in X-Forwarded-Host")
+    void portMismatchWarnsOncePerPair() {
+        String port = Integer.toString(20000 + (int) Unique.number());
+        String other = Integer.toString(20000 + (int) Unique.number());
+        AppLog.Mark mark = log.mark();
+
+        console().get("/api/public/csrf").header("X-Forwarded-Port", port).expect(204);
+        portal().get("/api/public/csrf").header("X-Forwarded-Port", port).expect(204);
+        console().get("/api/public/csrf").header("X-Forwarded-Host", AppTest.CONSOLE_HOST + ":" + port).expect(204);
+        console().get("/api/public/csrf").header("X-Forwarded-Host", AppTest.CONSOLE_HOST + ":" + other).expect(204);
+        portal().get("/api/public/csrf").header("X-Forwarded-Host", AppTest.PORTAL_HOST + ":" + other).expect(204);
+
+        awaitOneWarning(mark, port);
+        awaitOneWarning(mark, other);
+    }
+
+    @Test
+    @DisplayName("S0-AC-19 a forwarded scheme and port equal to POPDESK_PUBLIC_SCHEME and POPDESK_PUBLIC_PORT "
+            + "log no warning")
+    void matchingSchemeAndPortDoNotWarn() {
         AppLog.Mark mark = log.mark();
         String path = "/api/public/csrf";
 
-        console().get(path).header("X-Forwarded-Proto", "http").expect(204);
-        portal().get(path).header("X-Forwarded-Proto", "http").expect(204);
+        console().get(path).header("X-Forwarded-Proto", "http").header("X-Forwarded-Port", "80").expect(204);
+        portal().get(path).header("X-Forwarded-Proto", "http").header("X-Forwarded-Host", AppTest.PORTAL_HOST + ":80")
+                .expect(204);
+        console().get(path).header("X-Forwarded-Proto", "http").header("X-Forwarded-Host", AppTest.CONSOLE_HOST)
+                .expect(204);
 
         Wait.holds("no warning naming the scheme", Duration.ofSeconds(3),
                 () -> warningsWith(mark, "http").isEmpty());
+    }
+
+    private void awaitOneWarning(AppLog.Mark mark, String value) {
+        Wait.until("a warning naming " + value, () -> warningsWith(mark, value).isEmpty() ? null : true);
+        Wait.holds("only one warning naming " + value, Duration.ofSeconds(3),
+                () -> warningsWith(mark, value).size() <= 1);
+        assertThat(warningsWith(mark, value)).as("warnings naming %s since the first request", value).hasSize(1);
     }
 
     private List<String> warningsWith(AppLog.Mark mark, String text) {

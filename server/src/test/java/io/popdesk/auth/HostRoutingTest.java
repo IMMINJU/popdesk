@@ -13,6 +13,7 @@ import io.popdesk.support.Fixtures.App;
 import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,9 +21,10 @@ import org.junit.jupiter.api.Test;
 /**
  * Each host serves only its own app's API, and a host that is neither gets a plain text note.
  *
- * <p>Tomcat answers 400 itself, before the app, for a {@code Host} with characters outside letters,
- * digits, dots, and hyphens ({@code <svg onload=1>}, quotes). The unknown-host checks therefore use a
- * valid name in mixed case to see that the note keeps the received value as it came.
+ * <p>The host is {@code X-Forwarded-Host} from a trusted proxy when there is one, else {@code Host},
+ * compared without the port. The test client connects from 127.0.0.1, a trusted proxy by default.
+ * Tomcat answers 400 itself, before the app, for a {@code Host} with characters outside letters,
+ * digits, dots, and hyphens, so {@code <svg onload=1>} and quotes go in {@code X-Forwarded-Host}.
  */
 class HostRoutingTest extends BareAppTest {
 
@@ -102,5 +104,51 @@ class HostRoutingTest extends BareAppTest {
                     .contains(host);
             assertSecurityHeaders(response);
         }
+    }
+
+    @Test
+    @DisplayName("S0-AC-14 an unknown X-Forwarded-Host from a trusted proxy gets the plain text note "
+            + "with the value as received, markup, quotes, and port included")
+    void unknownForwardedHostKeptAsReceived() {
+        String withPort = "unknown-" + Unique.number() + ".example.test:" + (20000 + Unique.number());
+        for (String forwarded : List.of("<svg onload=1>", "a\"b'c<x>.example.test", withPort)) {
+            ApiResponse response = console().get("/api/public/csrf")
+                    .header("X-Forwarded-Host", forwarded)
+                    .header("Accept", "application/json")
+                    .send();
+
+            assertThat(response.status()).as("%s with X-Forwarded-Host %s", response, forwarded).isEqualTo(404);
+            assertThat(normalizedContentType(response)).as(forwarded).isEqualTo("text/plain;charset=utf-8");
+            assertThat(response.text()).as(forwarded)
+                    .contains(AppTest.PORTAL_HOST)
+                    .contains(AppTest.CONSOLE_HOST)
+                    .contains(forwarded);
+            assertSecurityHeaders(response);
+        }
+    }
+
+    @Test
+    @DisplayName("S0-AC-13, S0-AC-14 X-Forwarded-Host from a trusted proxy decides the app, not Host")
+    void forwardedHostDecidesTheApp() {
+        ApiClient behindProxy = client("app-" + Unique.number() + ".internal");
+
+        behindProxy.get("/api/public/csrf").header("X-Forwarded-Host", AppTest.CONSOLE_HOST).expect(204);
+        assertError(console().get("/api/console/me").header("X-Forwarded-Host", AppTest.PORTAL_HOST).send(),
+                404, "NOT_FOUND");
+        assertError(console().get("/api/portal/me").header("X-Forwarded-Host", AppTest.PORTAL_HOST).send(),
+                401, "UNAUTHENTICATED");
+    }
+
+    @Test
+    @DisplayName("S0-AC-14 the host is compared without its port")
+    void hostComparedWithoutPort() {
+        int port = 20000 + (int) Unique.number();
+
+        client(AppTest.CONSOLE_HOST).get("/api/public/csrf").header("Host", AppTest.CONSOLE_HOST + ":" + port)
+                .expect(204);
+        assertError(console().get("/api/portal/me")
+                .header("X-Forwarded-Host", AppTest.PORTAL_HOST + ":" + port).send(), 401, "UNAUTHENTICATED");
+        assertError(console().get("/api/console/me")
+                .header("X-Forwarded-Host", AppTest.CONSOLE_HOST + ":" + port).send(), 401, "UNAUTHENTICATED");
     }
 }

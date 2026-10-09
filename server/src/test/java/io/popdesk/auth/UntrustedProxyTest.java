@@ -69,20 +69,34 @@ class UntrustedProxyTest extends BareAppTest {
 
     @Test
     @Order(3)
-    @DisplayName("S0-AC-18, S0-AC-19 X-Forwarded-Proto from an address that is not a trusted proxy is ignored "
+    @DisplayName("S0-AC-18, S0-AC-19 X-Forwarded-Proto and -Port from an address that is not a trusted proxy are ignored "
             + "and logs no warning")
     void untrustedForwardedProtoIsIgnored() {
         AppLog.Mark mark = log.mark();
 
-        console().get("/api/public/csrf").header("X-Forwarded-Proto", "https").expect(204);
-        portal().get("/api/public/csrf").header("X-Forwarded-Proto", "https").expect(204);
+        String port = Integer.toString(20000 + (int) Unique.number());
 
-        Wait.holds("no warning naming https", Duration.ofSeconds(3),
-                () -> log.lines(mark).stream().noneMatch(l -> l.contains("WARN") && l.contains("https")));
+        console().get("/api/public/csrf").header("X-Forwarded-Proto", "https").expect(204);
+        portal().get("/api/public/csrf").header("X-Forwarded-Proto", "https").header("X-Forwarded-Port", port)
+                .expect(204);
+
+        Wait.holds("no warning naming https or " + port, Duration.ofSeconds(3),
+                () -> log.lines(mark).stream()
+                        .noneMatch(l -> l.contains("WARN") && (l.contains("https") || l.contains(port))));
     }
 
     @Test
     @Order(4)
+    @DisplayName("S0-AC-14, S0-AC-18 X-Forwarded-Host from an address that is not a trusted proxy "
+            + "does not decide the host")
+    void untrustedForwardedHostIsIgnored() {
+        console().get("/api/public/csrf").header("X-Forwarded-Host", "<svg onload=1>").expect(204);
+        AuthChecks.assertError(console().get("/api/console/me").header("X-Forwarded-Host", AppTest.PORTAL_HOST)
+                .send(), 401, "UNAUTHENTICATED");
+    }
+
+    @Test
+    @Order(5)
     @DisplayName("S0-AC-18 X-Forwarded-For from an address that is not a trusted proxy does not change "
             + "the IP the sign-in limit counts")
     void untrustedForwardedForIsIgnored() {

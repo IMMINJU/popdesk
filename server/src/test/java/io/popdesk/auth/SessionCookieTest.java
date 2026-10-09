@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 class SessionCookieTest extends BareAppTest {
 
     @Test
-    @DisplayName("S0-AC-17 the session cookie set at sign-in is HttpOnly, SameSite=Lax, and host-only")
+    @DisplayName("S0-AC-17 the session cookie set at sign-in is HttpOnly, SameSite=Lax, host-only, and not Secure on http")
     void sessionCookieAttributes() {
         ApiResponse signIn = AuthChecks.signIn(console(), AppTest.ADMIN_EMAIL, AppTest.ADMIN_PASSWORD,
                 AuthChecks.freshIp());
@@ -37,11 +37,13 @@ class SessionCookieTest extends BareAppTest {
             assertThat(attributes).as(cookie).containsKey("httponly");
             assertThat(attributes.get("samesite")).as(cookie).isEqualToIgnoringCase("Lax");
             assertThat(attributes).as("host-only: %s", cookie).doesNotContainKey("domain");
+            assertThat(attributes).as("no Secure with POPDESK_PUBLIC_SCHEME=http: %s", cookie)
+                    .doesNotContainKey("secure");
         }
     }
 
     @Test
-    @DisplayName("S0-AC-17 the CSRF cookie is readable by scripts, SameSite=Lax, and host-only on both hosts")
+    @DisplayName("S0-AC-17 the CSRF cookie is readable by scripts, SameSite=Lax, host-only, and not Secure on http")
     void csrfCookieAttributes() {
         ApiClient console = console();
         ApiResponse onPortal = portal().get("/api/public/csrf").send();
@@ -64,6 +66,8 @@ class SessionCookieTest extends BareAppTest {
             assertThat(attributes).as(cookie).doesNotContainKey("httponly");
             assertThat(attributes.get("samesite")).as(cookie).isEqualToIgnoringCase("Lax");
             assertThat(attributes).as("host-only: %s", cookie).doesNotContainKey("domain");
+            assertThat(attributes).as("no Secure with POPDESK_PUBLIC_SCHEME=http: %s", cookie)
+                    .doesNotContainKey("secure");
         }
     }
 
