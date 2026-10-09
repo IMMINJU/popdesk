@@ -141,6 +141,17 @@ public class CompanyRepository {
                 .params(companyId, accountId, Timestamp.from(now)).update() == 1;
     }
 
+    /**
+     * Raises the company's issue counter and returns the new number (ISSUE-3, S0-AC-44). The row stays
+     * locked until the end of the transaction, so the filing calls this last (architecture.md
+     * "Concurrency and lock order", step 4).
+     */
+    public int updateNextIssueNumber(long companyId) {
+        return jdbc.sql("update company set last_issue_number = last_issue_number + 1 where id = ? "
+                        + "returning last_issue_number")
+                .param(companyId).query(Integer.class).single();
+    }
+
     private static String memberTable(Role role) {
         return switch (role) {
             case CUSTOMER -> "company_member";

@@ -1,7 +1,19 @@
 package io.popdesk.helpdesk.web.portal;
 
+import io.popdesk.ApiError;
+import io.popdesk.ApiException;
 import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.Role;
+import io.popdesk.helpdesk.Viewer;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
+import io.popdesk.helpdesk.issue.IssueService;
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Set;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,6 +36,45 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/portal/issues")
 class PortalIssueController {
+
+    /** Query parameters of the list; anything else, such as a staff-only filter, is 400 (S0-AC-48). */
+    private static final Set<String> LIST_PARAMETERS = Set.of("page", "size");
+
+    private final IssueService issues;
+
+    PortalIssueController(IssueService issues) {
+        this.issues = issues;
+    }
+
+    static Issue issue(IssueRow row) {
+        return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
+                row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole()),
+                row.version(), utc(row.createdAt()), utc(row.updatedAt()));
+    }
+
+    static IssueSummary summary(IssueRow row) {
+        return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
+                row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole()),
+                utc(row.createdAt()));
+    }
+
+    /** A customer by name; staff only as the support team, without name or ID (ADR D-49). */
+    static Person person(long accountId, String name, Role role) {
+        return role == Role.CUSTOMER ? new Person(PersonKind.CUSTOMER, accountId, name)
+                : new Person(PersonKind.SUPPORT_TEAM, null, null);
+    }
+
+    static OffsetDateTime utc(Instant instant) {
+        return instant.atOffset(ZoneOffset.UTC);
+    }
+
+    private static IssueService.NewIssue received(CreateIssueRequest request) {
+        String unknownPriority = ReceivedPriority.unknown();
+        String priority = unknownPriority != null ? unknownPriority
+                : request.priority() == null ? null : request.priority().name();
+        return new IssueService.NewIssue(request.companyCode(), request.title(), request.content(), priority,
+                request.privateIssue());
+    }
 
     static final String CREATE_ERRORS_400 = "`INVALID_INPUT`: `title` empty or over 200, `content` over 10,000, "
             + "`priority` unknown; `fields` lists all (S0-AC-42). `COMPANY_NOT_ACTIVE`: the company is not `ACTIVE`.";
@@ -49,7 +100,9 @@ class PortalIssueController {
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     Issue createIssue(@RequestBody CreateIssueRequest request) {
-        throw new NotImplementedException();
+        Viewer viewer = CurrentAccount.get().viewer();
+        IssueService.Draft draft = issues.prepare(viewer, received(request));
+        return issue(issues.file(viewer, draft));
     }
 
     @Operation(operationId = "createIssue", summary = "File an issue")
@@ -58,7 +111,18 @@ class PortalIssueController {
     Issue createIssueWithFiles(
             @RequestPart("issue") CreateIssueRequest issue,
             @RequestPart(name = "files", required = false) List<MultipartFile> files) {
-        throw new NotImplementedException();
+        Viewer viewer = CurrentAccount.get().viewer();
+        // The company is checked before any file is looked at, and an empty file before a number is taken.
+        IssueService.Draft draft = issues.prepare(viewer, received(issue));
+        List<MultipartFile> received = files == null ? List.of() : files;
+        if (received.stream().anyMatch(MultipartFile::isEmpty)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "FILE_EMPTY", "The file is empty.");
+        }
+        if (!received.isEmpty()) {
+            // Storing the files of a filing is not built yet (s0-i-att).
+            throw new NotImplementedException();
+        }
+        return issue(issues.file(viewer, draft));
     }
 
     @Operation(operationId = "listIssues", summary = "Issues the caller can see",
@@ -72,8 +136,15 @@ class PortalIssueController {
     @GetMapping
     Paged<IssueSummary> listIssues(
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+            @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request) {
+        List<ApiError.FieldError> unknown = request.getParameterMap().keySet().stream()
+                .filter(name -> !LIST_PARAMETERS.contains(name)).sorted()
+                .map(name -> new ApiError.FieldError(name, "UNKNOWN_PARAMETER")).toList();
+        if (!unknown.isEmpty()) {
+            throw ApiException.invalid(unknown);
+        }
+        return issues.list(CurrentAccount.get().viewer(), page, size).map(PortalIssueController::summary);
     }
 
     @Operation(operationId = "getIssue", summary = "One issue")
@@ -83,6 +154,6 @@ class PortalIssueController {
             + "(COM-1).")
     @GetMapping("/{key}")
     Issue getIssue(@PathVariable String key) {
-        throw new NotImplementedException();
+        return issue(issues.get(CurrentAccount.get().viewer(), key));
     }
 }

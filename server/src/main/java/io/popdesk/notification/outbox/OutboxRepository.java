@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 class OutboxRepository {
 
     static final String MAIL = "MAIL";
+    static final String WEBHOOK = "WEBHOOK";
     static final String QUEUED = "queued";
 
     private final JdbcClient jdbc;

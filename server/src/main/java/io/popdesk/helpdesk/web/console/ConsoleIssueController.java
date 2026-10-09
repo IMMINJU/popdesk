@@ -1,7 +1,12 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
+import io.popdesk.helpdesk.issue.IssueService;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,6 +22,29 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/console/issues")
 class ConsoleIssueController {
 
+    private final IssueService issues;
+
+    ConsoleIssueController(IssueService issues) {
+        this.issues = issues;
+    }
+
+    static Issue issue(IssueRow row) {
+        return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
+                row.priority(), row.privateIssue(), new Person(row.reporterId(), row.reporterName(), row.reporterRole()),
+                IssueChannel.valueOf(row.channel()), utc(row.firstResponseAt()), row.version(), utc(row.createdAt()),
+                utc(row.updatedAt()));
+    }
+
+    static IssueSummary summary(IssueRow row) {
+        return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
+                row.priority(), row.privateIssue(), new Person(row.reporterId(), row.reporterName(), row.reporterRole()),
+                utc(row.createdAt()));
+    }
+
+    static OffsetDateTime utc(Instant instant) {
+        return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
+    }
+
     @Operation(operationId = "listIssues", summary = "Issues the caller can see",
             description = "All issues of assigned companies for agents, all issues for admins, newest first "
                     + "(S0-AC-47).")
@@ -27,7 +55,7 @@ class ConsoleIssueController {
     Paged<IssueSummary> listIssues(
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return issues.list(CurrentAccount.get().viewer(), page, size).map(ConsoleIssueController::summary);
     }
 
     @Operation(operationId = "getIssue", summary = "One issue")
@@ -37,6 +65,6 @@ class ConsoleIssueController {
             + "for example after being unassigned (COM-1, PROJ-4).")
     @GetMapping("/{key}")
     Issue getIssue(@PathVariable String key) {
-        throw new NotImplementedException();
+        return issue(issues.get(CurrentAccount.get().viewer(), key));
     }
 }

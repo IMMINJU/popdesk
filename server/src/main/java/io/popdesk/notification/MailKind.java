@@ -7,5 +7,11 @@ package io.popdesk.notification;
 public enum MailKind {
 
     /** An invitation to the recipient's app. The send loop makes the link when it sends the email. */
-    INVITATION
+    INVITATION,
+
+    /**
+     * A public comment by staff on an issue, to the issue's reporter (S0-AC-70). Internal comments queue
+     * nothing (S0-AC-53).
+     */
+    STAFF_COMMENT
 }

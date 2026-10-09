@@ -1,7 +1,9 @@
 package io.popdesk.helpdesk.web.portal;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.comment.CommentRepository.CommentRow;
+import io.popdesk.helpdesk.comment.CommentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -21,6 +23,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/portal/issues/{key}/comments")
 class PortalCommentController {
 
+    private final CommentService comments;
+
+    PortalCommentController(CommentService comments) {
+        this.comments = comments;
+    }
+
+    static Comment comment(CommentRow row) {
+        return new Comment(row.id(), PortalIssueController.person(row.authorId(), row.authorName(), row.authorRole()),
+                row.content(), PortalIssueController.utc(row.createdAt()));
+    }
+
     @Operation(operationId = "listComments", summary = "Public comments of an issue",
             description = "Oldest first (S0-AC-54). Internal comments are left out (S0-AC-53). Comments by staff "
                     + "have author `SUPPORT_TEAM` without name or ID (ADR D-49).")
@@ -33,7 +46,7 @@ class PortalCommentController {
             @PathVariable String key,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return comments.list(CurrentAccount.get().viewer(), key, page, size).map(PortalCommentController::comment);
     }
 
     @Operation(operationId = "createComment", summary = "Add a public comment",
@@ -50,6 +63,6 @@ class PortalCommentController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     Comment createComment(@PathVariable String key, @RequestBody CreateCommentRequest request) {
-        throw new NotImplementedException();
+        return comment(comments.add(CurrentAccount.get().viewer(), key, request.content(), false));
     }
 }

@@ -41,4 +41,31 @@ public final class TextInput {
         }
         return value;
     }
+
+    /**
+     * Checks multi-line text of up to {@code max} code points, given as received: NFC, not trimmed.
+     * When {@code required}, an empty value is {@code REQUIRED} and one of only whitespace {@code BLANK};
+     * otherwise a missing value is the empty text. Returns the cleaned value, or null when it is invalid
+     * (and {@code errors} has its entry).
+     */
+    public static String multiLine(String field, String received, boolean required, int max,
+            List<ApiError.FieldError> errors) {
+        if (received == null || received.isEmpty()) {
+            if (required) {
+                errors.add(new ApiError.FieldError(field, "REQUIRED"));
+                return null;
+            }
+            return "";
+        }
+        String value = Normalizer.normalize(received, Normalizer.Form.NFC);
+        if (required && value.isBlank()) {
+            errors.add(new ApiError.FieldError(field, "BLANK"));
+            return null;
+        }
+        if (length(value) > max) {
+            errors.add(new ApiError.FieldError(field, "TOO_LONG"));
+            return null;
+        }
+        return value;
+    }
 }
