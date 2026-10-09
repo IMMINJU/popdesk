@@ -13,7 +13,7 @@
 | 4 | `s0-t-att`, `s0-t-notify`, `s0-t-ops`, `s0-t-web-console` | tests | 3의 서버 탭 병합 |
 | 5 | `s0-t-start`, `s0-t-boundary`, `s0-t-deploy`, `s0-t-e2e` | tests | 4의 서버 탭 병합 |
 | 6 | 메인이 C-6 실패 확인 | 스크립트 | 5 병합 |
-| 7 | `s0-c7-review`, 사람 승인 | other | C-6 잠금 목록 커밋 |
+| 7 | `s0-c7-review`, 사람 승인 | other | C-6 잠금 목록 커밋. 2026-10-09 승인함(0215e1b) |
 | 8 | 구현 탭(3절) | impl | C-7 승인 |
 
 - 한 물결에 서버 테스트 탭은 셋까지다. Testcontainers를 쓰는 Maven 실행이 셋을 넘으면 16GB에서 버티지 못한다. 웹 테스트 탭(Vitest)은 가벼워서 넷째로 붙인다.
