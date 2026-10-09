@@ -10,8 +10,7 @@ session removes a line when the implementing tab that makes those tests pass is 
 
 server: writes the patterns to target/pending-excludes.txt (run from server/) and prints
   -Dsurefire.excludesFile=<that file>
-web: prints --exclude '<glob>' for each pattern (passed through `pnpm -r run test`), and
-  --passWithNoTests, since a package can have every test pending.
+web: prints --exclude '<glob>' for each pattern (passed through `pnpm -r run test`).
 Prints nothing when no pattern is pending.
 """
 
@@ -46,7 +45,7 @@ def main():
         out.write_text("\n".join(patterns) + "\n", encoding="utf-8")
         print(f"-Dsurefire.excludesFile={out.as_posix()}")
     else:
-        print(" ".join([f"--exclude {shlex.quote(p)}" for p in patterns] + ["--passWithNoTests"]))
+        print(" ".join(f"--exclude {shlex.quote(p)}" for p in patterns))
     return 0
 
 
