@@ -1,4 +1,8 @@
+import { useId } from 'react';
+import { CheckIcon } from '../icons';
 import type { Option } from '../types';
+import { describedBy } from '../aria';
+import { FieldError, FieldHelp } from './fieldParts';
 
 export interface CheckboxGroupProps {
   /** `fieldset` legend, e.g. "소속 고객사". */
@@ -15,28 +19,51 @@ export interface CheckboxGroupProps {
 }
 
 export function CheckboxGroup(props: CheckboxGroupProps) {
+  const id = useId();
+  const helpId = `${id}-help`;
+  const errorId = `${id}-error`;
   return (
-    <fieldset data-pd="CheckboxGroup" disabled={props.disabled} aria-invalid={props.error ? true : undefined}>
-      <legend>{props.legend}</legend>
-      {props.options.map((o) => (
-        <label key={o.value}>
-          <input
-            type="checkbox"
-            name={props.name}
-            value={o.value}
-            checked={props.value.includes(o.value)}
-            disabled={o.disabled}
-            onChange={(e) => {
-              props.onChange(
-                e.target.checked ? [...props.value, o.value] : props.value.filter((v) => v !== o.value),
-              );
-            }}
-          />
-          {o.label}
-        </label>
-      ))}
-      {props.helpText && <p>{props.helpText}</p>}
-      {props.error && <p>{props.error}</p>}
+    <fieldset
+      className="pd-group"
+      data-pd="CheckboxGroup"
+      data-invalid={props.error ? 'true' : undefined}
+      disabled={props.disabled}
+      aria-describedby={describedBy(props.helpText && helpId, props.error && errorId)}
+    >
+      <legend className="pd-label">{props.legend}</legend>
+      <div className="pd-group-options">
+        {props.options.map((o) => {
+          const optionId = `${id}-${o.value}`;
+          return (
+            <div key={o.value} className="pd-check">
+              <span className="pd-check-box">
+                <input
+                  id={optionId}
+                  type="checkbox"
+                  className="pd-check-input"
+                  name={props.name}
+                  value={o.value}
+                  checked={props.value.includes(o.value)}
+                  disabled={o.disabled}
+                  onChange={(e) => {
+                    props.onChange(
+                      e.target.checked ? [...props.value, o.value] : props.value.filter((v) => v !== o.value),
+                    );
+                  }}
+                />
+                <span className="pd-check-mark" aria-hidden="true">
+                  <CheckIcon size={14} />
+                </span>
+              </span>
+              <label className="pd-check-label" htmlFor={optionId}>
+                {o.label}
+              </label>
+            </div>
+          );
+        })}
+      </div>
+      <FieldHelp id={helpId} text={props.helpText} />
+      <FieldError id={errorId} text={props.error} />
     </fieldset>
   );
 }

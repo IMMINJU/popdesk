@@ -1,4 +1,5 @@
 import { useId, type Ref } from 'react';
+import { CheckIcon } from '../icons';
 
 export interface CheckboxProps {
   label: string;
@@ -17,22 +18,38 @@ export interface CheckboxProps {
 export function Checkbox({ ref, ...props }: CheckboxProps) {
   const autoId = useId();
   const id = props.id ?? autoId;
+  const descriptionId = `${id}-description`;
   return (
-    <div data-pd="Checkbox">
-      <input
-        ref={ref}
-        id={id}
-        type="checkbox"
-        name={props.name}
-        value={props.value}
-        checked={props.checked}
-        onChange={(e) => {
-          props.onChange(e.target.checked);
-        }}
-        disabled={props.disabled}
-      />
-      <label htmlFor={id}>{props.label}</label>
-      {props.description && <p>{props.description}</p>}
+    <div className="pd-check" data-pd="Checkbox">
+      <span className="pd-check-box">
+        <input
+          ref={ref}
+          id={id}
+          type="checkbox"
+          className="pd-check-input"
+          name={props.name}
+          value={props.value}
+          checked={props.checked}
+          onChange={(e) => {
+            props.onChange(e.target.checked);
+          }}
+          disabled={props.disabled}
+          aria-describedby={props.description ? descriptionId : undefined}
+        />
+        <span className="pd-check-mark" aria-hidden="true">
+          <CheckIcon size={14} />
+        </span>
+      </span>
+      <span className="pd-check-text">
+        <label className="pd-check-label" htmlFor={id}>
+          {props.label}
+        </label>
+        {props.description && (
+          <span id={descriptionId} className="pd-field-help">
+            {props.description}
+          </span>
+        )}
+      </span>
     </div>
   );
 }

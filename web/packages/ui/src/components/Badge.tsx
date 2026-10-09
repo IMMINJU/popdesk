@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { LockIcon } from '../icons';
 
 /** 중립, accent, 경고, 내부 (lock icon and text in internal-text, no left stripe). */
 export type BadgeTone = 'neutral' | 'accent' | 'warning' | 'internal';
@@ -12,10 +13,15 @@ export interface BadgeProps {
 }
 
 export function Badge(props: BadgeProps) {
+  const icon = props.icon ?? (props.tone === 'internal' ? <LockIcon size={12} /> : undefined);
   return (
-    <span data-pd="Badge" data-tone={props.tone}>
-      {props.icon}
-      {props.children}
+    <span className="pd-badge" data-pd="Badge" data-tone={props.tone}>
+      {icon !== undefined && (
+        <span className="pd-badge-icon" aria-hidden="true">
+          {icon}
+        </span>
+      )}
+      <span>{props.children}</span>
     </span>
   );
 }

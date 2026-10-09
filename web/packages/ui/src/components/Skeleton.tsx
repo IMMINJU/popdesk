@@ -14,10 +14,11 @@ export interface SkeletonProps {
  * loads sets `aria-busy`. Stops pulsing under `prefers-reduced-motion`.
  */
 export function Skeleton(props: SkeletonProps) {
+  const style = { width: props.width, height: props.height };
   return (
-    <span data-pd="Skeleton" data-shape={props.shape} aria-hidden="true">
+    <span className="pd-skeleton" data-pd="Skeleton" data-shape={props.shape} aria-hidden="true">
       {Array.from({ length: props.count ?? 1 }, (_, i) => (
-        <span key={i} />
+        <span key={i} className="pd-skeleton-item pd-skeleton-pulse" style={style} />
       ))}
     </span>
   );

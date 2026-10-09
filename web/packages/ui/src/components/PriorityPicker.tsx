@@ -1,5 +1,7 @@
 import { useId } from 'react';
 import type { Priority } from '../types';
+import { describedBy } from '../aria';
+import { FieldError } from './fieldParts';
 import { PriorityLabel } from './PriorityLabel';
 
 const PRIORITIES: readonly Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
@@ -17,26 +19,47 @@ export interface PriorityPickerProps {
 
 /** Four PriorityLabel tags as one radiogroup; arrow keys move between them. */
 export function PriorityPicker(props: PriorityPickerProps) {
-  const autoName = useId();
-  const name = props.name ?? autoName;
+  const id = useId();
+  const name = props.name ?? id;
+  const legendId = `${id}-legend`;
+  const errorId = `${id}-error`;
   return (
-    <fieldset data-pd="PriorityPicker" disabled={props.disabled} aria-invalid={props.error ? true : undefined}>
-      <legend>{props.legend}</legend>
-      {PRIORITIES.map((p) => (
-        <label key={p}>
-          <input
-            type="radio"
-            name={name}
-            value={p}
-            checked={props.value === p}
-            onChange={() => {
-              props.onChange(p);
-            }}
-          />
-          <PriorityLabel priority={p} />
-        </label>
-      ))}
-      {props.error && <p>{props.error}</p>}
+    <fieldset
+      className="pd-group pd-priority-picker"
+      data-pd="PriorityPicker"
+      data-invalid={props.error ? 'true' : undefined}
+      role="radiogroup"
+      aria-labelledby={legendId}
+      aria-describedby={describedBy(props.error && errorId)}
+      disabled={props.disabled}
+    >
+      <legend id={legendId} className="pd-label">
+        {props.legend}
+      </legend>
+      <div className="pd-group-options">
+        {PRIORITIES.map((p) => {
+          const optionId = `${id}-${p}`;
+          return (
+            <div key={p} className="pd-priority-option" data-checked={props.value === p ? 'true' : undefined}>
+              <input
+                id={optionId}
+                type="radio"
+                className="pd-radio-input"
+                name={name}
+                value={p}
+                checked={props.value === p}
+                onChange={() => {
+                  props.onChange(p);
+                }}
+              />
+              <label htmlFor={optionId}>
+                <PriorityLabel priority={p} />
+              </label>
+            </div>
+          );
+        })}
+      </div>
+      <FieldError id={errorId} text={props.error} />
     </fieldset>
   );
 }

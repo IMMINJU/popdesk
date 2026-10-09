@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 
 export interface EmptyStateProps {
   title: string;
@@ -9,16 +9,25 @@ export interface EmptyStateProps {
   action?: ReactNode;
   /** 1 when it replaces the whole screen (404, 권한 없음). Default 2. */
   headingLevel?: 1 | 2 | 3;
+  /** The heading, so a screen can move focus to it (`tabIndex={-1}` is set for level 1). */
+  headingRef?: Ref<HTMLHeadingElement>;
 }
 
-export function EmptyState(props: EmptyStateProps) {
-  const Heading = `h${String(props.headingLevel ?? 2)}` as 'h1' | 'h2' | 'h3';
+export function EmptyState({ headingRef, ...props }: EmptyStateProps) {
+  const level = props.headingLevel ?? 2;
+  const Heading = `h${String(level)}` as 'h1' | 'h2' | 'h3';
   return (
-    <div data-pd="EmptyState">
-      {props.icon}
-      <Heading>{props.title}</Heading>
-      {props.description && <p>{props.description}</p>}
-      {props.action}
+    <div className="pd-empty" data-pd="EmptyState" data-level={level}>
+      {props.icon !== undefined && (
+        <span className="pd-empty-icon" aria-hidden="true">
+          {props.icon}
+        </span>
+      )}
+      <Heading ref={headingRef} className="pd-empty-title" tabIndex={level === 1 ? -1 : undefined}>
+        {props.title}
+      </Heading>
+      {props.description !== undefined && <div className="pd-empty-description">{props.description}</div>}
+      {props.action !== undefined && <div className="pd-empty-action">{props.action}</div>}
     </div>
   );
 }

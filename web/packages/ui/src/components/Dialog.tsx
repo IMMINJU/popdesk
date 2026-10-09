@@ -1,4 +1,7 @@
-import { useId, type ReactNode } from 'react';
+import { useEffect, useEffectEvent, useId, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
+import { CloseIcon } from '../icons';
+import { IconButton } from './IconButton';
 
 export interface DialogProps {
   open: boolean;
@@ -13,6 +16,19 @@ export interface DialogProps {
   pending?: boolean;
   /** Close button name, e.g. "닫기". */
   closeLabel?: string;
+  /** `alertdialog` for questions that need an answer (ConfirmDialog). Default `dialog`. */
+  role?: 'dialog' | 'alertdialog';
+  /** Element to focus on open. Default: the first field, else the first footer button. */
+  initialFocus?: RefObject<HTMLElement | null>;
+  /** Default `md` (480px). `lg` is 640px. */
+  size?: 'md' | 'lg';
+}
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function focusables(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.closest('[hidden], [inert]') === null);
 }
 
 /**
@@ -20,17 +36,101 @@ export interface DialogProps {
  * open, and returns to the element that opened it on close.
  */
 export function Dialog(props: DialogProps) {
-  const titleId = useId();
+  const id = useId();
+  const titleId = `${id}-title`;
+  const descriptionId = `${id}-description`;
+  const box = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
+  const footer = useRef<HTMLDivElement>(null);
+
+  const focusFirst = useEffectEvent(() => {
+    const target =
+      props.initialFocus?.current ??
+      body.current?.querySelector<HTMLElement>('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])') ??
+      (footer.current ? focusables(footer.current)[0] : undefined) ??
+      (box.current ? focusables(box.current)[0] : undefined);
+    target?.focus();
+  });
+
+  useEffect(() => {
+    if (!props.open) return undefined;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    focusFirst();
+    return () => {
+      // Back to the control that opened it, when it is still on the page.
+      if (opener?.isConnected) opener.focus();
+    };
+  }, [props.open]);
+
   if (!props.open) return null;
-  return (
-    <div data-pd="Dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={props.pending}>
-      <h2 id={titleId}>{props.title}</h2>
-      {props.description && <p>{props.description}</p>}
-      <div>{props.children}</div>
-      {props.footer}
-      <button type="button" aria-label={props.closeLabel} onClick={props.onClose}>
-        ×
-      </button>
-    </div>
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      e.preventDefault();
+      props.onClose();
+      return;
+    }
+    if (e.key !== 'Tab' || !box.current) return;
+    const items = focusables(box.current);
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (!first || !last) {
+      e.preventDefault();
+      return;
+    }
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || !box.current.contains(active))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (active === last || !box.current.contains(active))) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
+  return createPortal(
+    <div className="pd-dialog-layer" data-pd="DialogLayer">
+      <div
+        className="pd-dialog-overlay"
+        aria-hidden="true"
+        onClick={() => {
+          props.onClose();
+        }}
+      />
+      <div
+        ref={box}
+        className="pd-dialog"
+        data-pd="Dialog"
+        data-size={props.size ?? 'md'}
+        role={props.role ?? 'dialog'}
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={props.description ? descriptionId : undefined}
+        aria-busy={props.pending ? true : undefined}
+        onKeyDown={onKeyDown}
+      >
+        <div className="pd-dialog-head">
+          <h2 id={titleId} className="pd-dialog-title">
+            {props.title}
+          </h2>
+          <IconButton label={props.closeLabel ?? 'Close'} icon={<CloseIcon />} size="sm" tooltip={false} onClick={props.onClose} />
+        </div>
+        {props.description && (
+          <p id={descriptionId} className="pd-dialog-description">
+            {props.description}
+          </p>
+        )}
+        <div ref={body} className="pd-dialog-body">
+          {props.children}
+        </div>
+        {props.footer !== undefined && (
+          <div ref={footer} className="pd-dialog-footer">
+            {props.footer}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body,
   );
 }

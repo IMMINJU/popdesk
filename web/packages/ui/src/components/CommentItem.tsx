@@ -1,4 +1,8 @@
 import type { ReactNode, Ref } from 'react';
+import { LockIcon } from '../icons';
+import { Avatar } from './Avatar';
+import { MarkdownView } from './MarkdownView';
+import { RelativeTime } from './RelativeTime';
 
 /**
  * Who wrote it. The portal API gives no name for agents (ANON-1, D-49), so
@@ -33,7 +37,7 @@ export interface CommentItemProps {
 export function CommentItem({ ref, ...props }: CommentItemProps) {
   const authorText =
     props.author.kind === 'support'
-      ? (props.supportLabel ?? 'support')
+      ? (props.supportLabel ?? 'Support')
       : props.author.isMe
         ? (props.meLabel ?? props.author.name)
         : props.author.name;
@@ -42,13 +46,30 @@ export function CommentItem({ ref, ...props }: CommentItemProps) {
       ref={ref}
       id={props.id}
       tabIndex={-1}
+      className="pd-comment"
       data-pd="CommentItem"
       data-visibility={props.visibility}
-      data-deleted={props.deleted}
+      data-deleted={props.deleted ? 'true' : undefined}
     >
-      <header>{authorText}</header>
-      {!props.deleted && <div>{props.body}</div>}
-      {props.attachments}
+      <header className="pd-comment-head">
+        <Avatar name={authorText} kind={props.author.kind === 'support' ? 'support' : 'person'} size="sm" decorative />
+        <span className="pd-comment-author">{authorText}</span>
+        {props.visibility === 'internal' && (
+          <span className="pd-comment-internal">
+            <LockIcon size={14} />
+            <span>{props.internalLabel ?? 'Internal note'}</span>
+          </span>
+        )}
+        <RelativeTime dateTime={props.createdAt} />
+      </header>
+      {props.deleted ? (
+        <p className="pd-comment-deleted">{props.deletedLabel ?? 'Deleted comment'}</p>
+      ) : (
+        <div className="pd-comment-body">
+          <MarkdownView source={props.body} />
+        </div>
+      )}
+      {props.attachments !== undefined && <div className="pd-comment-attachments">{props.attachments}</div>}
     </article>
   );
 }

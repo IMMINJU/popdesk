@@ -1,4 +1,6 @@
-import { useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
+import { CheckIcon, CopyIcon } from '../icons';
+import { Button } from './Button';
 
 export interface CopyFieldProps {
   label: string;
@@ -15,16 +17,47 @@ export interface CopyFieldProps {
   helpText?: string;
 }
 
+/** Read-only field and a copy button. When the clipboard is unavailable the text is selected for Ctrl+C. */
 export function CopyField(props: CopyFieldProps) {
   const id = useId();
+  const helpId = `${id}-help`;
+  const input = useRef<HTMLInputElement>(null);
+  const status = props.status ?? 'idle';
+
+  useEffect(() => {
+    if (status !== 'unavailable' || !input.current) return;
+    input.current.focus();
+    input.current.select();
+  }, [status]);
+
   return (
-    <div data-pd="CopyField" data-status={props.status ?? 'idle'}>
-      <label htmlFor={id}>{props.label}</label>
-      <input id={id} type="text" value={props.value} readOnly />
-      <button type="button" onClick={props.onCopy}>
-        {props.copyLabel}
-      </button>
-      {props.helpText && <p>{props.helpText}</p>}
+    <div className="pd-field pd-copy" data-pd="CopyField" data-status={status}>
+      <label className="pd-label" htmlFor={id}>
+        {props.label}
+      </label>
+      <div className="pd-copy-row">
+        <input
+          ref={input}
+          id={id}
+          className="pd-input"
+          type="text"
+          value={props.value}
+          readOnly
+          spellCheck={false}
+          aria-describedby={props.helpText ? helpId : undefined}
+          onFocus={(e) => {
+            e.currentTarget.select();
+          }}
+        />
+        <Button variant="secondary" icon={status === 'copied' ? <CheckIcon /> : <CopyIcon />} onClick={props.onCopy}>
+          {props.copyLabel}
+        </Button>
+      </div>
+      {props.helpText && (
+        <p id={helpId} className="pd-field-help" data-status={status}>
+          {props.helpText}
+        </p>
+      )}
     </div>
   );
 }

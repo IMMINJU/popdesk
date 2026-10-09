@@ -1,3 +1,10 @@
+import { useId, type MouseEvent } from 'react';
+import { formatBytes } from '../format';
+import { FileIcon } from '../icons';
+import { Badge } from './Badge';
+import { Button } from './Button';
+import { RelativeTime } from './RelativeTime';
+
 export interface AttachmentItem {
   id: string;
   name: string;
@@ -30,21 +37,84 @@ export interface AttachmentListProps {
   deleteLabel?: string;
   deletedLabel?: string;
   internalLabel?: string;
+  /**
+   * Called when a download link is clicked. The screen may stop the default
+   * and ask the server first (`HEAD`, screens.md P-5 내려받기).
+   */
+  onDownload?: (item: AttachmentItem, event: MouseEvent<HTMLAnchorElement>) => void;
+  /** Default 2. */
+  headingLevel?: 2 | 3;
 }
 
+/** 데이터, 비어 있음, 지워진 흔적, 내부 표시, 지우는 중. */
 export function AttachmentList(props: AttachmentListProps) {
+  const id = useId();
+  const headingId = `${id}-title`;
+  const Heading = props.headingLevel === 3 ? 'h3' : 'h2';
   return (
-    <section data-pd="AttachmentList">
-      <h2>{props.title}</h2>
+    <section className="pd-attachments" data-pd="AttachmentList" aria-labelledby={headingId}>
+      <Heading id={headingId} className="pd-section-title">
+        {props.title}
+      </Heading>
       {props.items.length === 0 ? (
-        <p>{props.emptyText}</p>
+        <p className="pd-attachments-empty">{props.emptyText}</p>
       ) : (
-        <ul>
-          {props.items.map((item) => (
-            <li key={item.id} data-deleted={item.deleted} data-internal={item.internal}>
-              {item.href && !item.deleted ? <a href={item.href}>{item.name}</a> : item.name}
-            </li>
-          ))}
+        <ul className="pd-attachments-list">
+          {props.items.map((item) => {
+            const nameId = `${id}-${item.id}`;
+            if (item.deleted) {
+              return (
+                <li key={item.id} className="pd-attachment" data-deleted="true">
+                  <span className="pd-attachment-icon" aria-hidden="true">
+                    <FileIcon />
+                  </span>
+                  <span className="pd-attachment-deleted">{props.deletedLabel ?? 'Deleted attachment'}</span>
+                </li>
+              );
+            }
+            return (
+              <li key={item.id} className="pd-attachment" data-internal={item.internal ? 'true' : undefined}>
+                <span className="pd-attachment-icon" aria-hidden="true">
+                  <FileIcon />
+                </span>
+                <span className="pd-attachment-main">
+                  <span className="pd-attachment-name" id={nameId}>
+                    {item.href ? (
+                      <a
+                        href={item.href}
+                        onClick={(e) => {
+                          props.onDownload?.(item, e);
+                        }}
+                      >
+                        {item.name}
+                      </a>
+                    ) : (
+                      item.name
+                    )}
+                  </span>
+                  <span className="pd-attachment-meta">
+                    {item.internal && <Badge tone="internal">{props.internalLabel ?? 'Internal'}</Badge>}
+                    <span>{formatBytes(item.size)}</span>
+                    <span>{item.uploaderLabel}</span>
+                    <RelativeTime dateTime={item.createdAt} focusable={false} />
+                  </span>
+                </span>
+                {item.canDelete && props.onDelete && (
+                  <Button
+                    variant="quiet"
+                    size="sm"
+                    pending={item.deleting ?? false}
+                    describedBy={nameId}
+                    onClick={() => {
+                      props.onDelete?.(item.id);
+                    }}
+                  >
+                    {props.deleteLabel ?? 'Delete'}
+                  </Button>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

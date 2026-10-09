@@ -1,7 +1,10 @@
-// Shared components (screens.md 5절). Props are the contract; shells render
-// minimal markup until C-9 fills in looks and behavior. Tokens: `@popdesk/ui/tokens.css`.
+// Shared components (screens.md 5절). Props are the contract. Styles:
+// `@popdesk/ui/tokens.css` (values) and `@popdesk/ui/styles.css` (components).
 
 export type * from './types';
+export * from './icons';
+export { codePoints, formatBytes } from './format';
+export { ACCOUNT_STATUS_WORDS, ISSUE_STATUS_WORDS, PRIORITY_WORDS, PROJECT_STATUS_WORDS } from './words';
 
 export { Alert, type AlertProps, type AlertTone } from './components/Alert';
 export { AppShell, type AppShellProps, type NavItem } from './components/AppShell';
@@ -29,7 +32,7 @@ export { IconButton, type IconButtonProps } from './components/IconButton';
 export { IssueList, type IssueListItem, type IssueListProps } from './components/IssueList';
 export { MarkdownEditor, type MarkdownEditorProps, type MarkdownTool } from './components/MarkdownEditor';
 export { MarkdownView, type MarkdownViewProps } from './components/MarkdownView';
-export { Pagination, type PaginationProps } from './components/Pagination';
+export { Pagination, type PageLink, type PaginationProps } from './components/Pagination';
 export { PasswordField, type PasswordFieldProps } from './components/PasswordField';
 export { PriorityLabel, type PriorityLabelProps } from './components/PriorityLabel';
 export { PriorityPicker, type PriorityPickerProps } from './components/PriorityPicker';

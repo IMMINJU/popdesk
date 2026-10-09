@@ -1,4 +1,5 @@
-import type { Ref } from 'react';
+import type { MouseEvent, Ref } from 'react';
+import { WarningIcon } from '../icons';
 
 export interface FieldError {
   /** `id` of the field; the link jumps there. */
@@ -16,18 +17,43 @@ export interface FormErrorSummaryProps {
   ref?: Ref<HTMLDivElement>;
 }
 
+/**
+ * 오류 요약 띠 above a form (`role="alert"`). It does not take focus: the screen
+ * moves focus to the first invalid field.
+ */
 export function FormErrorSummary({ ref, ...props }: FormErrorSummaryProps) {
+  const jump = (e: MouseEvent<HTMLAnchorElement>, fieldId: string) => {
+    const target = document.getElementById(fieldId);
+    if (!target) return;
+    // Focus the field without changing the address (the hash would add a history entry).
+    e.preventDefault();
+    target.focus();
+  };
   return (
-    <div data-pd="FormErrorSummary" ref={ref} tabIndex={-1}>
-      <p>{props.title}</p>
-      <ul>
-        {props.errors.map((e) => (
-          <li key={e.fieldId}>
-            <a href={`#${e.fieldId}`}>{e.message}</a>
-          </li>
-        ))}
-      </ul>
-      {props.serverMessage && <p>{props.serverMessage}</p>}
+    <div ref={ref} className="pd-alert pd-error-summary" data-pd="FormErrorSummary" data-tone="error" role="alert" tabIndex={-1}>
+      <span className="pd-alert-icon" aria-hidden="true">
+        <WarningIcon />
+      </span>
+      <div className="pd-alert-body">
+        <p className="pd-alert-title">{props.title}</p>
+        {props.errors.length > 0 && (
+          <ul className="pd-error-summary-list">
+            {props.errors.map((e) => (
+              <li key={e.fieldId}>
+                <a
+                  href={`#${e.fieldId}`}
+                  onClick={(event) => {
+                    jump(event, e.fieldId);
+                  }}
+                >
+                  {e.message}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+        {props.serverMessage && <p className="pd-alert-text">{props.serverMessage}</p>}
+      </div>
     </div>
   );
 }

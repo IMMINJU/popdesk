@@ -1,3 +1,5 @@
+import { ChatIcon } from '../icons';
+
 export interface AvatarProps {
   /** Person name, used for initials and, when not decorative, the text alternative. */
   name: string;
@@ -15,18 +17,20 @@ export interface AvatarProps {
   decorative?: boolean;
 }
 
+/** Circle with initials or the 지원팀 mark (tokens.md 9절). */
 export function Avatar(props: AvatarProps) {
-  const initial = props.name.trim().slice(0, 1);
+  const kind = props.kind ?? 'person';
+  const initial = Array.from(props.name.trim())[0] ?? '';
+  const a11y = props.decorative ? { 'aria-hidden': true as const } : { role: 'img', 'aria-label': props.name };
   return (
-    <span
-      data-pd="Avatar"
-      data-kind={props.kind ?? 'person'}
-      data-size={props.size ?? 'md'}
-      role={props.decorative ? undefined : 'img'}
-      aria-label={props.decorative ? undefined : props.name}
-      aria-hidden={props.decorative}
-    >
-      {props.kind === 'support' ? null : initial}
+    <span className="pd-avatar" data-pd="Avatar" data-kind={kind} data-size={props.size ?? 'md'} {...a11y}>
+      {kind === 'support' ? (
+        <ChatIcon size={props.size === 'sm' ? 12 : 14} />
+      ) : props.photoUrl ? (
+        <img src={props.photoUrl} alt="" />
+      ) : (
+        <span className="pd-avatar-initial">{initial}</span>
+      )}
     </span>
   );
 }

@@ -22,7 +22,10 @@ export interface DataTableProps<Row> {
   rowKey: (row: Row) => string;
   /** 불러오는 중 (skeleton rows), 데이터, 오류. Default `ready`. With no rows, `ready` shows `empty`. */
   status?: 'loading' | 'ready' | 'error';
-  /** Skeleton rows while loading. Default 5. */
+  /**
+   * Skeleton rows while loading. Default 5. A screen passes 0 for the first
+   * 300ms so a fast answer shows no skeleton (screens.md 2절).
+   */
   skeletonRows?: number;
   /** 빈 상태 칸, usually an EmptyState. */
   empty?: ReactNode;
@@ -32,17 +35,33 @@ export interface DataTableProps<Row> {
   density?: 'compact' | 'comfortable';
 }
 
+/**
+ * `<table>` with a caption. Column heads show at once, also while loading.
+ * Rows have no lines between them; one line sits under the head (tokens.md 9절).
+ */
 export function DataTable<Row>(props: DataTableProps<Row>) {
   const status = props.status ?? 'ready';
   const span = props.columns.length;
+  // Sticky columns sit at the sum of the widths before them.
+  const offsets: (string | undefined)[] = [];
+  let left: string[] = [];
+  for (const c of props.columns) {
+    offsets.push(c.sticky ? (left.length === 0 ? '0px' : `calc(${left.join(' + ')})`) : undefined);
+    if (c.sticky) left = [...left, c.width ?? '8rem'];
+  }
+  const cellProps = (c: DataTableColumn<Row>, i: number) => ({
+    'data-align': c.align ?? 'start',
+    'data-sticky': c.sticky ? 'true' : undefined,
+    style: { width: c.width, left: offsets[i] },
+  });
   return (
-    <div data-pd="DataTable" data-density={props.density}>
-      <table aria-busy={status === 'loading'}>
-        <caption>{props.caption}</caption>
+    <div className="pd-table-wrap" data-pd="DataTable" data-density={props.density}>
+      <table className="pd-table" aria-busy={status === 'loading' ? true : undefined}>
+        <caption className={props.captionHidden === false ? 'pd-table-caption' : 'pd-sr-only'}>{props.caption}</caption>
         <thead>
           <tr>
-            {props.columns.map((c) => (
-              <th key={c.key} scope="col">
+            {props.columns.map((c, i) => (
+              <th key={c.key} scope="col" {...cellProps(c, i)}>
                 {c.header}
               </th>
             ))}
@@ -50,26 +69,36 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
         </thead>
         <tbody>
           {status === 'loading' &&
-            Array.from({ length: props.skeletonRows ?? 5 }, (_, i) => (
-              <tr key={i}>
-                <td colSpan={span} />
+            Array.from({ length: props.skeletonRows ?? 5 }, (_, r) => (
+              <tr key={r} className="pd-table-skeleton" aria-hidden="true">
+                {props.columns.map((c, i) => (
+                  <td key={c.key} {...cellProps(c, i)}>
+                    <span className="pd-skeleton-item pd-skeleton-pulse" style={{ width: `${String(40 + ((r * 7 + i * 13) % 50))}%` }} />
+                  </td>
+                ))}
               </tr>
             ))}
           {status === 'error' && (
             <tr>
-              <td colSpan={span}>{props.error}</td>
+              <td colSpan={span} className="pd-table-message">
+                {props.error}
+              </td>
             </tr>
           )}
           {status === 'ready' && props.rows.length === 0 && (
             <tr>
-              <td colSpan={span}>{props.empty}</td>
+              <td colSpan={span} className="pd-table-message">
+                {props.empty}
+              </td>
             </tr>
           )}
           {status === 'ready' &&
             props.rows.map((row) => (
               <tr key={props.rowKey(row)}>
-                {props.columns.map((c) => (
-                  <td key={c.key}>{c.cell(row)}</td>
+                {props.columns.map((c, i) => (
+                  <td key={c.key} {...cellProps(c, i)}>
+                    {c.cell(row)}
+                  </td>
                 ))}
               </tr>
             ))}

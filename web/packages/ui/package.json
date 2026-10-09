@@ -4,7 +4,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./tokens.css": "./src/tokens.css"
+    "./tokens.css": "./src/tokens.css",
+    "./styles.css": "./src/styles.css"
   },
   "scripts": {
     "test": "vitest run --passWithNoTests",
