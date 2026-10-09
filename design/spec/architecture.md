@@ -195,7 +195,7 @@ Flyway 12.4는 기본으로 마이그레이션마다 트랜잭션 advisory lock�
 4. HTTP 포트를 연다. Spring Boot는 Flyway가 도는 동안 포트를 열지 않으므로, 마이그레이션 중에는 상태 확인이 연결을 거부한다. compose는 `start_period`로, 쿠버네티스는 `startupProbe`로 기다린다(`docs/operate/configuration.md`).
 
 - 컨테이너 안 복원 명령(`popdesk restore`)은 빈 DB이고 앱이 요청을 받기 전일 때만 돈다(D-46).
-- 남은 것: 앱 잠금을 못 잡을 때 다시 시도할 시간, TCP keepalive 값. 호스트가 갑자기 꺼지면 DB가 세션 잠금을 늦게 푼다.
+- 앱 잠금을 못 잡으면 `POPDESK_INSTANCE_LOCK_WAIT`(기본 `PT30S`) 동안 기다린 뒤 멈춘다. 뜬 뒤 잠금 연결이 끊기면 1초마다 다시 잡고, 그동안 보내기 루프와 정기 작업은 쉰다(첫 묶음 S0-AC-11). 남은 것: TCP keepalive 값. 호스트가 갑자기 꺼지면 DB가 세션 잠금을 늦게 푼다.
 - 메모리(추정, 실측 전): 앱 0.5GB(`-Xmx384m`), Postgres 0.15GB, 개발할 때 Vite 둘 0.5GB. 개발 PC(16GB)에서 테스트를 순차로 돌릴 수 있어야 한다.
 - 실측은 첫 뼈대가 뜨면 `docker stats`로 재서 이 절을 고친다.
 

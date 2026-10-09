@@ -176,3 +176,6 @@ C-7 점검(`s0-c7-review`)으로 정한 것:
 - 앱 스키마는 앱 DB의 `public`이다. `DatabasePrivilegeTest.userWithoutSchemaCreate`는 `public`의 `CREATE`만 빼고 앱이 멈추기를 본다. 앱이 `popdesk` 스키마를 만들면 DB `CREATE`로 지나가 뜬다. `architecture.md` 4절의 `popdesk`를 고쳤다.
 - 테스트가 기준보다 엄격한 곳은 승인한 테스트를 따른다: S0-AC-87의 413 안내 문구(`screens.md` 2절 문구를 앱 본문 413에도), S0-AC-73의 가린 주소 로그는 요청 하나에 정확히 한 줄, S0-AC-77은 문의·댓글 행 말고 어떤 대기 행도 남기지 않음.
 - 콘솔이 SMTP가 켜졌는지 아는 길은 `GET /api/console/system/status`의 `mail.enabled`다. `screens.md` 7절의 "관리자용 설정 요약 API"는 따로 두지 않는다.
+- 첫 관리자의 이름은 `Admin`이다. 설정 키를 두지 않는다. 관리자가 로그인한 뒤 바꾸는 기능은 뒤 묶음이다(`s0-i-schema` 질문 1).
+- `delivery_status`, `ops_alert`, `notification` 테이블과 `outbox.kind`·`notification.kind` 값 목록은 `s0-i-notify`가 정한다. 쓰지 않는 테이블은 그 탭이 새 버전으로 지운다. 견본 생성기가 업무 테이블마다 행을 넣어야 해서 빈 테이블을 남기지 않는다(`s0-i-schema` 질문 3·4).
+- 구현 탭 보고는 훅이 worktree 밖 쓰기를 막아 탭의 scratchpad에 쓰고, 메인이 `tasks\`로 옮긴다.

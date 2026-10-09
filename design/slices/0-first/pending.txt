@@ -4,14 +4,6 @@
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
 # 서버 줄은 구현 탭(tasks.md 3절)마다 묶었다. 탭이 병합되면 그 묶음을 지운다.
 
-# s0-i-schema
-server io/popdesk/start/DatabasePrivilegeTest.java
-server io/popdesk/start/FirstAdminMissingTest.java
-server io/popdesk/start/InstanceLockTest.java
-server io/popdesk/start/MigrationHistoryTest.java
-server io/popdesk/start/MigrationPortsTest.java
-server io/popdesk/start/StartLogTest.java
-server io/popdesk/start/TenantIdGateTest.java
 
 # s0-i-account
 server io/popdesk/auth/FirstAdminPasswordNineCharactersTest.java
