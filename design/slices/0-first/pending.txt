@@ -3,3 +3,8 @@
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
 # 서버 줄은 구현 탭(tasks.md 3절)마다 묶었다. 탭이 병합되면 그 묶음을 지운다.
+
+# C-10 고칠 것 V-1~V-3(verify.md 6절): s0-v-fix-i-web이 병합되면 지운다
+web src/components/MarkdownView.limits.test.tsx
+web src/screens/C10MemberList.lateLink.test.tsx
+web src/app/sessionEnd.test.tsx
