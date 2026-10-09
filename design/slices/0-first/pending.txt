@@ -5,27 +5,6 @@
 # 서버 줄은 구현 탭(tasks.md 3절)마다 묶었다. 탭이 병합되면 그 묶음을 지운다.
 
 
-# s0-i-notify
-server io/popdesk/issue/InternalCommentMailTest.java
-server io/popdesk/notify/CommentMailTest.java
-server io/popdesk/notify/InvitationMailTest.java
-server io/popdesk/notify/KoreanMailTest.java
-server io/popdesk/notify/MailQueueRowTest.java
-server io/popdesk/notify/NoSmtpMailLogTest.java
-server io/popdesk/notify/NoWebhookTest.java
-server io/popdesk/notify/QueueTransactionTest.java
-server io/popdesk/notify/RetryTest.java
-server io/popdesk/notify/SendLoopTest.java
-server io/popdesk/notify/SmtpPlainAllowedTest.java
-server io/popdesk/notify/SmtpStartTlsTest.java
-server io/popdesk/notify/StrictTransportTest.java
-server io/popdesk/notify/WebhookMessageTest.java
-server io/popdesk/notify/WebhookSecretTest.java
-server io/popdesk/ops/LogSecretsWithSmtpTest.java
-server io/popdesk/ops/OutboxMetricsTest.java
-server io/popdesk/ops/SystemStatusTest.java
-server io/popdesk/ops/SystemStatusWithSmtpTest.java
-server io/popdesk/project/InvitationWithSmtpTest.java
 
 # s0-i-att
 server io/popdesk/issue/IssueNumberTest.java

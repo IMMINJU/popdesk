@@ -184,3 +184,6 @@ C-7 점검(`s0-c7-review`)으로 정한 것:
 - 초대 메일의 토큰: DB에는 해시만 있어 보내는 루프가 처음 토큰을 되살릴 수 없다. 보낼 때 새 토큰을 만들어 `invitation.token_hash`를 바꾸고 그 링크를 메일에 넣는다. 링크는 `PublicAddress.invitationLink`로 만든다(`s0-i-account` 질문 2).
 - 정리 작업 셋: `outbox-failed-cleanup`과 `session-cleanup`, 기록 API는 `s0-i-notify`, `attachment-cleanup`은 `s0-i-att`가 만든다.
 - `issue.IssueNumberTest`는 첫 문의를 파일과 함께 올려 att로 옮겼다. `s0-i-issue`가 `ScopedReadRulesTest` 때문에 먼저 만든 첨부 뼈대(`AttachmentRepository`, `AttachmentService`, `storage`)는 `s0-i-att`가 바꿔도 된다.
+- 초대 행은 수락 뒤에도 남는다. 토큰으로 찾는 쿼리는 모두 `status = INVITED`를 건다. 지우면 `NoWebhookTest`·`NoSmtpMailLogTest`의 "지워지는 행 없음" 통계 검사가 PostgreSQL 통계 지연(최대 10초)으로 흔들렸다. V1의 "deleted on accept" 주석은 SQL 주석이라 DB에 남지 않아 고치지 않고, `server/README.md` 표가 맞는 설명이다(`s0-i-notify` 질문 2·3).
+- 상담 쪽 답변 메일에는 댓글 내용을 넣지 않는다(제목·문의 키·포털 링크만). 웹훅 글은 설치 언어, 메일은 받는 계정 언어다.
+- `notify.MailQueueRowTest.invitationMailForAcceptedAccountIsDropped`의 마지막 단언은 테스트 결함이었다. 앞서 부른 `mailQueueTable`이 붙잡은 probe 메일까지 세었다. 메인이 그 주소로 거르게 고치고 다시 잠갔다(C-9 "테스트가 틀렸다고 보는 것").
