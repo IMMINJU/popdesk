@@ -28,8 +28,6 @@ io.popdesk.support.SupportSelfTest.clientSendsItsHostAndKeepsItsOwnCookies | 도
 io.popdesk.support.SupportSelfTest.appAnswersOnBothHosts | 도움 코드 자기 시험, 업무 동작을 보지 않는다
 io.popdesk.support.SupportSelfTest.logHoldsWhatTheJvmPrints | 도움 코드 자기 시험, 업무 동작을 보지 않는다
 io.popdesk.support.SupportSelfTest.expiredCookieIsDropped | 도움 코드 자기 시험, 업무 동작을 보지 않는다
-src/App.test.tsx.renders the empty console screen | 바닥(A) 테스트, 이 묶음의 새 테스트가 아니다
-src/App.test.tsx.renders the empty portal screen | 바닥(A) 테스트, 이 묶음의 새 테스트가 아니다
 src/components/Alert.test.tsx.Alert > Alert 역할: 오류·경고는 role="alert", 안내·성공은 role="status" | 껍데기가 tone별 role과 제목·동작 자리를 이미 그린다
 src/components/Alert.test.tsx.Alert > Alert live: live를 주면 tone과 상관없이 그 역할이다 | 껍데기가 tone별 role과 제목·동작 자리를 이미 그린다
 src/components/Alert.test.tsx.Alert > Alert 닫기 없음: onClose가 없으면 버튼이 없다 | 껍데기가 tone별 role과 제목·동작 자리를 이미 그린다

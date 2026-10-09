@@ -13,3 +13,4 @@ server io/popdesk/boundary/**
 server io/popdesk/deploy/**
 web src/screens/**
 web src/components/**
+web src/App.test.tsx
