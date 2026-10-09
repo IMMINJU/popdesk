@@ -1,0 +1,10 @@
+# Grafana dashboard provisioning inside grafana/otel-lgtm (compose.obs.yml): the dashboards in
+# deploy/grafana/, mounted at /otel-lgtm/popdesk-dashboards.
+apiVersion: 1
+
+providers:
+  - name: popdesk
+    type: file
+    options:
+      path: /otel-lgtm/popdesk-dashboards
+      foldersFromFilesStructure: false

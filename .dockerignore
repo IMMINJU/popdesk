@@ -1,0 +1,12 @@
+# Only what the image build needs: server/ and web/ sources.
+.git
+.github
+.claude
+design
+docs
+scripts
+deploy/upgrade
+**/node_modules
+**/dist
+server/target
+**/__pycache__

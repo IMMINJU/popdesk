@@ -1,0 +1,18 @@
+# Development only, laid over the release file (acceptance S0-AC-90, ADR D-51): Mailpit catches every
+# email the app sends. Never use it for a real installation.
+#
+#   docker compose -f compose.yml -f compose.dev.yml up -d
+#
+# Mailpit's web page: http://127.0.0.1:8025
+services:
+  mailpit:
+    image: axllent/mailpit:v1.31.4
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+  app:
+    environment:
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      # Mailpit has no TLS; popdesk logs a warning at startup while this is on.
+      SMTP_ALLOW_PLAINTEXT: "true"

@@ -25,6 +25,10 @@ spring:
     timeout: 8h
   jpa:
     open-in-view: false
+  web:
+    resources:
+      # Each host gets its own app's screens (io.popdesk.AppScreens); Boot's /** mapping would serve both.
+      add-mappings: false
   servlet:
     multipart:
       # A file over 10 MB still reaches the app and gets 400 FILE_TOO_LARGE (S0-AC-57); larger requests

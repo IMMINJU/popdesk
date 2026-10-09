@@ -1,0 +1,97 @@
+# popdesk release Compose file (ADR D-45, docs/operate/configuration.md "Docker Compose").
+# Use the copy attached to the release you install, not the one on the main branch.
+#
+#   docker compose -f compose.yml up -d
+#
+# Settings come from the environment or from an .env file next to this file: POPDESK_DB_PASSWORD
+# (required, no default), and the keys of configuration.md, for example POPDESK_ADMIN_EMAIL and
+# POPDESK_ADMIN_PASSWORD on the first start. Keys you do not set are not passed to the app.
+
+services:
+  app:
+    image: ghcr.io/imminju/popdesk:0.1.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Only the app's HTTP port, on all interfaces. Put a TLS proxy in front (configuration.md "TLS").
+      # The management port 8081 (health, metrics) stays inside the Compose network.
+      - "8080:8080"
+    environment:
+      POPDESK_DB_URL: jdbc:postgresql://db:5432/popdesk?logServerErrorDetail=false
+      POPDESK_DB_USER: popdesk
+      POPDESK_DB_PASSWORD: ${POPDESK_DB_PASSWORD}
+      # Passed on only when set.
+      POPDESK_ADMIN_EMAIL:
+      POPDESK_ADMIN_PASSWORD:
+      POPDESK_ADMIN_PASSWORD_FILE:
+      POPDESK_PORTAL_HOST:
+      POPDESK_CONSOLE_HOST:
+      POPDESK_PUBLIC_SCHEME:
+      POPDESK_PUBLIC_PORT:
+      POPDESK_TRUSTED_PROXIES:
+      POPDESK_TIMEZONE:
+      POPDESK_LOCALE:
+      POPDESK_INSTANCE_LOCK_WAIT:
+      POPDESK_ATTACHMENT_QUOTA:
+      POPDESK_STORAGE:
+      POPDESK_STORAGE_DIR:
+      SMTP_HOST:
+      SMTP_PORT:
+      SMTP_USER:
+      SMTP_PASSWORD:
+      SMTP_PASSWORD_FILE:
+      SMTP_ALLOW_PLAINTEXT:
+      MAIL_FROM:
+      NOTIFY_WEBHOOK_URL:
+      NOTIFY_WEBHOOK_URL_FILE:
+      # JVM options of the operator's own, for example a larger heap (-Xmx768m).
+      JDK_JAVA_OPTIONS:
+    volumes:
+      - attachments:/data/attachments
+    healthcheck:
+      # Readiness: up once migrations ran and the first admin exists. During migrations the port is
+      # closed; start_period keeps those failures from counting. Without a first admin the app turns
+      # unhealthy within 5 minutes (start_period + interval x retries).
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8081 && printf 'GET /actuator/health/readiness HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q ' 200 '"]
+      start_period: 3m
+      start_interval: 2s
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  db:
+    # The PostgreSQL major version is fixed per release; popdesk backup needs the matching pg_dump.
+    image: postgres:16.15-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: popdesk
+      POSTGRES_DB: popdesk
+      POSTGRES_PASSWORD: ${POPDESK_DB_PASSWORD}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "popdesk", "-d", "popdesk"]
+      start_period: 1m
+      start_interval: 1s
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  # Fixed names, so they do not change with the Compose project name.
+  db:
+    name: popdesk-db
+  attachments:
+    name: popdesk-attachments

@@ -69,7 +69,7 @@ public class SecretFiles implements EnvironmentPostProcessor, Ordered {
     }
 
     /** Removes one {@code \r\n} or {@code \n} at the end, and nothing else. */
-    static String cutOneLineBreak(String content) {
+    public static String cutOneLineBreak(String content) {
         if (content.endsWith("\r\n")) {
             return content.substring(0, content.length() - 2);
         }

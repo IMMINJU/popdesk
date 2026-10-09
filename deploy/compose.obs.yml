@@ -1,0 +1,34 @@
+# Optional observability tools (architecture.md section 6, ADR D-22): one Grafana LGTM container
+# (Grafana, Prometheus, Loki, Tempo) that scrapes the app's metrics on the management port and shows
+# the dashboards in grafana/.
+#
+#   docker compose -f compose.yml -f compose.obs.yml up -d
+#
+# Grafana listens on http://127.0.0.1:3000 (user admin, password admin, and anonymous access as the
+# image sets it). Keep it on the loopback address, or put it behind your own sign-in.
+services:
+  lgtm:
+    image: grafana/otel-lgtm:0.11.10
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - type: bind
+        source: ./obs/prometheus.yaml
+        target: /otel-lgtm/prometheus.yaml
+        read_only: true
+      - type: bind
+        source: ./obs/dashboards.yaml
+        target: /otel-lgtm/grafana/conf/provisioning/dashboards/popdesk.yaml
+        read_only: true
+      - type: bind
+        source: ./grafana
+        target: /otel-lgtm/popdesk-dashboards
+        read_only: true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

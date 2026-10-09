@@ -84,11 +84,34 @@ The database user must be allowed to create tables in the `public` schema of its
 
 popdesk starts in this order: it takes the single-instance database lock, runs database migrations, creates the first admin if needed, and only then opens its ports. While migrations run, health checks cannot connect at all; this can take a long time on an upgrade.
 
-- The Compose file gives the `app` health check a `start_period`, so connection failures during migrations do not mark it unhealthy.
-- On Kubernetes, use a `startupProbe` on `/actuator/health/liveness` (port `8081`) with a generous failure threshold, then `livenessProbe` and `readinessProbe` (`/actuator/health/readiness`).
+- The Compose file's `app` health check asks `/actuator/health/readiness` on port `8081`. It has `start_period: 3m` (checked every 2 seconds meanwhile), so connection failures during migrations do not mark it unhealthy, and then `interval: 10s` with `retries: 6`. An app that is not ready by then (for example without a first admin) turns unhealthy within 5 minutes. If an upgrade's migrations take longer than 3 minutes, raise `start_period` in your copy of the Compose file; the release notes say when a migration may be slow.
+- On Kubernetes, use a `startupProbe` on `/actuator/health/liveness` (port `8081`) with a generous failure threshold, then `livenessProbe` and `readinessProbe` (`/actuator/health/readiness`):
+
+  ```yaml
+  startupProbe:
+    httpGet: { path: /actuator/health/liveness, port: 8081 }
+    periodSeconds: 5
+    failureThreshold: 360   # up to 30 minutes for migrations
+  livenessProbe:
+    httpGet: { path: /actuator/health/liveness, port: 8081 }
+    periodSeconds: 10
+  readinessProbe:
+    httpGet: { path: /actuator/health/readiness, port: 8081 }
+    periodSeconds: 10
+  ```
+
 - If the first admin is not configured, the app stays running with readiness down (see `POPDESK_ADMIN_EMAIL`).
 
-Optional observability tools are started with a second file: `docker compose -f deploy/compose.yml -f deploy/compose.obs.yml up`.
+### Memory and JVM options
+
+The image sets its JVM options itself, so the app behaves the same on every host: the G1 garbage collector and a heap of at most 384 MB. Measured before the first release, on a development machine: the app container used about 0.4 GB right after start and up to about 0.6 GB with 20 transfers of 10 MB at once; PostgreSQL up to about 0.35 GB. To change the heap, set `JDK_JAVA_OPTIONS` (for example `JDK_JAVA_OPTIONS=-Xmx768m`); an `-Xmx` there wins over the image's default.
+
+### More Compose files
+
+These go on top of the release file, which stays as it is:
+
+- `deploy/compose.obs.yml`: Grafana LGTM (Grafana, Prometheus, Loki, Tempo in one container) that reads the app's metrics from port `8081` and shows the dashboards in `deploy/grafana/`. Start it with `docker compose -f deploy/compose.yml -f deploy/compose.obs.yml up -d`; Grafana is on `http://127.0.0.1:3000`. It needs about 1.5 GB of memory more.
+- `deploy/compose.dev.yml`: for development only. Adds Mailpit and points SMTP at it in plain text (`SMTP_ALLOW_PLAINTEXT=true`); its web page is on `http://127.0.0.1:8025`.
 
 ## TLS
 
@@ -117,6 +140,34 @@ POPDESK_PUBLIC_SCHEME=https
 POPDESK_PUBLIC_PORT=443
 ```
 
+### Request body size at the proxy
+
+A new issue can carry up to 50 MB of files, and popdesk takes requests of up to 55 MB (see [Attachments](#attachments)). Give the proxy a body limit of at least 55 MB. With a lower limit the proxy answers `413` itself; the portal then shows that the file hit the size limit in front of the server, but the customer cannot attach it.
+
+| Proxy | Default limit | Setting |
+|---|---|---|
+| Caddy | none | Nothing to do. If you set one, use `request_body { max_size 55MB }` inside the site block |
+| nginx | 1 MB | `client_max_body_size 55m;` in the `server` (or `location`) block. Also set `proxy_request_buffering off;` so large uploads are not written to nginx's disk first |
+| Traefik | none | Nothing to do. If you add the `buffering` middleware, set `maxRequestBodyBytes: 57671680` (55 MB) |
+
+nginx example:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name portal.example.com console.example.com;
+    client_max_body_size 55m;
+    proxy_request_buffering off;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
 ### Mail servers
 
 popdesk always encrypts its connections to the SMTP and IMAP servers unless you turn that off (ADR D-51).
@@ -141,7 +192,7 @@ Emails and webhook messages wait in a queue in the database and are sent by the 
 ## Attachments
 
 - One file is at most 10 MB, and the public attachments of one issue (on the issue and its public comments) at most 50 MB. Attachments of internal comments count only against `POPDESK_ATTACHMENT_QUOTA`.
-- The app takes requests of up to 55 MB with files of up to 11 MB, so a file just over 10 MB gets a clear error instead of a cut connection. Received files go to temporary files, never into memory. A reverse proxy in front needs a body limit of at least 55 MB (nginx `client_max_body_size 55m`).
+- The app takes requests of up to 55 MB with files of up to 11 MB, so a file just over 10 MB gets a clear error instead of a cut connection. Received files go to temporary files, never into memory. A reverse proxy in front needs a body limit of at least 55 MB ([Request body size at the proxy](#request-body-size-at-the-proxy)). Up to 16 uploads at once can hold up to 55 MB each in the container's `/tmp` for a moment.
 - At most 16 uploads and, apart from them, 16 downloads run at once. The next one gets 503 `SERVER_BUSY` with `Retry-After`; clients try again.
 - A deleted attachment keeps its row as a trace without the file name. Its file is removed at once; if that fails, the delete still succeeds and the daily attachment cleanup removes the file.
 - The daily cleanup (`attachment-cleanup`) also ends uploads that never finished: a file still pending after an hour is removed. It works from the database rows only and never lists the storage.
@@ -149,12 +200,37 @@ Emails and webhook messages wait in a queue in the database and are sent by the 
 
 ## Commands
 
-Run these inside the app container, for example `docker compose exec app popdesk <command>`. Each one is recorded in the audit log.
+The `popdesk` command is in the app image. Each one is recorded in the audit log, with popdesk itself (account `0`) as the person. A command that fails changes nothing and ends with a non-zero exit code.
 
 | Command | What it does |
 |---|---|
-| `popdesk admin reset-password <email>` | Asks twice for a new password for an admin account, without showing it, and sets it. The password is never printed or logged. It also unlocks the account and ends its sessions. It needs a terminal: run it as `docker compose exec app popdesk admin reset-password <email>` (without `-T`); without a terminal it fails. Use it when no admin can sign in |
-| `popdesk backup <file>` | Writes a database dump, using the `pg_dump` that matches the server |
-| `popdesk restore <file>` | Restores a dump into an empty database only, before the app starts serving |
+| `popdesk admin reset-password <email>` | Asks twice for a new password for an admin account, without showing it, and sets it. The password must keep the password rules; the command does not ask again. The password is never printed or logged. It also unlocks the account and ends its sessions. It needs a terminal: run it as `docker compose exec app popdesk admin reset-password <email>` (without `-T`); without a terminal it fails. Use it when no admin can sign in |
+| `popdesk backup <file>` | Writes a database dump in `pg_dump`'s custom format, while the app runs. The image's `pg_dump` has the same major version as the `db` image of its release; if the server has another major version, the command stops |
+| `popdesk restore <file>` | Restores a dump into an empty database only, before the app starts serving. If the app is running on the database (it holds the single-instance lock) or the database has any table, it stops |
 
-When `POPDESK_STORAGE` is `disk` or `s3`, back up the attachment folder or bucket after the database dump.
+### Back up
+
+Write the dump inside the running app container, then copy it out:
+
+```
+docker compose exec app popdesk backup /tmp/popdesk.dump
+docker compose cp app:/tmp/popdesk.dump ./popdesk-$(date +%F).dump
+docker compose exec app rm /tmp/popdesk.dump
+```
+
+Keep the dump somewhere other than the Docker host. When `POPDESK_STORAGE` is `disk` or `s3`, back up the attachment folder or bucket after the database dump.
+
+### Restore
+
+Restore into a new, empty database with the app stopped. Run the command in a new container of the app service and mount the dump into it as one file (`docker compose cp` cannot copy into a container that `run` starts):
+
+```
+docker compose stop app
+docker compose rm -f -s db
+docker volume rm popdesk-db
+docker compose up -d db
+docker compose run --rm -v "$PWD/popdesk-2026-01-31.dump:/tmp/restore.dump:ro" app popdesk restore /tmp/restore.dump
+docker compose up -d
+```
+
+Removing the `popdesk-db` volume deletes the current database; take a backup of it first if you may need it. The restore runs in one transaction: if it fails, the database stays empty.

@@ -1,0 +1,25 @@
+# Prometheus inside grafana/otel-lgtm (compose.obs.yml), replacing the image's own prometheus.yaml.
+# The otlp and storage parts are the image's (0.11.10); the scrape of popdesk's management port is
+# added.
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: popdesk
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["app:8081"]
+
+otlp:
+  keep_identifying_resource_attributes: true
+  promote_resource_attributes:
+    - service.instance.id
+    - service.name
+    - service.namespace
+    - service.version
+    - container.name
+    - deployment.environment.name
+
+storage:
+  tsdb:
+    out_of_order_time_window: 10m

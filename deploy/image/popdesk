@@ -1,0 +1,8 @@
+#!/bin/sh
+# The popdesk commands inside the app container (docs/operate/configuration.md "Commands"):
+#   popdesk backup <file> | popdesk restore <file> | popdesk admin reset-password <email>
+# A JVM of its own next to the app, without Spring. It reads the app's database settings from the
+# container's environment. jdk.console=java.base keeps the plain console, so a missing terminal is
+# seen and a password is read without echo.
+exec java -XX:TieredStopAtLevel=1 -Djdk.console=java.base \
+    -cp /app/popdesk.jar io.popdesk.helpdesk.system.PopdeskCommand "$@"
