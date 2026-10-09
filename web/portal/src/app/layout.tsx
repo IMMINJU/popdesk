@@ -2,18 +2,19 @@
 // lets screens mark `main` busy while they load (screens.md 2절, 1절 화면 머리).
 import { Alert, AppShell, Button, EmptyState, SearchOffIcon } from '@popdesk/ui';
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { Link, Outlet, useNavigate } from 'react-router';
+import { Link, Outlet } from 'react-router';
 import { api } from '../api';
 import { BusyContext } from './busy';
 import { useDocumentTitle, useFocusWhenReady } from './hooks';
 import { TEXT } from './messages';
+import { useLiveNavigate } from './navigate';
 import { call } from './result';
 import { useSession, useToLogin } from './sessionContext';
 
 export function PortalLayout() {
   const { me, setMe } = useSession();
   const toLogin = useToLogin();
-  const navigate = useNavigate();
+  const navigate = useLiveNavigate();
   const [problem, setProblem] = useState(false);
   const [busy, setBusy] = useState(false);
   const [leaving, setLeaving] = useState(false);

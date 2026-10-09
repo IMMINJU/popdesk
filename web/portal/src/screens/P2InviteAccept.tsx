@@ -2,11 +2,12 @@
 // address fragment, goes only in the request body, and leaves the address bar.
 import { Button, EmptyState, LockIcon, PasswordField } from '@popdesk/ui';
 import { useLayoutEffect, useRef, useState, type SubmitEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { api } from '../api';
 import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
 import { useCooldown, useDocumentTitle, useFieldErrors } from '../app/hooks';
 import { TEXT } from '../app/messages';
+import { useLiveNavigate } from '../app/navigate';
 import { call, type Failure } from '../app/result';
 import { useSession } from '../app/sessionContext';
 import { useToast } from '../app/toastContext';
@@ -21,7 +22,7 @@ function tokenFromHash(): string | null {
 }
 
 export function P2InviteAccept() {
-  const navigate = useNavigate();
+  const navigate = useLiveNavigate();
   const toast = useToast();
   const { setMe } = useSession();
   // Read once: the fragment is cleared right after.

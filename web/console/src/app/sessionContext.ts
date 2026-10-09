@@ -1,8 +1,9 @@
 // Who is signed in. The console asks `GET /api/console/me` once when a signed-in
 // screen opens; screens read the role from here (admin screens, C-3 empty list).
 import { createContext, useCallback, useContext } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import type { Schemas } from '../api';
+import { useLiveNavigate } from './navigate';
 
 export type Me = Schemas['Me'];
 
@@ -28,10 +29,11 @@ export interface LoginState {
 
 /**
  * Sends the user to the login screen after a 401 while loading, with the
- * current path as `next` so they come back (screens.md 2절).
+ * current path as `next` so they come back (screens.md 2절). A 401 that
+ * arrives after the screen has gone moves nothing.
  */
 export function useToLogin(): () => void {
-  const navigate = useNavigate();
+  const navigate = useLiveNavigate();
   const location = useLocation();
   const { hadSession, setMe } = useSession();
   return useCallback(() => {

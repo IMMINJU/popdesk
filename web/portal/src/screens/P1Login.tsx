@@ -1,18 +1,19 @@
 // P-1 로그인 (screens.md 3절). Sign-in goes to `next` or P-3.
 import { Alert, Button, PasswordField, TextField } from '@popdesk/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type SubmitEvent } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 import { api } from '../api';
 import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
 import { useCooldown, useDocumentTitle, useFieldErrors } from '../app/hooks';
 import { TEXT } from '../app/messages';
+import { useLiveNavigate } from '../app/navigate';
 import { call, type Failure } from '../app/result';
 import { safeNext, useSession, type LoginState } from '../app/sessionContext';
 
 const SIGN_IN_FAILED = '이메일 또는 비밀번호가 맞지 않습니다.';
 
 export function P1Login() {
-  const navigate = useNavigate();
+  const navigate = useLiveNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
   const { setMe } = useSession();

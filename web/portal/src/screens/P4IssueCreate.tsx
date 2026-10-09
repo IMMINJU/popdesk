@@ -19,7 +19,6 @@ import {
   type UploadItem,
 } from '@popdesk/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SubmitEvent } from 'react';
-import { useNavigate } from 'react-router';
 import { api, type Schemas } from '../api';
 import { ATTACHMENT_LIMITS, REJECT_TEXT, uploadAttachment, uploadFailureText, type UploadFailure } from '../app/attachments';
 import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
@@ -27,6 +26,7 @@ import { useMainBusy } from '../app/busy';
 import { useCooldown, useFieldErrors, useLeaveGuard, useLoad } from '../app/hooks';
 import { LoadFailed, PageTitle } from '../app/layout';
 import { TEXT } from '../app/messages';
+import { useLiveNavigate } from '../app/navigate';
 import { call, type Failure, type Result } from '../app/result';
 import { useToast } from '../app/toastContext';
 
@@ -42,7 +42,7 @@ interface Upload extends UploadItem {
 }
 
 export function P4IssueCreate() {
-  const navigate = useNavigate();
+  const navigate = useLiveNavigate();
   const toast = useToast();
 
   const load = useLoad(async (): Promise<Result<Company[]>> => {

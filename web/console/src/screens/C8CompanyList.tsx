@@ -1,13 +1,14 @@
 // C-8 고객사 목록 (관리자, screens.md 4절). List and 만들기 (PROJ-1).
 import { Button, ConfirmDialog, DataTable, Dialog, EmptyState, StatusBadge, TextField, type DataTableColumn } from '@popdesk/ui';
 import { useLayoutEffect, useRef, useState, type SubmitEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { api, type Schemas } from '../api';
 import { FieldSummary, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { useFieldErrors, useLoad } from '../app/hooks';
 import { LoadFailed, PageTitle } from '../app/layout';
 import { TEXT } from '../app/messages';
+import { useLiveNavigate } from '../app/navigate';
 import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, usePageMove, usePageParam } from '../app/paging';
 import { call, type Failure } from '../app/result';
@@ -25,7 +26,7 @@ const columns: DataTableColumn<Company>[] = [
 const FORM_ID = 'create-company';
 
 function CreateCompanyDialog(props: { open: boolean; onClose: () => void; onClosedWhileSaving: () => void }) {
-  const navigate = useNavigate();
+  const navigate = useLiveNavigate();
   const toast = useToast();
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
