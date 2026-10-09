@@ -2,6 +2,7 @@ package io.popdesk.ops;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.popdesk.support.ApiResponse;
 import io.popdesk.support.AppLog.Mark;
 import io.popdesk.support.AppTest;
 import io.popdesk.support.BareAppTest;
@@ -84,6 +85,61 @@ class LogPrivacyTest extends BareAppTest {
         assertThat(all).as("the masked part of %s", email).doesNotContain(LogForms.afterFirstCharacter(email));
         assertThat(all).as("the masked part of %s", agent.email())
                 .doesNotContain(LogForms.afterFirstCharacter(agent.email()));
+    }
+
+    /** {@code "schema"."table"} of the account table: the one table with a text column equal to the first admin's email. */
+    private String accountTable() {
+        List<String> found = new ArrayList<>();
+        for (Map<String, Object> col : db.rows("select table_name, column_name from information_schema.columns "
+                + "where table_schema = ? and (data_type in ('text', 'character varying') or udt_name = 'citext')",
+                db.schema())) {
+            String table = quote(db.schema()) + "." + quote((String) col.get("table_name"));
+            if (db.count("select count(*) from " + table + " where " + quote((String) col.get("column_name"))
+                    + "::text = ?", AppTest.ADMIN_EMAIL) > 0) {
+                found.add(table);
+            }
+        }
+        assertThat(found).as("tables with a text column equal to %s", AppTest.ADMIN_EMAIL).hasSize(1);
+        return found.getFirst();
+    }
+
+    private static String quote(String identifier) {
+        return '"' + identifier.replace("\"", "\"\"") + '"';
+    }
+
+    @Test
+    @DisplayName("S0-AC-86 a 500 from an unexpected database error, whose message holds the email, leaves no form "
+            + "of the email in the response or the log")
+    void unexpectedDatabaseError() {
+        Session admin = fixtures.signInAdmin();
+        String email = Unique.email("boom");
+        String table = accountTable();
+        String function = quote(db.schema()) + ".test_fail_" + Unique.number();
+        String trigger = "test_fail_" + Unique.number();
+        db.schemaFixture("create function " + function + "() returns trigger language plpgsql as $$ begin "
+                + "if row_to_json(NEW)::text like '%" + email + "%' then raise exception using errcode = 'PD500', "
+                + "message = 'test failure for ' || row_to_json(NEW)::text, detail = row_to_json(NEW)::text; "
+                + "end if; return NEW; end $$");
+        try {
+            db.schemaFixture("create trigger " + trigger + " before insert on " + table + " for each row "
+                    + "execute function " + function + "()");
+            Mark mark = log.mark();
+
+            ApiResponse response = admin.client().post("/api/console/invitations")
+                    .json(Map.of("email", email, "name", Unique.text("Boom"), "role", "AGENT")).send();
+
+            assertThat(response.status()).as(response.snippet()).isEqualTo(500);
+            assertThat(response.errorCode()).isEqualTo("INTERNAL_ERROR");
+            assertThat(LogForms.foundIn(response.text(), List.of(email))).as("email in the response").isEmpty();
+            List<String> lines = log.lines(mark).stream().filter(l -> !l.isBlank()).toList();
+            assertThat(log.jsonLines(mark)).as("JSON lines among %s", lines).hasSameSizeAs(lines);
+            assertThat(LogForms.foundIn(log.all(), List.of(email))).as("email in the log").isEmpty();
+            assertThat(log.all()).as("the masked part of %s", email)
+                    .doesNotContain(LogForms.afterFirstCharacter(email));
+        } finally {
+            db.schemaFixture("drop trigger if exists " + trigger + " on " + table);
+            db.schemaFixture("drop function if exists " + function + "()");
+        }
     }
 
     @Test

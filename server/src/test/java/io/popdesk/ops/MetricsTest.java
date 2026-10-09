@@ -95,7 +95,7 @@ class MetricsTest extends BareAppTest {
                     .filter(s -> s.value() >= due.getEpochSecond())
                     .map(s -> s.label("job"))
                     .collect(Collectors.toSet());
-            assertThat(ran).as("jobs that ran after %s", due).hasSizeGreaterThanOrEqualTo(3);
+            assertThat(ran).as("jobs that ran after %s", due).containsAll(CleanupRecordTest.JOBS);
             Set<String> counted = scrape.where(s -> s.name().startsWith(Names.CLEANUP_DELETED_PREFIX)).stream()
                     .map(s -> s.label("job"))
                     .collect(Collectors.toSet());

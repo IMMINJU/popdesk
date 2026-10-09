@@ -33,7 +33,7 @@ import org.junit.jupiter.api.Test;
  *
  * The result is the UTF-8 bytes of one JSON object with the keys {@code action}, {@code actor}
  * ({@code {accountId, name, email}}), {@code changes}, {@code occurredAt}, {@code target}. Rules:
- * RFC 8785 (keys sorted, no whitespace, ECMAScript number form, strings escaped as JSON.stringify
+ * RFC 8785 (keys sorted by UTF-16 code units, no whitespace, ECMAScript number form, strings escaped as JSON.stringify
  * does), values without a value written as {@code null} and never left out, every
  * {@link Instant} (the time of the row and any inside {@code changes}) as UTC ISO-8601 with exactly
  * six fraction digits. Map values may be String, Integer, Long, Double, Boolean, null, Instant,
@@ -155,7 +155,7 @@ class CanonicalAuditJsonTest {
     }
 
     @Test
-    @DisplayName("S0-AC-100 nested keys sorted by code point, ECMAScript numbers, JSON.stringify string escapes, "
+    @DisplayName("S0-AC-100 nested keys sorted, ECMAScript numbers, JSON.stringify string escapes, "
             + "times inside changes")
     void sortingNumbersAndEscapes() {
         String text = "quote\" backslash\\ slash/ tab\t newline\n cr\r bs\b ff\f unit" + (char) 0x1f
@@ -186,6 +186,23 @@ class CanonicalAuditJsonTest {
                         + "\"occurredAt\":\"2026-12-31T23:59:59.999999Z\","
                         + "\"target\":{\"accountId\":34,\"type\":\"ACCOUNT\"}}",
                 "2650007be29b48c24315c6b3830b7b69d8caa4eeb1d0b0786e8e294a796a61ef");
+    }
+
+    @Test
+    @DisplayName("S0-AC-100 keys are sorted by UTF-16 code units: an emoji key comes before U+FB01, unlike code "
+            + "point order")
+    void keysSortedByUtf16CodeUnits() {
+        String emoji = Character.toString(0x1F600);
+        String ligature = Character.toString(0xFB01);
+
+        byte[] bytes = encode("COMPANY_CREATED", 1L, "A", "a@example.test", map("code", "AB"),
+                map(ligature, 1, "z", 2, emoji, 3), Instant.parse("2026-10-08T03:15:00.000001Z"));
+
+        assertCanonical(bytes,
+                "{\"action\":\"COMPANY_CREATED\",\"actor\":{\"accountId\":1,\"email\":\"a@example.test\","
+                        + "\"name\":\"A\"},\"changes\":{\"z\":2,\"" + emoji + "\":3,\"" + ligature + "\":1},"
+                        + "\"occurredAt\":\"2026-10-08T03:15:00.000001Z\",\"target\":{\"code\":\"AB\"}}",
+                "e44e3bcb708b38220f2a91cafb3e7e96b4b15a2615b45de6e214faa64e6eb348");
     }
 
     @Test

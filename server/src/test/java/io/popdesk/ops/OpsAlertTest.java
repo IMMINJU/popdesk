@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.ConnectedAppTest;
+import io.popdesk.support.Fixtures.Attachment;
 import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.File;
 import io.popdesk.support.Fixtures.Issue;
@@ -26,11 +27,13 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * Operational alerts (OPS-1): a failed outbox row and attachments over 80% of the quota put an item
- * in every admin's inbox, at most one of a kind a day.
+ * in every admin's inbox. While it is not resolved (no failed row left, attachments back under 80%)
+ * there is one more item of that kind every 24 hours of the app's clock, and no more (tasks.md
+ * section 6).
  *
  * <p>A context of its own: a small quota (1MB), and alerts depend on what happened earlier in the
- * same database. Each test first moves the clock two days on, so an alert from an earlier test is
- * outside "one a day", and uses a new admin whose inbox starts empty.
+ * same database. Each test first moves the clock two days on and uses a new admin whose inbox
+ * starts empty; within the 25 hours a test then moves, a kind gets at most one item.
  *
  * <p>An outbox row fails when the webhook keeps answering 500 for 24 hours after its first failure
  * (S0-AC-68): the test lets the first attempt fail, then moves the clock 25 hours on.
@@ -159,14 +162,46 @@ class OpsAlertTest extends ConnectedAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-80 attachments over 80% of the quota put ATTACHMENT_QUOTA_WARNING in an admin's inbox")
-    void quotaWarning() {
+    @DisplayName("S0-AC-80 a failed row not resolved gives one more DELIVERY_FAILED item 24 hours later")
+    void repeatsWhileUnresolved() {
+        Session second = fixtures.admin(admin);
+        issuesWithFailingWebhook(1);
+        giveUpRetrying();
+        assertThat(awaitItems(fixtures.signInAgain(second), "DELIVERY_FAILED")).as("items on the first day")
+                .hasSize(1);
+
+        clock.advance(Duration.ofHours(25));
+        Session again = fixtures.signInAgain(second);
+
+        Wait.untilAsserted("a second DELIVERY_FAILED item", () -> assertThat(items(again, "DELIVERY_FAILED"))
+                .hasSize(2));
+    }
+
+    @Test
+    @DisplayName("S0-AC-80 attachments over 80% of the quota give ATTACHMENT_QUOTA_WARNING; after they go back "
+            + "under 80%, passing it again the same day gives another")
+    void quotaWarningAgainAfterResolved() {
         Session second = fixtures.admin(admin);
         Issue issue = fixtures.fileIssue(customer, company.code());
+        File big = new File("big.bin", "application/octet-stream", new byte[900_000]);
 
-        fixtures.attach(customer, issue.key(), new File("big.bin", "application/octet-stream", new byte[900_000]));
+        Attachment first = fixtures.attach(customer, issue.key(), big);
+        assertThat(awaitItems(second, "ATTACHMENT_QUOTA_WARNING")).as("items after the first upload").hasSize(1);
 
-        assertThat(awaitItems(second, "ATTACHMENT_QUOTA_WARNING")).as("items of the second admin").hasSize(1);
+        admin.client().delete("/api/console/issues/" + issue.key() + "/attachments/" + first.id()).expect(204);
+        Wait.untilAsserted("the first upload deleted", () -> assertThat(OpsChecks.allItems(admin.client(),
+                        "/api/console/issues/" + issue.key() + "/attachments"))
+                .anySatisfy(a -> {
+                    assertThat(a.path("id").asString("")).isEqualTo(first.id());
+                    assertThat(a.path("deleted").asBoolean(false)).isTrue();
+                }));
+        ApiResponse again = customer.client().post("/api/portal/issues/" + issue.key() + "/attachments")
+                .file("file", big.name(), big.contentType(), big.content()).expect(201);
+
+        Wait.untilAsserted("a second ATTACHMENT_QUOTA_WARNING item", () -> assertThat(items(second,
+                "ATTACHMENT_QUOTA_WARNING")).hasSize(2));
+        admin.client().delete("/api/console/issues/" + issue.key() + "/attachments/" + again.jsonText("id"))
+                .expect(204);
     }
 
     @Test

@@ -51,6 +51,11 @@ final class AuditTrail {
                     || (v.isString() && v.stringValue().equals(Long.toString(n))));
         }
 
+        /** Whether some text value in the row, at any depth, is exactly {@code text}. */
+        boolean hasText(String text) {
+            return values(json).stream().anyMatch(v -> v.isString() && v.stringValue().equals(text));
+        }
+
         /** The objects in the row, at any depth, whose fields are exactly accountId, name, email. */
         List<JsonNode> people() {
             List<JsonNode> out = new ArrayList<>();

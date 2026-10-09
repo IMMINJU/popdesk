@@ -8,8 +8,11 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaCall;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +32,12 @@ import org.junit.jupiter.api.Test;
  *   <li>{@value #ACCOUNT}: accounts, sign-in, and sessions. Reading the caller's own account by ID
  *       is not reading customer data in another person's scope, so this package is left out of the
  *       by-ID rule.
+ *   <li>{@value #VIEWER}: the viewer's scope. Every public read method of a repository of customer
+ *       data takes one. Customer data lives in {@value #ISSUE}, {@value #COMMENT}, {@value #ATTACHMENT},
+ *       and {@value #COMPANY} (companies and who belongs to them); a repository is a class or interface
+ *       there whose simple name ends in {@code Repository}, and a read method is one whose name starts
+ *       with {@code find}, {@code get}, {@code list}, {@code count}, {@code exists}, {@code read},
+ *       {@code search}, {@code stream}, or {@code page}.
  *   <li>{@value #STORAGE}: the attachment storage (file contents). Its {@code read*} and {@code open*}
  *       methods are called only from {@value #ATTACHMENT_SERVICE}.
  * </ul>
@@ -44,6 +53,19 @@ class ScopedReadRulesTest {
     static final String ACCOUNT = "io.popdesk.helpdesk.account";
 
     static final String STORAGE = "io.popdesk.helpdesk.attachment.storage";
+
+    static final String VIEWER = "io.popdesk.helpdesk.Viewer";
+
+    static final String ISSUE = "io.popdesk.helpdesk.issue";
+
+    static final String COMMENT = "io.popdesk.helpdesk.comment";
+
+    static final String ATTACHMENT = "io.popdesk.helpdesk.attachment";
+
+    static final String COMPANY = "io.popdesk.helpdesk.company";
+
+    static final List<String> READ_PREFIXES = List.of("find", "get", "list", "count", "exists", "read", "search",
+            "stream", "page");
 
     static final String ATTACHMENT_SERVICE = "io.popdesk.helpdesk.attachment.AttachmentService";
 
@@ -85,6 +107,31 @@ class ScopedReadRulesTest {
                 .should().callCodeUnitWhere(UNSCOPED_REPOSITORY_READ)
                 .because("customer data is read with the viewer's scope; reads by ID alone belong to system jobs")
                 .check(PRODUCTION);
+    }
+
+    @Test
+    @DisplayName("S0-AC-84 every read method of a customer-data repository takes the viewer's scope")
+    void customerDataReadsTakeViewer() {
+        assertThat(PRODUCTION.stream().anyMatch(c -> c.getFullName().equals(VIEWER))).as("class %s", VIEWER).isTrue();
+        List<String> violations = new ArrayList<>();
+        for (String pkg : List.of(ISSUE, COMMENT, ATTACHMENT, COMPANY)) {
+            List<JavaClass> repositories = classesIn(pkg).stream()
+                    .filter(c -> !inPackage(c, STORAGE) && !inPackage(c, SYSTEM))
+                    .filter(c -> c.getSimpleName().endsWith("Repository"))
+                    .toList();
+            assertThat(repositories).as("repositories in %s", pkg).isNotEmpty();
+            for (JavaClass repository : repositories) {
+                for (JavaMethod method : repository.getMethods()) {
+                    boolean read = READ_PREFIXES.stream().anyMatch(p -> method.getName().startsWith(p));
+                    boolean scoped = method.getRawParameterTypes().stream()
+                            .anyMatch(t -> t.getFullName().equals(VIEWER));
+                    if (read && method.getModifiers().contains(JavaModifier.PUBLIC) && !scoped) {
+                        violations.add(method.getFullName());
+                    }
+                }
+            }
+        }
+        assertThat(violations).as("read methods without a %s parameter", VIEWER).isEmpty();
     }
 
     @Test

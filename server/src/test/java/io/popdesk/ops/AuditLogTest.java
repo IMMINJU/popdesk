@@ -57,6 +57,10 @@ class AuditLogTest extends BareAppTest {
                 .isPresent();
     }
 
+    private static void assertKind(Row row, String kind) {
+        assertThat(row.hasText(kind)).as("kind %s in %s", kind, row).isTrue();
+    }
+
     @Test
     @DisplayName("S0-AC-83 the first admin has one audit row whose person is the system, account 0")
     void firstAdminRow() {
@@ -69,6 +73,7 @@ class AuditLogTest extends BareAppTest {
 
         assertThat(rows).as("rows holding %s with person accountId 0", AppTest.ADMIN_EMAIL).hasSize(1);
         Row row = rows.getFirst();
+        assertKind(row, "FIRST_ADMIN_CREATED");
         assertThat(row.mentions(admin.accountId()) || row.contains(admin.email()))
                 .as("the new admin is the target of %s", row).isTrue();
         assertThat(row.times()).as("times in %s", row).isNotEmpty();
@@ -88,6 +93,7 @@ class AuditLogTest extends BareAppTest {
         fixtures.createCompany(admin, code, name, legalName);
 
         Row row = onlyNewRow(mark, "creating company " + code);
+        assertKind(row, "COMPANY_CREATED");
         assertActor(row, admin);
         assertThat(row.contains(code)).as("company code in %s", row).isTrue();
         assertThat(row.contains(name)).as("name in %s", row).isTrue();
@@ -107,6 +113,7 @@ class AuditLogTest extends BareAppTest {
         fixtures.assignAgent(admin, company.code(), agent.accountId());
 
         Row row = onlyNewRow(mark, "assigning agent " + agent.accountId());
+        assertKind(row, "AGENT_ASSIGNED");
         assertActor(row, admin);
         assertThat(row.contains(company.code())).as("company code in %s", row).isTrue();
         assertThat(row.mentions(agent.accountId()) || row.contains(agent.email()))
@@ -127,6 +134,7 @@ class AuditLogTest extends BareAppTest {
         Invitation invitation = fixtures.invite(admin, Role.CUSTOMER, email, name, List.of(company.code()));
 
         Row row = onlyNewRow(mark, "inviting " + email);
+        assertKind(row, "INVITATION_CREATED");
         assertActor(row, admin);
         assertThat(row.contains(email)).as("invited email in %s", row).isTrue();
         assertThat(row.contains(company.code())).as("company in %s", row).isTrue();
@@ -149,6 +157,7 @@ class AuditLogTest extends BareAppTest {
         String token = Fixtures.tokenOf(link);
 
         Row row = onlyNewRow(mark, "copying the link of " + invitation.accountId());
+        assertKind(row, "INVITATION_LINK_CREATED");
         assertActor(row, admin);
         assertThat(row.mentions(invitation.accountId()) || row.contains(invitation.email()))
                 .as("invited account in %s", row).isTrue();
@@ -169,13 +178,15 @@ class AuditLogTest extends BareAppTest {
         fixtures.signInAgain(agent);
 
         Row row = onlyNewRow(mark, "signing in " + agent.email());
+        assertKind(row, "SIGN_IN_SUCCEEDED");
         assertActor(row, agent);
         assertThat(row.times()).as("times in %s", row).contains(at);
         assertThat(row.contains(Fixtures.PASSWORD)).as("password in %s", row).isFalse();
     }
 
     @Test
-    @DisplayName("S0-AC-83 a failed sign-in leaves its own row, without the password that was tried")
+    @DisplayName("S0-AC-83 a failed sign-in leaves its own row with that account as the person, without the "
+            + "password that was tried")
     void signInFailed() {
         Session admin = fixtures.signInAdmin();
         Session agent = fixtures.agent(admin);
@@ -186,13 +197,15 @@ class AuditLogTest extends BareAppTest {
         console().post("/api/public/sign-in").json(Map.of("email", agent.email(), "password", wrong)).expect(401);
 
         Row row = onlyNewRow(mark, "a failed sign-in of " + agent.email());
+        assertKind(row, "SIGN_IN_FAILED");
+        assertActor(row, agent);
         assertThat(row.times()).as("times in %s", row).contains(at);
         assertThat(row.contains(wrong)).as("tried password in %s", row).isFalse();
         assertThat(row.contains(Fixtures.PASSWORD)).as("password in %s", row).isFalse();
     }
 
     @Test
-    @DisplayName("S0-AC-83 five failed sign-ins leave five failure rows and one lock row")
+    @DisplayName("S0-AC-83 five failed sign-ins leave five SIGN_IN_FAILED rows and one ACCOUNT_LOCKED row")
     void lockLeavesItsOwnRow() {
         Session admin = fixtures.signInAdmin();
         Session agent = fixtures.agent(admin);
@@ -207,6 +220,22 @@ class AuditLogTest extends BareAppTest {
         List<Row> rows = audit.newRows(mark);
         assertThat(rows).as("new rows holding %s after five failed sign-ins", agent.email()).hasSize(6);
         assertThat(rows).as("rows holding the tried password").noneMatch(r -> r.contains(wrong));
+        assertThat(rows).as("SIGN_IN_FAILED rows").filteredOn(r -> r.hasText("SIGN_IN_FAILED")).hasSize(5);
+        assertThat(rows).as("ACCOUNT_LOCKED rows").filteredOn(r -> r.hasText("ACCOUNT_LOCKED")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("S0-AC-83 a failed sign-in with an email no account has leaves no audit row")
+    void unknownEmailLeavesNoRow() {
+        fixtures.signInAdmin();
+        String email = Unique.email("nobody");
+        Mark mark = audit.mark(email);
+
+        console().post("/api/public/sign-in").json(Map.of("email", email, "password", "wrong-Password-1"))
+                .expect(401);
+
+        assertThat(audit.newRows(mark)).as("new rows holding %s", email).isEmpty();
+        assertThat(audit.rowsContaining(email)).as("rows holding %s", email).isEmpty();
     }
 
     @Test
