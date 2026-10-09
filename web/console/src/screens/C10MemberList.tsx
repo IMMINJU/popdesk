@@ -1,7 +1,7 @@
 // C-10 구성원 목록 (관리자, screens.md 4절). List, 초대 (INVITE-1·2), and 초대
 // 링크 복사 on accounts not accepted yet when SMTP is off (INVITE-6, S0-AC-38).
 import { Button, ConfirmDialog, DataTable, Dialog, EmptyState, RelativeTime, StatusBadge, type DataTableColumn } from '@popdesk/ui';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { api, type Schemas } from '../api';
 import { SaveFailure } from '../app/bands';
@@ -31,8 +31,17 @@ function NewLinkDialog(props: { account: Account | null; onClose: () => void }) 
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [link, setLink] = useState<string | null>(null);
+  // An answer that comes after the dialog closed, or after it moved to another
+  // account, is dropped: its link must not show for the next account (MAIL-3, V-2).
+  const request = useRef(0);
+  const accountId = useRef(props.account?.id);
+  useLayoutEffect(() => {
+    accountId.current = props.account?.id;
+  });
 
   const close = () => {
+    request.current += 1;
+    setPending(false);
     setAsked(true);
     setFailure(null);
     setLink(null);
@@ -41,11 +50,12 @@ function NewLinkDialog(props: { account: Account | null; onClose: () => void }) 
 
   const make = async () => {
     if (!props.account || pending) return;
+    const mine = (request.current += 1);
+    const id = props.account.id;
     setPending(true);
     setFailure(null);
-    const result = await call(
-      api.POST('/api/console/invitations/{accountId}/link', { params: { path: { accountId: props.account.id } } }),
-    );
+    const result = await call(api.POST('/api/console/invitations/{accountId}/link', { params: { path: { accountId: id } } }));
+    if (request.current !== mine || accountId.current !== id) return;
     setPending(false);
     if (result.ok) {
       setLink(result.data.inviteLink);

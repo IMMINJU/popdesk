@@ -1,6 +1,6 @@
 // Who is signed in. The portal asks `GET /api/portal/me` once when a signed-in
 // screen opens; screens read the name from here (화면 머리, "나" for own issues).
-import { createContext, useCallback, useContext } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
 import type { Schemas } from '../api';
 import { useLiveNavigate } from './navigate';
@@ -30,13 +30,22 @@ export interface LoginState {
 /**
  * Sends the user to the login screen after a 401 while loading, with the
  * current path as `next` so they come back (screens.md 2절). A 401 that
- * arrives after the screen has gone moves nothing.
+ * arrives after the screen has gone changes nothing, not even the session: the
+ * screen on now gets its own 401 and goes to login itself (V-3).
  */
 export function useToLogin(): () => void {
   const navigate = useLiveNavigate();
   const location = useLocation();
   const { hadSession, setMe } = useSession();
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   return useCallback(() => {
+    if (!mounted.current) return;
     const next = `${location.pathname}${location.search}`;
     const state: LoginState = { expired: hadSession };
     setMe(null);

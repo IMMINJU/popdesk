@@ -44,6 +44,9 @@ export function InviteDialog(props: InviteDialogProps) {
   const [link, setLink] = useState<string | null>(null);
   const [askDiscard, setAskDiscard] = useState(false);
   const cooldown = useCooldown();
+  // Each send gets a number; closing moves it on, so an answer to a send made
+  // before the dialog closed is dropped even when the dialog is open again (V-2).
+  const request = useRef(0);
   const open = useRef(props.open);
   useLayoutEffect(() => {
     open.current = props.open;
@@ -67,6 +70,8 @@ export function InviteDialog(props: InviteDialogProps) {
   }, [props.open]);
 
   const reset = () => {
+    request.current += 1;
+    setPending(false);
     setEmail('');
     setName('');
     setRole(props.preset?.role ?? null);
@@ -98,13 +103,15 @@ export function InviteDialog(props: InviteDialogProps) {
       fields.setError('role', '역할을 고르세요.');
       return;
     }
+    const mine = (request.current += 1);
     setPending(true);
     const body = role === 'CUSTOMER' ? { email, name, role, companyCodes } : { email, name, role };
     const result = await call(api.POST('/api/console/invitations', { body }));
+    if (result.ok) props.onInvited();
+    if (request.current !== mine) return;
     setPending(false);
+    if (!open.current) return;
     if (result.ok) {
-      props.onInvited();
-      if (!open.current) return;
       if (result.data.inviteLink === null) {
         toast('초대 메일을 보냈습니다');
         close();

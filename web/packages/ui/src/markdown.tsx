@@ -53,6 +53,24 @@ function closingBracket(text: string, from: number): number {
   return -1;
 }
 
+/** Drops a link title (`url "title"`). A loop, not `split(/\s+"/)`, which is quadratic on long blank runs. */
+function urlPart(target: string): string {
+  const quote = target.search(/\s"/);
+  if (quote < 0) return target;
+  let end = quote;
+  while (end > 0 && /\s/.test(target[end - 1] ?? '')) end -= 1;
+  return target.slice(0, end);
+}
+
+const TRAILING_PUNCT = `.,;:!?)]'"`;
+
+/** Drops punctuation that ends a bare URL. A loop, not a `[...]+$` regex, which is quadratic on long runs. */
+function trimUrlEnd(url: string): string {
+  let end = url.length;
+  while (end > 0 && TRAILING_PUNCT.includes(url[end - 1] ?? '')) end -= 1;
+  return url.slice(0, end);
+}
+
 const PUNCT = /[!-/:-@[-`{-~]/;
 const WORD = /[\p{L}\p{N}]/u;
 
@@ -106,7 +124,7 @@ function inline(text: string, key: string, inLink = false): ReactNode[] {
         const end = closingParen(text, close + 2);
         if (end > 0) {
           const label = text.slice(i + 1, close);
-          const href = safeHref(text.slice(close + 2, end).split(/\s+"/)[0] ?? '');
+          const href = safeHref(urlPart(text.slice(close + 2, end)));
           const children = inline(label, k(), true);
           push(href ? link(href, children, k()) : <Fragment key={k()}>{children}</Fragment>);
           i = end + 1;
@@ -127,7 +145,7 @@ function inline(text: string, key: string, inLink = false): ReactNode[] {
     if (!inLink && (c === 'h' || c === 'H') && !WORD.test(text[i - 1] ?? '')) {
       const bare = /^https?:\/\/[^\s<]+/i.exec(rest);
       if (bare) {
-        const url = bare[0].replace(/[.,;:!?)\]'"]+$/, '');
+        const url = trimUrlEnd(bare[0]);
         push(link(url, url, k()));
         i += url.length;
         continue;
@@ -164,15 +182,40 @@ function inline(text: string, key: string, inLink = false): ReactNode[] {
   return out;
 }
 
-const FENCE = /^ {0,3}(```+|~~~+)\s*([\w+-]*)\s*$/;
-const HEADING = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
+// Line patterns only test how a line starts, or have no two neighbouring parts that can
+// match the same characters: a 10,000-character line must not make them backtrack (V-1).
+const FENCE_START = /^ {0,3}(```+|~~~+)/;
+const FENCE_INFO = /^[\w+-]*$/;
+const HEADING_START = /^ {0,3}(#{1,6})\s/;
 const RULE = /^ {0,3}([-*_])(\s*\1){2,}\s*$/;
 const QUOTE = /^ {0,3}> ?/;
 const BULLET = /^ {0,3}[-*+]\s+/;
 const ORDERED = /^ {0,3}(\d{1,9})[.)]\s+/;
 
-function isBlockStart(line: string): boolean {
-  return FENCE.test(line) || HEADING.test(line) || RULE.test(line) || QUOTE.test(line) || BULLET.test(line) || ORDERED.test(line);
+/** Quotes nested deeper than this stay as text, so a run of `>` cannot overflow the stack (V-1). */
+const MAX_QUOTE_DEPTH = 10;
+
+/** A fence line: the marker, then an optional language name and nothing else. */
+function fence(line: string): { marker: string; lang: string } | null {
+  const start = FENCE_START.exec(line);
+  if (!start) return null;
+  const lang = line.slice(start[0].length).trim();
+  return FENCE_INFO.test(lang) ? { marker: start[1] ?? '```', lang } : null;
+}
+
+/** A heading line: its level and its text without the closing run of `#`. */
+function heading(line: string): { level: number; text: string } | null {
+  const start = HEADING_START.exec(line);
+  if (!start) return null;
+  let text = line.slice(start[0].length).trimStart().trimEnd();
+  let end = text.length;
+  while (end > 0 && text[end - 1] === '#') end -= 1;
+  text = text.slice(0, end).trimEnd();
+  return { level: (start[1] ?? '#').length, text };
+}
+
+function isBlockStart(line: string, quotes: boolean): boolean {
+  return fence(line) !== null || heading(line) !== null || RULE.test(line) || (quotes && QUOTE.test(line)) || BULLET.test(line) || ORDERED.test(line);
 }
 
 /**
@@ -184,8 +227,9 @@ function headingTag(level: number): 'h3' | 'h4' | 'h5' | 'h6' {
   return `h${String(shifted)}` as 'h3' | 'h4' | 'h5' | 'h6';
 }
 
-function blocks(lines: string[], key: string): ReactNode[] {
+function blocks(lines: string[], key: string, depth = 0): ReactNode[] {
   const out: ReactNode[] = [];
+  const quotes = depth < MAX_QUOTE_DEPTH;
   let i = 0;
   let n = 0;
   const k = () => `${key}-${String(n++)}`;
@@ -198,9 +242,9 @@ function blocks(lines: string[], key: string): ReactNode[] {
       continue;
     }
 
-    const fence = FENCE.exec(line);
-    if (fence) {
-      const marker = fence[1] ?? '```';
+    const fenced = fence(line);
+    if (fenced) {
+      const { marker } = fenced;
       const body: string[] = [];
       i += 1;
       while (i < lines.length && !(lines[i] ?? '').trim().startsWith(marker)) {
@@ -210,7 +254,7 @@ function blocks(lines: string[], key: string): ReactNode[] {
       i += 1;
       out.push(
         <pre key={k()} tabIndex={0}>
-          <code data-lang={fence[2] || undefined}>{body.join('\n')}</code>
+          <code data-lang={fenced.lang || undefined}>{body.join('\n')}</code>
         </pre>,
       );
       continue;
@@ -231,11 +275,11 @@ function blocks(lines: string[], key: string): ReactNode[] {
       continue;
     }
 
-    const heading = HEADING.exec(line);
-    if (heading) {
-      const Tag = headingTag((heading[1] ?? '#').length);
+    const head = heading(line);
+    if (head) {
+      const Tag = headingTag(head.level);
       const id = k();
-      out.push(<Tag key={id}>{inline(heading[2] ?? '', id)}</Tag>);
+      out.push(<Tag key={id}>{inline(head.text, id)}</Tag>);
       i += 1;
       continue;
     }
@@ -246,14 +290,14 @@ function blocks(lines: string[], key: string): ReactNode[] {
       continue;
     }
 
-    if (QUOTE.test(line)) {
+    if (quotes && QUOTE.test(line)) {
       const body: string[] = [];
       while (i < lines.length && QUOTE.test(lines[i] ?? '')) {
         body.push((lines[i] ?? '').replace(QUOTE, ''));
         i += 1;
       }
       const id = k();
-      out.push(<blockquote key={id}>{blocks(body, id)}</blockquote>);
+      out.push(<blockquote key={id}>{blocks(body, id, depth + 1)}</blockquote>);
       continue;
     }
 
@@ -288,7 +332,7 @@ function blocks(lines: string[], key: string): ReactNode[] {
     }
 
     const paragraph: string[] = [];
-    while (i < lines.length && (lines[i] ?? '').trim() !== '' && (paragraph.length === 0 || !isBlockStart(lines[i] ?? ''))) {
+    while (i < lines.length && (lines[i] ?? '').trim() !== '' && (paragraph.length === 0 || !isBlockStart(lines[i] ?? '', quotes))) {
       paragraph.push(lines[i] ?? '');
       i += 1;
     }
