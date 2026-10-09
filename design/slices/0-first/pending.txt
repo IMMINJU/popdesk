@@ -25,8 +25,3 @@ server io/popdesk/boundary/BoundaryListTest.java
 server io/popdesk/boundary/CompanyBoundaryTest.java
 server io/popdesk/boundary/QueuedMailBoundaryTest.java
 server io/popdesk/boundary/StaffIdentityTest.java
-
-# s0-i-console, s0-i-portal: 두 앱이 같은 글롭을 쓰니 두 탭이 모두 병합된 뒤 지운다
-web src/screens/**
-web src/components/**
-web src/App.test.tsx
