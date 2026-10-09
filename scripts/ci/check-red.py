@@ -13,8 +13,8 @@ Passes only when there is at least one test and every test ends in <failure>.
   skipped  skipping is not allowed
 No report at all usually means the tests did not compile.
 
---allow FILE lists tests that may pass before implementation, because the floor or a
-framework default already does what they check. One per line: `<test name> | <reason>`,
+--allow FILE lists tests that may pass before implementation, because the floor, a
+framework default, or the C-4 contract stubs already do what they check. One per line: `<test name> | <reason>`,
 with the name as this script prints it. Lines starting with # are ignored. A line without
 a reason, or a name that is not in the results, fails the check. Allowed tests that pass
 are listed in the output with their reason, for the review in C-7.

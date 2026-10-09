@@ -4,8 +4,8 @@ io.popdesk.boundary.BoundaryListTest.everyNamedTestExists | S0-AC-93 경계 목�
 io.popdesk.boundary.BoundaryListTest.everyListedOperationIsInTheContract | S0-AC-93 경계 목록 관문. 계약 파일과 테스트 이름만 읽는다. 경계 동작은 목록이 가리키는 테스트가 본다
 io.popdesk.boundary.BoundaryListTest.eachOperationHasTestsOrReason | S0-AC-93 경계 목록 관문. 계약 파일과 테스트 이름만 읽는다. 경계 동작은 목록이 가리키는 테스트가 본다
 io.popdesk.boundary.BoundaryListTest.everyContractOperationIsListed | S0-AC-93 경계 목록 관문. 계약 파일과 테스트 이름만 읽는다. 경계 동작은 목록이 가리키는 테스트가 본다
-io.popdesk.deploy.ContractClientsTest.clientCoversContract(String)[1] | S0-AC-91 계약 파일과 클라이언트는 C-4가 이미 만들었다. 실제 비교는 OpenApiFilesTest와 CI가 한다
-io.popdesk.deploy.ContractClientsTest.clientCoversContract(String)[2] | S0-AC-91 계약 파일과 클라이언트는 C-4가 이미 만들었다. 실제 비교는 OpenApiFilesTest와 CI가 한다
+io.popdesk.deploy.ContractClientsTest.clientCoversContract(String)[1] | S0-AC-91 계약 파일과 클라이언트는 C-4가 이미 만들었다. OpenApiFilesTest가 계약 파일을 다시 쓰고 CI가 git diff로 비교한다
+io.popdesk.deploy.ContractClientsTest.clientCoversContract(String)[2] | S0-AC-91 계약 파일과 클라이언트는 C-4가 이미 만들었다. OpenApiFilesTest가 계약 파일을 다시 쓰고 CI가 git diff로 비교한다
 io.popdesk.deploy.ResetPasswordTest.noHttpPath | S0-AC-97 계약 파일에 관리자 복구 HTTP 경로가 없다. C-4 계약이 이미 그렇다
 io.popdesk.issue.PortalIssueContractTest.typesMatchSnapshot | S0-AC-49 계약 파일 스냅샷. C-4 계약 파일이 이미 그 모양이다. 실제 응답은 PortalIssueFieldsTest가 본다
 io.popdesk.issue.PortalIssueContractTest.noStaffOnlyFields | S0-AC-49 계약 파일에 상담 쪽 전용 칸이 없다. C-4 계약 파일이 이미 그렇다

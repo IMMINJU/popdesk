@@ -48,7 +48,7 @@
 | 스크립트 | 단계 | 하는 일 |
 |---|---|---|
 | `check-test-style.py --all-strict` | 5 | `@Disabled`·`.skip`·`.only`, 늘 참인 단언, mock(`@MockBean`, `Mockito`, `vi.mock` 등), 고정 대기(`Thread.sleep` 등)를 실패로 본다. 바깥 시스템은 mock 대신 실제 대역(Testcontainers Postgres, GreenMail, MinIO, 테스트용 웹훅 받는 쪽, 고정 `Clock`)을 쓴다 |
-| `check-red.py --allow design/slices/{묶음}/red-allow.txt --out design/slices/{묶음}/red.md` | 6 | 이번 묶음의 새 테스트 결과(JUnit XML)가 모두 단언 실패인지 본다. 바닥이나 프레임워크 기본값이 이미 하는 일이라 처음부터 통과하는 테스트는 `red-allow.txt`에 `테스트 이름 \| 이유`로 적는다. 이유가 없거나 결과에 없는 이름이면 실패다. 허용한 통과는 `red.md`에 이유와 함께 남고 C-7에서 사람이 본다 |
+| `check-red.py --allow design/slices/{묶음}/red-allow.txt --out design/slices/{묶음}/red.md` | 6 | 이번 묶음의 새 테스트 결과(JUnit XML)가 모두 단언 실패인지 본다. 바닥, 프레임워크 기본값, C-4 계약 껍데기(계약 파일, 공용 컴포넌트의 props와 접근성 마크업)가 이미 하는 일이라 처음부터 통과하는 테스트는 `red-allow.txt`에 `테스트 이름 \| 이유`로 적는다. 이유가 없거나 결과에 없는 이름이면 실패다. 허용한 통과는 `red.md`에 이유와 함께 남고 C-7에서 사람이 본다. C-4 껍데기 때문에 허용한 테스트는 C-10 변이 테스트를 꼭 돌린다 |
 | `pending.py server\|web` | 5~9, CI | 묶음의 테스트는 구현보다 먼저 `main`에 들어가 일부러 실패한다. `design/slices/{묶음}/pending.txt`에 적은 테스트는 CI의 server·web 잡이 빼고 돌려, 나머지 테스트는 늘 통과해야 한다. 구현 탭이 병합되면 메인이 그 줄을 지운다. 이 파일은 관문이라 테스트 쪽·구현 쪽 모두 고치지 못한다 |
 | `tests-lock.py write` | 6 | 테스트 파일마다 sha256을 `tests.lock`에 적는다 |
 | `trace.py design/slices/{묶음} --search <숨긴 E2E 저장소>` | 7 | 대응표. 테스트 없는 기준과 없는 기준 ID를 실패로 본다 |
