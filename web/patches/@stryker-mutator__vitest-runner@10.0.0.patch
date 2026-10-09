@@ -1,0 +1,34 @@
+diff --git a/dist/src/stryker-setup.js b/dist/src/stryker-setup.js
+index aecfacbe47b285c272c47e54b3d66a716adfdc41..e3a9e3401c1e74e7cf71996222557a0b6168f838 100644
+--- a/dist/src/stryker-setup.js
++++ b/dist/src/stryker-setup.js
+@@ -56,7 +56,11 @@ else {
+     }
+ }
+ // Stryker disable all: this file is copied to the sandbox dir
+-function collectTestName({ name, suite, }) {
++function collectTestName({ name, suite, fullTestName, }) {
++    // Vitest 5 matches testNamePattern against fullTestName, whose parts are joined with ' > '.
++    if (fullTestName) {
++        return fullTestName;
++    }
+     const nameParts = [name];
+     let currentSuite = suite;
+     while (currentSuite) {
+diff --git a/dist/src/test-helpers.js b/dist/src/test-helpers.js
+index 56cc786f30c524ae18ce87eef1a67fdf26b703c5..d7a4b968e42741296efd96f7e438aeef98ffb451 100644
+--- a/dist/src/test-helpers.js
++++ b/dist/src/test-helpers.js
+@@ -1,7 +1,11 @@
+ // Don't merge this file into 'vitest-helpers.ts'!
+ // This file is used from the testing environment (via stryker-setup.js) and thus could be loaded into the browser (when using vitest with browser mode).
+ // Thus we should avoid unnecessary dependencies in this file.
+-export function collectTestName({ name, suite, }) {
++export function collectTestName({ name, suite, fullTestName, }) {
++    // Vitest 5 matches testNamePattern against fullTestName, whose parts are joined with ' > '.
++    if (fullTestName) {
++        return fullTestName;
++    }
+     const nameParts = [name];
+     let currentSuite = suite;
+     while (currentSuite) {

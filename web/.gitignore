@@ -6,3 +6,5 @@ test-results/
 playwright-report/
 blob-report/
 .vite/
+**/reports/mutation/
+.stryker-tmp/

@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint .",
     "storybook": "storybook dev -c src/storybook -p 6006",
-    "build-storybook": "storybook build -c src/storybook -o dist/storybook"
+    "build-storybook": "storybook build -c src/storybook -o dist/storybook",
+    "mutate": "stryker run"
   },
   "peerDependencies": {
     "react": "catalog:",
@@ -20,6 +21,8 @@
   },
   "devDependencies": {
     "@storybook/react-vite": "catalog:",
+    "@stryker-mutator/core": "catalog:",
+    "@stryker-mutator/vitest-runner": "catalog:",
     "@testing-library/dom": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
