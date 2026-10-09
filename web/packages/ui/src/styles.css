@@ -292,6 +292,7 @@ textarea {
 }
 
 .pd-field-count {
+  margin-left: auto;
   font-size: var(--text-xs);
   line-height: var(--text-xs-line);
   color: var(--text-muted);
