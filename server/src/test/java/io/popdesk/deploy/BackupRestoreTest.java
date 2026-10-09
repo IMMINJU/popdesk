@@ -28,9 +28,11 @@ import org.junit.jupiter.api.TestMethodOrder;
  * into an empty database while someone holds the app's lock, and finally into an empty database
  * with no lock.
  *
- * <p>Restore runs in a new container of the app service with the entry point {@code popdesk}
- * ({@code docker compose run --entrypoint popdesk app restore <file>}), the way an operator runs it
- * before the app starts. The app's lock keys are read from {@code pg_locks} while the app runs.
+ * <p>Restore runs in a new container of the app service, the way an operator runs it before the app
+ * starts ({@code docker compose run --rm app popdesk restore <file>}, tasks.md section 7); the dump
+ * is mounted into that container as one read-only file. The backup is copied out of the running
+ * container with {@code docker compose cp}. The app's lock keys are read from {@code pg_locks}
+ * while the app runs.
  */
 @Tag("deploy")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -202,8 +204,8 @@ class BackupRestoreTest {
     }
 
     private static Cli.Result restore(Stack stack, Path dump) {
-        return stack.command(Duration.ofMinutes(5), "run", "--rm", "--no-deps", "-T", "--entrypoint", "popdesk",
-                "-v", dump.toAbsolutePath() + ":/tmp/restore.dump:ro", "app", "restore", "/tmp/restore.dump");
+        return stack.command(Duration.ofMinutes(5), "run", "--rm", "-T",
+                "-v", dump.toAbsolutePath() + ":/tmp/restore.dump:ro", "app", "popdesk", "restore", "/tmp/restore.dump");
     }
 
     /** Removes db's volume and starts db again: a new, empty database. */

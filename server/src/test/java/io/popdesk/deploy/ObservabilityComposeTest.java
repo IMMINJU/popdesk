@@ -110,7 +110,7 @@ class ObservabilityComposeTest {
 
     @Test
     @Order(4)
-    @DisplayName("S0-AC-79 Grafana's Prometheus data source returns the request and attachment metrics of the app")
+    @DisplayName("S0-AC-79 Grafana's Prometheus data source returns the request, send queue and attachment metrics of the app")
     void grafanaHasTheMetrics() {
         Stack stack = RUNNING.get();
         String lgtm = lgtmService(stack);
@@ -118,7 +118,7 @@ class ObservabilityComposeTest {
         String grafana = "http://127.0.0.1:" + stack.port(lgtm, 3000);
         String uid = Wait.until("Grafana's Prometheus data source", Duration.ofMinutes(2), () -> prometheusUid(grafana));
 
-        for (String metric : List.of(REQUESTS, ATTACHMENT_BYTES)) {
+        for (String metric : List.of(REQUESTS, QUEUED, ATTACHMENT_BYTES)) {
             String url = grafana + "/api/datasources/proxy/uid/" + uid + "/api/v1/query?query="
                     + URLEncoder.encode(metric, StandardCharsets.UTF_8);
             JsonNode result = Wait.until(metric + " in Grafana", Duration.ofMinutes(3), () -> {

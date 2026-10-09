@@ -29,8 +29,8 @@ Needs Docker with Compose v2.24 or later (the override file uses `!override` and
 | Release Compose file | `deploy/compose.yml`, services `app` and `db` |
 | Development Compose file | `deploy/compose.dev.yml`, laid over the release file |
 | Observability Compose file | `deploy/compose.obs.yml`, dashboards in `deploy/grafana/*.json` |
-| Commands | `popdesk` on the `PATH` inside the app container |
-| JVM options | The image launches the app with the `java` launcher and leaves `JDK_JAVA_OPTIONS` to the operator. The tests set the heap (`-Xmx384m`) and the trust store for the mail server this way, and change nothing else about the JVM |
+| Commands | `popdesk` on the `PATH` inside the app container. Restore runs in a new container, `docker compose run --rm app popdesk restore <file>`; dumps move with `docker compose cp` |
+| JVM options | The image sets the garbage collector in its own JVM options (`-XX:+Use...GC` in its environment, entry point, or the `java` command line). It launches the app with the `java` launcher and leaves `JDK_JAVA_OPTIONS` to the operator. The tests set the heap (`-Xmx384m`) and the trust store for the mail server this way, and change nothing else about the JVM |
 | Database settings | The release file reads `POPDESK_DB_PASSWORD` from the environment (`${POPDESK_DB_PASSWORD}`), as an operator's `.env` gives it |
 | Migrations | In Flyway's default location `classpath:db/migration`, with versions below 999 |
 
