@@ -152,8 +152,8 @@ class MailQueueRowTest extends GatedMailTest {
     }
 
     @Test
-    @DisplayName("S0-AC-69 a comment mail queued for a customer who then leaves the company is not sent, and its row is deleted")
-    void mailForCustomerWhoCannotSeeIssueIsDropped() {
+    @DisplayName("S0-AC-69 a comment mail queued for a customer whose account is then suspended is not sent, and its row is deleted")
+    void mailForSuspendedCustomerIsDropped() {
         Scene s = steps.scene();
         Issue issue = fixtures.fileIssue(s.customer(), s.code());
         gate().hold();
@@ -162,15 +162,16 @@ class MailQueueRowTest extends GatedMailTest {
         gate().awaitHeldTo(s.customer().email());
         List<Row> added = rows.added(before);
 
-        new Membership(db).remove(s.customer().accountId(), s.code());
-        assertThat(s.customer().client().get("/api/portal/issues/" + issue.key()).send().status())
-                .as("the customer sees the issue after leaving the company").isEqualTo(404);
+        new AccountStatus(db).suspend(s.customer().accountId(), s.customer().email());
+        assertThat(portal().post("/api/public/sign-in")
+                .json(Map.of("email", s.customer().email(), "password", s.customer().password())).send().status())
+                .as("sign-in of the suspended customer").isEqualTo(401);
         gate().pass();
         clock.advance(Duration.ofSeconds(1));
-        List<Row> gone = rows.awaitGone("the mail row handled after the customer lost sight of the issue", added);
+        List<Row> gone = rows.awaitGone("the mail row handled after the customer was suspended", added);
 
         assertThat(gone).as("rows that went away").hasSize(1);
-        Wait.holds("no mail to the customer who cannot see the issue", Duration.ofSeconds(3),
+        Wait.holds("no mail to the suspended customer", Duration.ofSeconds(3),
                 () -> NotifySteps.notifications(mail(), s.customer().email()).isEmpty());
         assertThat(gate().held()).as("attempts that reached the mail server").hasSize(1);
     }

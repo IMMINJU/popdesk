@@ -11,8 +11,8 @@ import java.util.Set;
 /**
  * Takes a customer out of a company with SQL. Removing a membership has no API before slice 1
  * (PROJ-4), and it is the one change to business rows that tests may make with SQL
- * (tasks.md 6절): it makes "the recipient can no longer see the issue" for the queued mail
- * boundary test.
+ * (tasks.md 6절). A customer who leaves still sees the issues they filed (permissions.md rule 2),
+ * so the queued mail boundary test uses it to check that their mail still goes out.
  *
  * <p>A copy of the notify package's class of the same name (report: candidate for support).
  *
