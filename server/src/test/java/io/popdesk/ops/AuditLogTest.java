@@ -16,6 +16,7 @@ import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -266,5 +267,95 @@ class AuditLogTest extends BareAppTest {
 
         OpsChecks.assertError(response, 409, "EMAIL_TAKEN");
         assertThat(audit.rowsContaining(name)).as("rows holding %s", name).isEmpty();
+    }
+
+    /**
+     * The audit table: the table of the one new row a company creation leaves. Creates a company with
+     * a new admin to find it.
+     */
+    private String auditTable() {
+        Session admin = fixtures.admin(fixtures.signInAdmin());
+        Mark mark = audit.mark(admin.email());
+        fixtures.createCompany(admin);
+        return onlyNewRow(mark, "creating a company to find the audit table").table();
+    }
+
+    /**
+     * Makes every INSERT into {@code tables} fail whose row, as JSON text, holds {@code marker}: a
+     * {@code test_} trigger (tasks.md section 6). Returns the statements that drop it again.
+     */
+    private List<String> failInserts(List<String> tables, String marker) {
+        String function = quote(db.schema()) + ".test_audit_fail_" + Unique.number();
+        db.schemaFixture("create function " + function + "() returns trigger language plpgsql as $$ begin "
+                + "if position(" + literal(marker) + " in row_to_json(NEW)::text) > 0 then "
+                + "raise exception 'test_ trigger: injected failure'; end if; return NEW; end $$");
+        List<String> drops = new ArrayList<>();
+        for (String table : tables) {
+            String trigger = "test_audit_fail_" + Unique.number();
+            db.schemaFixture("create trigger " + trigger + " before insert on " + quote(table) + " for each row "
+                    + "execute function " + function + "()");
+            drops.add("drop trigger if exists " + trigger + " on " + quote(table));
+        }
+        drops.add("drop function if exists " + function + "()");
+        return drops;
+    }
+
+    private void dropAll(List<String> drops) {
+        drops.forEach(db::schemaFixture);
+    }
+
+    @Test
+    @DisplayName("S0-AC-83 when writing the audit row fails, the company is not created either: 500, and the code "
+            + "is free")
+    void auditFailureUndoesTheChange() {
+        String table = auditTable();
+        Session admin = fixtures.admin(fixtures.signInAdmin());
+        String code = Unique.companyCode();
+        String legalName = Unique.text("Unaudited Ltd.");
+        List<String> drops = failInserts(List.of(table), legalName);
+        try {
+            ApiResponse response = admin.client().post("/api/console/companies")
+                    .json(Map.of("code", code, "name", Unique.text("Unaudited"), "legalName", legalName)).send();
+
+            OpsChecks.assertError(response, 500, "INTERNAL_ERROR");
+        } finally {
+            dropAll(drops);
+        }
+        OpsChecks.assertError(admin.client().get("/api/console/companies/" + code).send(), 404, "NOT_FOUND");
+        assertThat(audit.rowsContaining(legalName)).as("rows holding %s", legalName).isEmpty();
+    }
+
+    @Test
+    @DisplayName("S0-AC-83 when writing the company fails after the checks, no audit row is left: 500, and no row "
+            + "holds the company")
+    void changeFailureLeavesNoAuditRow() {
+        String auditTable = auditTable();
+        Session admin = fixtures.admin(fixtures.signInAdmin());
+        Company probe = fixtures.createCompany(admin);
+        List<String> companyTables = audit.rowsContaining(probe.code()).stream().map(Row::table)
+                .filter(t -> !t.equals(auditTable)).distinct().toList();
+        assertThat(companyTables).as("tables holding company %s besides the audit table", probe.code())
+                .isNotEmpty();
+        String code = Unique.companyCode();
+        String legalName = Unique.text("Unwritten Ltd.");
+        List<String> drops = failInserts(companyTables, legalName);
+        try {
+            ApiResponse response = admin.client().post("/api/console/companies")
+                    .json(Map.of("code", code, "name", Unique.text("Unwritten"), "legalName", legalName)).send();
+
+            OpsChecks.assertError(response, 500, "INTERNAL_ERROR");
+        } finally {
+            dropAll(drops);
+        }
+        assertThat(audit.rowsContaining(legalName)).as("rows holding %s", legalName).isEmpty();
+        assertThat(audit.rowsContaining(code)).as("rows holding %s", code).isEmpty();
+    }
+
+    private static String quote(String identifier) {
+        return '"' + identifier.replace("\"", "\"\"") + '"';
+    }
+
+    private static String literal(String value) {
+        return "'" + value.replace("'", "''") + "'";
     }
 }

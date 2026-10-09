@@ -133,6 +133,59 @@ class ObservabilityComposeTest {
         }
     }
 
+    @Test
+    @Order(5)
+    @DisplayName("S0-AC-79 Grafana has loaded the dashboards of deploy/grafana: they query the three metrics from a "
+            + "data source Grafana has")
+    void grafanaHasTheDashboards() throws IOException {
+        Stack stack = RUNNING.get();
+        String grafana = "http://127.0.0.1:" + stack.port(lgtmService(stack), 3000);
+        List<String> titles = new ArrayList<>();
+        try (Stream<Path> files = Files.list(Repo.path("deploy/grafana"))) {
+            for (Path file : files.filter(f -> f.toString().endsWith(".json")).toList()) {
+                titles.add(JSON.readTree(Files.readString(file, StandardCharsets.UTF_8)).path("title").asString(""));
+            }
+        }
+        assertThat(titles).as("titles of the dashboards in deploy/grafana").isNotEmpty().doesNotContain("");
+
+        List<JsonNode> loaded = Wait.until("the dashboards " + titles + " in Grafana", Duration.ofMinutes(2), () -> {
+            Http.Response r = Http.attempt(grafana + "/api/search?type=dash-db", "admin", "admin");
+            if (r == null || r.status() != 200) {
+                return null;
+            }
+            List<JsonNode> found = new ArrayList<>();
+            JSON.readTree(r.body()).forEach(d -> {
+                if (titles.contains(d.path("title").asString(""))) {
+                    found.add(d);
+                }
+            });
+            return found.size() >= titles.size() ? found : null;
+        });
+        Set<String> sources = new HashSet<>();
+        Http.Response list = Http.attempt(grafana + "/api/datasources", "admin", "admin");
+        assertThat(list).as("Grafana's data sources").isNotNull();
+        JSON.readTree(list.body()).forEach(d -> sources.add(d.path("uid").asString("")));
+
+        List<String> queries = new ArrayList<>();
+        List<String> used = new ArrayList<>();
+        for (JsonNode d : loaded) {
+            Http.Response r = Http.attempt(grafana + "/api/dashboards/uid/" + d.path("uid").asString(""), "admin",
+                    "admin");
+            assertThat(r != null && r.status() == 200).as("dashboard %s in Grafana", d).isTrue();
+            JsonNode dashboard = JSON.readTree(r.body()).path("dashboard");
+            collectQueries(dashboard, queries);
+            collectSourceUids(dashboard, used);
+        }
+
+        for (String metric : List.of(REQUESTS, QUEUED, ATTACHMENT_BYTES)) {
+            assertThat(queries).as("a query with %s in the dashboards Grafana loaded", metric)
+                    .anyMatch(q -> q.contains(metric));
+        }
+        assertThat(used).as("data source uids of the panels; Grafana has %s", sources)
+                .allMatch(uid -> sources.contains(uid) || uid.startsWith("$") || uid.equals("grafana")
+                        || uid.startsWith("-- "));
+    }
+
     private static Stack start() {
         Stack stack = Stack.release("obs").with(Repo.obsCompose());
         try {
@@ -166,6 +219,21 @@ class ObservabilityComposeTest {
             }
         }
         return null;
+    }
+
+    /** The {@code uid} of every {@code datasource} object anywhere in a dashboard. */
+    private static void collectSourceUids(JsonNode node, List<String> out) {
+        if (node.isObject()) {
+            for (Map.Entry<String, JsonNode> field : node.properties()) {
+                if (field.getKey().equals("datasource") && field.getValue().path("uid").isString()) {
+                    out.add(field.getValue().path("uid").stringValue());
+                } else {
+                    collectSourceUids(field.getValue(), out);
+                }
+            }
+        } else if (node.isArray()) {
+            node.forEach(child -> collectSourceUids(child, out));
+        }
     }
 
     /** Every {@code expr} string anywhere in a dashboard. */

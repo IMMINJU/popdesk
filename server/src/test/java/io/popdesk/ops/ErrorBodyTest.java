@@ -21,11 +21,15 @@ import tools.jackson.databind.JsonNode;
 /** The error body (COM-3) and the rule for missing values (D-44). */
 class ErrorBodyTest extends BareAppTest {
 
-    /** What a body must not show: exception names, stack frames, framework packages, SQL (upper case). */
-    private static final Pattern LEAK = Pattern.compile(
+    /**
+     * What a body must not show: exception names, stack frames, framework and app packages, parser
+     * and database messages, SQL (upper case). {@code DatabaseConflictTest} uses it too.
+     */
+    static final Pattern LEAK = Pattern.compile(
             "Exception|Throwable|\\bat [a-z]+\\.[a-z]|org\\.springframework|org\\.hibernate|org\\.postgresql"
-                    + "|java\\.lang|jakarta\\.|SQLState|\\bSELECT\\b|\\bINSERT\\b|\\bUPDATE\\b|\\bDELETE FROM\\b"
-                    + "|violates|ERROR:|\"timestamp\"|\"trace\"|\"path\"");
+                    + "|java\\.lang|jakarta\\.|io\\.popdesk|JSON parse error|Source:|line: \\d+, column:"
+                    + "|SQLState|\\bSELECT\\b|\\bINSERT\\b|\\bUPDATE\\b|\\bDELETE FROM\\b"
+                    + "|violates|duplicate key|Key \\(|ERROR:|\"timestamp\"|\"trace\"|\"path\"");
 
     private static void assertErrorBody(SoftAssertions soft, ApiResponse response) {
         String what = response.request() + " -> " + response.status() + ": " + response.snippet();

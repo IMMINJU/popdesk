@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DisplayName;
@@ -139,7 +140,8 @@ class ResetPasswordTest {
 
     @Test
     @Order(6)
-    @DisplayName("S0-AC-97 neither contract file has an HTTP path for resetting a password")
+    @DisplayName("S0-AC-97 neither contract file has an HTTP path for resetting a password (the app's own mappings: "
+            + "ops/EndpointMappingsTest)")
     void noHttpPath() throws IOException {
         for (String app : List.of("portal", "console")) {
             String text = Files.readString(Repo.require("docs/integrate/openapi-" + app + ".json", "contract file"),
@@ -148,7 +150,7 @@ class ResetPasswordTest {
             JSON.readTree(text).path("paths").propertyNames().forEach(paths::add);
 
             assertThat(paths).as("paths of openapi-%s.json", app).isNotEmpty()
-                    .noneMatch(p -> p.toLowerCase().contains("password"));
+                    .noneMatch(p -> p.toLowerCase(Locale.ROOT).matches(".*(password|reset|credential).*"));
         }
     }
 

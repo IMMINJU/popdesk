@@ -11,6 +11,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
@@ -55,6 +56,10 @@ class UpgradeHarnessTest {
     private static final Path WORK = tempDir();
     private static final Once<Path> SAMPLE = new Once<>("make-sample.py", UpgradeHarnessTest::makeSample);
     private static final List<String> PROJECTS = new ArrayList<>();
+    private static final List<String> CHECKS = List.of("issues", "attachments", "outbox", "audit");
+
+    /** The send queue's tables: a name that holds "outbox" or "queue" (as V999 assumes). */
+    private static final String QUEUE_TABLES = "and (table_name like '%outbox%' or table_name like '%queue%') ";
 
     @AfterAll
     static void cleanUp() {
@@ -74,6 +79,31 @@ class UpgradeHarnessTest {
         assertThat(sample.resolve("sample.expected.json")).as("sample.expected.json").isRegularFile();
         assertThat(Files.readString(sample.resolve("sample.image"), StandardCharsets.UTF_8).strip())
                 .as("sample.image").contains(TestImage.id());
+    }
+
+    @Test
+    @Order(1)
+    @DisplayName("S0-AC-95 what the sample check expects is not empty: issue keys, attachment hashes, and no empty "
+            + "list or object")
+    void sampleExpectsSomething() throws IOException {
+        Path sample = SAMPLE.get();
+        JsonNode expected = JSON.readTree(Files.readString(sample.resolve("sample.expected.json"),
+                StandardCharsets.UTF_8));
+        List<JsonNode> nodes = new ArrayList<>();
+        collect(expected, nodes);
+
+        assertThat(expected.isObject() && !expected.isEmpty()).as("sample.expected.json %s", expected).isTrue();
+        assertThat(nodes).as("empty lists or objects in %s", expected)
+                .noneMatch(n -> n.isContainer() && n.isEmpty());
+        assertThat(nodes).as("issue keys ({company code}-{number}) in %s", expected)
+                .anyMatch(n -> n.isString() && n.stringValue().matches("[A-Z0-9]+-[0-9]+"));
+        assertThat(nodes).as("sha256 hashes of attachment contents in %s", expected)
+                .anyMatch(n -> n.isString() && n.stringValue().matches("(?i)(sha256:)?[0-9a-f]{64}"));
+    }
+
+    private static void collect(JsonNode node, List<JsonNode> out) {
+        out.add(node);
+        node.values().forEach(child -> collect(child, out));
     }
 
     @Test
@@ -112,11 +142,11 @@ class UpgradeHarnessTest {
                     .as("an attachment in state purging").isTrue();
 
             List<Map<String, Object>> textColumns = db.query("select table_name, column_name from "
-                    + "information_schema.columns where table_schema = ? "
+                    + "information_schema.columns where table_schema = ? " + QUEUE_TABLES
                     + "and data_type in ('text', 'character varying', 'USER-DEFINED')", schema);
             List<Map<String, Object>> failedTimes = db.query("select table_name, column_name from "
-                    + "information_schema.columns where table_schema = ? and column_name like '%failed%' "
-                    + "and data_type like 'timestamp%'", schema);
+                    + "information_schema.columns where table_schema = ? " + QUEUE_TABLES
+                    + "and column_name like '%failed%' and data_type like 'timestamp%'", schema);
             assertThat(anyColumn(db, schema, textColumns, "lower(%s::text) = 'failed'")
                     || anyColumn(db, schema, failedTimes, "%s is not null"))
                     .as("a send queue row in state failed").isTrue();
@@ -135,7 +165,7 @@ class UpgradeHarnessTest {
         assertThat(harness.exit()).as("upgrade-test.py\n%s", harness).isZero();
         JsonNode result = result(work);
         assertThat(result.path("started").asBoolean(false)).as("started in result.json %s", result).isTrue();
-        for (String check : List.of("issues", "attachments", "outbox", "audit")) {
+        for (String check : CHECKS) {
             assertThat(result.path("checks").path(check).asBoolean(false)).as("check %s in %s", check, result).isTrue();
         }
     }
@@ -165,11 +195,17 @@ class UpgradeHarnessTest {
         assertThat(harness.exit()).as("upgrade-test.py on a newer schema (2: the app did not start)\n%s", harness)
                 .isEqualTo(2);
         assertThat(result(work).path("started").asBoolean(true)).as("started in result.json").isFalse();
+        Path log = work.resolve("app.log");
+        assertThat(log).as("app.log of the harness").isRegularFile();
+        String text = Files.readString(log, StandardCharsets.UTF_8);
+        assertThat(text).as("app.log: the app itself refused the newer schema (tasks.md section 7)").contains("9999");
+        assertThat(text.toLowerCase(Locale.ROOT)).as("app.log: the app names the backup").contains("backup");
     }
 
     @Test
     @Order(6)
-    @DisplayName("S0-AC-104 with a broken V999 migration added, the app starts and the harness fails its sample check")
+    @DisplayName("S0-AC-104 with a broken V999 migration added, the app starts and each of the four sample checks "
+            + "fails")
     void brokenMigrationFailsTheHarness() {
         Path sample = SAMPLE.get();
         Path work = WORK.resolve("v999");
@@ -179,9 +215,10 @@ class UpgradeHarnessTest {
         assertThat(harness.exit()).as("upgrade-test.py with V999 (1: a sample check failed)\n%s", harness).isEqualTo(1);
         JsonNode result = result(work);
         assertThat(result.path("started").asBoolean(false)).as("started in result.json %s", result).isTrue();
-        List<Boolean> checks = new ArrayList<>();
-        result.path("checks").forEach(c -> checks.add(c.asBoolean(true)));
-        assertThat(checks).as("checks in %s", result).contains(false);
+        for (String check : CHECKS) {
+            JsonNode value = result.path("checks").path(check);
+            assertThat(value.isBoolean() && !value.asBoolean()).as("check %s is false in %s", check, result).isTrue();
+        }
     }
 
     private static Path makeSample() {

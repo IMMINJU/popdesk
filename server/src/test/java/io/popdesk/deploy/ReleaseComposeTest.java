@@ -65,7 +65,8 @@ class ReleaseComposeTest {
         Port port = appPorts.getFirst();
         assertThat(port.target()).as("app container port").isEqualTo(8080);
         assertThat(port.published()).as("app host port").isEqualTo("8080");
-        assertThat(port.hostIp()).as("app host address (none: all interfaces)").isNull();
+        assertThat(port.hostIp()).as("app host address (none, 0.0.0.0, or ::: all interfaces)")
+                .isIn(null, "0.0.0.0", "::");
         assertThat(compose.ports("db")).as("db ports in %s", compose.origin()).isEmpty();
         List<Integer> published = new ArrayList<>();
         for (String service : compose.services().keySet()) {

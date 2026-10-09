@@ -32,8 +32,10 @@ import tools.jackson.databind.JsonNode;
  * section 6).
  *
  * <p>A context of its own: a small quota (1MB), and alerts depend on what happened earlier in the
- * same database. Each test first moves the clock two days on and uses a new admin whose inbox
- * starts empty; within the 25 hours a test then moves, a kind gets at most one item.
+ * same database. A failed row is deleted 7 days after it failed (S0-AC-68), and until then the
+ * failure is not resolved and repeats every 24 hours. So each test first moves the clock eight days
+ * on and waits until no failed row is left: every test starts from a resolved state. It then uses a
+ * new admin whose inbox starts empty.
  *
  * <p>An outbox row fails when the webhook keeps answering 500 for 24 hours after its first failure
  * (S0-AC-68): the test lets the first attempt fail, then moves the clock 25 hours on.
@@ -52,10 +54,24 @@ class OpsAlertTest extends ConnectedAppTest {
 
     @BeforeEach
     void freshDay() {
-        clock.advance(Duration.ofDays(2));
+        clock.advance(Duration.ofDays(8));
         admin = fixtures.signInAdmin();
+        Wait.untilAsserted("no failed row left from earlier tests", () -> {
+            JsonNode status = admin.client().get(SystemStatusTest.STATUS).expect(200).json();
+            assertThat(status.path("webhook").path("failed").asLong(-1)).as("webhook.failed").isZero();
+            assertThat(status.path("mail").path("failed").asLong(-1)).as("mail.failed").isZero();
+        });
         company = fixtures.createCompany(admin);
         customer = fixtures.customer(admin, company.code());
+    }
+
+    /** The failed webhook rows created at {@code createdAt}, from the failed list. */
+    private static List<JsonNode> failedRowsCreatedAt(Session session, Instant createdAt) {
+        return OpsChecks.allItems(session.client(), SystemStatusTest.FAILED).stream()
+                .filter(n -> "WEBHOOK".equals(n.path("channel").asString(null)))
+                .filter(n -> n.path("createdAt").isString()
+                        && OpsChecks.instant(n.path("createdAt"), "createdAt").equals(createdAt))
+                .toList();
     }
 
     /** Files issues while the webhook answers 500, and waits until each had its first attempt. */
@@ -113,13 +129,14 @@ class OpsAlertTest extends ConnectedAppTest {
     @DisplayName("S0-AC-80 two rows failing on the same day give one DELIVERY_FAILED item")
     void oneAlertADay() {
         Session second = fixtures.admin(admin);
+        Instant filedAt = clock.instant().truncatedTo(ChronoUnit.MICROS);
         issuesWithFailingWebhook(2);
 
         giveUpRetrying();
         Session again = fixtures.signInAgain(second);
 
-        Wait.untilAsserted("both rows failed", () -> assertThat(again.client().get(SystemStatusTest.STATUS)
-                .expect(200).json().path("webhook").path("failed").asLong(-1)).isGreaterThanOrEqualTo(2));
+        Wait.untilAsserted("both rows of this test failed", () -> assertThat(failedRowsCreatedAt(again, filedAt))
+                .hasSize(2));
         Wait.holds("one DELIVERY_FAILED item", Duration.ofSeconds(3),
                 () -> items(again, "DELIVERY_FAILED").size() == 1);
     }
@@ -178,8 +195,8 @@ class OpsAlertTest extends ConnectedAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-80 attachments over 80% of the quota give ATTACHMENT_QUOTA_WARNING; after they go back "
-            + "under 80%, passing it again the same day gives another")
+    @DisplayName("S0-AC-80 attachments over 80% of the quota give ATTACHMENT_QUOTA_WARNING, one while they stay "
+            + "over; after they go back under 80%, passing it again the same day gives another")
     void quotaWarningAgainAfterResolved() {
         Session second = fixtures.admin(admin);
         Issue issue = fixtures.fileIssue(customer, company.code());
@@ -187,6 +204,10 @@ class OpsAlertTest extends ConnectedAppTest {
 
         Attachment first = fixtures.attach(customer, issue.key(), big);
         assertThat(awaitItems(second, "ATTACHMENT_QUOTA_WARNING")).as("items after the first upload").hasSize(1);
+        Attachment small = fixtures.attach(customer, issue.key(), File.text("small.txt", "Still over 80%."));
+        Wait.holds("one ATTACHMENT_QUOTA_WARNING item after another upload over 80%", Duration.ofSeconds(3),
+                () -> items(second, "ATTACHMENT_QUOTA_WARNING").size() == 1);
+        admin.client().delete("/api/console/issues/" + issue.key() + "/attachments/" + small.id()).expect(204);
 
         admin.client().delete("/api/console/issues/" + issue.key() + "/attachments/" + first.id()).expect(204);
         Wait.untilAsserted("the first upload deleted", () -> assertThat(OpsChecks.allItems(admin.client(),
@@ -212,12 +233,8 @@ class OpsAlertTest extends ConnectedAppTest {
         giveUpRetrying();
         Session again = fixtures.signInAdmin();
 
-        JsonNode row = Wait.until("the failed row filed at " + filedAt, () -> OpsChecks.allItems(again.client(),
-                        SystemStatusTest.FAILED).stream()
-                .filter(n -> "WEBHOOK".equals(n.path("channel").asString(null)))
-                .filter(n -> n.path("createdAt").isString()
-                        && OpsChecks.instant(n.path("createdAt"), "createdAt").equals(filedAt))
-                .findFirst().orElse(null));
+        JsonNode row = Wait.until("the failed row filed at " + filedAt, () -> failedRowsCreatedAt(again, filedAt)
+                .stream().findFirst().orElse(null));
 
         assertThat(OpsChecks.fieldNames(row))
                 .isEqualTo(Set.of("id", "channel", "createdAt", "lastErrorKind", "recipientAccountId"));

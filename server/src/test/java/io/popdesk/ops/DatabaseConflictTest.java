@@ -81,6 +81,21 @@ class DatabaseConflictTest extends BareAppTest {
         }
     }
 
+    /**
+     * A 409 from a unique violation: {@code {code, message}} with the code of the constraint, and
+     * nothing of the database's message (S0-AC-85: never {@code getMessage()}) nor any form of the
+     * {@code values}.
+     */
+    private static void assertConflictBody(ApiResponse response, String code, List<String> values) {
+        String what = response.request() + " -> " + response.status() + ": " + response.snippet();
+        assertThat(response.errorCode()).as("code of %s", what).isEqualTo(code);
+        assertThat(OpsChecks.fieldNames(response.json())).as("fields of %s", what)
+                .isSubsetOf(Set.of("code", "message", "fields")).contains("code", "message");
+        assertThat(response.json().path("message").isString()).as("message of %s", what).isTrue();
+        assertThat(ErrorBodyTest.LEAK.matcher(response.text()).find()).as("database message in %s", what).isFalse();
+        assertThat(LogForms.foundIn(response.text(), values)).as("values in %s", what).isEmpty();
+    }
+
     @Test
     @DisplayName("S0-AC-85 the same company code created ten times at once: one 201, nine 409 COMPANY_CODE_TAKEN")
     void concurrentCompanyCode() {
@@ -99,7 +114,7 @@ class DatabaseConflictTest extends BareAppTest {
         assertThat(responses).extracting(ApiResponse::status).as("statuses").containsOnly(201, 409)
                 .filteredOn(s -> s == 201).hasSize(1);
         responses.stream().filter(r -> r.status() == 409)
-                .forEach(r -> assertThat(r.errorCode()).as(r.snippet()).isEqualTo("COMPANY_CODE_TAKEN"));
+                .forEach(r -> assertConflictBody(r, "COMPANY_CODE_TAKEN", List.of()));
         admin.client().get("/api/console/companies/" + code).expect(200);
     }
 
@@ -120,7 +135,7 @@ class DatabaseConflictTest extends BareAppTest {
         assertThat(responses).extracting(ApiResponse::status).as("statuses").containsOnly(201, 409)
                 .filteredOn(s -> s == 201).hasSize(1);
         responses.stream().filter(r -> r.status() == 409)
-                .forEach(r -> assertThat(r.errorCode()).as(r.snippet()).isEqualTo("EMAIL_TAKEN"));
+                .forEach(r -> assertConflictBody(r, "EMAIL_TAKEN", List.of(email)));
     }
 
     @Test
@@ -196,6 +211,53 @@ class DatabaseConflictTest extends BareAppTest {
             ApiResponse response = filing.get(30, TimeUnit.SECONDS);
             assertThat(response.status()).as(response.snippet()).isEqualTo(201);
         }
+    }
+
+    @Test
+    @DisplayName("S0-AC-85 a request whose retry hits the lock timeout again fails with a 5xx after the second "
+            + "attempt; there is no third")
+    void lockTimeoutRetriedOnlyOnce() throws Exception {
+        Session admin = fixtures.signInAdmin();
+        String legalName = Unique.text("Held Ltd.");
+        Company company = fixtures.createCompany(admin, Unique.companyCode(), Unique.text("Held"), legalName);
+        Session customer = fixtures.customer(admin, company.code());
+        String table = companyTable(legalName);
+        String title = Unique.text("Never filed");
+
+        try (Connection lock = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(),
+                postgres.getPassword())) {
+            lock.setSchema(db.schema());
+            lock.setAutoCommit(false);
+            int pid;
+            try (Statement s = lock.createStatement(); ResultSet rs = s.executeQuery("select pg_backend_pid()")) {
+                rs.next();
+                pid = rs.getInt(1);
+            }
+            try (PreparedStatement s = lock.prepareStatement("select 1 from " + table.split("\\|")[0] + " where "
+                    + table.split("\\|")[1] + " = ? for update")) {
+                s.setString(1, legalName);
+                s.executeQuery().close();
+            }
+
+            CompletableFuture<ApiResponse> filing = CompletableFuture.supplyAsync(() -> customer.client()
+                    .post("/api/portal/issues")
+                    .json(Map.of("companyCode", company.code(), "title", title, "content", "x"))
+                    .send());
+
+            // Each attempt is a new transaction waiting on the row; count them until the filing ends.
+            Set<String> attempts = new HashSet<>();
+            Wait.until("the end of the filing while the row stays locked", Duration.ofSeconds(40), () -> {
+                attempts.addAll(waitingOn(pid));
+                return filing.isDone() ? "ended" : null;
+            });
+            ApiResponse response = filing.join();
+            lock.rollback();
+
+            assertThat(response.status()).as("status of %s", response.snippet()).isBetween(500, 599);
+            assertThat(attempts).as("transactions that waited on the locked row").hasSize(2);
+        }
+        assertThat(customer.client().get("/api/portal/issues").expect(200).json().path("items")
+                .findValuesAsString("title")).as("titles of the customer's issues").doesNotContain(title);
     }
 
     /** {@code "schema"."table"|"column"} of the text column that holds the company's legal name. */
