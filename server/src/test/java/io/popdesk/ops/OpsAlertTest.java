@@ -1,0 +1,208 @@
+package io.popdesk.ops;
+
+import static io.popdesk.ops.OpsChecks.assertError;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.popdesk.support.ApiResponse;
+import io.popdesk.support.ConnectedAppTest;
+import io.popdesk.support.Fixtures.Company;
+import io.popdesk.support.Fixtures.File;
+import io.popdesk.support.Fixtures.Issue;
+import io.popdesk.support.Fixtures.Session;
+import io.popdesk.support.Wait;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.test.context.TestPropertySource;
+import tools.jackson.databind.JsonNode;
+
+/**
+ * Operational alerts (OPS-1): a failed outbox row and attachments over 80% of the quota put an item
+ * in every admin's inbox, at most one of a kind a day.
+ *
+ * <p>A context of its own: a small quota (1MB), and alerts depend on what happened earlier in the
+ * same database. Each test first moves the clock two days on, so an alert from an earlier test is
+ * outside "one a day", and uses a new admin whose inbox starts empty.
+ *
+ * <p>An outbox row fails when the webhook keeps answering 500 for 24 hours after its first failure
+ * (S0-AC-68): the test lets the first attempt fail, then moves the clock 25 hours on.
+ */
+@TestPropertySource(properties = "POPDESK_ATTACHMENT_QUOTA=1MB")
+class OpsAlertTest extends ConnectedAppTest {
+
+    static final String INBOX = "/api/console/notifications";
+
+    @Autowired
+    Environment environment;
+
+    private Session admin;
+    private Company company;
+    private Session customer;
+
+    @BeforeEach
+    void freshDay() {
+        clock.advance(Duration.ofDays(2));
+        admin = fixtures.signInAdmin();
+        company = fixtures.createCompany(admin);
+        customer = fixtures.customer(admin, company.code());
+    }
+
+    /** Files issues while the webhook answers 500, and waits until each had its first attempt. */
+    private List<Issue> issuesWithFailingWebhook(int n) {
+        webhook().respondWith(500);
+        List<Issue> issues = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            Issue issue = fixtures.fileIssue(customer, company.code());
+            webhook().await("a first attempt for " + issue.key(), r -> r.text().contains(issue.key()));
+            issues.add(issue);
+        }
+        return issues;
+    }
+
+    /** Moves past the 24 hours of retries; every session ends, so admins sign in again. */
+    private void giveUpRetrying() {
+        clock.advance(Duration.ofHours(25));
+    }
+
+    private static List<JsonNode> items(Session session, String kind) {
+        return OpsChecks.allItems(session.client(), INBOX).stream()
+                .filter(n -> kind.equals(n.path("kind").asString(null)))
+                .toList();
+    }
+
+    private static List<JsonNode> awaitItems(Session session, String kind) {
+        return Wait.until(kind + " in the inbox of " + session.email(), () -> {
+            List<JsonNode> found = items(session, kind);
+            return found.isEmpty() ? null : found;
+        });
+    }
+
+    private long unread(Session session) {
+        return session.client().get(INBOX + "/unread-count").expect(200).jsonLong("count");
+    }
+
+    @Test
+    @DisplayName("S0-AC-80 a failed outbox row puts DELIVERY_FAILED in every admin's inbox and none in an agent's")
+    void failedRowAlertsEveryAdmin() {
+        Session second = fixtures.admin(admin);
+        Session agent = fixtures.agent(admin, company.code());
+        issuesWithFailingWebhook(1);
+
+        giveUpRetrying();
+        Session first = fixtures.signInAdmin();
+        second = fixtures.signInAgain(second);
+        agent = fixtures.signInAgain(agent);
+
+        assertThat(awaitItems(second, "DELIVERY_FAILED")).as("items of the second admin").hasSize(1);
+        assertThat(awaitItems(first, "DELIVERY_FAILED")).as("items of the first admin").isNotEmpty();
+        assertThat(OpsChecks.allItems(agent.client(), INBOX)).as("inbox of an agent").isEmpty();
+    }
+
+    @Test
+    @DisplayName("S0-AC-80 two rows failing on the same day give one DELIVERY_FAILED item")
+    void oneAlertADay() {
+        Session second = fixtures.admin(admin);
+        issuesWithFailingWebhook(2);
+
+        giveUpRetrying();
+        Session again = fixtures.signInAgain(second);
+
+        Wait.untilAsserted("both rows failed", () -> assertThat(again.client().get(SystemStatusTest.STATUS)
+                .expect(200).json().path("webhook").path("failed").asLong(-1)).isGreaterThanOrEqualTo(2));
+        Wait.holds("one DELIVERY_FAILED item", Duration.ofSeconds(3),
+                () -> items(again, "DELIVERY_FAILED").size() == 1);
+    }
+
+    @Test
+    @DisplayName("S0-AC-80 an admin sees the unread count, marks an item read, and the count goes down")
+    void markRead() {
+        Session second = fixtures.admin(admin);
+        issuesWithFailingWebhook(1);
+        giveUpRetrying();
+        Session again = fixtures.signInAgain(second);
+        JsonNode item = awaitItems(again, "DELIVERY_FAILED").getFirst();
+        long before = unread(again);
+        assertThat(item.path("readAt").isNull()).as("readAt of a new item %s", item).isTrue();
+        assertThat(before).as("unread count").isGreaterThanOrEqualTo(1);
+
+        again.client().post(INBOX + "/" + item.path("id").asLong() + "/read").expect(204);
+        again.client().post(INBOX + "/" + item.path("id").asLong() + "/read").expect(204);
+
+        assertThat(unread(again)).as("unread count after reading").isEqualTo(before - 1);
+        JsonNode read = items(again, "DELIVERY_FAILED").stream()
+                .filter(n -> n.path("id").asLong() == item.path("id").asLong())
+                .findFirst().orElseThrow(() -> new AssertionError("Item " + item + " is gone"));
+        assertThat(OpsChecks.instant(read.path("readAt"), "readAt")).isEqualTo(clock.instant()
+                .truncatedTo(ChronoUnit.MICROS));
+    }
+
+    @Test
+    @DisplayName("S0-AC-80 an admin cannot mark another admin's item read: 404")
+    void cannotReadOthersItem() {
+        Session second = fixtures.admin(admin);
+        issuesWithFailingWebhook(1);
+        giveUpRetrying();
+        Session again = fixtures.signInAgain(second);
+        Session first = fixtures.signInAdmin();
+        JsonNode item = awaitItems(again, "DELIVERY_FAILED").getFirst();
+
+        assertError(first.client().post(INBOX + "/" + item.path("id").asLong() + "/read").send(), 404, "NOT_FOUND");
+        assertThat(items(again, "DELIVERY_FAILED").getFirst().path("readAt").isNull()).as("still unread").isTrue();
+    }
+
+    @Test
+    @DisplayName("S0-AC-80 attachments over 80% of the quota put ATTACHMENT_QUOTA_WARNING in an admin's inbox")
+    void quotaWarning() {
+        Session second = fixtures.admin(admin);
+        Issue issue = fixtures.fileIssue(customer, company.code());
+
+        fixtures.attach(customer, issue.key(), new File("big.bin", "application/octet-stream", new byte[900_000]));
+
+        assertThat(awaitItems(second, "ATTACHMENT_QUOTA_WARNING")).as("items of the second admin").hasSize(1);
+    }
+
+    @Test
+    @DisplayName("S0-AC-81 a failed webhook row is in the failed list: channel, creation time, error kind, no account")
+    void failedRowListed() {
+        Instant filedAt = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        issuesWithFailingWebhook(1);
+        giveUpRetrying();
+        Session again = fixtures.signInAdmin();
+
+        JsonNode row = Wait.until("the failed row filed at " + filedAt, () -> OpsChecks.allItems(again.client(),
+                        SystemStatusTest.FAILED).stream()
+                .filter(n -> "WEBHOOK".equals(n.path("channel").asString(null)))
+                .filter(n -> n.path("createdAt").isString()
+                        && OpsChecks.instant(n.path("createdAt"), "createdAt").equals(filedAt))
+                .findFirst().orElse(null));
+
+        assertThat(OpsChecks.fieldNames(row))
+                .isEqualTo(Set.of("id", "channel", "createdAt", "lastErrorKind", "recipientAccountId"));
+        assertThat(row.path("lastErrorKind").asString("")).as("lastErrorKind").isNotBlank();
+        assertThat(row.has("recipientAccountId") && row.path("recipientAccountId").isNull())
+                .as("recipientAccountId of a webhook row").isTrue();
+        ApiResponse status = again.client().get(SystemStatusTest.STATUS).expect(200);
+        assertThat(status.json().path("webhook").path("failed").asLong(-1)).as("webhook.failed").isGreaterThanOrEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("S0-AC-78 a failed webhook row shows in the failed gauge of the webhook channel")
+    void failedGauge() {
+        Prometheus prometheus = new Prometheus(environment);
+        issuesWithFailingWebhook(1);
+        giveUpRetrying();
+
+        Wait.untilAsserted("the failed gauge", () -> assertThat(prometheus.scrape()
+                .forChannel(Prometheus.Names.OUTBOX_FAILED, "webhook")
+                .orElseThrow(() -> new AssertionError("no " + Prometheus.Names.OUTBOX_FAILED + " for webhook"))
+                .value()).isGreaterThanOrEqualTo(1));
+    }
+}
