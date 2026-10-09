@@ -117,3 +117,14 @@
 - 웹훅 메시지 스냅샷 파일(S0-AC-75)은 C-10에서 메인이 고정한다.
 - C-7 점검에서 사람이 코드로 보는 것: multipart 상한과 `file-size-threshold` 0(S0-AC-99), 40P01 재시도(S0-AC-85, 55P03만 테스트가 있다), 보낼 때 주소·제목을 읽음(S0-AC-66), 보내기 직전에 받는 사람이 문의를 볼 수 있는지 다시 봄(S0-AC-69).
 
+
+## 7. 셋째 물결 테스트 질문으로 정한 것
+
+구현 탭 지시서에 넣는다.
+
+- 앱 잠금을 기다리는 시간(S0-AC-11)은 `POPDESK_INSTANCE_LOCK_WAIT`(ISO-8601, 기본 `PT30S`)다. `configuration.md`에 올렸다.
+- 실패한 마이그레이션의 복구 절차(S0-AC-08)는 `docs/operate/upgrade.md`에 쓰고(구현 몫), 로그 한 줄에 실패한 버전과 그 경로를 함께 적는다.
+- 첫 관리자 만들기가 다른 이유로 실패하는 경우(S0-AC-02)도 시험한다. 테스트는 계정 테이블을 모양으로 찾아 `test_` 트리거로 실패시킨다(6절의 실패 주입).
+- readiness가 내려간 상태(S0-AC-02)는 관리 포트 `/actuator/health/readiness`가 503이고 status가 `UP`이 아닌 것으로 본다(`DOWN`이든 `OUT_OF_SERVICE`든). liveness는 200이다.
+- 시작을 막는 로그 문구(S0-AC-07·10)에는 기준이 적은 것만 넣는다: S0-AC-07은 DB 버전과 "backup", S0-AC-10은 빠진 권한(`CREATE`)과 DB 사용자 이름.
+- `tenant_id` 예외 목록(S0-AC-103)은 `server/README.md`의 `| Table | Reason |` 표다.

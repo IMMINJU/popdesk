@@ -32,6 +32,7 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Sign-in with an OIDC provider | None. Without them, OIDC sign-in is off |
 | `OIDC_APPS` | Which apps show the OIDC sign-in button: `console`, `portal`, or `both` | `console` |
 | `POPDESK_TRUSTED_PROXIES` | Addresses (IPs or CIDR ranges, comma-separated) whose `X-Forwarded-*` headers popdesk trusts | Loopback and private ranges (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `::1`, `fc00::/7`) |
+| `POPDESK_INSTANCE_LOCK_WAIT` | How long a starting instance waits for the single-instance database lock before it stops with a message (ISO-8601 duration). Raise it if a restarted container starts before the old one has let go | `PT30S` |
 | `POPDESK_SANDBOX` | `true` for a copy of a real installation: all email goes to `POPDESK_SANDBOX_MAIL_TO` only, and incoming email, the webhook, and the audit copy are off | `false` |
 | `POPDESK_SANDBOX_MAIL_TO` | The only address that receives email when `POPDESK_SANDBOX=true` | None (with sandbox on and no address, nothing is sent) |
 
