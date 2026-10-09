@@ -189,3 +189,4 @@ C-7 점검(`s0-c7-review`)으로 정한 것:
 - `notify.MailQueueRowTest.invitationMailForAcceptedAccountIsDropped`의 마지막 단언은 테스트 결함이었다. 앞서 부른 `mailQueueTable`이 붙잡은 probe 메일까지 세었다. 메인이 그 주소로 거르게 고치고 다시 잠갔다(C-9 "테스트가 틀렸다고 보는 것").
 - `s0-i-att`의 V4가 첨부 CHECK를 `stored`에만 걸었다. 새 문의와 함께 온 파일의 등록이 실패하면 문의 ID 없는 행을 정리 작업이 `purging` → `purged`로 끝내야 해서다.
 - `POPDESK_STORAGE`는 이번 판에 `db`만 받고 `disk`·`s3`면 뜨지 않는다(acceptance 53줄, 5번 묶음에서 연다).
+- 화면 정적 파일: 앱이 호스트별로 포털·콘솔 빌드를 내준다(GET/HEAD, `/api/`·관리 포트 밖, 없는 경로는 index.html). 맡은 탭이 없어서 `s0-i-deploy`가 Dockerfile 웹 빌드와 함께 넣는다(그 탭 질문).
