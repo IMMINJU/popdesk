@@ -130,3 +130,9 @@
 - `tenant_id` 예외 목록(S0-AC-103)은 `server/README.md`의 `| Table | Reason |` 표다.
 - 계정 상태 값은 `INVITED`·`ACTIVE`·`SUSPENDED`이고 상태 칸은 이 묶음에서 `SUSPENDED`를 받는다(정지 기능은 뒤 묶음, 테스트가 SQL로 넣는다). 정지된 계정의 로그인은 401이다.
 - 릴리스 compose(S0-AC-88·94): 설정 키는 Compose 환경(`${KEY}` 치환이나 `env_file: .env`)으로 받고, `.env` 말고 compose 파일 기준의 상대 경로(바인드 마운트 등)를 두지 않는다. `app` 상태 확인은 `start_period + interval × retries`가 5분보다 짧다(첫 관리자 값이 없으면 5분 안에 `unhealthy`). 관리 포트 8081은 컨테이너의 모든 인터페이스에서 받되 compose가 호스트로 열지 않는다.
+- `main`의 `deploy/compose.yml`은 다음에 낼 버전(`0.1.0`)의 정확한 이미지 태그를 담고, 서비스는 `app`·`db` 둘뿐이다(S0-AC-88). 릴리스 절차가 태그와 같은지 본다.
+- `popdesk restore`는 앱이 떠 있지 않을 때 새 컨테이너로 돌린다(`docker compose run --rm app popdesk restore <file>`). 덤프는 `docker compose cp`로 옮긴다. 구현이 `configuration.md` Commands 절에 둘 다 적는다(S0-AC-89).
+- GC는 이미지가 JVM 옵션으로 박는다. 호스트에 따라 바뀌지 않게 한다(S0-AC-64).
+- 보내기 대기 지표(`popdesk_outbox_queued`·`_failed`·`_sent_total`)는 채널이 꺼져 있어도 두 채널 모두 0으로 낸다(S0-AC-78·79).
+- `deploy` 패키지 테스트(`@Tag("deploy")`)는 이미지를 빌드하는 CI 잡에서만 돈다. 서버 잡은 `deploy` 태그를 뺀다. 구현 뒤 메인이 `pom.xml`과 CI에 넣는다. 숨긴 E2E와 볼륨 이름이 겹치므로 둘을 함께 돌리지 않는다.
+- 첫 묶음의 견본 덤프를 릴리스 산출물로 보관하는 것(S0-AC-95)은 테스트가 없고 C-7에서 사람이 본다.
