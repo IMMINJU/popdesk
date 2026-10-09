@@ -76,7 +76,9 @@ Get the Compose file from the release you install, not from the `main` branch.
 
 popdesk runs as one app instance (ADR D-23). On start it takes a database lock; a second instance waits briefly and then stops with a message. On Kubernetes, use the `Recreate` strategy.
 
-If the database schema is newer than the app (for example after going back to an older image), the app does not start. Restore the backup you took before upgrading.
+If the database schema is newer than the app (for example after going back to an older image), the app does not start. Restore the backup you took before upgrading. If a migration fails, the app does not start either; [upgrade.md](upgrade.md) has the recovery steps.
+
+The database user must be allowed to create tables in the `public` schema of its database (`GRANT CREATE ON SCHEMA public TO <user>`; on PostgreSQL 15 and later only the database owner has it by default). Without it popdesk logs the missing privilege and does not start.
 
 ### Health checks while starting
 

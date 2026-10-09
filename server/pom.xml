@@ -30,6 +30,7 @@
         <!-- Not managed by Spring Boot. Latest GA on Maven Central. -->
         <spring-modulith.version>2.1.1</spring-modulith.version>
         <springdoc.version>3.1.1</springdoc.version>
+        <bouncycastle.version>1.86</bouncycastle.version>
         <!-- Small heap and one JVM for tests: the dev machine has 16 GB (ADR D-3). -->
         <test.argLine>-Xmx512m -XX:+UseSerialGC -XX:TieredStopAtLevel=1</test.argLine>
         <!-- Tags left out of a normal test run. -->
@@ -87,6 +88,16 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+        <!-- Argon2id password hashes (AUTH-5). Spring Security's Argon2 encoder needs Bouncy Castle. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
         </dependency>
 
         <dependency>
