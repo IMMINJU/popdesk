@@ -97,3 +97,23 @@
 - 로그는 logback `ConsoleAppender`로 표준 출력에 쓴다.
 - 포트 465의 암묵적 TLS(S0-AC-74 앞부분)는 앱을 JVM 안에서 띄우는 테스트로는 시험하지 못한다(빈 포트에 뜨는 테스트 서버). `s0-t-deploy`가 앱 이미지와 같은 Docker 네트워크의 메일 서버 컨테이너(465)로 시험한다.
 - C-6의 `red-allow.txt`에 `SupportSelfTest` 15건을 "도움 코드 자기 시험, 업무 동작을 보지 않는다"로 올린다.
+
+## 6. 둘째 물결 테스트 질문으로 정한 것
+
+구현 탭 지시서에 넣는다. 수용 기준 문장을 바꾼 것은 S0-AC-100(RFC 8785 키 순서, 소수 여섯 자리)뿐이고 나머지는 기준을 읽는 법이다.
+
+- 크기 단위: MB·GB는 2^20·2^30바이트다(Spring `DataSize`와 같다). 10MB는 10,485,760바이트, multipart 상한은 그보다 조금 크게 둔다.
+- 정기 작업(정리 작업 셋, 보내기 대기의 `failed` 지우기, 운영 경보): 실제 시간으로 짧은 주기(몇 초)마다 깨어나고, 돌 때가 됐는지는 주입한 `Clock`으로 마지막 실행 시각과 견줘 정한다. 테스트는 `clock.advance` 뒤 `Wait`로 기다린다.
+- 정리 작업 기록(S0-AC-82)은 작업마다 한 행을 고쳐 쓴다. 작업 이름은 `outbox-failed-cleanup`, `attachment-cleanup`, `session-cleanup`이다.
+- `failed` 행은 `failed`가 된 시각에서 7일 뒤 지운다(S0-AC-68).
+- 운영 경보(S0-AC-80)의 "풀림"은 `failed` 행이 0건이 됨, 첨부 합이 80% 아래로 내려감이다. 풀리지 않으면 마지막 항목에서 24시간(주입한 `Clock`)마다 한 건 더 남긴다.
+- 실패 주입: 운영 코드에 테스트 전용 엔드포인트나 설정 키를 두지 않는다. 테스트는 `DbInspector.schemaFixture`로 이름이 `test_`로 시작하는 트리거를 걸어 DB 쓰기를 실패시킨다(순번 직전 실패, ③ 실패로 남는 `pending`, 저장소 지우기 실패로 남는 `purging`, 대기 행 뒤 업무 실패, 일부러 낸 500). 그 테스트는 트리거를 끝에서 지우거나 자기 컨텍스트를 쓴다.
+- 업무 행을 SQL로 바꾸는 것은 하나만 허용한다: 고객의 고객사 소속 빼기(PROJ-4 빼기는 1번 묶음). S0-AC-69·92의 "볼 수 없게 됨"을 만든다.
+- S0-AC-63의 "`pending`으로 남음"은 ① 뒤에 나는 실패만이다. ① 전에 끝나는 검증 실패(400)는 첨부 행을 만들지 않는다.
+- 첨부 쓰기 규칙(S0-AC-56의 `setBytes` 금지)은 첨부 저장소 패키지에만 건다. 패키지 이름은 `s0-t-ops`가 제안한 이름(`ScopedReadRulesTest`)을 따른다.
+- 감사(S0-AC-83): 일의 종류는 `FIRST_ADMIN_CREATED`, `COMPANY_CREATED`, `AGENT_ASSIGNED`, `INVITATION_CREATED`, `INVITATION_LINK_CREATED`, `SIGN_IN_SUCCEEDED`, `SIGN_IN_FAILED`, `ACCOUNT_LOCKED`, `ADMIN_PASSWORD_RESET`, `BACKUP_CREATED`, `DATABASE_RESTORED`. 없는 이메일의 로그인 실패는 감사 행을 남기지 않는다. 있는 계정의 실패는 한 사람을 그 계정으로 둔다.
+- 지표 이름과 `CanonicalAuditJson`의 클래스·시그니처, 범위 타입(`io.popdesk.helpdesk.Viewer`)은 `s0-t-ops` 보고의 제안을 따른다. `s0-t-deploy`의 Grafana 대시보드도 같은 지표 이름을 쓴다.
+- 댓글 알림 메일 제목에는 문의 제목이 들어간다(S0-AC-71). 문의 제목의 줄바꿈은 막지 않는다.
+- 웹훅 메시지 스냅샷 파일(S0-AC-75)은 C-10에서 메인이 고정한다.
+- C-7 점검에서 사람이 코드로 보는 것: multipart 상한과 `file-size-threshold` 0(S0-AC-99), 40P01 재시도(S0-AC-85, 55P03만 테스트가 있다), 보낼 때 주소·제목을 읽음(S0-AC-66).
+
