@@ -70,6 +70,20 @@ class AttachmentStorageTest extends BareAppTest {
     }
 
     @Test
+    @DisplayName("S0-AC-56 when the business transaction fails at step ③, the pending row and the written content stay: steps ① and ② committed before it")
+    void contentStaysWhenStepThreeFails() {
+        Scene s = steps.scene();
+        Issue issue = fixtures.fileIssue(s.customer(), s.code());
+
+        StuckAttachments.Stuck stuck = new StuckAttachments(db).pending(s.customer(), issue.key());
+
+        assertThat(rows.byId(stuck.id()).state()).isEqualTo("pending");
+        assertThat(rows.contentCopies(stuck.content())).as("rows of attachment_content with the content")
+                .isEqualTo(1);
+        assertThat(list(s.customer(), issue.key())).extracting(n -> text(n, "id")).doesNotContain(stuck.id());
+    }
+
+    @Test
     @DisplayName("S0-AC-56 files sent with a new issue are stored on that issue")
     void filesWithNewIssueAreStored() {
         Scene s = steps.scene();
@@ -181,9 +195,10 @@ class AttachmentStorageTest extends BareAppTest {
         assertNothingStored(s.admin(), issue.key(), name);
     }
 
+    /** The permission check ends before step ①: no attachment row at all (tasks.md 7절). */
     private void assertNothingStored(Session staff, String key, String fileName) {
         assertThat(list(staff, key)).extracting(n -> text(n, "fileName")).doesNotContain(fileName);
-        assertThat(rows.byFileName(fileName)).extracting(Row::state).doesNotContain("stored");
+        assertThat(rows.byFileName(fileName)).as("attachment rows for %s", fileName).isEmpty();
     }
 
     private static JsonNode entry(List<JsonNode> items, String id) {

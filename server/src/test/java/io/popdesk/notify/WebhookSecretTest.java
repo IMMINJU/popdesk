@@ -5,11 +5,16 @@ import static io.popdesk.notify.NotifySteps.urlForms;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.notify.NotifySteps.Scene;
+import io.popdesk.notify.Rows.Row;
+import io.popdesk.notify.Rows.Snapshot;
 import io.popdesk.support.ApiClient;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.ConnectedAppTest;
 import io.popdesk.support.Fixtures.Issue;
+import io.popdesk.support.Wait;
 import io.popdesk.support.WebhookReceiver;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +26,10 @@ import org.springframework.core.env.Environment;
  * The webhook URL is a secret (configuration.md): it is nowhere in the log, the API, or the
  * metrics, even after a failed send. This setup's URL is {@code http://127.0.0.1:<port>/hook}, so
  * the app warns at startup that it is not https, without the URL.
+ *
+ * <p>A row here is never {@code failed}: that takes 24 hours of the app clock, which this shared
+ * context does not move. {@code RetryTest.failedRowShowsNoUrl} checks the failed deliveries of a row
+ * that is.
  */
 class WebhookSecretTest extends ConnectedAppTest {
 
@@ -28,10 +37,12 @@ class WebhookSecretTest extends ConnectedAppTest {
     Environment environment;
 
     private NotifySteps steps;
+    private Rows rows;
 
     @BeforeEach
     void setUp() {
         steps = new NotifySteps(fixtures);
+        rows = new Rows(db);
     }
 
     private static void assertNoUrl(String where, String text) {
@@ -44,11 +55,29 @@ class WebhookSecretTest extends ConnectedAppTest {
         return WebhookReceiver.shared().url();
     }
 
-    /** Files an issue while the receiver answers 500 and waits for the failed send. */
+    /**
+     * Files an issue while the receiver answers 500, and waits until the app has handled two failed
+     * sends: the queue row holds the next attempt 2 seconds after the second one. The receiver records
+     * a request before it answers, so the first request alone does not mean the app has seen the 500
+     * and written what it writes about it.
+     */
     private Issue failedSend(Scene s) {
         webhook().respondWith(500);
+        Snapshot before = rows.snapshot();
         Issue issue = fixtures.fileIssue(s.customer(), s.code());
+        Instant firstFailure = clock.instant();
         awaitWebhooks(webhook(), issue.key(), 1);
+        Row row = Wait.until("the queue row of " + issue.key() + " with its next attempt 1 second later", () -> {
+            List<Row> added = rows.added(before).stream()
+                    .filter(r -> !r.columnsAt(firstFailure.plusSeconds(1)).isEmpty()).toList();
+            return added.size() == 1 ? added.getFirst() : null;
+        });
+        Instant secondFailure = clock.advance(Duration.ofSeconds(1));
+        awaitWebhooks(webhook(), issue.key(), 2);
+        Wait.until("the second failed send of " + issue.key() + " handled, next attempt 2 seconds later", () -> {
+            Row r = rows.reread(row);
+            return r != null && !r.columnsAt(secondFailure.plusSeconds(2)).isEmpty() ? r : null;
+        });
         return issue;
     }
 

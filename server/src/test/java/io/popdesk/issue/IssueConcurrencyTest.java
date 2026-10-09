@@ -47,6 +47,10 @@ class IssueConcurrencyTest extends BareAppTest {
     private static final Pattern PLAIN_FOR_UPDATE =
             Pattern.compile("(?i)(?<!no\\s{1,10}key\\s{1,10})\\bfor\\s+update\\b(?!\\s+(of\\s+[^\\s]+\\s+)?skip\\s+locked)");
 
+    /** Transaction statements as PostgreSQL logs them: {@code statement: BEGIN}, {@code execute S_1: COMMIT}. */
+    private static final Pattern BEGIN = Pattern.compile("(?i)(statement|execute [^:]*):\\s*(begin|start transaction)\\b");
+    private static final Pattern END = Pattern.compile("(?i)(statement|execute [^:]*):\\s*(commit|rollback|end)\\b");
+
     @Autowired
     PostgreSQLContainer postgres;
 
@@ -139,6 +143,8 @@ class IssueConcurrencyTest extends BareAppTest {
         sql.assertLogsEveryStatement();
         Scene s = steps.scene();
         Issue issue = fixtures.fileIssue(s.customer(), s.code());
+        String issueTable = new IssueTables(db).find(s.company().legalName(), text(issue.json(), "title"))
+                .issue().table().name();
         String content = "Lock order " + Unique.number();
 
         Window window = sql.start();
@@ -156,13 +162,30 @@ class IssueConcurrencyTest extends BareAppTest {
                 break;
             }
         }
-        List<String> before = lines.subList(0, insertOfComment + 1).stream()
+        int begin = -1;
+        for (int i = insertOfComment; i >= 0; i--) {
+            if (BEGIN.matcher(lines.get(i)).find()) {
+                begin = i;
+                break;
+            }
+        }
+        assertThat(begin).as("BEGIN of the transaction that inserts the comment, in: %s", lines).isNotNegative();
+        List<String> transaction = lines.subList(begin, insertOfComment + 1).stream()
                 .map(l -> l.toLowerCase(Locale.ROOT))
                 .toList();
-        int firstLock = indexOf(before, "for no key update");
-        int firstInsert = indexOf(before, "insert");
-        assertThat(firstLock).as("FOR NO KEY UPDATE before the comment's INSERT, in: %s", before).isNotNegative();
-        assertThat(firstLock).as("lock before the first INSERT, in: %s", before).isLessThan(firstInsert);
+        assertThat(transaction).as("one transaction from BEGIN to the comment's INSERT")
+                .noneMatch(l -> END.matcher(l).find());
+        int firstLock = indexOf(transaction, "for no key update");
+        int firstInsert = indexOf(transaction, "insert");
+        assertThat(firstLock).as("FOR NO KEY UPDATE in the comment's transaction, in: %s", transaction).isNotNegative();
+        assertThat(transaction.get(firstLock)).as("the first lock is on the issue table " + issueTable)
+                .containsPattern(tableName(issueTable));
+        assertThat(firstLock).as("lock before the first INSERT, in: %s", transaction).isLessThan(firstInsert);
+    }
+
+    /** {@code table} as a whole name in SQL text, quoted or not. */
+    private static Pattern tableName(String table) {
+        return Pattern.compile("(?i)(?<![\\w$])\"?" + Pattern.quote(table) + "\"?(?![\\w$])");
     }
 
     private static int indexOf(List<String> lines, String text) {

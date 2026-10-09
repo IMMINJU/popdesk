@@ -56,7 +56,7 @@ class AttachmentStatementLogTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-56 the pending row is committed before the content is written, and the issue is locked only after that, then the row is updated")
+    @DisplayName("S0-AC-56 the pending row is committed before the content is written, the content is committed before the transaction that locks the issue begins, and that transaction updates the row")
     void threeStepsInOrder() {
         sql.assertLogsEveryStatement();
         Scene s = steps.scene();
@@ -81,6 +81,11 @@ class AttachmentStatementLogTest extends BareAppTest {
         assertThat(entries.subList(0, write.index())).as("no issue lock before the content is written")
                 .noneMatch(e -> e.matches(ISSUE_LOCK));
         Entry lock = first(entries, write.index(), e -> e.matches(ISSUE_LOCK), "FOR NO KEY UPDATE after the content");
+        assertThat(committedBetween(entries, write, lock))
+                .as("the content's transaction ends before the issue is locked: %s", entries).isTrue();
+        assertThat(lastBegin(entries, lock))
+                .as("the transaction that locks the issue begins after the content is written: %s", entries)
+                .isGreaterThan(write.index());
         Entry stored = first(entries, lock.index(),
                 e -> e.pid().equals(lock.pid()) && e.matches(UPDATE) && e.contains(id),
                 "an UPDATE of attachment " + id + " in the transaction that locked the issue");
@@ -109,6 +114,20 @@ class AttachmentStatementLogTest extends BareAppTest {
                 .filter(e -> e.matches(SUBSTRING) && e.text().contains(AttachmentRows.CONTENT_TABLE))
                 .toList();
         assertThat(chunks).as("substring reads of attachment_content").hasSize(3);
+    }
+
+    /**
+     * Index of the last {@code BEGIN} on {@code statement}'s connection before it, or -1 when it ran
+     * without one (autocommit).
+     */
+    private static int lastBegin(List<Entry> entries, Entry statement) {
+        int found = -1;
+        for (Entry e : entries.subList(0, statement.index())) {
+            if (e.pid().equals(statement.pid()) && e.matches(BEGIN)) {
+                found = e.index();
+            }
+        }
+        return found;
     }
 
     /**

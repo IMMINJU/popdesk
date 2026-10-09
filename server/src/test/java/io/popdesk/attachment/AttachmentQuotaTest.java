@@ -33,12 +33,17 @@ import tools.jackson.databind.JsonNode;
  * <p>The quota counts every attachment of the team, so this class has a context and a database of
  * its own, and its tests run in order on one growing total: 800,000 bytes (under 80%), then
  * 850,000 (over 80%), then exactly 1 MB (the quota), then one byte more.
+ *
+ * <p>The warning log line names the setting key {@code POPDESK_ATTACHMENT_QUOTA}, as other setting
+ * warnings do; the criterion fixes no wording.
  */
 @TestPropertySource(properties = "POPDESK_ATTACHMENT_QUOTA=1MB")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AttachmentQuotaTest extends BareAppTest {
 
     private static final long QUOTA = MB;
+
+    private static final String QUOTA_KEY = "POPDESK_ATTACHMENT_QUOTA";
 
     /** The admins, the customer, and the issue every step adds to. */
     private record Team(Scene scene, Session secondAdmin, Session agent, Issue issue) {}
@@ -68,7 +73,7 @@ class AttachmentQuotaTest extends BareAppTest {
         assertThat(created.status()).isEqualTo(201);
         Wait.holds("no quota alert under 80%", Duration.ofSeconds(2),
                 () -> quotaAlerts(s.admin()).isEmpty() && quotaAlerts(secondAdmin).isEmpty());
-        assertThat(log.lines(mark)).as("WARN lines after the upload").noneMatch(l -> l.contains("WARN"));
+        assertThat(log.lines(mark)).as("quota warnings after the upload").noneMatch(AttachmentQuotaTest::quotaWarning);
     }
 
     @Test
@@ -81,7 +86,8 @@ class AttachmentQuotaTest extends BareAppTest {
         ApiResponse created = upload(t.scene().customer(), t.issue().key(), "second.bin", bytes(50_000, 2));
 
         assertThat(created.status()).isEqualTo(201);
-        log.awaitLine(mark, "WARN");
+        Wait.until("a WARN line naming " + QUOTA_KEY, () -> log.lines(mark).stream()
+                .filter(AttachmentQuotaTest::quotaWarning).findFirst().orElse(null));
         Wait.untilAsserted("a quota alert in every admin's inbox", () -> {
             assertThat(quotaAlerts(t.scene().admin())).hasSize(1);
             assertThat(quotaAlerts(t.secondAdmin())).hasSize(1);
@@ -112,6 +118,14 @@ class AttachmentQuotaTest extends BareAppTest {
             throw new AssertionError("The first step of this class did not set up the team");
         }
         return team;
+    }
+
+    /**
+     * A warning about the quota: a WARN line that names the setting key. The log is shared by every
+     * context of the JVM, so a WARN line alone may be another one's.
+     */
+    private static boolean quotaWarning(String line) {
+        return line.contains("WARN") && line.contains(QUOTA_KEY);
     }
 
     private static List<JsonNode> quotaAlerts(Session admin) {

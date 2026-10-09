@@ -91,6 +91,22 @@ class IssueListTest extends BareAppTest {
     }
 
     @Test
+    @DisplayName("S0-AC-47 a customer taken out of their company still lists and opens the issues they filed there, and no longer a colleague's public issue")
+    void customerWhoLeftKeepsOwnIssues() {
+        World w = world();
+
+        new Membership(db).remove(w.alice().accountId(), w.a().code());
+
+        assertThat(keys(list(w.alice()))).containsExactlyInAnyOrder(w.alicePublic().key(), w.alicePrivate().key());
+        assertThat(detail(w.alice(), w.alicePublic()).status()).isEqualTo(200);
+        assertThat(detail(w.alice(), w.alicePrivate()).status()).isEqualTo(200);
+        ApiResponse colleaguePublic = detail(w.alice(), w.bobPublic());
+        assertThat(colleaguePublic.status()).isEqualTo(404);
+        assertThat(colleaguePublic.errorCode()).isEqualTo("NOT_FOUND");
+        assertThat(keys(list(w.bob()))).contains(w.alicePublic().key(), w.bobPublic().key());
+    }
+
+    @Test
     @DisplayName("S0-AC-47 an agent sees every issue of assigned companies, private ones too, and nothing of others")
     void agentSeesAssignedCompanies() {
         World w = world();

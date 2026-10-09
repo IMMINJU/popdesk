@@ -43,12 +43,14 @@ class AttachmentConcurrencyLimitTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-99 with 16 uploads still sending their body, another upload is 503 SERVER_BUSY with Retry-After; after they finish, uploads work again")
+    @DisplayName("S0-AC-99 with 16 uploads still sending their body, another upload is 503 SERVER_BUSY with Retry-After while a download still works; after they finish, uploads work again")
     void seventeenthUploadIsRefused() {
         Scene s = steps.scene();
         Session prober = fixtures.customer(s.admin(), s.code());
         Issue issue = fixtures.fileIssue(s.customer(), s.code());
         Issue probed = fixtures.fileIssue(prober, s.code());
+        byte[] readable = bytes(1_000, 5);
+        String readableId = upload(prober, probed.key(), "readable.bin", readable).expectStatus(201).jsonText("id");
         byte[] content = bytes(200_000, 1);
         List<HeldRequest> held = new ArrayList<>();
         AtomicReference<String> lastProbe = new AtomicReference<>();
@@ -69,6 +71,9 @@ class AttachmentConcurrencyLimitTest extends BareAppTest {
             assertThat(refused.status()).as(refused.request()).isEqualTo(503);
             assertThat(refused.errorCode()).isEqualTo("SERVER_BUSY");
             assertThat(refused.header("Retry-After")).as("Retry-After").isNotBlank();
+            ApiResponse downloadMeanwhile = download(prober, probed.key(), readableId);
+            assertThat(downloadMeanwhile.status()).as("a download while 16 uploads run").isEqualTo(200);
+            assertThat(downloadMeanwhile.body()).isEqualTo(readable);
             List<Integer> finished = held.stream().map(HeldRequest::finish).toList();
             assertThat(finished).containsOnly(201);
             assertThat(upload(prober, probed.key(), "after.bin", bytes(10, 3)).status()).isEqualTo(201);
@@ -82,7 +87,7 @@ class AttachmentConcurrencyLimitTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-99 with 16 downloads still being sent, another download is 503 SERVER_BUSY with Retry-After; after they end, downloads work again")
+    @DisplayName("S0-AC-99 with 16 downloads still being sent, another download is 503 SERVER_BUSY with Retry-After while an upload still works; after they end, downloads work again")
     void seventeenthDownloadIsRefused() {
         Scene s = steps.scene();
         Issue issue = fixtures.fileIssue(s.customer(), s.code());
@@ -103,6 +108,8 @@ class AttachmentConcurrencyLimitTest extends BareAppTest {
             assertThat(refused.status()).as(refused.request()).isEqualTo(503);
             assertThat(refused.errorCode()).isEqualTo("SERVER_BUSY");
             assertThat(refused.header("Retry-After")).as("Retry-After").isNotBlank();
+            ApiResponse uploadMeanwhile = upload(reader, issue.key(), "meanwhile.bin", bytes(10, 6));
+            assertThat(uploadMeanwhile.status()).as("an upload while 16 downloads run").isEqualTo(201);
         } finally {
             held.forEach(HeldRequest::close);
         }

@@ -106,6 +106,21 @@ class IssueRateLimitTest extends BareAppTest {
                 .hasSize(12);
     }
 
+    @Test
+    @DisplayName("S0-AC-50 the limit follows the account, not the session or address: the 11th issue from a second sign-in is 429")
+    void issueLimitFollowsTheAccount() {
+        Scene s = steps.scene();
+        Session second = fixtures.signInAgain(s.customer());
+        for (int i = 0; i < 10; i++) {
+            file(s.customer(), s.code()).expectStatus(201);
+        }
+
+        ApiResponse eleventh = file(second, s.code());
+
+        assertRateLimited(eleventh);
+        assertThat(issueCount(s.customer())).isEqualTo(10);
+    }
+
     // S0-AC-55
 
     @Test
@@ -143,7 +158,7 @@ class IssueRateLimitTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-55 the comment limit is per account: staff on the same issue can still comment")
+    @DisplayName("S0-AC-55 the comment limit is per account and window: staff on the same issue can still comment, and the limited account can after 60 seconds")
     void commentLimitIsPerAccount() {
         Scene s = steps.scene();
         Session agent = fixtures.agent(s.admin(), s.code());
@@ -154,7 +169,27 @@ class IssueRateLimitTest extends BareAppTest {
         assertRateLimited(comment(s.customer(), issue.key()));
 
         ApiResponse byAgent = comment(agent, issue.key());
+        clock.advance(Duration.ofSeconds(61));
+        ApiResponse afterWindow = comment(s.customer(), issue.key());
 
         assertThat(byAgent.status()).isEqualTo(201);
+        assertThat(afterWindow.status()).as("a comment of the limited account after 60 seconds").isEqualTo(201);
+    }
+
+    @Test
+    @DisplayName("S0-AC-55 the comment limit follows the account, not the session or address: the 31st comment from a second sign-in is 429")
+    void commentLimitFollowsTheAccount() {
+        Scene s = steps.scene();
+        Issue issue = fixtures.fileIssue(s.customer(), s.code());
+        Session second = fixtures.signInAgain(s.customer());
+        for (int i = 0; i < 30; i++) {
+            comment(s.customer(), issue.key()).expectStatus(201);
+        }
+
+        ApiResponse thirtyFirst = comment(second, issue.key());
+
+        assertRateLimited(thirtyFirst);
+        assertThat(s.customer().client().get("/api/portal/issues/" + issue.key() + "/comments")
+                .query("size", 100).expect(200).json().path("totalElements").asLong()).isEqualTo(30);
     }
 }

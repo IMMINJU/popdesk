@@ -180,6 +180,22 @@ final class Rows {
         return found;
     }
 
+    /** Tables with a text column whose value equals {@code value} in some row: where a request stored it. */
+    List<String> tablesHolding(String value) {
+        List<String> out = new ArrayList<>();
+        for (String table : tables()) {
+            for (Column column : db.columns(table)) {
+                if ((column.dataType().equals("text") || column.dataType().equals("character varying"))
+                        && db.count("select count(*) from " + quote(table) + " where " + quote(column.name())
+                                + " = ?", value) > 0) {
+                    out.add(table);
+                    break;
+                }
+            }
+        }
+        return out;
+    }
+
     private List<String> tables() {
         return db.tables().stream().filter(t -> !IGNORED.contains(t)).filter(t -> !keyColumns(t).isEmpty()).toList();
     }

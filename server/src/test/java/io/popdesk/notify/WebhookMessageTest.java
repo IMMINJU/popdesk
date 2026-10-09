@@ -5,8 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.notify.NotifySteps.Scene;
 import io.popdesk.support.ConnectedAppTest;
+import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.NewIssue;
+import io.popdesk.support.Fixtures.Role;
+import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
 import io.popdesk.support.Wait;
 import io.popdesk.support.WebhookReceiver.Received;
@@ -43,22 +46,43 @@ class WebhookMessageTest extends ConnectedAppTest {
         return body.path("text").stringValue();
     }
 
+    /**
+     * A scene whose company name and legal name do not hold the company code. Issue keys and console
+     * links hold the code ({@code CODE-n}), and the default fixture names do too ({@code Company CODE}),
+     * so the code is checked in what is left of the text without them.
+     */
+    private Scene sceneWithPlainNames() {
+        Session admin = fixtures.signInAdmin();
+        long n = Unique.number();
+        Company company = fixtures.createCompany(admin, Unique.companyCode(), "Hooked company " + n,
+                "Hooked company " + n + " Ltd.");
+        Session customer = steps.person(admin, Role.CUSTOMER, "Customer", company.code());
+        return new Scene(admin, company, customer, null);
+    }
+
+    /** The text without the issue's console link and key. */
+    private static String withoutKeyAndLink(String text, String key) {
+        return text.replace(NotifySteps.consoleIssueLink(key), "").replace(key, "");
+    }
+
     @Test
     @DisplayName("S0-AC-75 a new issue posts {\"text\"} with the issue key, title, company code, and console link, and no customer name, email, or content")
     void newIssueMessage() {
-        Scene s = steps.scene();
+        Scene s = sceneWithPlainNames();
         String title = Unique.text("Hooked title");
         String content = "Hooked content " + Unique.number();
 
         Issue issue = fixtures.fileIssue(s.customer(), NewIssue.in(s.code()).title(title).content(content));
 
         String text = text(awaitWebhooks(webhook(), issue.key(), 1).getFirst());
-        assertThat(text).contains(issue.key()).contains(title).contains(s.code())
+        assertThat(text).contains(issue.key()).contains(title)
                 .contains(NotifySteps.consoleIssueLink(issue.key()))
                 .doesNotContain(PORTAL_HOST)
                 .doesNotContain(content)
                 .doesNotContain(s.customer().name())
                 .doesNotContainIgnoringCase(s.customer().email());
+        assertThat(withoutKeyAndLink(text, issue.key())).as("the text without the key and the link")
+                .contains(s.code());
         Wait.holds("one webhook for one new issue", Duration.ofSeconds(3),
                 () -> webhook().containing(issue.key()).size() == 1);
     }
@@ -66,7 +90,7 @@ class WebhookMessageTest extends ConnectedAppTest {
     @Test
     @DisplayName("S0-AC-75 a customer's comment posts a message of another kind with the key, title, code, and link, and no comment text or customer")
     void customerCommentMessage() {
-        Scene s = steps.scene();
+        Scene s = sceneWithPlainNames();
         String title = Unique.text("Commented title");
         Issue issue = fixtures.fileIssue(s.customer(), NewIssue.in(s.code()).title(title));
         String created = text(awaitWebhooks(webhook(), issue.key(), 1).getFirst());
@@ -75,11 +99,13 @@ class WebhookMessageTest extends ConnectedAppTest {
         fixtures.comment(s.customer(), issue.key(), comment);
 
         String commented = text(awaitWebhooks(webhook(), issue.key(), 2).get(1));
-        assertThat(commented).contains(issue.key()).contains(title).contains(s.code())
+        assertThat(commented).contains(issue.key()).contains(title)
                 .contains(NotifySteps.consoleIssueLink(issue.key()))
                 .doesNotContain(comment)
                 .doesNotContain(s.customer().name())
                 .doesNotContainIgnoringCase(s.customer().email());
+        assertThat(withoutKeyAndLink(commented, issue.key())).as("the text without the key and the link")
+                .contains(s.code());
         assertThat(commented).as("the comment message tells another kind of event than the new issue message")
                 .isNotEqualTo(created);
     }

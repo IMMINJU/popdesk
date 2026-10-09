@@ -12,11 +12,15 @@ import io.popdesk.attachment.AttachmentSteps.Scene;
 import io.popdesk.attachment.StuckAttachments.Stuck;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
+import io.popdesk.support.DbInspector;
 import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
 import io.popdesk.support.Wait;
+import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +31,8 @@ import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
  * What a failed filing leaves behind, and the daily attachment cleanup.
@@ -34,7 +40,8 @@ import org.junit.jupiter.api.Test;
  * <p>The cleanup wakes on a short real-time period and runs when the app's {@code Clock} says a day
  * has passed since its last run (tasks.md section 6), so a test moves the clock 25 hours and waits.
  * Moving the clock that far ends every session, so the tests sign in again afterwards. Failures are
- * put in with {@code test_} triggers ({@link FailureTriggers}), dropped before each test ends.
+ * put in with {@code test_} triggers ({@link FailureTriggers}), dropped before each test ends; the
+ * races hold one step of an upload in such a trigger until the test releases it ({@link Hold}).
  */
 class AttachmentCleanupTest extends BareAppTest {
 
@@ -42,6 +49,9 @@ class AttachmentCleanupTest extends BareAppTest {
 
     /** The cleanup wakes every few seconds of real time; allow a few periods. */
     private static final Duration CLEANUP = Duration.ofSeconds(30);
+
+    @Autowired
+    PostgreSQLContainer postgres;
 
     private AttachmentSteps steps;
     private AttachmentRows rows;
@@ -119,13 +129,15 @@ class AttachmentCleanupTest extends BareAppTest {
         String name = Unique.text("race") + ".bin";
         byte[] content = bytes(1_000, Unique.number());
         ApiResponse created;
-        try (FailureTriggers triggers = new FailureTriggers(db)) {
-            triggers.delayStoring(table, name);
+        try (FailureTriggers triggers = new FailureTriggers(db); Hold hold = new Hold(db, postgres)) {
+            triggers.holdStoring(table, name, hold);
             CompletableFuture<ApiResponse> running =
                     CompletableFuture.supplyAsync(() -> upload(s.customer(), issue.key(), name, content));
-            Wait.until("step ③ of the upload waiting in the trigger", () -> db.count(
-                    "select count(*) from pg_stat_activity where wait_event = 'PgSleep'") > 0 ? true : null);
-            clock.advance(PAST_A_DAY);
+            int stepThree = Hold.awaitHeld(db, "step ③ of the upload");
+            Instant due = clock.advance(PAST_A_DAY);
+            Wait.until("the cleanup at the held row: waiting for the lock of step ③, or a whole run done", CLEANUP,
+                    () -> blockedBy(stepThree) || cleanupRanAtOrAfter(due) ? true : null);
+            hold.release();
             created = finish(running);
         }
 
@@ -135,6 +147,75 @@ class AttachmentCleanupTest extends BareAppTest {
                 () -> rows.byId(id).state().equals("stored") && rows.contentCopies(content) == 1);
         Session again = fixtures.signInAgain(s.customer());
         assertThat(download(again, issue.key(), id).body()).isEqualTo(content);
+    }
+
+    @Test
+    @DisplayName("S0-AC-63 when the cleanup ends a pending row while step ② is still writing its file, the cleanup wins: the upload fails and the file is never stored or shown")
+    void cleanupWinsOverUnfinishedUpload() throws Exception {
+        Scene s = steps.scene();
+        Issue issue = fixtures.fileIssue(s.customer(), s.code());
+        String name = Unique.text("cleaned-first") + ".bin";
+        byte[] content = bytes(1_000, Unique.number());
+        ApiResponse finished;
+        String id;
+        try (FailureTriggers triggers = new FailureTriggers(db); Hold hold = new Hold(db, postgres)) {
+            triggers.holdWritingContent(content, hold);
+            CompletableFuture<ApiResponse> running =
+                    CompletableFuture.supplyAsync(() -> upload(s.customer(), issue.key(), name, content));
+            Hold.awaitHeld(db, "step ② of the upload");
+            List<Row> pending = rows.byFileName(name);
+            assertThat(pending).as("rows for %s while step ② is held", name).extracting(Row::state)
+                    .containsExactly("pending");
+            id = pending.getFirst().id();
+            clock.advance(PAST_A_DAY);
+            Wait.untilAsserted("the cleanup ended the pending row while step ② is held", CLEANUP,
+                    () -> assertThat(rows.findById(id).map(Row::state)).satisfiesAnyOf(
+                            state -> assertThat(state).isEmpty(),
+                            state -> assertThat(state).contains("purged")));
+            hold.release();
+            finished = finish(running);
+        }
+
+        assertThat(finished.status()).as("the upload after the cleanup ended its row: %s", finished)
+                .isGreaterThanOrEqualTo(400);
+        Wait.holds("the attachment is not stored after the upload ended", Duration.ofSeconds(3),
+                () -> rows.findById(id).map(Row::state).filter(state -> state.equals("stored")).isEmpty());
+        Session again = fixtures.signInAgain(s.customer());
+        assertThat(list(again, issue.key())).extracting(n -> text(n, "id")).doesNotContain(id);
+        ApiResponse fetched = download(again, issue.key(), id);
+        assertThat(fetched.status()).isEqualTo(404);
+        assertThat(fetched.errorCode()).isEqualTo("NOT_FOUND");
+    }
+
+    /** Whether some server process waits for a lock that the process {@code pid} holds. */
+    private boolean blockedBy(int pid) {
+        return db.count("select count(*) from pg_stat_activity where ? = any(pg_blocking_pids(pid))", pid) > 0;
+    }
+
+    /**
+     * Whether the cleanup record of {@code attachment-cleanup} (S0-AC-82, tasks.md 6절) holds a time
+     * at or after {@code at}: a run that started after the clock moved has ended. The record is found
+     * in any text column of any table.
+     */
+    private boolean cleanupRanAtOrAfter(Instant at) {
+        for (String table : db.tables()) {
+            for (DbInspector.Column c : db.columns(table)) {
+                if (!c.dataType().equals("text") && !c.dataType().equals("character varying")) {
+                    continue;
+                }
+                for (Map<String, Object> row : db.rows("select * from " + AttachmentRows.quote(table) + " where "
+                        + AttachmentRows.quote(c.name()) + " = 'attachment-cleanup'")) {
+                    for (Object value : row.values()) {
+                        Instant time = value instanceof Timestamp ts ? ts.toInstant()
+                                : value instanceof OffsetDateTime odt ? odt.toInstant() : null;
+                        if (time != null && !time.isBefore(at)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     // S0-AC-62

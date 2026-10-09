@@ -9,11 +9,11 @@ import io.popdesk.notify.SmtpGate.Held;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.Fixtures;
 import io.popdesk.support.Fixtures.Issue;
+import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
 import io.popdesk.support.Wait;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -130,6 +130,7 @@ class MailQueueRowTest extends GatedMailTest {
     @DisplayName("S0-AC-69 an invitation mail queued for an account that has accepted meanwhile is not sent, and its row is deleted")
     void invitationMailForAcceptedAccountIsDropped() {
         Session admin = fixtures.signInAdmin();
+        String table = mailQueueTable(admin);
         String email = Unique.email("accepted");
         gate().hold();
         Snapshot before = rows.snapshot();
@@ -137,15 +138,15 @@ class MailQueueRowTest extends GatedMailTest {
         admin.client().post("/api/console/invitations")
                 .json(Map.of("email", email, "name", "Accepted " + Unique.number(), "role", "AGENT")).expect(201);
         String token = Fixtures.tokenOf(Fixtures.linkIn(gate().awaitHeldTo(email).text()));
-        List<Row> added = new ArrayList<>(rows.added(before));
+        List<Row> mailRows = rows.added(before).stream().filter(r -> r.table().equals(table)).toList();
+        assertThat(mailRows).as("rows the invitation added to the mail queue table " + table).hasSize(1);
         console().post("/api/public/invitations/accept")
                 .json(Map.of("token", token, "password", Fixtures.PASSWORD)).expect(204);
 
         gate().pass();
         clock.advance(Duration.ofSeconds(1));
-        List<Row> gone = rows.awaitGone("the invitation mail row handled after the account became ACTIVE", added);
+        rows.awaitGone("the invitation mail row handled after the account became ACTIVE", mailRows);
 
-        assertThat(gone).as("rows that went away").hasSize(1);
         Wait.holds("no invitation mail to the account that accepted", Duration.ofSeconds(3),
                 () -> mail().messagesTo(email).isEmpty());
         assertThat(gate().held()).as("attempts that reached the mail server").hasSize(1);
@@ -216,6 +217,44 @@ class MailQueueRowTest extends GatedMailTest {
         } finally {
             db.schemaFixture("drop trigger if exists test_fail_after_queue on " + table);
             db.schemaFixture("drop function if exists test_fail_at_commit()");
+        }
+
+        for (ApiResponse r : List.of(invited, answered)) {
+            assertThat(r.status()).as(r.toString()).isEqualTo(500);
+            assertThat(r.errorCode()).isEqualTo("INTERNAL_ERROR");
+        }
+        assertThat(rows.added(before)).as("rows left by the failed requests").isEmpty();
+        assertThat(s.agent().client().get("/api/console/issues/" + issue.key() + "/comments").expect(200).text())
+                .doesNotContain(answer);
+        Wait.holds("no mail for the failed requests", Duration.ofSeconds(3),
+                () -> mail().messagesTo(email).isEmpty()
+                        && NotifySteps.notifications(mail(), s.customer().email()).isEmpty());
+    }
+
+    @Test
+    @DisplayName("S0-AC-66 when the change itself fails at commit after the queue row was written, the mail row goes with it and nothing is sent")
+    void failureOfTheChangeRollsBackTheMailRow() {
+        Scene s = steps.scene();
+        Issue issue = fixtures.fileIssue(s.customer(), s.code());
+        String queue = mailQueueTable(s.admin());
+        List<String> accountTables = rows.tablesHolding(fixtures.invite(s.admin(), Role.AGENT).email());
+        String probe = "Probe note " + Unique.number();
+        fixtures.internalComment(s.agent(), issue.key(), probe);
+        List<String> commentTables = rows.tablesHolding(probe);
+        assertThat(accountTables).as("tables holding an invited address").isNotEmpty().doesNotContain(queue);
+        assertThat(commentTables).as("tables holding a comment's text").isNotEmpty().doesNotContain(queue);
+        String email = Unique.email("unchanged");
+        String answer = "Unchanged " + Unique.number();
+        Snapshot before = rows.snapshot();
+        ApiResponse invited;
+        ApiResponse answered;
+        try (CommitFailure failure = new CommitFailure(db)) {
+            accountTables.forEach(t -> failure.failAtCommit(t, email));
+            commentTables.forEach(t -> failure.failAtCommit(t, answer));
+            invited = s.admin().client().post("/api/console/invitations")
+                    .json(Map.of("email", email, "name", "Unchanged " + Unique.number(), "role", "AGENT")).send();
+            answered = s.agent().client().post("/api/console/issues/" + issue.key() + "/comments")
+                    .json(Map.of("content", answer)).send();
         }
 
         for (ApiResponse r : List.of(invited, answered)) {

@@ -17,8 +17,9 @@ import java.util.UUID;
  *
  * <p>A row matches when one of its columns, read as text, equals the marker, in the old or the new
  * row. With a state, the new row must also hold that state ({@code stored}). The trigger either
- * raises an error or, for a race, sleeps 3 seconds while it holds the row lock (under the
- * connection's 5-second {@code lock_timeout}).
+ * raises an error or, for a race, waits while it holds the row lock until the test releases a
+ * {@link Hold} (at most 30 seconds). It waits in short {@code pg_sleep} calls, not on a lock, so the
+ * connection's {@code lock_timeout} does not end it.
  */
 final class FailureTriggers implements AutoCloseable {
 
@@ -38,8 +39,12 @@ final class FailureTriggers implements AutoCloseable {
                 + "      or exists (select 1 from jsonb_each_text(new_row) e where e.value = TG_ARGV[0]))\n"
                 + "     and (TG_ARGV[1] = ''\n"
                 + "      or exists (select 1 from jsonb_each_text(new_row) e where lower(e.value) = TG_ARGV[1])) then\n"
-                + "    if TG_ARGV[2] = 'sleep' then\n"
-                + "      perform pg_sleep(3);\n"
+                + "    if TG_ARGV[2] = 'hold' then\n"
+                + "      for i in 1..600 loop\n"
+                + "        exit when not exists (select 1 from pg_locks l where l.locktype = 'advisory'\n"
+                + "          and l.granted and l.classid = 0 and l.objsubid = 1 and l.objid = TG_ARGV[3]::bigint::oid);\n"
+                + "        perform pg_sleep(0.05);\n"
+                + "      end loop;\n"
                 + "    else\n"
                 + "      raise exception 'test_ trigger: injected failure';\n"
                 + "    end if;\n"
@@ -59,9 +64,14 @@ final class FailureTriggers implements AutoCloseable {
         add(attachmentTable, "update", fileName, "stored", "fail");
     }
 
-    /** Makes step ③ of the attachment row holding {@code fileName} wait 3 seconds while it holds the row. */
-    void delayStoring(String attachmentTable, String fileName) {
-        add(attachmentTable, "update", fileName, "stored", "sleep");
+    /** Holds step ③ of the attachment row holding {@code fileName}, with the row locked, until {@code hold} is released. */
+    void holdStoring(String attachmentTable, String fileName, Hold hold) {
+        add(attachmentTable, "update", fileName, "stored", "hold", hold.key());
+    }
+
+    /** Holds step ② for the file {@code content}, before it reaches attachment_content, until {@code hold} is released. */
+    void holdWritingContent(byte[] content, Hold hold) {
+        add(AttachmentRows.CONTENT_TABLE, "insert or update", hexText(content), "", "hold", hold.key());
     }
 
     /** Fails step ② for the file {@code content}: the INSERT or UPDATE that puts it into attachment_content. */
@@ -80,10 +90,14 @@ final class FailureTriggers implements AutoCloseable {
     }
 
     private void add(String table, String events, String marker, String state, String action) {
+        add(table, events, marker, state, action, "0");
+    }
+
+    private void add(String table, String events, String marker, String state, String action, String holdKey) {
         String name = "test_" + UUID.randomUUID().toString().replace("-", "");
         db.schemaFixture("create trigger " + name + " before " + events + " on " + quote(table)
                 + " for each row execute function " + FUNCTION + "(" + literal(marker) + ", " + literal(state) + ", "
-                + literal(action) + ")");
+                + literal(action) + ", " + literal(holdKey) + ")");
         dropStatements.add("drop trigger if exists " + name + " on " + quote(table));
     }
 

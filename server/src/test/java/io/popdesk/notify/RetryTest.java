@@ -6,11 +6,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.popdesk.notify.NotifySteps.Scene;
 import io.popdesk.notify.Rows.Row;
 import io.popdesk.notify.Rows.Snapshot;
+import io.popdesk.support.ApiResponse;
 import io.popdesk.support.ConnectedAppTest;
 import io.popdesk.support.DbInspector.Column;
 import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Wait;
+import io.popdesk.support.WebhookReceiver;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
@@ -104,7 +106,16 @@ class RetryTest extends ConnectedAppTest {
             awaitWebhooks(webhook(), key, attempts + 1);
         }
 
+        int lastFailed = WAITS.length + 1;
+        Instant lastFailedAt = clock.instant();
+        Wait.until("attempt " + lastFailed + " of " + key + " recorded with its next attempt 10 minutes later", () -> {
+            Row r = rows.reread(caught.row());
+            return r != null && !r.columnsAt(lastFailedAt.plusSeconds(600)).isEmpty()
+                    && !r.columnsEqualTo(lastFailed).isEmpty() ? r : null;
+        });
         webhook().respondWith(204);
+        clock.advance(Duration.ofSeconds(600));
+        awaitWebhooks(webhook(), key, lastFailed + 1);
         rows.awaitGone("the row of " + key + " deleted after the send that worked", List.of(caught.row()));
     }
 
@@ -137,10 +148,39 @@ class RetryTest extends ConnectedAppTest {
         assertThat(rows.exists(caught.row())).as("the failed row is kept").isTrue();
     }
 
+    @Test
+    @DisplayName("S0-AC-76 once a webhook row is failed, failed deliveries, system status, and the log show no webhook URL")
+    void failedRowShowsNoUrl() {
+        Scene s = steps.scene();
+        Caught caught = fileWhileFailing(s.customer(), s.code());
+        clock.advance(Duration.ofHours(24).plusSeconds(1));
+        Session admin = fixtures.signInAdmin();
+        ApiResponse failed = Wait.until("the row of " + caught.issue().key() + " listed as failed", () -> {
+            ApiResponse r = failedDeliveries(admin);
+            return failedIds(r).contains(caught.row().key()) ? r : null;
+        });
+        ApiResponse status = admin.client().get("/api/console/system/status").expect(200);
+
+        for (String form : NotifySteps.urlForms(WebhookReceiver.shared().url())) {
+            assertThat(failed.text()).as("failed deliveries hold the webhook URL as " + form)
+                    .doesNotContainIgnoringCase(form);
+            assertThat(status.text()).as("system status holds the webhook URL as " + form)
+                    .doesNotContainIgnoringCase(form);
+            assertThat(log.all()).as("the log holds the webhook URL as " + form).doesNotContainIgnoringCase(form);
+        }
+    }
+
+    private static ApiResponse failedDeliveries(Session admin) {
+        return admin.client().get("/api/console/system/failed-deliveries").query("size", 100).expect(200);
+    }
+
     /** IDs in {@code GET /api/console/system/failed-deliveries} of the webhook channel, as text. */
     private static List<String> failedIds(Session admin) {
-        JsonNode items = admin.client().get("/api/console/system/failed-deliveries").query("size", 100).expect(200)
-                .json().path("items");
+        return failedIds(failedDeliveries(admin));
+    }
+
+    private static List<String> failedIds(ApiResponse failedDeliveries) {
+        JsonNode items = failedDeliveries.json().path("items");
         if (!items.isArray()) {
             throw new AssertionError("No items array in failed-deliveries");
         }
