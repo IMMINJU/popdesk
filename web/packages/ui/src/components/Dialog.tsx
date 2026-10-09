@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useId, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { CloseIcon } from '../icons';
 import { IconButton } from './IconButton';
@@ -22,10 +22,15 @@ export interface DialogProps {
   initialFocus?: RefObject<HTMLElement | null>;
   /** Default `md` (480px). `lg` is 640px. */
   size?: 'md' | 'lg';
+  /** Default true: a close button in the head. A question without it closes with its own answer buttons and Esc. */
+  closable?: boolean;
 }
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Open dialogs, newest last. Keys that land outside every dialog go to the newest. */
+const openDialogs: symbol[] = [];
 
 function focusables(root: HTMLElement): HTMLElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.closest('[hidden], [inert]') === null);
@@ -52,13 +57,43 @@ export function Dialog(props: DialogProps) {
     target?.focus();
   });
 
-  useEffect(() => {
+  const self = useRef(Symbol('dialog'));
+
+  // Layout effect: focus is inside before anything else can take it.
+  useLayoutEffect(() => {
     if (!props.open) return undefined;
+    const me = self.current;
+    openDialogs.push(me);
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     focusFirst();
     return () => {
+      openDialogs.splice(openDialogs.indexOf(me), 1);
       // Back to the control that opened it, when it is still on the page.
       if (opener?.isConnected) opener.focus();
+    };
+  }, [props.open]);
+
+  // When the focused control goes away (a form replaced by its result), focus
+  // falls to the page. Esc and Tab from there still belong to the newest dialog.
+  const onStrayKey = useEffectEvent((e: globalThis.KeyboardEvent) => {
+    if (openDialogs[openDialogs.length - 1] !== self.current || !box.current) return;
+    if (box.current.contains(document.activeElement)) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      props.onClose();
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      focusFirst();
+    }
+  });
+  useEffect(() => {
+    if (!props.open) return undefined;
+    const listener = (e: globalThis.KeyboardEvent) => {
+      onStrayKey(e);
+    };
+    document.addEventListener('keydown', listener);
+    return () => {
+      document.removeEventListener('keydown', listener);
     };
   }, [props.open]);
 
@@ -114,7 +149,9 @@ export function Dialog(props: DialogProps) {
           <h2 id={titleId} className="pd-dialog-title">
             {props.title}
           </h2>
-          <IconButton label={props.closeLabel ?? 'Close'} icon={<CloseIcon />} size="sm" tooltip={false} onClick={props.onClose} />
+          {props.closable !== false && (
+            <IconButton label={props.closeLabel ?? 'Close'} icon={<CloseIcon />} size="sm" tooltip={false} onClick={props.onClose} />
+          )}
         </div>
         {props.description && (
           <p id={descriptionId} className="pd-dialog-description">

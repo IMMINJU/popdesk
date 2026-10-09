@@ -19,8 +19,8 @@ export interface ConfirmDialogProps {
 }
 
 /**
- * Question with 확인·취소 on top of Dialog (`alertdialog`). Esc and the close
- * button are 취소. A danger question starts on 취소 so Enter does not destroy.
+ * Question with 확인·취소 on top of Dialog (`alertdialog`). Esc is 취소; there is
+ * no separate close button. A danger question starts on 취소 so Enter does not destroy.
  */
 export function ConfirmDialog(props: ConfirmDialogProps) {
   const cancel = useRef<HTMLButtonElement>(null);
@@ -31,7 +31,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
       role="alertdialog"
       title={props.title}
       onClose={props.onCancel}
-      closeLabel={props.cancelLabel}
+      closable={false}
       pending={props.pending ?? false}
       initialFocus={props.tone === 'danger' ? cancel : confirm}
       footer={

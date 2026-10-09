@@ -12,6 +12,8 @@ export interface CheckboxGroupProps {
   value: readonly string[];
   onChange: (value: string[]) => void;
   name?: string;
+  /** `id` of the group; each box gets `{id}-{value}`. */
+  id?: string;
   helpText?: string;
   /** 묶음 오류, e.g. "고객사를 하나 이상 고르세요". */
   error?: string;
@@ -19,11 +21,13 @@ export interface CheckboxGroupProps {
 }
 
 export function CheckboxGroup(props: CheckboxGroupProps) {
-  const id = useId();
+  const autoId = useId();
+  const id = props.id ?? autoId;
   const helpId = `${id}-help`;
   const errorId = `${id}-error`;
   return (
     <fieldset
+      id={id}
       className="pd-group"
       data-pd="CheckboxGroup"
       data-invalid={props.error ? 'true' : undefined}

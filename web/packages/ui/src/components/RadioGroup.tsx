@@ -12,6 +12,8 @@ export interface RadioGroupProps<T extends string> {
   value: T | null;
   onChange: (value: T) => void;
   name?: string;
+  /** `id` of the group; each radio gets `{id}-{value}`. */
+  id?: string;
   /** `radio` is a list of radios (역할). `tabs` looks like tabs but stays a radiogroup (C-4 공개·내부). Default `radio`. */
   appearance?: 'radio' | 'tabs';
   /** Arrow keys move along this axis. Default `vertical` for `radio`, `horizontal` for `tabs`. */
@@ -29,7 +31,8 @@ export interface RadioGroupProps<T extends string> {
  * keys move and choose. The tabs look keeps the radio semantics (screens.md C-4).
  */
 export function RadioGroup<T extends string>(props: RadioGroupProps<T>) {
-  const id = useId();
+  const autoId = useId();
+  const id = props.id ?? autoId;
   const name = props.name ?? id;
   const legendId = `${id}-legend`;
   const helpId = `${id}-help`;
@@ -38,6 +41,7 @@ export function RadioGroup<T extends string>(props: RadioGroupProps<T>) {
   const orientation = props.orientation ?? (appearance === 'tabs' ? 'horizontal' : 'vertical');
   return (
     <fieldset
+      id={id}
       className="pd-group pd-radio-group"
       data-pd="RadioGroup"
       data-appearance={appearance}
