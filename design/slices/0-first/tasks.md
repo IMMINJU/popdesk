@@ -170,3 +170,9 @@ C-7 점검(`s0-c7-review`)으로 정한 것:
 - `helpdesk` 모듈의 DB 접근(`EntityManager`, `JdbcTemplate`)은 저장소 클래스에서만 한다(`ScopedReadRulesTest.rawDatabaseAccessOnlyInRepositories`).
 - 표 이름에는 `issue`, `outbox`, `audit`이 들어간다. 업그레이드 틀 테스트(V999, 견본 경계값)가 이 꼴로 표를 찾는다.
 - 409 본문(중복 초대 등)에 입력한 이메일을 되돌려 넣지 않는다.
+
+구현 지시서를 쓰며 정한 것(C-8):
+
+- 앱 스키마는 앱 DB의 `public`이다. `DatabasePrivilegeTest.userWithoutSchemaCreate`는 `public`의 `CREATE`만 빼고 앱이 멈추기를 본다. 앱이 `popdesk` 스키마를 만들면 DB `CREATE`로 지나가 뜬다. `architecture.md` 4절의 `popdesk`를 고쳤다.
+- 테스트가 기준보다 엄격한 곳은 승인한 테스트를 따른다: S0-AC-87의 413 안내 문구(`screens.md` 2절 문구를 앱 본문 413에도), S0-AC-73의 가린 주소 로그는 요청 하나에 정확히 한 줄, S0-AC-77은 문의·댓글 행 말고 어떤 대기 행도 남기지 않음.
+- 콘솔이 SMTP가 켜졌는지 아는 길은 `GET /api/console/system/status`의 `mail.enabled`다. `screens.md` 7절의 "관리자용 설정 요약 API"는 따로 두지 않는다.
