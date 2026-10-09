@@ -52,6 +52,7 @@ GATE_GLOBS = [
     ".claude/**",
     "AGENTS.md",
     "CLAUDE.md",
+    "design/slices/*/pending.txt",
 ]
 
 # What the test-writing side may touch besides TEST_GLOBS.

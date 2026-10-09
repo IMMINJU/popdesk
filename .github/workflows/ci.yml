@@ -42,6 +42,7 @@ jobs:
             ci: &ci
               - '.github/workflows/**'
               - 'scripts/ci/**'
+              - 'design/slices/*/pending.txt'
             migrations:
               - *ci
               - 'server/src/main/resources/db/migration/**'
@@ -107,7 +108,8 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
-      - run: ./mvnw -B verify
+      # Tests still waiting for implementation are left out (design/slices/*/pending.txt).
+      - run: ./mvnw -B verify $(python3 ../scripts/ci/pending.py server)
       - name: OpenAPI files match the code (D-21, D-43)
         run: |
           ./mvnw -B -Popenapi test
@@ -150,7 +152,7 @@ jobs:
           fi
       - run: pnpm -r ${{ steps.scope.outputs.filter }} run typecheck
       - run: pnpm -r ${{ steps.scope.outputs.filter }} run lint
-      - run: pnpm -r --workspace-concurrency=1 ${{ steps.scope.outputs.filter }} run test
+      - run: pnpm -r --workspace-concurrency=1 ${{ steps.scope.outputs.filter }} run test $(python3 ../scripts/ci/pending.py web)
       - run: pnpm -r ${{ steps.scope.outputs.filter }} run build
 
   # Locked tests, merged migrations, and the split between the side that writes tests and the
