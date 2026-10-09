@@ -171,9 +171,11 @@ describe('C-8 고객사 목록', () => {
     const submit = await d.submit();
     await user.click(submit);
 
+    // 2절: 저장 중 버튼은 aria-disabled로 막고 disabled를 쓰지 않는다(포커스를 잃지 않게).
     await eventually(() => {
-      expect(isBlocked(submit)).toBe(true);
+      expect(submit).toHaveAttribute('aria-disabled', 'true');
     });
+    expect(submit, '저장 중 버튼에 disabled').not.toBeDisabled();
     await user.click(submit);
     expect(callsTo('POST', '/api/console/companies')).toHaveLength(1);
     const close = within(d.box).queryAllByRole('button').find((b) => /닫기|취소/.test(b.getAttribute('aria-label') ?? text(b)));

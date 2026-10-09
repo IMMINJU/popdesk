@@ -17,6 +17,7 @@ import {
   errors,
   eventually,
   expectFieldError,
+  fieldState,
   expectNoAxeViolations,
   field,
   file,
@@ -209,9 +210,10 @@ describe('P-5 문의 상세', () => {
     const { user } = renderAt(URL_7);
     const box = await editor();
     await user.type(box, '긴 댓글');
+    const before = fieldState(box);
     await user.click(await button('보내기'));
 
-    await expectFieldError(box);
+    await expectFieldError(box, before);
     expect(document.activeElement).toBe(box);
     expect(box).toHaveValue('긴 댓글');
   });
@@ -280,7 +282,7 @@ describe('P-5 문의 상세', () => {
     await sent('POST', '/api/portal/issues/ACME-7/attachments', 2);
   });
 
-  test('P-5 첨부 실패 400 한도: 그 파일 줄에 "다시 올리기"·"빼기", 빼면 줄이 사라진다', async () => {
+  test('S0-AC-87 P-5 첨부 실패 400 한도: 그 파일 줄에 "다시 올리기"·"빼기"와 413이 아닌 안내, 빼면 줄이 사라진다', async () => {
     on('post', '/api/portal/issues/:key/attachments', () =>
       HttpResponse.json({ code: 'ISSUE_ATTACHMENTS_TOO_LARGE', message: 'Over 50 MB.' }, { status: 400 }),
     );
@@ -290,6 +292,8 @@ describe('P-5 문의 상세', () => {
 
     await button('다시 올리기');
     expect(pageText()).toContain('big.iso');
+    // 413만 크기 상한 안내다. 모든 실패에 같은 안내를 내는 화면을 막는다(400 한도 문구는 정해지지 않아 고정하지 않는다).
+    expect(pageText()).not.toContain('파일이 서버 앞단의 크기 상한에 걸렸습니다');
     await user.click(await button('빼기'));
     await eventually(() => {
       expect(pageText()).not.toContain('big.iso');

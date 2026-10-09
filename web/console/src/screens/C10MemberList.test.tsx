@@ -21,7 +21,6 @@ import {
   heading1,
   hrefPath,
   invitation,
-  isBlocked,
   on,
   openDialog,
   paged,
@@ -322,9 +321,11 @@ describe('C-10 구성원 목록', () => {
     const submit = await d.submit();
     await user.click(submit);
 
+    // 2절: 저장 중 버튼은 aria-disabled로 막고 disabled를 쓰지 않는다(포커스를 잃지 않게).
     await eventually(() => {
-      expect(isBlocked(submit)).toBe(true);
+      expect(submit).toHaveAttribute('aria-disabled', 'true');
     });
+    expect(submit, '저장 중 버튼에 disabled').not.toBeDisabled();
     await user.click(submit);
     expect(callsTo('POST', '/api/console/invitations')).toHaveLength(1);
     release.open();

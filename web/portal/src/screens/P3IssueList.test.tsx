@@ -19,11 +19,13 @@ import {
   renderAt,
   screen,
   sent,
+  spokenText,
   state,
   statusWith,
   summary,
   tabbables,
   text,
+  within,
   type IssueSummary,
 } from '../__tests__/portal';
 
@@ -57,14 +59,16 @@ describe('P-3 문의 목록', () => {
     state.issues = [
       summary({ key: 'ACME-9', title: '동료 문의', reporter: COLLEAGUE }),
       summary({ key: 'ACME-8', title: '지원팀 문의', reporter: SUPPORT_TEAM }),
-      summary({ key: 'ACME-7', title: '내 비공개 문의', private: true }),
+      // 제목에 "비공개"를 넣지 않는다. 넣으면 표시가 없어도 제목 글자로 통과한다.
+      summary({ key: 'ACME-7', title: '내 문의', private: true }),
     ];
     renderAt('/issues');
 
     expect(text(await link(/ACME-9/))).toContain('박동료');
     expect(text(await link(/ACME-8/))).toContain('지원팀');
-    expect(text(await link(/ACME-7/))).toContain('비공개');
-    expect(text(await link(/ACME-9/))).not.toContain('비공개');
+    // 표시는 화면 읽기 프로그램도 읽는다(보이는 배지든 모바일 카드의 숨은 글자든).
+    expect(spokenText(await link(/ACME-7/)), '비공개 줄의 읽히는 글자').toContain('비공개');
+    expect(spokenText(await link(/ACME-9/))).not.toContain('비공개');
   });
 
   test('P-3 상태 말: 다섯 상태를 고객용 말로 그린다(UX-3)', async () => {
@@ -185,7 +189,9 @@ describe('P-3 문의 목록', () => {
       expect(pageText()).toContain('이 쪽에는 문의가 없습니다');
     });
     expect(pageText()).not.toContain('아직 올린 문의가 없습니다.');
-    const firstPage = screen
+    // 화면 머리의 "popdesk" 같은 /issues 링크로 통과하지 않게 본문(main) 안에서 찾는다.
+    const main = await found(() => screen.queryByRole('main'), '본문 main');
+    const firstPage = within(main)
       .queryAllByRole<HTMLAnchorElement>('link')
       .filter((a) => hrefPath(a) === '/issues' && new URL(a.href).searchParams.get('page') !== '2');
     expect(firstPage.length, '1쪽으로 가는 링크').toBeGreaterThan(0);

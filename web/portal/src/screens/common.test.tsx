@@ -13,6 +13,7 @@ import {
   errors,
   eventually,
   expectFieldError,
+  fieldState,
   field,
   found,
   gate,
@@ -33,6 +34,7 @@ import {
   tabbables,
   text,
   useFakeClock,
+  within,
 } from '../__tests__/portal';
 
 type User = ReturnType<typeof renderAt>['user'];
@@ -188,7 +190,11 @@ describe('2절 403·404', () => {
     await eventually(() => {
       expect(pageText()).toContain('찾을 수 없습니다');
     });
-    const toList = screen.queryAllByRole('link').filter((a) => hrefPath(a) === '/issues');
+    // 화면 머리의 "popdesk" 같은 /issues 링크로 통과하지 않게 본문(main) 안에서 찾는다.
+    const main = await found(() => screen.queryByRole('main'), '본문 main');
+    const toList = within(main)
+      .queryAllByRole('link')
+      .filter((a) => hrefPath(a) === '/issues');
     expect(toList.length, '목록으로 가는 링크').toBeGreaterThan(0);
     expect(screen.queryByRole('form', { name: '댓글 쓰기' })).toBeNull();
   });
@@ -238,13 +244,15 @@ describe('2절 400', () => {
     );
     const { user } = renderAt('/issues/new');
     await fillIssue(user);
+    const beforeTitle = fieldState(await field(/^제목/, 'input'));
+    const beforeContent = fieldState(await field(/^내용/, 'textarea'));
     await user.click(await button('올리기'));
 
     await alertWith('2개 칸을 고쳐 주세요');
     const title = await field(/^제목/, 'input');
     const content = await field<HTMLTextAreaElement>(/^내용/, 'textarea');
-    await expectFieldError(title);
-    await expectFieldError(content);
+    await expectFieldError(title, beforeTitle);
+    await expectFieldError(content, beforeContent);
     expect(document.activeElement).toBe(title);
     expect(title).toHaveValue('프린터가 안 됩니다');
   });
@@ -261,10 +269,11 @@ describe('2절 400', () => {
     );
     const { user } = renderAt('/issues/new');
     await fillIssue(user, '   제목   ');
+    const before = fieldState(await field(/^제목/, 'input'));
     await user.click(await button('올리기'));
 
     await alertWith('라벨 값이 틀렸습니다.');
-    await expectFieldError(await field(/^제목/, 'input'));
+    await expectFieldError(await field(/^제목/, 'input'), before);
   });
 
   test('P-4 2절 400 fields 없음: 모르는 code면 서버 message를 띠에 보인다(UX-5)', async () => {

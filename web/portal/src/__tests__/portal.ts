@@ -553,10 +553,29 @@ export function describedText(el: Element): string {
   return ids.map((id) => text(document.getElementById(id))).join(' ');
 }
 
-export async function expectFieldError(el: HTMLElement) {
+/** A field's error wiring before the error, taken just before the request that fails. */
+export interface FieldState {
+  invalid: string | null;
+  described: string;
+}
+
+export function fieldState(el: Element): FieldState {
+  return { invalid: el.getAttribute('aria-invalid'), described: describedText(el) };
+}
+
+/**
+ * The field turned `aria-invalid="true"` and its `aria-describedby` text changed.
+ * Comparing with `before` keeps a field whose rules or counter are already
+ * described (P-2 password, MarkdownEditor) from passing without an error text.
+ * The wording is not fixed.
+ */
+export async function expectFieldError(el: HTMLElement, before: FieldState) {
+  expect(before.invalid, '오류 전 aria-invalid').not.toBe('true');
   await eventually(() => {
     expect(el).toHaveAttribute('aria-invalid', 'true');
-    expect(describedText(el), '칸 오류 문구(aria-describedby)').not.toBe('');
+    const after = describedText(el);
+    expect(after, '칸 오류 문구(aria-describedby)').not.toBe('');
+    expect(after, '오류 뒤 aria-describedby 글자가 오류 전과 같다').not.toBe(before.described);
   });
 }
 

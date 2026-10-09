@@ -9,6 +9,7 @@ import {
   errors,
   eventually,
   expectFieldError,
+  fieldState,
   expectNoAxeViolations,
   field,
   gate,
@@ -82,9 +83,10 @@ describe('P-2 초대 수락', () => {
     state.signedIn = false;
     const { user } = renderAt(INVITE_URL);
     await fill(user, 'new password 2026', 'new password 2027');
+    const before = fieldState(await confirm());
     await user.click(await button('시작하기'));
 
-    await expectFieldError(await confirm());
+    await expectFieldError(await confirm(), before);
     expect(callsTo('POST', '/api/public/invitations/accept')).toHaveLength(0);
     expect(window.location.pathname).toBe('/invite');
   });
@@ -111,10 +113,12 @@ describe('P-2 초대 수락', () => {
     on('post', '/api/public/invitations/accept', () => errors.invalid([{ field: 'password', code: 'SAME_AS_EMAIL' }]));
     const { user } = renderAt(INVITE_URL);
     await fill(user);
+    // 비밀번호 칸은 처음부터 규칙을 aria-describedby로 잇는다. 오류 문구는 그 글자에 더해지거나 바뀌어야 한다.
+    const before = fieldState(await password());
     await user.click(await button('시작하기'));
 
     const pw = await password();
-    await expectFieldError(pw);
+    await expectFieldError(pw, before);
     expect(document.activeElement).toBe(pw);
     expect(window.location.pathname).toBe('/invite');
   });

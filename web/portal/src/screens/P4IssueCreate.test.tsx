@@ -209,6 +209,27 @@ describe('P-4 문의 등록', () => {
     expect(text(band)).not.toContain('서버에 연결하지 못했습니다');
   });
 
+  test('S0-AC-87 P-4 첨부 일부 실패: 413이 아닌 실패(400 한도, 5xx)에는 크기 상한 안내를 내지 않는다', async () => {
+    on('post', '/api/portal/issues/:key/attachments', async ({ request }) => {
+      const name = await uploadName(request);
+      if (name === 'big.iso') {
+        return HttpResponse.json({ code: 'ISSUE_ATTACHMENTS_TOO_LARGE', message: 'Over 50 MB.' }, { status: 400 });
+      }
+      if (name === 'trace.log') return errors.internal();
+      return acceptUpload(request);
+    });
+    const { user } = renderAt('/issues/new');
+    await user.upload(await attachInput(), [file('notes.txt'), file('big.iso', 9 * MB), file('trace.log')]);
+    await fillIssue(user);
+    await user.click(await button('올리기'));
+
+    await atPath('/issues/ACME-8');
+    const band = await alertWith('첨부 2개를 올리지 못했습니다.');
+    expect(text(band)).toContain('big.iso');
+    expect(text(band)).toContain('trace.log');
+    expect(text(band), '413이 아닌 실패에 크기 상한 안내').not.toContain('파일이 서버 앞단의 크기 상한에 걸렸습니다');
+  });
+
   test('P-4 400 고객사 ACTIVE 아님: "이 고객사에는 지금 문의를 올릴 수 없습니다." 띠, 고객사 칸에 포커스', async () => {
     state.companies = [ACME, BETA];
     on('post', '/api/portal/issues', () =>

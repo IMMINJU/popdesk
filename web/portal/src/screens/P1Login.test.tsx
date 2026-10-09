@@ -8,6 +8,7 @@ import {
   errors,
   eventually,
   expectFieldError,
+  fieldState,
   expectNoAxeViolations,
   field,
   gate,
@@ -120,10 +121,11 @@ describe('P-1 로그인', () => {
     state.signedIn = false;
     on('post', '/api/public/sign-in', () => errors.invalid([{ field: 'email', code: 'INVALID_FORMAT' }]));
     const { user } = renderAt('/login');
+    const before = fieldState(await email());
     await fillAndSend(user);
 
     const emailField = await email();
-    await expectFieldError(emailField);
+    await expectFieldError(emailField, before);
     expect(document.activeElement).toBe(emailField);
   });
 

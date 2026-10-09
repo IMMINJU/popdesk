@@ -10,6 +10,7 @@ import {
   expectFieldError,
   expectNoAxeViolations,
   field,
+  found,
   gate,
   heading1,
   isBlocked,
@@ -55,9 +56,14 @@ describe('C-1 로그인', () => {
   test('C-1 처음: 서버를 부르지 않아 뼈대가 없고, 관리자 메뉴도 없다', async () => {
     state.signedIn = false;
     renderAt('/login');
-    await email();
+    const emailField = await email();
 
-    expect(document.querySelectorAll('main [aria-hidden="true"]').length, '로그인 화면의 뼈대').toBe(0);
+    // 뼈대는 2절대로 불러오는 동안 main의 aria-busy와 함께 나온다. aria-hidden 요소 수로 세면
+    // 비밀번호 보이기 IconButton의 아이콘 같은 장식에도 걸리므로 aria-busy로 본다.
+    const main = await found(() => screen.queryByRole('main'), '본문 main');
+    expect(main.contains(emailField), '로그인 칸은 main 안').toBe(true);
+    expect(main, '로그인 화면 main의 aria-busy').not.toHaveAttribute('aria-busy', 'true');
+    expect(document.querySelectorAll('[aria-busy="true"]').length, '불러오는 중인 영역').toBe(0);
     expect(screen.queryByRole('link', { name: '고객사' })).toBeNull();
     expect(screen.queryByRole('link', { name: '구성원' })).toBeNull();
   });

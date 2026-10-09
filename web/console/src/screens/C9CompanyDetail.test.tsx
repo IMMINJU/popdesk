@@ -183,10 +183,17 @@ describe('C-9 고객사 상세', () => {
     await pickAgent(user, box, '정상담');
 
     await sent('PUT', '/api/console/companies/ACME/agents/3');
+    // 2절: 저장 중 버튼은 aria-disabled로 막고 disabled를 쓰지 않는다(포커스를 잃지 않게).
     await eventually(() => {
-      const pressed = within(box).queryAllByRole('button').filter((b) => isBlocked(b));
-      expect(pressed.length, '누른 버튼 막힘').toBeGreaterThan(0);
+      const pressed = within(box)
+        .queryAllByRole('button')
+        .filter((b) => b.getAttribute('aria-disabled') === 'true');
+      expect(pressed.length, '누른 버튼 막힘(aria-disabled)').toBeGreaterThan(0);
     });
+    const disabled = within(box)
+      .queryAllByRole('button')
+      .filter((b) => (b as HTMLButtonElement).disabled);
+    expect(disabled.length, '저장 중 disabled 버튼').toBe(0);
     expect(isBlocked(invite), '초대 버튼은 막히지 않는다').toBe(false);
     release.open();
   });
