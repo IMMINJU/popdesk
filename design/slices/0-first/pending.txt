@@ -6,28 +6,6 @@
 
 
 
-# s0-i-att
-server io/popdesk/issue/IssueNumberTest.java
-server io/popdesk/attachment/AttachmentArchitectureTest.java
-server io/popdesk/attachment/AttachmentCleanupTest.java
-server io/popdesk/attachment/AttachmentConcurrencyLimitTest.java
-server io/popdesk/attachment/AttachmentDeleteTest.java
-server io/popdesk/attachment/AttachmentDownloadTest.java
-server io/popdesk/attachment/AttachmentLimitsTest.java
-server io/popdesk/attachment/AttachmentNotFoundTest.java
-server io/popdesk/attachment/AttachmentQuotaTest.java
-server io/popdesk/attachment/AttachmentRateLimitTest.java
-server io/popdesk/attachment/AttachmentStatementLogTest.java
-server io/popdesk/attachment/AttachmentStorageTest.java
-server io/popdesk/issue/IssueConcurrencyTest.java
-server io/popdesk/issue/IssueVersionTest.java
-server io/popdesk/ops/CheckOrderTest.java
-server io/popdesk/ops/CleanupRecordTest.java
-server io/popdesk/ops/ErrorBodyTest.java
-server io/popdesk/ops/MetricsTest.java
-server io/popdesk/ops/OpsAlertTest.java
-server io/popdesk/project/NoStoreTest.java
-server io/popdesk/start/TenantIdTest.java
 
 # s0-i-deploy
 server io/popdesk/deploy/AttachmentLoadTest.java

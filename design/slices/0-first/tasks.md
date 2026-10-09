@@ -187,3 +187,5 @@ C-7 점검(`s0-c7-review`)으로 정한 것:
 - 초대 행은 수락 뒤에도 남는다. 토큰으로 찾는 쿼리는 모두 `status = INVITED`를 건다. 지우면 `NoWebhookTest`·`NoSmtpMailLogTest`의 "지워지는 행 없음" 통계 검사가 PostgreSQL 통계 지연(최대 10초)으로 흔들렸다. V1의 "deleted on accept" 주석은 SQL 주석이라 DB에 남지 않아 고치지 않고, `server/README.md` 표가 맞는 설명이다(`s0-i-notify` 질문 2·3).
 - 상담 쪽 답변 메일에는 댓글 내용을 넣지 않는다(제목·문의 키·포털 링크만). 웹훅 글은 설치 언어, 메일은 받는 계정 언어다.
 - `notify.MailQueueRowTest.invitationMailForAcceptedAccountIsDropped`의 마지막 단언은 테스트 결함이었다. 앞서 부른 `mailQueueTable`이 붙잡은 probe 메일까지 세었다. 메인이 그 주소로 거르게 고치고 다시 잠갔다(C-9 "테스트가 틀렸다고 보는 것").
+- `s0-i-att`의 V4가 첨부 CHECK를 `stored`에만 걸었다. 새 문의와 함께 온 파일의 등록이 실패하면 문의 ID 없는 행을 정리 작업이 `purging` → `purged`로 끝내야 해서다.
+- `POPDESK_STORAGE`는 이번 판에 `db`만 받고 `disk`·`s3`면 뜨지 않는다(acceptance 53줄, 5번 묶음에서 연다).
