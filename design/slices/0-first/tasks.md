@@ -128,3 +128,4 @@
 - readiness가 내려간 상태(S0-AC-02)는 관리 포트 `/actuator/health/readiness`가 503이고 status가 `UP`이 아닌 것으로 본다(`DOWN`이든 `OUT_OF_SERVICE`든). liveness는 200이다.
 - 시작을 막는 로그 문구(S0-AC-07·10)에는 기준이 적은 것만 넣는다: S0-AC-07은 DB 버전과 "backup", S0-AC-10은 빠진 권한(`CREATE`)과 DB 사용자 이름.
 - `tenant_id` 예외 목록(S0-AC-103)은 `server/README.md`의 `| Table | Reason |` 표다.
+- 계정 상태 값은 `INVITED`·`ACTIVE`·`SUSPENDED`이고 상태 칸은 이 묶음에서 `SUSPENDED`를 받는다(정지 기능은 뒤 묶음, 테스트가 SQL로 넣는다). 정지된 계정의 로그인은 401이다.
