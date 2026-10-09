@@ -8,8 +8,11 @@ import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
 import io.popdesk.support.Fixtures;
+import io.popdesk.support.Fixtures.Attachment;
 import io.popdesk.support.Fixtures.Company;
+import io.popdesk.support.Fixtures.File;
 import io.popdesk.support.Fixtures.Invitation;
+import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
@@ -29,7 +32,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * {@code Cache-Control: no-store} on the three endpoints that carry or take an invitation token,
  * and on every {@code /api} response: every operation in both contract files, on the host that
- * serves it.
+ * serves it, with path values that do not exist (404s) and, for reads and the main writes, with
+ * values that do (2xx), since a controller that sets its own {@code Cache-Control} does so on success.
  */
 class NoStoreTest extends BareAppTest {
 
@@ -116,6 +120,127 @@ class NoStoreTest extends BareAppTest {
         }
 
         assertThat(missing).as("responses without no-store").isEmpty();
+    }
+
+    @Test
+    @DisplayName("S0-AC-101 every GET and HEAD of both contracts, with path values that exist, answers 2xx with "
+            + "Cache-Control no-store, downloads and range downloads too")
+    void everyReadSucceedsWithNoStore() {
+        Session admin = fixtures.signInAdmin();
+        Company company = fixtures.createCompany(admin);
+        Session customer = fixtures.customer(admin, company.code());
+        fixtures.agent(admin, company.code());
+        Issue issue = fixtures.fileIssue(customer, company.code());
+        Attachment file = fixtures.attach(customer, issue.key(), File.text("nostore-" + Unique.number() + ".txt",
+                "No store, read " + Unique.number()));
+        fixtures.comment(admin, issue.key(), "No store answer " + Unique.number());
+        Map<String, String> values = Map.of("{key}", issue.key(), "{code}", company.code(), "{id}", file.id());
+        List<String> failed = new ArrayList<>();
+
+        for (Operation op : operations()) {
+            if (!op.method().equals("GET") && !op.method().equals("HEAD")) {
+                continue;
+            }
+            String path = withValues(op.path(), values);
+            if (op.path().startsWith("/api/portal/") || op.path().startsWith("/api/public/")) {
+                checkSuccess(failed, op.method() + " " + path + " on the portal",
+                        customer.client().request(op.method(), path).send());
+            }
+            if (op.path().startsWith("/api/console/") || op.path().startsWith("/api/public/")) {
+                checkSuccess(failed, op.method() + " " + path + " on the console",
+                        admin.client().request(op.method(), path).send());
+            }
+        }
+        for (Session reader : List.of(customer, admin)) {
+            String download = reader.api("/issues/" + issue.key() + "/attachments/" + file.id());
+            ApiResponse range = reader.client().get(download).header("Range", "bytes=0-3").send();
+            checkSuccess(failed, "range download on " + reader.app(), range);
+            if (range.status() != 206) {
+                failed.add("range download on " + reader.app() + " -> " + range.status() + ", not 206");
+            }
+        }
+
+        assertThat(failed).as("reads that failed or had no no-store").isEmpty();
+    }
+
+    @Test
+    @DisplayName("S0-AC-101 creating, assigning, uploading, commenting, deleting, and signing in and out "
+            + "answer 2xx with Cache-Control no-store")
+    void writesSucceedWithNoStore() {
+        Session admin = fixtures.signInAdmin();
+        Company company = fixtures.createCompany(admin);
+        Session customer = fixtures.customer(admin, company.code());
+        Invitation agent = fixtures.invite(admin, Role.AGENT);
+        Issue issue = fixtures.fileIssue(customer, company.code());
+        List<String> failed = new ArrayList<>();
+        String portalIssue = "/api/portal/issues/" + issue.key();
+        String consoleIssue = "/api/console/issues/" + issue.key();
+        String code = Unique.companyCode();
+
+        expectWithNoStore(failed, 201, admin.client().post("/api/console/companies")
+                .json(Map.of("code", code, "name", "Company " + code, "legalName", "Company " + code + " Ltd.")));
+        expectWithNoStore(failed, 200, admin.client().put("/api/console/companies/" + company.code() + "/agents/"
+                + agent.accountId()));
+        expectWithNoStore(failed, 201, customer.client().post("/api/portal/issues")
+                .json(Map.of("companyCode", company.code(), "title", Unique.text("No store JSON"),
+                        "content", "Filed as JSON.")));
+        expectWithNoStore(failed, 201, customer.client().post("/api/portal/issues")
+                .jsonPart("issue", Map.of("companyCode", company.code(), "title", Unique.text("No store multipart"),
+                        "content", "Filed with a file."))
+                .file("files", "nostore-" + Unique.number() + ".txt", "text/plain", "filed".getBytes()));
+        expectWithNoStore(failed, 201, customer.client().post(portalIssue + "/comments")
+                .json(Map.of("content", "No store question " + Unique.number())));
+        expectWithNoStore(failed, 201, admin.client().post(consoleIssue + "/comments")
+                .json(Map.of("content", "No store answer " + Unique.number())));
+        ApiResponse portalUpload = expectWithNoStore(failed, 201, customer.client().post(portalIssue + "/attachments")
+                .file("file", "nostore-" + Unique.number() + ".txt", "text/plain", "portal".getBytes()));
+        ApiResponse consoleUpload = expectWithNoStore(failed, 201, admin.client().post(consoleIssue + "/attachments")
+                .file("file", "nostore-" + Unique.number() + ".txt", "text/plain", "console".getBytes()));
+        if (portalUpload.status() == 201) {
+            expectWithNoStore(failed, 204, customer.client()
+                    .delete(portalIssue + "/attachments/" + portalUpload.jsonText("id")));
+        }
+        if (consoleUpload.status() == 201) {
+            expectWithNoStore(failed, 204, admin.client()
+                    .delete(consoleIssue + "/attachments/" + consoleUpload.jsonText("id")));
+        }
+        ApiClient browser = console();
+        expectWithNoStore(failed, 204, browser.post("/api/public/sign-in")
+                .json(Map.of("email", ADMIN_EMAIL, "password", ADMIN_PASSWORD)));
+        expectWithNoStore(failed, 204, browser.post("/api/public/sign-out"));
+
+        assertThat(failed).as("writes that failed or had no no-store").isEmpty();
+    }
+
+    private static ApiResponse expectWithNoStore(List<String> failed, int status, ApiRequest request) {
+        ApiResponse response = request.send();
+        if (response.status() != status) {
+            failed.add(response.request() + " -> " + response.status() + ", not " + status + ": "
+                    + response.snippet());
+        }
+        checkSuccess(failed, response.request(), response);
+        return response;
+    }
+
+    /** A 2xx with no-store; anything else goes to {@code failed}. */
+    private static void checkSuccess(List<String> failed, String what, ApiResponse response) {
+        if (response.status() < 200 || response.status() > 299) {
+            failed.add(what + " -> " + response.status() + ": " + response.snippet());
+        } else if (response.headers("Cache-Control").stream()
+                .noneMatch(v -> v.toLowerCase(Locale.ROOT).contains("no-store"))) {
+            failed.add(what + " -> " + response.status() + " Cache-Control " + response.headers("Cache-Control"));
+        }
+    }
+
+    private static String withValues(String path, Map<String, String> values) {
+        String out = path;
+        for (Map.Entry<String, String> v : values.entrySet()) {
+            out = out.replace(v.getKey(), v.getValue());
+        }
+        if (out.contains("{")) {
+            throw new AssertionError("No value for a path variable in " + path);
+        }
+        return out;
     }
 
     private static void check(List<String> missing, ApiResponse response, Operation op, String host) {

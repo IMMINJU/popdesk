@@ -68,19 +68,22 @@ class SignInTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-22 unknown email, wrong password, invited account, and the other app's account "
-            + "all get the same 401 body and no session")
+    @DisplayName("S0-AC-22 unknown email, wrong password, invited account, suspended account, and the other app's "
+            + "account all get the same 401 body and no session")
     void everyFailureGetsTheSameBody() {
         Session admin = AuthChecks.signedIn(console(), App.CONSOLE, AppTest.ADMIN_EMAIL, AppTest.ADMIN_PASSWORD);
         String company = fixtures.createCompany(admin).code();
         Session customer = fixtures.customer(admin, company);
         Session agent = fixtures.agent(admin, company);
         Invitation invited = fixtures.invite(admin, Role.CUSTOMER, company);
+        Session suspended = fixtures.customer(admin, company);
+        new AccountStatus(db).suspend(suspended.accountId(), suspended.email());
 
         Map<String, Attempt> attempts = new LinkedHashMap<>();
         attempts.put("unknown email", new Attempt(portal(), Unique.email("nobody"), Fixtures.PASSWORD));
         attempts.put("wrong password", new Attempt(portal(), customer.email(), "wrong-" + Fixtures.PASSWORD));
         attempts.put("invited account", new Attempt(portal(), invited.email(), Fixtures.PASSWORD));
+        attempts.put("suspended account", new Attempt(portal(), suspended.email(), suspended.password()));
         attempts.put("customer on the console", new Attempt(console(), customer.email(), customer.password()));
         attempts.put("agent on the portal", new Attempt(portal(), agent.email(), agent.password()));
         attempts.put("admin on the portal", new Attempt(portal(), AppTest.ADMIN_EMAIL, AppTest.ADMIN_PASSWORD));

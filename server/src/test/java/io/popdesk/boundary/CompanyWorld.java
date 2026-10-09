@@ -12,14 +12,15 @@ import io.popdesk.support.Unique;
 
 /**
  * The two-company fixture of the boundary tests, made through the API: companies A and B, two customers in
- * each, one agent assigned to A only, and one admin. In each company the first customer files a
+ * each, one agent assigned to A only, another agent assigned to B only (so B has an assignment the
+ * agent of A must not see through), and one admin. In each company the first customer files a
  * public and a private issue, each with a file; on the public issue staff add a public comment and
  * an internal comment, each with a file. Staff on A is the agent; on B, where the agent is not
  * assigned, the admin.
  *
  * <p>Titles are wrapped in {@code #...#} so no title is a prefix of another when searched as text.
  */
-record CompanyWorld(Session admin, Session agentOfA, Side a, Side b) {
+record CompanyWorld(Session admin, Session agentOfA, Session agentOfB, Side a, Side b) {
 
     /** One company and what is in it. */
     record Side(
@@ -57,7 +58,9 @@ record CompanyWorld(Session admin, Session agentOfA, Side a, Side b) {
         Company a = fixtures.createCompany(admin);
         Company b = fixtures.createCompany(admin);
         Session agent = fixtures.agent(admin, a.code());
-        return new CompanyWorld(admin, agent, side(fixtures, admin, a, agent), side(fixtures, admin, b, admin));
+        Session agentOfB = fixtures.agent(admin, b.code());
+        return new CompanyWorld(admin, agent, agentOfB, side(fixtures, admin, a, agent),
+                side(fixtures, admin, b, admin));
     }
 
     private static Side side(Fixtures fixtures, Session admin, Company company, Session staff) {

@@ -26,6 +26,9 @@ import org.junit.jupiter.api.Test;
  */
 class PasswordRulesTest extends BareAppTest {
 
+    /** U+1F600, one code point and two UTF-16 units. */
+    private static final String OUTSIDE_BMP = Character.toString(0x1F600);
+
     @Test
     @DisplayName("S0-AC-28 an accepted invitation stores the password as Argon2id, never in plain text")
     void acceptedPasswordIsArgon2id() {
@@ -68,9 +71,27 @@ class PasswordRulesTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-28 password length counts code points: 72 Hangul characters work")
+    @DisplayName("S0-AC-28 password length counts code points, not UTF-8 bytes: 72 Hangul characters work")
     void seventyTwoHangulCharacters() {
         acceptsAndSignsIn(newInvitation(Role.CUSTOMER), "비밀번호".repeat(18));
+    }
+
+    @Test
+    @DisplayName("S0-AC-28 password length counts code points, not UTF-16 units: 72 characters outside the BMP work")
+    void seventyTwoCharactersOutsideTheBmp() {
+        String password = OUTSIDE_BMP.repeat(72);
+        assertThat(password.length()).as("UTF-16 units").isEqualTo(144);
+
+        acceptsAndSignsIn(newInvitation(Role.CUSTOMER), password);
+    }
+
+    @Test
+    @DisplayName("S0-AC-28 password length counts code points, not UTF-16 units: 9 characters outside the BMP are 400 TOO_SHORT")
+    void nineCharactersOutsideTheBmp() {
+        String password = OUTSIDE_BMP.repeat(9);
+        assertThat(password.length()).as("UTF-16 units").isEqualTo(18);
+
+        rejected(newInvitation(Role.AGENT), password, "TOO_SHORT");
     }
 
     @Test

@@ -18,8 +18,8 @@ import org.junit.jupiter.api.Test;
 class SignInRateLimitTest extends BareAppTest {
 
     @Test
-    @DisplayName("S0-AC-24 the 21st sign-in attempt from one IP within 60 seconds gets 429 with Retry-After, "
-            + "even with the right password")
+    @DisplayName("S0-AC-24, S0-AC-16 the 21st sign-in attempt from one IP within 60 seconds gets 429 with "
+            + "Retry-After and the security headers, even with the right password")
     void twentyFirstAttemptIsLimited() {
         String ip = AuthChecks.freshIp();
         String email = Unique.email("nobody");
@@ -34,6 +34,7 @@ class SignInRateLimitTest extends BareAppTest {
 
         assertError(twentyFirst, 429, "RATE_LIMITED");
         assertRetryAfter(twentyFirst);
+        AuthChecks.assertSecurityHeaders(twentyFirst);
         assertError(rightPassword, 429, "RATE_LIMITED");
         assertRetryAfter(rightPassword);
         assertError(browser.get("/api/console/me").send(), 401, "UNAUTHENTICATED");

@@ -63,6 +63,24 @@ final class StartPostgres implements AutoCloseable {
         return new Database(this, name, user, password);
     }
 
+    /**
+     * A new empty database where the app's role has {@code CREATE} on the database but not on its
+     * {@code public} schema, the common case on PostgreSQL 15 and later for a role that does not own
+     * the database: the database and {@code public} belong to the superuser.
+     */
+    Database newDatabaseWithoutSchemaCreate() {
+        int n = NEXT.incrementAndGet();
+        String name = "start_" + n;
+        String user = "popdesk_noschema_" + n;
+        String password = "Db-Secret-" + n + "-" + UUID.randomUUID();
+        superuser("postgres", "create role " + user + " login password '" + password + "'");
+        superuser("postgres", "create database " + name);
+        superuser("postgres", "grant connect, temporary, create on database " + name + " to " + user);
+        superuser(name, "revoke create on schema public from public");
+        superuser(name, "grant usage on schema public to " + user);
+        return new Database(this, name, user, password);
+    }
+
     String jdbcUrl(String database) {
         return "jdbc:postgresql://" + container.getHost() + ":" + container.getMappedPort(5432) + "/" + database;
     }

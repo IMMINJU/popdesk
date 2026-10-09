@@ -155,9 +155,10 @@ class CompanyBoundaryTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-92 a customer of A filing in B gets 404 NOT_FOUND, as for a company that does not exist, and nothing is filed")
+    @DisplayName("S0-AC-92 a customer of A filing in B, as JSON or multipart with a file, gets 404 NOT_FOUND, as for a company that does not exist, and nothing is filed")
     void customerOfACannotFileInB() {
         String title = "Filed across #" + Unique.number() + "#";
+        String withFile = "Filed across with a file #" + Unique.number() + "#";
         Session caller = w.a().reporter();
 
         ApiResponse intoB = caller.client().post("/api/portal/issues")
@@ -166,13 +167,29 @@ class CompanyBoundaryTest extends BareAppTest {
         ApiResponse intoNowhere = caller.client().post("/api/portal/issues")
                 .json(Map.of("companyCode", "ZZ9NOPE", "title", title, "content", "Into nothing."))
                 .send();
+        ApiResponse multipartIntoB = fileWithAttachment(caller, w.b().code(), withFile);
+        ApiResponse multipartIntoNowhere = fileWithAttachment(caller, "ZZ9NOPE", withFile);
 
         SoftAssertions softly = new SoftAssertions();
         assertNotFoundLikeNoIssue(softly, "filing in B", intoB, intoNowhere);
+        assertNotFoundLikeNoIssue(softly, "filing in B with a file", multipartIntoB, multipartIntoNowhere);
         softly.assertAll();
-        assertThat(allPages(w.b().reporter(), "/api/portal/issues").text()).as("issues B's customer sees")
-                .doesNotContain(title);
-        assertThat(allPages(caller, "/api/portal/issues").text()).as("issues A's customer sees").doesNotContain(title);
+        for (String filed : List.of(title, withFile)) {
+            assertThat(allPages(w.b().reporter(), "/api/portal/issues").text()).as("issues B's customer sees")
+                    .doesNotContain(filed);
+            assertThat(allPages(caller, "/api/portal/issues").text()).as("issues A's customer sees")
+                    .doesNotContain(filed);
+            assertThat(allPages(w.admin(), "/api/console/issues").text()).as("issues the admin sees")
+                    .doesNotContain(filed);
+        }
+    }
+
+    /** {@code POST /api/portal/issues} as {@code multipart/form-data}: the issue part and one file. */
+    private static ApiResponse fileWithAttachment(Session caller, String code, String title) {
+        return caller.client().post("/api/portal/issues")
+                .jsonPart("issue", Map.of("companyCode", code, "title", title, "content", "Across with a file."))
+                .file("files", "across-" + Unique.number() + ".txt", "text/plain", "across".getBytes())
+                .send();
     }
 
     @Test
@@ -275,6 +292,10 @@ class CompanyBoundaryTest extends BareAppTest {
         assertThat(list.text()).as("company list of the agent of A")
                 .doesNotContain(w.b().code())
                 .doesNotContain(w.b().company().name());
+        // B has an assignment of its own, so a list of every assigned company would hold B.
+        assertThat(allPages(w.agentOfB(), "/api/console/companies").texts("code")).as("companies the agent of B lists")
+                .contains(w.b().code())
+                .doesNotContain(w.a().code());
     }
 
     @Test

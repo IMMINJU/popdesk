@@ -121,4 +121,43 @@ class FirstStartTest extends OwnStartTest {
             assertThat(newPassword.status()).as(newPassword.toString()).isEqualTo(401);
         }
     }
+
+    @Test
+    @DisplayName("S0-AC-03 with an admin in the database, missing or invalid first admin values do not keep the app waiting")
+    void existingAdminNeedsNoFirstAdminValues() {
+        Database db = postgres.newDatabase();
+        try (Boot first = Boot.start(Settings.firstInstall(db))) {
+            first.assertStarted();
+        }
+        assertOneAccountRow(db, Settings.ADMIN_EMAIL);
+
+        // configuration.md: after the first start the password may be removed.
+        assertRunsWithTheAdmin(Settings.firstInstall(db).without("POPDESK_ADMIN_PASSWORD"), db,
+                "without POPDESK_ADMIN_PASSWORD");
+        assertRunsWithTheAdmin(Settings.firstInstall(db).without("POPDESK_ADMIN_EMAIL").without("POPDESK_ADMIN_PASSWORD"),
+                db, "without both first admin values");
+        assertRunsWithTheAdmin(Settings.firstInstall(db).set("POPDESK_ADMIN_PASSWORD", "Nine-ch1x"), db,
+                "with a nine character first admin password");
+    }
+
+    /**
+     * Ready, business requests answered (401, not 503 SETUP_REQUIRED), the admin's row unchanged by
+     * the start, sign-in works. The row is read just before the start: a sign-in may change it.
+     */
+    private static void assertRunsWithTheAdmin(Settings settings, Database db, String start) {
+        String before = db.accountRows().getFirst().text();
+        try (Boot app = Boot.start(settings)) {
+            app.assertStarted();
+            assertReady(app);
+
+            ApiResponse me = app.console().get("/api/console/me").send();
+            assertThat(me.status()).as("%s: %s %s", start, me, me.snippet()).isEqualTo(401);
+            assertThat(me.errorCode()).as("%s: %s", start, me).isNotEqualTo("SETUP_REQUIRED");
+
+            assertThat(db.accountRows()).as("%s: account rows", start).hasSize(1);
+            assertThat(db.accountRows().getFirst().text()).as("%s: the admin's row", start).isEqualTo(before);
+            ApiResponse signIn = app.signIn(Settings.ADMIN_EMAIL, Settings.ADMIN_PASSWORD);
+            assertThat(signIn.status()).as("%s: %s %s", start, signIn, signIn.snippet()).isEqualTo(204);
+        }
+    }
 }

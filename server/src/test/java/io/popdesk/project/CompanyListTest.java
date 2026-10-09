@@ -34,6 +34,9 @@ class CompanyListTest extends BareAppTest {
         Company b = fixtures.createCompany(admin);
         Company c = fixtures.createCompany(admin);
         Session agent = fixtures.agent(admin, a.code(), b.code());
+        // c is assigned to someone else, so a list of every assigned company would hold it.
+        Session agentOfC = fixtures.agent(admin, c.code());
+        assertThat(allValues(agentOfC.client(), "/api/console/companies", "code")).contains(c.code());
 
         assertThat(allValues(agent.client(), "/api/console/companies", "code"))
                 .contains(a.code(), b.code())
@@ -49,6 +52,8 @@ class CompanyListTest extends BareAppTest {
         Session admin = fixtures.signInAdmin();
         fixtures.createCompany(admin);
         Session agent = fixtures.agent(admin);
+        // Another agent has an assignment, whatever ran before in this context.
+        fixtures.agent(admin, fixtures.createCompany(admin).code());
 
         ApiResponse list = agent.client().get("/api/console/companies").expect(200);
 

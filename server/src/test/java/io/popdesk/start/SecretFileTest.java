@@ -13,8 +13,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Secrets read from {@code <NAME>_FILE}, shown with {@code POPDESK_ADMIN_PASSWORD_FILE}: the value
- * the app read is the password the first admin signs in with.
+ * Secrets read from {@code <NAME>_FILE}, shown with {@code POPDESK_ADMIN_PASSWORD_FILE} (the value
+ * the app read is the password the first admin signs in with) and with
+ * {@code POPDESK_DB_PASSWORD_FILE} (read before the database connection is made).
  */
 class SecretFileTest extends OwnStartTest {
 
@@ -52,6 +53,41 @@ class SecretFileTest extends OwnStartTest {
         assertThat(app.logLines()).as("a line naming POPDESK_ADMIN_PASSWORD_FILE")
                 .anyMatch(line -> line.contains("POPDESK_ADMIN_PASSWORD_FILE"));
         assertThat(app.log()).as("the log").doesNotContain(Settings.ADMIN_PASSWORD).doesNotContain("File-Password-4");
+        assertThat(db.accountRows()).as("account rows").isEmpty();
+    }
+
+    @Test
+    @DisplayName("S0-AC-04 POPDESK_DB_PASSWORD_FILE is read for the database connection, and one \\n at the end is cut")
+    void databasePasswordFile() {
+        Database db = postgres.newDatabase();
+        Path file = write("db_password", db.password() + "\n");
+        Settings settings = Settings.firstInstall(db)
+                .without("POPDESK_DB_PASSWORD")
+                .set("POPDESK_DB_PASSWORD_FILE", file.toString());
+
+        try (Boot app = Boot.start(settings)) {
+            app.assertStarted();
+            assertReady(app);
+
+            assertOneAccountRow(db, Settings.ADMIN_EMAIL);
+            ApiResponse signIn = app.signIn(Settings.ADMIN_EMAIL, Settings.ADMIN_PASSWORD);
+            assertThat(signIn.status()).as(signIn + " " + signIn.snippet()).isEqualTo(204);
+        }
+    }
+
+    @Test
+    @DisplayName("S0-AC-04 POPDESK_DB_PASSWORD and POPDESK_DB_PASSWORD_FILE together stop the start with the reason")
+    void databasePasswordBothSet() {
+        Database db = postgres.newDatabase();
+        Path file = write("db_both", db.password() + "\n");
+        Settings settings = Settings.firstInstall(db).set("POPDESK_DB_PASSWORD_FILE", file.toString());
+
+        Boot app = Boot.start(settings);
+        app.assertDidNotStart("both POPDESK_DB_PASSWORD and POPDESK_DB_PASSWORD_FILE are set");
+
+        assertThat(app.logLines()).as("a line naming POPDESK_DB_PASSWORD_FILE")
+                .anyMatch(line -> line.contains("POPDESK_DB_PASSWORD_FILE"));
+        assertThat(app.log()).as("the log").doesNotContain(db.password());
         assertThat(db.accountRows()).as("account rows").isEmpty();
     }
 

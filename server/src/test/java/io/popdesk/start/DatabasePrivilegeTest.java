@@ -11,8 +11,16 @@ class DatabasePrivilegeTest extends OwnStartTest {
     @Test
     @DisplayName("S0-AC-10 a database user without CREATE stops the start before migrations and the log says what is missing")
     void userWithoutCreate() {
-        Database db = postgres.newDatabaseWithoutCreate();
+        assertStopsBeforeMigrations(postgres.newDatabaseWithoutCreate());
+    }
 
+    @Test
+    @DisplayName("S0-AC-10 a database user with CREATE on the database but not on the schema stops the start before migrations")
+    void userWithoutSchemaCreate() {
+        assertStopsBeforeMigrations(postgres.newDatabaseWithoutSchemaCreate());
+    }
+
+    private static void assertStopsBeforeMigrations(Database db) {
         Boot app = Boot.start(Settings.firstInstall(db));
         app.assertDidNotStart("user " + db.user() + " may not create tables");
 

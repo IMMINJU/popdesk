@@ -3,6 +3,7 @@ package io.popdesk.auth;
 import static io.popdesk.auth.AuthChecks.assertError;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.popdesk.support.ApiResponse;
 import io.popdesk.support.AppTest;
 import io.popdesk.support.BareAppTest;
 import org.junit.jupiter.api.DisplayName;
@@ -17,9 +18,12 @@ import org.junit.jupiter.api.Test;
 abstract class FirstAdminPasswordRejectedBase extends BareAppTest {
 
     @Test
-    @DisplayName("S0-AC-28 a first admin password that breaks the rules creates no admin")
+    @DisplayName("S0-AC-28, S0-AC-16 a first admin password that breaks the rules creates no admin, "
+            + "and the 503 carries the security headers")
     void noFirstAdmin() {
-        assertError(console().get("/api/console/me").send(), 503, "SETUP_REQUIRED");
+        ApiResponse setupRequired = console().get("/api/console/me").send();
+        assertError(setupRequired, 503, "SETUP_REQUIRED");
+        AuthChecks.assertSecurityHeaders(setupRequired);
         assertThat(AuthChecks.rowsContaining(db, AppTest.ADMIN_EMAIL)).as("rows holding the admin email").isEmpty();
     }
 }

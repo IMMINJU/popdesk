@@ -112,4 +112,18 @@ class InvitationRejectTest extends BareAppTest {
         assertThat(pending(admin, upper)).isEmpty();
         assertThat(pending(admin, first.email())).hasSize(1);
     }
+
+    @Test
+    @DisplayName("S0-AC-34 an existing account's email with spaces around it and in other letter case is 409 EMAIL_TAKEN")
+    void emailWithSurroundingSpaces() {
+        Session admin = fixtures.signInAdmin();
+        Invitation first = fixtures.invite(admin, Role.AGENT);
+        String padded = "  " + first.email().toUpperCase(Locale.ROOT) + " \t";
+
+        assertError(invite(admin, padded, "Padded", "AGENT", List.of()), 409, "EMAIL_TAKEN");
+        assertError(invite(admin, " " + ADMIN_EMAIL + " ", "Padded admin", "AGENT", List.of()), 409, "EMAIL_TAKEN");
+
+        assertThat(pending(admin, first.email())).as("pending accounts of %s", first.email()).hasSize(1);
+        assertThat(pending(admin, padded)).isEmpty();
+    }
 }

@@ -56,20 +56,41 @@ class ForwardedHeadersTest extends BareAppTest {
 
     @Test
     @DisplayName("S0-AC-19 a forwarded port that differs from POPDESK_PUBLIC_PORT logs one warning per pair, "
-            + "from X-Forwarded-Port or else from the port in X-Forwarded-Host")
+            + "from X-Forwarded-Port alone and from the port in X-Forwarded-Host alone")
     void portMismatchWarnsOncePerPair() {
-        String port = Integer.toString(20000 + (int) Unique.number());
-        String other = Integer.toString(20000 + (int) Unique.number());
+        String fromPort = uniquePort();
+        String fromHost = uniquePort();
         AppLog.Mark mark = log.mark();
 
-        console().get("/api/public/csrf").header("X-Forwarded-Port", port).expect(204);
-        portal().get("/api/public/csrf").header("X-Forwarded-Port", port).expect(204);
-        console().get("/api/public/csrf").header("X-Forwarded-Host", AppTest.CONSOLE_HOST + ":" + port).expect(204);
-        console().get("/api/public/csrf").header("X-Forwarded-Host", AppTest.CONSOLE_HOST + ":" + other).expect(204);
-        portal().get("/api/public/csrf").header("X-Forwarded-Host", AppTest.PORTAL_HOST + ":" + other).expect(204);
+        console().get("/api/public/csrf").header("X-Forwarded-Port", fromPort).expect(204);
+        console().get("/api/public/csrf").header("X-Forwarded-Port", fromPort).expect(204);
+        portal().get("/api/public/csrf").header("X-Forwarded-Port", fromPort).expect(204);
+        console().get("/api/public/csrf").header("X-Forwarded-Host", AppTest.CONSOLE_HOST + ":" + fromHost).expect(204);
+        portal().get("/api/public/csrf").header("X-Forwarded-Host", AppTest.PORTAL_HOST + ":" + fromHost).expect(204);
 
-        awaitOneWarning(mark, port);
+        awaitOneWarning(mark, fromPort);
+        awaitOneWarning(mark, fromHost);
+    }
+
+    @Test
+    @DisplayName("S0-AC-19 X-Forwarded-Port wins over the port in X-Forwarded-Host: "
+            + "X-Forwarded-Port equal to POPDESK_PUBLIC_PORT logs no warning for the host's port")
+    void forwardedPortWinsOverHostPort() {
+        String hostPort = uniquePort();
+        String other = uniquePort();
+        AppLog.Mark mark = log.mark();
+
+        console().get("/api/public/csrf").header("X-Forwarded-Port", "80")
+                .header("X-Forwarded-Host", AppTest.CONSOLE_HOST + ":" + hostPort).expect(204);
+        portal().get("/api/public/csrf").header("X-Forwarded-Port", "80")
+                .header("X-Forwarded-Host", AppTest.PORTAL_HOST + ":" + hostPort).expect(204);
+        // X-Forwarded-Port that differs, with the public port in X-Forwarded-Host: the warning names it.
+        console().get("/api/public/csrf").header("X-Forwarded-Port", other)
+                .header("X-Forwarded-Host", AppTest.CONSOLE_HOST + ":80").expect(204);
+
         awaitOneWarning(mark, other);
+        Wait.holds("no warning naming " + hostPort, Duration.ofSeconds(3),
+                () -> warningsWith(mark, hostPort).isEmpty());
     }
 
     @Test
@@ -87,6 +108,10 @@ class ForwardedHeadersTest extends BareAppTest {
 
         Wait.holds("no warning naming the scheme", Duration.ofSeconds(3),
                 () -> warningsWith(mark, "http").isEmpty());
+    }
+
+    private static String uniquePort() {
+        return Integer.toString(20000 + (int) Unique.number());
     }
 
     private void awaitOneWarning(AppLog.Mark mark, String value) {
