@@ -1,0 +1,128 @@
+# C-6 처음부터 통과해도 되는 테스트. 형식: <이름> | <이유> (scripts/ci/check-red.py --allow)
+
+io.popdesk.boundary.BoundaryListTest.everyNamedTestExists | S0-AC-93 경계 목록 관문. 계약 파일과 테스트 이름만 읽는다. 경계 동작은 목록이 가리키는 테스트가 본다
+io.popdesk.boundary.BoundaryListTest.everyListedOperationIsInTheContract | S0-AC-93 경계 목록 관문. 계약 파일과 테스트 이름만 읽는다. 경계 동작은 목록이 가리키는 테스트가 본다
+io.popdesk.boundary.BoundaryListTest.eachOperationHasTestsOrReason | S0-AC-93 경계 목록 관문. 계약 파일과 테스트 이름만 읽는다. 경계 동작은 목록이 가리키는 테스트가 본다
+io.popdesk.boundary.BoundaryListTest.everyContractOperationIsListed | S0-AC-93 경계 목록 관문. 계약 파일과 테스트 이름만 읽는다. 경계 동작은 목록이 가리키는 테스트가 본다
+io.popdesk.deploy.ContractClientsTest.clientCoversContract(String)[1] | S0-AC-91 계약 파일과 클라이언트는 C-4가 이미 만들었다. 실제 비교는 OpenApiFilesTest와 CI가 한다
+io.popdesk.deploy.ContractClientsTest.clientCoversContract(String)[2] | S0-AC-91 계약 파일과 클라이언트는 C-4가 이미 만들었다. 실제 비교는 OpenApiFilesTest와 CI가 한다
+io.popdesk.deploy.ResetPasswordTest.noHttpPath | S0-AC-97 계약 파일에 관리자 복구 HTTP 경로가 없다. C-4 계약이 이미 그렇다
+io.popdesk.issue.PortalIssueContractTest.typesMatchSnapshot | S0-AC-49 계약 파일 스냅샷. C-4 계약 파일이 이미 그 모양이다. 실제 응답은 PortalIssueFieldsTest가 본다
+io.popdesk.issue.PortalIssueContractTest.noStaffOnlyFields | S0-AC-49 계약 파일에 상담 쪽 전용 칸이 없다. C-4 계약 파일이 이미 그렇다
+io.popdesk.start.TenantIdGateTest.tableWithoutTenantId | S0-AC-103 부정 픽스처. 관문 스크립트와 판정 함수가 이미 있다. 실제 스키마 검사는 TenantIdTest가 본다
+io.popdesk.start.TenantIdGateTest.droppedNotNull | S0-AC-103 부정 픽스처. 관문 스크립트와 판정 함수가 이미 있다. 실제 스키마 검사는 TenantIdTest가 본다
+io.popdesk.start.TenantIdGateTest.tableLikeAnother | S0-AC-103 부정 픽스처. 관문 스크립트와 판정 함수가 이미 있다. 실제 스키마 검사는 TenantIdTest가 본다
+io.popdesk.support.SupportSelfTest.csrfStepFailsAsAnAssertionWithoutTheCookie | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.webhookReceiverAnswersWhatItIsTold | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.fixtureStepsFailAsAssertions | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.writesCarryTheCsrfTokenFromTheCsrfEndpoint | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.invitationTokenIsReadFromTheFragment | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.eachClientSendsItsOwnForwardedFor | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.mailServersReceivePlainAndStartTlsMail | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.waitEndsInAnAssertionError | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.multipartRangeAndHeadArrive | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.databaseCanBeRead | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.clockIsTheAppsClockAndOnlyMovesForward | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.startTlsServerRefusesPlainText | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.clientSendsItsHostAndKeepsItsOwnCookies | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.appAnswersOnBothHosts | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.logHoldsWhatTheJvmPrints | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+io.popdesk.support.SupportSelfTest.expiredCookieIsDropped | 도움 코드 자기 시험, 업무 동작을 보지 않는다
+src/App.test.tsx.renders the empty console screen | 바닥(A) 테스트, 이 묶음의 새 테스트가 아니다
+src/App.test.tsx.renders the empty portal screen | 바닥(A) 테스트, 이 묶음의 새 테스트가 아니다
+src/components/Alert.test.tsx.Alert > Alert 역할: 오류·경고는 role="alert", 안내·성공은 role="status" | 껍데기가 tone별 role과 제목·동작 자리를 이미 그린다
+src/components/Alert.test.tsx.Alert > Alert live: live를 주면 tone과 상관없이 그 역할이다 | 껍데기가 tone별 role과 제목·동작 자리를 이미 그린다
+src/components/Alert.test.tsx.Alert > Alert 닫기 없음: onClose가 없으면 버튼이 없다 | 껍데기가 tone별 role과 제목·동작 자리를 이미 그린다
+src/components/Alert.test.tsx.Alert > Alert 제목과 동작: 제목·본문·동작(다시 불러오기)이 한 띠 안에 있다 | 껍데기가 tone별 role과 제목·동작 자리를 이미 그린다
+src/components/Alert.test.tsx.Alert > Alert axe: 네 종류와 닫기 버튼에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/AppShell.test.tsx.AppShell > AppShell 건너뛰기 링크: 맨 앞 Tab 자리이고 tabindex=-1인 main을 가리킨다 | 껍데기가 건너뛰기 링크, nav, main, 로그아웃 버튼을 이미 그린다
+src/components/AppShell.test.tsx.AppShell > AppShell 본문: main 안에 children을 그린다 | 껍데기가 건너뛰기 링크, nav, main, 로그아웃 버튼을 이미 그린다
+src/components/AppShell.test.tsx.AppShell > AppShell 메뉴: 메뉴 링크가 순서대로 있고 지금 화면만 aria-current="page" | 껍데기가 건너뛰기 링크, nav, main, 로그아웃 버튼을 이미 그린다
+src/components/AppShell.test.tsx.AppShell > AppShell 상담원 메뉴: 받은 메뉴만 그린다(관리자 메뉴를 스스로 더하지 않는다) | 껍데기가 건너뛰기 링크, nav, main, 로그아웃 버튼을 이미 그린다
+src/components/AppShell.test.tsx.AppShell > AppShell 사용자와 로그아웃: 표시 이름, 사용자 이름, 로그아웃 버튼은 onLogout | 껍데기가 건너뛰기 링크, nav, main, 로그아웃 버튼을 이미 그린다
+src/components/AppShell.test.tsx.AppShell > AppShell renderLink: 앱이 준 링크 그리기를 메뉴에 쓴다 | 껍데기가 건너뛰기 링크, nav, main, 로그아웃 버튼을 이미 그린다
+src/components/AppShell.test.tsx.AppShell > AppShell axe: 관리자 콘솔 머리와 본문에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/AttachmentList.test.tsx.AttachmentList > AttachmentList 비어 있음: 제목은 두고 "첨부 없음" | 껍데기가 제목과 빈 문구를 이미 그린다
+src/components/AttachmentList.test.tsx.AttachmentList > AttachmentList axe: 데이터·내부·지워진 흔적·지우기 버튼에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/Avatar.test.tsx.Avatar > Avatar 머리글자: 사진이 없으면 이름의 첫 글자, 이름만 있을 때는 이름이 대체 글자 | 껍데기가 머리글자와 role·aria-label·aria-hidden을 이미 그린다
+src/components/Avatar.test.tsx.Avatar > Avatar 장식: 옆에 이름이 있으면 읽지 않는다(이름을 두 번 읽지 않는다) | 껍데기가 머리글자와 role·aria-label·aria-hidden을 이미 그린다
+src/components/Avatar.test.tsx.Avatar > Avatar 지원팀 표시: 사진과 이름 대신 지원팀 표시를 그리고 사람 이름 머리글자는 없다 | 껍데기가 머리글자와 role·aria-label·aria-hidden을 이미 그린다
+src/components/Avatar.test.tsx.Avatar > Avatar axe: 머리글자·장식·지원팀에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/Badge.test.tsx.Badge > Badge 글자: 늘 글자를 보인다(비공개, 수락 전, 설정 없음) | 껍데기가 글자를 그대로 그린다
+src/components/Badge.test.tsx.Badge > Badge axe: 네 가지 색에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/Button.test.tsx.Button > Button 기본: 글자가 이름이고 type은 button, 누르면 onClick | 껍데기가 네이티브 button과 aria-disabled·aria-pressed·pendingLabel을 이미 그린다
+src/components/Button.test.tsx.Button > Button 보내는 중: aria-disabled="true", "보내는 중…" 글자, disabled가 아니어서 포커스를 잃지 않는다 | 껍데기가 네이티브 button과 aria-disabled·aria-pressed·pendingLabel을 이미 그린다
+src/components/Button.test.tsx.Button > Button 보내는 중: pendingLabel이 없으면 원래 글자를 그대로 둔다 | 껍데기가 네이티브 button과 aria-disabled·aria-pressed·pendingLabel을 이미 그린다
+src/components/Button.test.tsx.Button > Button 막힘: disabled면 누를 수 없다 | 껍데기가 disabled를 네이티브 요소에 그대로 넘긴다
+src/components/Button.test.tsx.Button > Button axe: 다섯 종류와 보내는 중에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/Checkbox.test.tsx.Checkbox > Checkbox 꺼짐·켜짐: 이름표를 누르면 켜지고 다시 누르면 꺼진다 | 껍데기가 네이티브 input·select로 그려 브라우저 기본 동작(이름표, 고르기, Tab, 화살표)이 이미 맞다
+src/components/Checkbox.test.tsx.Checkbox > Checkbox 키보드: 포커스를 받고 Space로 바꾼다 | 껍데기가 네이티브 input·select로 그려 브라우저 기본 동작(이름표, 고르기, Tab, 화살표)이 이미 맞다
+src/components/Checkbox.test.tsx.Checkbox > Checkbox 막힘: disabled면 눌러도 onChange를 부르지 않는다 | 껍데기가 disabled를 네이티브 요소에 그대로 넘긴다
+src/components/Checkbox.test.tsx.Checkbox > Checkbox axe: 꺼짐·켜짐·막힘에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/CheckboxGroup.test.tsx.CheckboxGroup > CheckboxGroup 묶음: legend가 묶음 이름이고 여러 개를 켤 수 있다 | 껍데기가 네이티브 input·select로 그려 브라우저 기본 동작(이름표, 고르기, Tab, 화살표)이 이미 맞다
+src/components/CheckboxGroup.test.tsx.CheckboxGroup > CheckboxGroup 키보드: Tab으로 칸마다 가고 Space로 켠다, 막힌 칸은 건너뛴다 | 껍데기가 네이티브 input·select로 그려 브라우저 기본 동작(이름표, 고르기, Tab, 화살표)이 이미 맞다
+src/components/CheckboxGroup.test.tsx.CheckboxGroup > CheckboxGroup 막힘: 묶음 전체를 막는다 | 껍데기가 disabled를 네이티브 요소에 그대로 넘긴다
+src/components/CheckboxGroup.test.tsx.CheckboxGroup > CheckboxGroup axe: 기본과 묶음 오류에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/CommentItem.test.tsx.CommentItem > CommentItem 나: 내 댓글은 이름 대신 "나" | 껍데기가 쓴 사람 이름표·id·tabindex·첨부 자리를 이미 그린다
+src/components/CommentItem.test.tsx.CommentItem > CommentItem 지원팀: 포털에서 상담 쪽 댓글은 "지원팀" | 껍데기가 쓴 사람 이름표·id·tabindex·첨부 자리를 이미 그린다
+src/components/CommentItem.test.tsx.CommentItem > CommentItem 첨부: 댓글의 첨부를 댓글 안에 그린다 | 껍데기가 쓴 사람 이름표·id·tabindex·첨부 자리를 이미 그린다
+src/components/CommentItem.test.tsx.CommentItem > CommentItem 포커스 대상: id와 tabindex=-1, ref로 포커스할 수 있다 | 껍데기가 쓴 사람 이름표·id·tabindex·첨부 자리를 이미 그린다
+src/components/CommentItem.test.tsx.CommentItem > CommentItem axe: 공개·내부·지워짐에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/ConfirmDialog.test.tsx.ConfirmDialog > ConfirmDialog 열림: 제목이 이름이고 문구, 확인·취소 버튼이 있다 | 껍데기가 open일 때만 그리고 버튼 콜백을 잇는다
+src/components/ConfirmDialog.test.tsx.ConfirmDialog > ConfirmDialog 확인·취소: 누른 버튼의 콜백만 부른다 | 껍데기가 open일 때만 그리고 버튼 콜백을 잇는다
+src/components/ConfirmDialog.test.tsx.ConfirmDialog > ConfirmDialog 닫힘: open이 false면 그리지 않는다 | 껍데기가 open일 때만 그리고 버튼 콜백을 잇는다
+src/components/ConfirmDialog.test.tsx.ConfirmDialog > ConfirmDialog axe: 기본과 위험 확인에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/CopyField.test.tsx.CopyField > CopyField 기본: 이름표로 찾는 읽기 전용 칸에 링크, "복사" 버튼은 onCopy | 껍데기가 읽기 전용 칸과 복사 버튼을 이미 그린다
+src/components/CopyField.test.tsx.CopyField > CopyField axe: 기본·복사됨·클립보드 못 씀에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/DataTable.test.tsx.DataTable > DataTable 데이터: caption이 표 이름이고 열 머리는 columnheader, 줄마다 칸 | 껍데기가 table·caption·th·빈/오류 칸을 이미 그린다
+src/components/DataTable.test.tsx.DataTable > DataTable 빈 상태: 줄이 없으면 empty를 표 안 한 칸에 보인다 | 껍데기가 table·caption·th·빈/오류 칸을 이미 그린다
+src/components/DataTable.test.tsx.DataTable > DataTable 오류: status가 error면 줄 대신 error를 보인다 | 껍데기가 table·caption·th·빈/오류 칸을 이미 그린다
+src/components/DataTable.test.tsx.DataTable > DataTable axe: 데이터·불러오는 중·빈 상태에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/Dialog.test.tsx.Dialog > Dialog 보내는 중: 닫기는 그대로 된다 | 껍데기가 open일 때만 그리고 버튼 콜백을 잇는다
+src/components/Dialog.test.tsx.Dialog > Dialog axe: 열린 대화상자에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/EmptyState.test.tsx.EmptyState > EmptyState 빈 목록: 제목은 h2, 설명과 동작 링크 | 껍데기가 제목 수준·설명·동작을 이미 그린다
+src/components/EmptyState.test.tsx.EmptyState > EmptyState 화면 전체(404·권한 없음): headingLevel 1이면 h1 | 껍데기가 제목 수준·설명·동작을 이미 그린다
+src/components/EmptyState.test.tsx.EmptyState > EmptyState axe: 아이콘·설명·동작이 있는 빈 상태에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/FileUpload.test.tsx.FileUpload > FileUpload 비어 있음: 이름표로 찾는 파일 칸, 여러 개를 고를 수 있다 | 껍데기가 이름표 붙은 multiple 파일 칸을 이미 그린다
+src/components/FileUpload.test.tsx.FileUpload > FileUpload 막힘: 파일 칸을 막는다 | 껍데기가 disabled를 네이티브 요소에 그대로 넘긴다
+src/components/FileUpload.test.tsx.FileUpload > FileUpload axe: 고름·올리는 중·실패 줄에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/IconButton.test.tsx.IconButton > IconButton 전환: pressed가 aria-pressed로 나가고 누르면 onClick | 껍데기가 네이티브 button과 aria-disabled·aria-pressed·pendingLabel을 이미 그린다
+src/components/IconButton.test.tsx.IconButton > IconButton 막힘: disabled면 누를 수 없다 | 껍데기가 disabled를 네이티브 요소에 그대로 넘긴다
+src/components/IconButton.test.tsx.IconButton > IconButton axe: 기본·눌림·보내는 중에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/IssueList.test.tsx.IssueList > IssueList 카드 하나는 링크 하나: 카드 안에 다른 링크·버튼이 없다 | 껍데기가 카드마다 링크 하나와 빈 상태를 이미 그린다
+src/components/IssueList.test.tsx.IssueList > IssueList 공개 문의에는 "비공개"가 없다 | 껍데기가 카드마다 링크 하나와 빈 상태를 이미 그린다
+src/components/IssueList.test.tsx.IssueList > IssueList 빈: empty를 보이고 링크가 없다 | 껍데기가 카드마다 링크 하나와 빈 상태를 이미 그린다
+src/components/IssueList.test.tsx.IssueList > IssueList axe: 데이터와 비공개 카드에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/MarkdownEditor.test.tsx.MarkdownEditor > MarkdownEditor Tab: 편집칸 안에서 Tab은 들여쓰기가 아니라 칸을 떠난다 | 껍데기가 네이티브 textarea라 Tab이 칸을 떠나고 minHeight 스타일을 이미 건다
+src/components/MarkdownEditor.test.tsx.MarkdownEditor > MarkdownEditor 최소 높이: minHeight를 편집칸 최소 높이로 쓴다 | 껍데기가 네이티브 textarea라 Tab이 칸을 떠나고 minHeight 스타일을 이미 건다
+src/components/MarkdownEditor.test.tsx.MarkdownEditor > MarkdownEditor axe: 쓰기·오류·내부 모드에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/Pagination.test.tsx.Pagination > Pagination 한 쪽뿐: 숨긴다 | 껍데기가 nav·aria-current·숨김 계약을 이미 그린다
+src/components/Pagination.test.tsx.Pagination > Pagination 가운데: nav 이름은 label, 지금 쪽만 aria-current="page", 쪽마다 주소 | 껍데기가 nav·aria-current·숨김 계약을 이미 그린다
+src/components/Pagination.test.tsx.Pagination > Pagination 누름: onPageChange(쪽)를 부른다 | 껍데기가 nav·aria-current·숨김 계약을 이미 그린다
+src/components/Pagination.test.tsx.Pagination > Pagination axe: 가운데 쪽에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/PasswordField.test.tsx.PasswordField > PasswordField axe: 기본·오류·보이기에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/PriorityLabel.test.tsx.PriorityLabel > PriorityLabel axe: 네 값에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/PriorityPicker.test.tsx.PriorityPicker > PriorityPicker axe: 기본과 오류에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/ProgressBar.test.tsx.ProgressBar > ProgressBar 비율: role="progressbar", 이름은 파일 이름, 0~100에 지금 값 | 껍데기가 role·aria-value* 계약을 이미 그린다
+src/components/ProgressBar.test.tsx.ProgressBar > ProgressBar 모름: value가 없으면 aria-valuenow를 두지 않는다 | 껍데기가 role·aria-value* 계약을 이미 그린다
+src/components/ProgressBar.test.tsx.ProgressBar > ProgressBar 끝: 1이면 100 | 껍데기가 role·aria-value* 계약을 이미 그린다
+src/components/ProgressBar.test.tsx.ProgressBar > ProgressBar axe: 비율과 모름에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/RadioGroup.test.tsx.RadioGroup > RadioGroup 안 고름·고름: 처음에는 아무것도 고르지 않고, 누르면 그것만 고른다 | 껍데기가 네이티브 input·select로 그려 브라우저 기본 동작(이름표, 고르기, Tab, 화살표)이 이미 맞다
+src/components/RadioGroup.test.tsx.RadioGroup > RadioGroup 키보드: 묶음에 Tab 자리는 하나이고 화살표로 옮겨 고른다 | 껍데기가 네이티브 input·select로 그려 브라우저 기본 동작(이름표, 고르기, Tab, 화살표)이 이미 맞다
+src/components/RadioGroup.test.tsx.RadioGroup > RadioGroup 막힘: 묶음 전체를 막는다 | 껍데기가 disabled를 네이티브 요소에 그대로 넘긴다
+src/components/RadioGroup.test.tsx.RadioGroup > RadioGroup axe: 라디오 목록·탭 모양·오류에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/RelativeTime.test.tsx.RelativeTime > RelativeTime axe: 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/Select.test.tsx.Select > Select 기본: 이름표로 찾고 고르면 값이 바뀐다, 첫 빈 선택지는 placeholder | 껍데기가 네이티브 input·select로 그려 브라우저 기본 동작(이름표, 고르기, Tab, 화살표)이 이미 맞다
+src/components/Select.test.tsx.Select > Select 막힘: disabled | 껍데기가 disabled를 네이티브 요소에 그대로 넘긴다
+src/components/Select.test.tsx.Select > Select axe: 기본·오류·불러오는 중·읽기 전용에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/Skeleton.test.tsx.Skeleton > Skeleton 읽지 않음: 세 모양 모두 aria-hidden이고 읽을 글자가 없다 | 껍데기가 aria-hidden 뿌리만 그린다
+src/components/Skeleton.test.tsx.Skeleton > Skeleton 포커스: 뼈대 안에는 Tab이 닿는 것이 없다 | 껍데기가 aria-hidden 뿌리만 그린다
+src/components/Skeleton.test.tsx.Skeleton > Skeleton axe: aria-busy 영역 안의 뼈대에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/StatusBadge.test.tsx.StatusBadge > StatusBadge axe: 세 종류에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/TextField.test.tsx.TextField > TextField 기본: 이름표로 찾고 쓴 값이 onChange로 나간다 | 껍데기가 네이티브 input·select로 그려 브라우저 기본 동작(이름표, 고르기, Tab, 화살표)이 이미 맞다
+src/components/TextField.test.tsx.TextField > TextField 막힘: disabled면 쓸 수 없다 | 껍데기가 disabled를 네이티브 요소에 그대로 넘긴다
+src/components/TextField.test.tsx.TextField > TextField 읽기 전용: readOnly이고 포커스는 받는다 | 껍데기가 네이티브 input·select로 그려 브라우저 기본 동작(이름표, 고르기, Tab, 화살표)이 이미 맞다
+src/components/TextField.test.tsx.TextField > TextField axe: 기본·오류·도움말·읽기 전용·막힘에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
+src/components/Toast.test.tsx.Toast > Toast 영역: role="status"와 aria-live="polite" 하나에 메시지를 쌓는다 | 껍데기가 role="status" 영역 하나와 셋까지 자르기를 이미 한다
+src/components/Toast.test.tsx.Toast > Toast 셋까지: 넷이면 가장 오래된 것이 빠지고 새 셋이 남는다 | 껍데기가 role="status" 영역 하나와 셋까지 자르기를 이미 한다
+src/components/Toast.test.tsx.Toast > Toast axe: 성공·안내에 접근성 위반이 없다 | 껍데기의 네이티브 마크업에 이미 접근성 위반이 없다. 구현 뒤 위반이 생기지 않는지 지킨다
