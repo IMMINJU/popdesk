@@ -5,7 +5,8 @@ Usage: check-fixture-literals.py
 
 Run from the repository root. Collects string literals from locked test files that look like
 test data (an email, text with a space, non-ASCII text, or letters mixed with digits, 6+ chars)
-and reports production files that contain the same string. A hit can mean the implementation
+and reports production files that have the same string as a whole literal. Substrings are not
+counted: a fragment like ' from ' in a test is not a fixture value. A hit can mean the implementation
 special-cases a test input. It can also be a legitimate shared value, so this only reports;
 a person reads the list in C-10. Always exits 0.
 """
@@ -18,9 +19,13 @@ from lockrules import GENERATED_GLOBS, LOCK_FILE, is_test, matches, parse_lock, 
 
 LITERAL_RE = re.compile(r"\"((?:[^\"\\\n]|\\.){6,200})\"|'((?:[^'\\\n]|\\.){6,200})'")
 PROD_SUFFIXES = {".java", ".kt", ".ts", ".tsx", ".js", ".sql", ".yml", ".yaml", ".properties"}
+# Not production: stories show the same copy as the tests, and these files list package names.
+NOT_PROD = ("**/*.stories.tsx", "web/pnpm-lock.yaml", "web/pnpm-workspace.yaml", "**/eslint.config.*")
 
 
 def looks_like_data(s):
+    if s != s.strip() or not re.search(r"[^\W\d_]", s):
+        return False  # padding, fragments, punctuation
     if s.startswith(("/", "http", "#", "--", "classpath:")):
         return False
     if re.fullmatch(r"[A-Z0-9_.]+|[A-Za-z-]+|[a-z][a-zA-Z0-9]*", s):
@@ -48,13 +53,14 @@ def main():
     hits = 0
     for path in walk(root):
         if (Path(path).suffix not in PROD_SUFFIXES or is_test(path) or matches(path, GENERATED_GLOBS)
+                or matches(path, NOT_PROD)
                 or not (path.startswith("server/src/main/") or path.startswith("web/"))):
             continue
         text = (root / path).read_text(encoding="utf-8", errors="replace")
-        for s, src in literals.items():
-            if s in text:
-                hits += 1
-                print(f"CHECK  {path} contains {s!r} (from {src})")
+        found = {m.group(1) or m.group(2) for m in LITERAL_RE.finditer(text)}
+        for s in sorted(found & literals.keys()):
+            hits += 1
+            print(f"CHECK  {path} contains {s!r} (from {literals[s]})")
     print(f"{len(literals)} test data literal(s), {hits} hit(s) in production code")
     return 0
 
