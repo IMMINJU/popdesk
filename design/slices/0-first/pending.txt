@@ -4,60 +4,21 @@
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
 # 서버 줄은 구현 탭(tasks.md 3절)마다 묶었다. 탭이 병합되면 그 묶음을 지운다.
 
-
-# s0-i-account
-server io/popdesk/auth/FirstAdminPasswordNineCharactersTest.java
-server io/popdesk/auth/FirstAdminPasswordOnlyWhitespaceTest.java
-server io/popdesk/auth/FirstAdminPasswordSameAsEmailTest.java
-server io/popdesk/auth/FirstAdminPasswordSeventyThreeCharactersTest.java
-server io/popdesk/auth/ForwardedHeadersTest.java
-server io/popdesk/auth/HostRoutingTest.java
-server io/popdesk/auth/HttpsPublicAddressTest.java
-server io/popdesk/auth/InvitationLinkTest.java
-server io/popdesk/auth/LockoutTest.java
-server io/popdesk/auth/ManagementPortTest.java
-server io/popdesk/auth/PasswordRulesTest.java
-server io/popdesk/auth/SecurityHeadersTest.java
-server io/popdesk/auth/SessionCookieTest.java
-server io/popdesk/auth/SignInRateLimitTest.java
-server io/popdesk/auth/SignInTest.java
-server io/popdesk/auth/UntrustedProxyTest.java
-server io/popdesk/ops/AuditLogTest.java
-server io/popdesk/ops/CanonicalAuditJsonTest.java
-server io/popdesk/ops/CheckOrderTest.java
-server io/popdesk/ops/DatabaseConflictTest.java
-server io/popdesk/ops/ErrorBodyTest.java
-server io/popdesk/project/CompanyCreateTest.java
-server io/popdesk/project/CompanyListTest.java
-server io/popdesk/project/CompanyPermissionTest.java
-server io/popdesk/project/InvitationAcceptTest.java
-server io/popdesk/project/InvitationInvalidTokenTest.java
-server io/popdesk/project/InvitationLinkCopyTest.java
-server io/popdesk/project/InvitationLocaleTest.java
-server io/popdesk/project/InvitationRejectTest.java
-server io/popdesk/project/InvitationTest.java
-server io/popdesk/project/InvitationTokenTest.java
-server io/popdesk/project/InvitationWithSmtpTest.java
-server io/popdesk/project/PendingInvitationListTest.java
-server io/popdesk/start/FirstStartTest.java
-server io/popdesk/start/SecretFileTest.java
-server io/popdesk/start/TimeTest.java
-
 # s0-i-issue
 server io/popdesk/auth/SessionLifetimeTest.java
 server io/popdesk/issue/CommentTest.java
-server io/popdesk/issue/InternalCommentMailTest.java
 server io/popdesk/issue/IssueCreateTest.java
 server io/popdesk/issue/IssueListTest.java
 server io/popdesk/issue/IssueNumberTest.java
 server io/popdesk/issue/IssueRateLimitTest.java
 server io/popdesk/issue/PortalIssueFieldsTest.java
+server io/popdesk/ops/DatabaseConflictTest.java
 server io/popdesk/ops/LogPrivacyTest.java
 server io/popdesk/ops/ScopedReadRulesTest.java
 server io/popdesk/project/AgentAssignmentTest.java
 
 # s0-i-notify
-server io/popdesk/deploy/ImplicitTlsMailTest.java
+server io/popdesk/issue/InternalCommentMailTest.java
 server io/popdesk/notify/CommentMailTest.java
 server io/popdesk/notify/InvitationMailTest.java
 server io/popdesk/notify/KoreanMailTest.java
@@ -72,11 +33,11 @@ server io/popdesk/notify/SmtpStartTlsTest.java
 server io/popdesk/notify/StrictTransportTest.java
 server io/popdesk/notify/WebhookMessageTest.java
 server io/popdesk/notify/WebhookSecretTest.java
-server io/popdesk/ops/CleanupRecordTest.java
 server io/popdesk/ops/LogSecretsWithSmtpTest.java
 server io/popdesk/ops/OutboxMetricsTest.java
 server io/popdesk/ops/SystemStatusTest.java
 server io/popdesk/ops/SystemStatusWithSmtpTest.java
+server io/popdesk/project/InvitationWithSmtpTest.java
 
 # s0-i-att
 server io/popdesk/attachment/AttachmentArchitectureTest.java
@@ -92,6 +53,9 @@ server io/popdesk/attachment/AttachmentStatementLogTest.java
 server io/popdesk/attachment/AttachmentStorageTest.java
 server io/popdesk/issue/IssueConcurrencyTest.java
 server io/popdesk/issue/IssueVersionTest.java
+server io/popdesk/ops/CheckOrderTest.java
+server io/popdesk/ops/CleanupRecordTest.java
+server io/popdesk/ops/ErrorBodyTest.java
 server io/popdesk/ops/MetricsTest.java
 server io/popdesk/ops/OpsAlertTest.java
 server io/popdesk/project/NoStoreTest.java
@@ -102,6 +66,7 @@ server io/popdesk/deploy/AttachmentLoadTest.java
 server io/popdesk/deploy/BackupRestoreTest.java
 server io/popdesk/deploy/ContractClientsTest.java
 server io/popdesk/deploy/DevComposeTest.java
+server io/popdesk/deploy/ImplicitTlsMailTest.java
 server io/popdesk/deploy/ObservabilityComposeTest.java
 server io/popdesk/deploy/ReleaseComposeTest.java
 server io/popdesk/deploy/ResetPasswordTest.java
