@@ -75,6 +75,8 @@ final class CommandDatabase {
             properties.setProperty("password", password);
         }
         properties.setProperty("ApplicationName", "popdesk command");
+        // As for the app's connections (application.yml), for a POPDESK_DB_URL that leaves the flag out.
+        properties.setProperty("logServerErrorDetail", "false");
         try {
             Connection c = DriverManager.getConnection(url, properties);
             c.setAutoCommit(true);
