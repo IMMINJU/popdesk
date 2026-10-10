@@ -99,7 +99,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 404 | `NOT_FOUND` | The target does not exist or the caller may not see it (`COM-1`). Also a path the host does not serve |
 | 409 | `COMPANY_CODE_TAKEN` | Another customer company has this code |
 | 409 | `EMAIL_TAKEN` | An account has this email |
-| 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit, or the JSON of a new issue (the body, or the `issue` part of a multipart request) is over 256 KB (262,144 bytes). A proxy in front may answer 413 first with its own body |
+| 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit, or the JSON of a new issue (the body, or the `issue` part of a multipart request) is over 256 KB (262,144 bytes). The headers of one multipart part, which carry the file name, are limited to 4 KB: a file name far over 255 characters gets this 413, not the 400 `TOO_LONG`. A proxy in front may answer 413 first with its own body |
 | 429 | `RATE_LIMITED` | Over a rate limit (`COM-8`). `Retry-After` says when to try again |
 | 500 | `INTERNAL_ERROR` | An unexpected server error |
 | 501 | `NOT_IMPLEMENTED` | The endpoint is in the contract but not built yet. Only before a slice is finished; never in a release |
@@ -134,6 +134,7 @@ Attachments are always addressed under their issue:
 
 - The server finds the attachment with the same query that checks the issue: the caller must be able to see the issue, the attachment must belong to that issue, and for customers it must not belong to an internal comment.
 - Every attachment endpoint (download, delete, `HEAD`, range requests) answers 404 with the same status, headers, and body in all of these cases: the ID does not exist, the caller cannot see the issue, the attachment belongs to another issue, a customer asks for an attachment on an internal comment, or the attachment is still being written or already deleted (`pending`, `purging`, `purged`). The response does not tell these cases apart (`COM-1`).
+- An `{id}` that is not a UUID in its 36-character form (`8-4-4-4-12` hexadecimal digits, either letter case) is an ID that does not exist: the same 404.
 - Attachment IDs are hard to guess (`ATT-7`), but that is not a permission check.
 - Uploads and downloads are each limited to 16 at a time. Over the limit, the response is 503 with a `Retry-After` header.
 
