@@ -200,6 +200,24 @@ public class AttachmentService {
     }
 
     /**
+     * After the filing transaction failed, outside it and before the response: removes the contents of
+     * the filing's files whose rows are no longer {@code pending}. The cleanup ended those rows while
+     * step ② was still writing, and it never comes back to a row it ended, so nothing else would remove
+     * what step ② wrote afterwards. Rows that are still {@code pending} stay for the cleanup (S0-AC-63).
+     */
+    public void discardEnded(List<UUID> ids) {
+        for (UUID id : ids) {
+            try {
+                if (!attachments.isPending(id)) {
+                    storage.delete(id);
+                }
+            } catch (RuntimeException e) {
+                log.warn("Removing the file of a failed filing failed ({}).", e.getClass().getSimpleName());
+            }
+        }
+    }
+
+    /**
      * After attachments were stored: over 80% of the quota, a warning in the log and the operations alert
      * for the admins (S0-AC-58, S0-AC-80). The alert adds no item while it is raised already.
      */

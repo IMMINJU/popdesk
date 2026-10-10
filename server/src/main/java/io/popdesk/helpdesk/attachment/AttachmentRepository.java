@@ -122,6 +122,12 @@ public class AttachmentRepository {
                 .params(issueId, id).update();
     }
 
+    /** Whether the row is still {@code pending}; false too when there is no such row. */
+    boolean isPending(UUID id) {
+        return jdbc.sql("select count(*) from attachment where id = ? and state = 'pending'")
+                .params(id).query(Long.class).single() == 1;
+    }
+
     /**
      * The first step of a delete: {@code stored} to {@code purging}, the file name cleared (it can hold
      * personal data), who and when recorded (S0-AC-61). Returns 0 when it was not stored any more.

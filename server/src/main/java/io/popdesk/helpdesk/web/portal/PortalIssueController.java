@@ -122,7 +122,14 @@ class PortalIssueController {
             return issue(issues.file(viewer, draft));
         }
         List<UUID> pending = attachments.writeFiling(viewer, files);
-        IssueRow filed = issues.file(viewer, draft, () -> attachments.storeFiled(pending, draft.id()));
+        IssueRow filed;
+        try {
+            filed = issues.file(viewer, draft, () -> attachments.storeFiled(pending, draft.id()));
+        } catch (RuntimeException e) {
+            // Outside the failed transaction and before the response (verify.md V-9).
+            attachments.discardEnded(pending);
+            throw e;
+        }
         attachments.reviewQuota();
         return issue(filed);
     }
