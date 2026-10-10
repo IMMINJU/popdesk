@@ -51,7 +51,7 @@
 |---|---|---|
 | `check-test-style.py --all-strict` | 5 | `@Disabled`·`.skip`·`.only`, 늘 참인 단언, mock(`@MockBean`, `Mockito`, `vi.mock` 등), 고정 대기(`Thread.sleep` 등)를 실패로 본다. 바깥 시스템은 mock 대신 실제 대역(Testcontainers Postgres, GreenMail, MinIO, 테스트용 웹훅 받는 쪽, 고정 `Clock`)을 쓴다 |
 | `check-red.py --allow design/slices/{묶음}/red-allow.txt --out design/slices/{묶음}/red.md` | 6 | 이번 묶음의 새 테스트 결과(JUnit XML)가 모두 단언 실패인지 본다. 바닥, 프레임워크 기본값, C-4 계약 껍데기(계약 파일, 공용 컴포넌트의 props와 접근성 마크업)가 이미 하는 일이라 처음부터 통과하는 테스트는 `red-allow.txt`에 `테스트 이름 \| 이유`로 적는다. 이유가 없거나 결과에 없는 이름이면 실패다. 허용한 통과는 `red.md`에 이유와 함께 남고 C-7에서 사람이 본다. C-4 껍데기 때문에 허용한 테스트는 C-10 변이 테스트를 꼭 돌린다 |
-| `pending.py server\|web` | 5~9, CI | 묶음의 테스트는 구현보다 먼저 `main`에 들어가 일부러 실패한다. `design/slices/{묶음}/pending.txt`에 적은 테스트는 CI의 server·web 잡이 빼고 돌려, 나머지 테스트는 늘 통과해야 한다. 구현 탭이 병합되면 메인이 그 줄을 지운다. 이 파일은 관문이라 테스트 쪽·구현 쪽 모두 고치지 못한다 |
+| `pending.py server\|web` | 5~9, CI | 묶음의 테스트는 구현보다 먼저 `main`에 들어가 일부러 실패한다. `design/slices/{묶음}/pending.txt`에 적은 테스트는 CI의 server·web·이미지 잡이 빼고 돌려, 나머지 테스트는 늘 통과해야 한다. 구현 탭이 병합되면 메인이 그 줄을 지운다. 이 파일은 관문이라 테스트 쪽·구현 쪽 모두 고치지 못한다 |
 | `tests-lock.py write` | 6 | 테스트 파일마다 sha256을 `tests.lock`에 적는다 |
 | `trace.py design/slices/{묶음} --search <숨긴 E2E 저장소>` | 7 | 대응표. 테스트 없는 기준과 없는 기준 ID를 실패로 본다 |
 | `check-locked-paths.py --base main --role tests` | 테스트 쪽 합치기 | 테스트 쪽 브랜치가 테스트 경로 밖을 고쳤는지 본다 |
@@ -63,11 +63,23 @@
 
 - 구현 탭은 `start-tab.ps1 -Role impl`로 띄운다. 그러면 PreToolUse 훅(`C:\Users\minju\.claude\popdesk\hooks\impl-guard.py`)이 붙는다. 훅은 위의 잠긴 경로로 가는 Edit·Write, worktree 밖 쓰기, 숨긴 E2E 저장소 접근, 쓰기로 보이면서 잠긴 경로를 적은 Bash를 거부한다. 규칙은 worktree가 아니라 원래 레포의 `lockrules.py`에서 읽는다. Bash 판정은 짐작이라 빠지는 것이 있다.
 - C-6의 잠금 목록. 해시를 대조하므로 어떤 도구로 고쳤든 잡힌다.
-- 합치기 전 검사. 메인은 로컬에서 fast-forward로 합치므로 GitHub의 `CODEOWNERS`가 막아 주지 않는다. 메인이 위 표의 합치기 검사를 돌린다. CI의 `locked` 잡도 같은 검사를 한다(`--role any`: 한 브랜치가 잠근 테스트와 운영 코드를 함께 고치면 실패). CI는 검사 스크립트를 기준 커밋에서 가져와 돌린다. 바뀐 쪽이 자기를 판정하는 스크립트를 느슨하게 하지 못하게 하려는 것이다.
+- 합치기 전 검사. 메인은 로컬에서 fast-forward로 합치므로 GitHub의 `CODEOWNERS`가 막아 주지 않는다. 메인이 위 표의 합치기 검사를 돌린다. CI의 `locked` 잡도 같은 검사를 한다(`--role any`: 한 커밋이 잠근 테스트와 운영 코드를 함께 고치면 실패). 푸시 하나에 여러 탭의 커밋과 메인의 잠금 커밋이 같이 실리므로 커밋마다 본다. 테스트 도구 설정(Stryker 등)과 의존성 파일은 운영 코드로 세지 않는다. 고친 것을 두 커밋으로 쪼개면 이 검사는 지나가므로, 그 경우는 잠금 목록과 합치기 전 `--role impl` 검사가 잡는다. CI는 검사 스크립트를 기준 커밋에서 가져와 돌린다. 바뀐 쪽이 자기를 판정하는 스크립트를 느슨하게 하지 못하게 하려는 것이다.
 
 숨긴 E2E는 레포 밖 로컬 git 저장소(`C:\Users\minju\popdesk-holdout\`, 원격 없음)에 둔다. 같은 레포의 다른 브랜치는 탭 worktree가 `.git`을 같이 써서 `git log --all`로 보이므로 쓰지 않는다. C-10에서 메인이 합친 `main` 위에서 돌리고, 통과하면 레포로 옮겨 커밋한다. 그 뒤로는 보통 회귀 테스트다. 브라우저 없이 HTTP로만 도는 것(첫 묶음의 빈 설치 E2E)은 `server/src/test/java/io/popdesk/e2e/`에 `deploy` 태그로 두어 CI 이미지 잡이 돌리고, 브라우저로 도는 것은 `web/e2e/`에 둔다.
 
 코드가 생기면 운영 코드 쪽 정적 검사를 붙인다(`.github/workflows/ci.yml` 주석 목록). 예외 삼키기, 쓰지 않는 코드, 새 중복, 인가 검사가 빠진 컨트롤러, 서비스 밖 `@Transactional`, 운영 코드의 `System.exit`·호출 스택 검사·`Thread.sleep`·테스트 프로필 빈 같은 것을 잡는다. 거짓 완료를 막는 Stop 훅(바뀐 모듈 테스트와 `trace.py`가 실패하면 끝내지 못하게)도 빌드 명령이 정해지면 구현 탭에 더한다.
+
+### 첫 묶음 C-11에서 더한 규칙
+
+첫 묶음에서 어긋났던 일과, 그래서 정한 것이다.
+
+- 테스트는 다른 테스트가 먼저 돌았다는 것에 기대지 않는다. 같은 앱과 DB를 나눠 쓰는 테스트는 자기가 만든 데이터만 센다(주소나 키로 거른다). JVM 전체에 걸리는 설정은 도움 클래스의 static 초기화에 두지 않고 surefire `argLine`에 둔다. `MailQueueRowTest`가 다른 테스트의 메일까지 셌고(37b9c34), E2E가 먼저 돌자 Host 머리글 허용 설정이 듣지 않았다(e719e37).
+- 요청을 보내는 화면과 대화상자마다 "닫히거나 대상이 바뀐 뒤에 온 답"을 버리는지 보는 테스트를 둔다(C-5). C-7 점검 쪽은 이 테스트가 빠진 화면을 찾는다. 첫 묶음에서는 이 테스트가 없어 다른 계정의 초대 링크가 보이는 결함(V-2)이 C-10 코드 읽기에서야 나왔다.
+- 테스트 클래스를 구현 탭에 나눌 때(C-8) 클래스가 직접 쓰는 픽스처만 보지 않는다. 같은 패키지의 도움 클래스와 바탕 클래스(`ConnectedAppTest`처럼 SMTP를 켠 것)가 쓰는 픽스처까지 모아 "가장 늦은 탭"에 둔다. 첫 구현 탭은 맡은 클래스를 먼저 한 번 돌려, 다른 탭의 코드가 있어야 통과하는 클래스를 메인에 알린다.
+- 구현 탭은 보고를 `C:\Users\minju\.claude\popdesk\tasks\<탭 이름>-report.md`에 바로 쓴다. 훅이 worktree 밖 쓰기 가운데 이 파일만 허용한다.
+- deploy 태그 테스트도 `pending.txt`를 따른다. CI 이미지 잡이 `-Dtest=` 대신 태그로 테스트를 골라 제외 목록이 듣는다.
+- 메인은 푸시할 때마다 `gh run watch`로 CI를 끝까지 본다. `design/`만 바꾼 푸시는 잡이 건너뛰어 초록으로 보이므로, 마지막 코드 푸시의 런이 초록인지 따로 본다. C-10에서는 이것을 보지 않아 이미지 잡이 여러 커밋 동안 실패했다.
+- 스크립트나 치환으로 파일을 고친 뒤에는 결과를 `grep`으로 확인하고 나서 고쳤다고 적는다. Windows의 Python `Path.write_text`는 LF 파일을 CRLF로 바꾸므로 `write_bytes`를 쓴다.
 
 ### 경로
 

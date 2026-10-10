@@ -15,6 +15,7 @@ Order of authority when documents disagree: roadmap → ADR → canonical docs (
 
 - Tests come first and are locked. Never edit or delete a test to make your code pass. If a test looks wrong, stop and report.
 - The agent that writes a slice's tests does not implement it, and the reverse.
+- A test does not depend on test order or on state another test class set. JVM-wide options for tests go in the Surefire `argLine`.
 - Migrations only move forward. Never edit a merged migration.
 - Every business table has `tenant_id bigint NOT NULL`. Do not filter by it yet (ADR D-18).
 - Any query that returns customer data respects the customer-company boundary, with a negative test (company A cannot see company B).
@@ -25,6 +26,7 @@ Order of authority when documents disagree: roadmap → ADR → canonical docs (
 ## Running things
 
 - Run only the tests for what you changed, one runner at a time (the dev machine has 16 GB). CI also runs only the jobs for the parts a change touches; release tags run everything (ADR D-48). When you add a CI job, give it a path filter.
+- After a push, watch the CI run to the end (`gh run watch`). After a scripted edit, check the result with `grep` before reporting it as changed.
 - Commands will be listed here once the first slice lands.
 
 ## Writing
