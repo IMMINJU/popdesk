@@ -46,6 +46,12 @@ spring:
 
 server:
   port: 8080
+  tomcat:
+    # The headers of one multipart part carry the file name as UTF-8. A name may have 255 characters
+    # (S0-AC-57), up to 1,020 bytes, next to about 400 bytes of other header text; Boot's 512 B refused
+    # such a name with 413. With 4 KB a name somewhat over 255 characters still reaches the app and gets
+    # its 400 TOO_LONG.
+    max-part-header-size: 4KB
   servlet:
     session:
       timeout: 8h
