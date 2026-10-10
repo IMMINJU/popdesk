@@ -36,6 +36,7 @@ b41303dedbf2f5a02ffb21ee777f90aad088048eabd9902b0f4c27ac60df7b5d  server/src/tes
 1ece0772d6a0523d4c56f8a74539733eb362e198077bcfdb1fb040144be7adc2  server/src/test/java/io/popdesk/auth/InvitationLinkTest.java
 2c6ca0a7b6eef525b1f48f09ea80db4a3e1928ad7eab6ae788f450424cee7e13  server/src/test/java/io/popdesk/auth/LockoutTest.java
 b6cff38b77ba386bfd5d5a45cebae054d0dd9ac738764a81a5eb4a7879363291  server/src/test/java/io/popdesk/auth/ManagementPortTest.java
+9b459015a94532878a65476447372933de34a2bc0d1317a8f97d26820047db4c  server/src/test/java/io/popdesk/auth/PasswordHashParametersTest.java
 58373314a9f1461a9e4f0d4ca9177c42195ec76f50844c7287204b61c464568b  server/src/test/java/io/popdesk/auth/PasswordRulesTest.java
 289f6d85164a0101a92f132cf17128ee4acee1ab37479af4311861361475c202  server/src/test/java/io/popdesk/auth/SecurityHeadersTest.java
 a7ee88ed67a2c3fce36d5e51cb9eb70f6e896bfd8b4cd882cacca22ecb1aba7c  server/src/test/java/io/popdesk/auth/SessionCookieTest.java
@@ -68,8 +69,10 @@ b96ef4f11aaaf1575783b52c3622dc9305e0f1b132880d4d6a1ca5338f18afe3  server/src/tes
 95acb034f998b7053ab51304925cf97da264248aed9291367dbba2a93a29c540  server/src/test/java/io/popdesk/deploy/ObservabilityComposeTest.java
 8b048e0b8d4a6b01a91945c725be7e31fb04922fbf78d6f6053fb332e82ae79d  server/src/test/java/io/popdesk/deploy/Once.java
 e60e318a72a209d7949581a3f95d3190cba835d0a2284d92d864714b83d1217e  server/src/test/java/io/popdesk/deploy/README.md
+11e3f952278fc36a2e5762b7dbe4a94dadfa9f00b9d0fa99e27190480c604aff  server/src/test/java/io/popdesk/deploy/ReleaseComposeDatabaseTest.java
 6104a1dfbe6749eddc0d36317b7d2afe34c94ff4d52d217fcd225f3a3745b95b  server/src/test/java/io/popdesk/deploy/ReleaseComposeTest.java
 5332fd545b451a14c604255d79a6be54214456ba2a9f30b8b0b7cd5b7ea26942  server/src/test/java/io/popdesk/deploy/Repo.java
+8c0c163f338661a17a4d61fba6fa6819f93701fed9d2aed325909b7f4cfc0361  server/src/test/java/io/popdesk/deploy/ResetPasswordHashTest.java
 25a18ce9c40788ecccb42574898b402c7acb3f828ec20e9159ed0b524149a393  server/src/test/java/io/popdesk/deploy/ResetPasswordTest.java
 db17ac1c467dc7dc33c75f764672abc267b5fba9b253c4073a787b852c44fb68  server/src/test/java/io/popdesk/deploy/Stack.java
 8137c6dfaf1bad183e949646051b66d72ec834b6a2c7895ac7fde5f1b3cdc7c4  server/src/test/java/io/popdesk/deploy/Terminal.java
@@ -92,6 +95,7 @@ ba63c49cf719dbab7a67e2d5e5d1e3b6f77040a201c88bfff30a68216aa728de  server/src/tes
 a25b585084d6ecb8775306e38510b925b7ce027fcc36a0a8d220adc5eb487b75  server/src/test/java/io/popdesk/issue/CommentTest.java
 1b2e05aa1b22ddade16b92b2f10fc0ac5cb48562181c428678b4458a7fc376ba  server/src/test/java/io/popdesk/issue/Concurrently.java
 acd9a45e7cf183427d7762ef4b225c78c493f1286a8cdfba3ba6b880a52e9052  server/src/test/java/io/popdesk/issue/InternalCommentMailTest.java
+b4bb1cf58b28bbd7df1d1eef7ef0e03ded4ca0707b41b2489f9a8b168583475e  server/src/test/java/io/popdesk/issue/IssueBodyLimitTest.java
 5b4468c6d505f5f8ff7b09d29c314c7d9753fbb29e8721a61fe87209af6eda7c  server/src/test/java/io/popdesk/issue/IssueConcurrencyTest.java
 9b0bfd933a04f1a03f466db1ada80a576462ac32b2ca04b898734717d80d746d  server/src/test/java/io/popdesk/issue/IssueCreateTest.java
 75656754405a87f47cd1b1a62d14976caad0d1fa1614efabffdb6e20c1602e61  server/src/test/java/io/popdesk/issue/IssueListTest.java
@@ -118,6 +122,7 @@ c47a52fe3544277ae9c90f3480b011c4682b3469207e05e4fe47a912d49bb0e9  server/src/tes
 c2d564e52a2809c29e53bd12bfa89c387331ffa402e7d0661cd8db934856cfab  server/src/test/java/io/popdesk/notify/QueueTransactionTest.java
 032f445a5b3ac8f5d8d64bfdfa01e5978a31ed8ecd8ea8511cf0cb0d5d9c15b4  server/src/test/java/io/popdesk/notify/RetryTest.java
 c8bc4df4fef4454a7cae02e171316200e52c5dc2ef3abda95d8db1a96d4559d7  server/src/test/java/io/popdesk/notify/Rows.java
+2b76a407e102c59e67e3a8e645feebfad309f0622d7d7aa13674005037a52ee7  server/src/test/java/io/popdesk/notify/SendLoopBrokenRowTest.java
 59a8d97c64fd7bccd82305f149e781e5eaf6e694e0101399f0c31609eb379c88  server/src/test/java/io/popdesk/notify/SendLoopTest.java
 3e79520ef3b1fd17a81af8079f30e0ca52f5ad285b96137036343b21626b02ea  server/src/test/java/io/popdesk/notify/SmtpGate.java
 9c12a309dc47493a7765692eb46b632aa102fd09960a826f4191e8f785524841  server/src/test/java/io/popdesk/notify/SmtpPlainAllowedTest.java
@@ -170,6 +175,9 @@ cb11cd2794e4056478ce70c9680cdbb9f44f32d2b6bff6fbeca314a4e0624a04  server/src/tes
 968fb6035efabae686b61e98fa58afe32bb6e44548354caae248aabadd2dabd8  server/src/test/java/io/popdesk/start/FirstAdminMissingTest.java
 ce687d201c3faac8183bad087666a6cec770641768a19a8474b2bb0b7fd23f63  server/src/test/java/io/popdesk/start/FirstStartTest.java
 d0f5b9b108fc2b5c6eb23a0d361b27b1641998249892e1f160f324b20a63d880  server/src/test/java/io/popdesk/start/InstanceLockTest.java
+041f2fe853e073d7c2ec1ec94c2c0884a521eded0da10c2e84d1a331f8b8e863  server/src/test/java/io/popdesk/start/InvalidLocaleStart.java
+9a64656d302ecf282f73e745234791ac767aa420fe607f01d7c5d48f5fe9b985  server/src/test/java/io/popdesk/start/LocaleEmptyTest.java
+6590162ad94ec40e41aeaa7c1ffb1a83fc6688c66cfe6bf32905857351a5b9d4  server/src/test/java/io/popdesk/start/LocaleWithRegionTest.java
 00a285928cae38cd29ba7749ddae6abb653def8a149d36c32ef4b3e4049b0407  server/src/test/java/io/popdesk/start/MigrationHistoryTest.java
 c7d4e451f41b0ca5b45d5bdc3d6c432c8eae6eb783c58e715325e8e7a3cabd33  server/src/test/java/io/popdesk/start/MigrationPortsTest.java
 f1e02372196a6c23ce97b448aa87ab1433d0518d7ade0fbc644b6bbcfee955f8  server/src/test/java/io/popdesk/start/OwnStartTest.java
