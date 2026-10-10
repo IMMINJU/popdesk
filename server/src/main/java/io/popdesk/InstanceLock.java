@@ -213,6 +213,8 @@ public class InstanceLock implements DisposableBean {
         }
         properties.setProperty("ApplicationName", "popdesk instance lock");
         properties.setProperty("tcpKeepAlive", "true");
+        // As for the pool (application.yml): no values from a database error in an exception message.
+        properties.setProperty("logServerErrorDetail", "false");
         try {
             Connection c = DriverManager.getConnection(database.getJdbcUrl(), properties);
             c.setAutoCommit(true);

@@ -16,6 +16,10 @@ spring:
     hikari:
       # A transaction waits at most 5 seconds for a row lock, then is retried once (S0-AC-85).
       connection-init-sql: SET lock_timeout = '5s'
+      data-source-properties:
+        # The same flag as in the default URL, for a POPDESK_DB_URL that leaves it out. A URL that sets
+        # it wins over this.
+        logServerErrorDetail: "false"
   session:
     # The tables come from the migrations (V1), never from Spring Session's script.
     jdbc:
