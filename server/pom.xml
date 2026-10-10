@@ -38,7 +38,9 @@
         <jackson-bom.version>3.1.7</jackson-bom.version>
         <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
         <!-- Small heap and one JVM for tests: the dev machine has 16 GB (ADR D-3). -->
-        <test.argLine>-Xmx512m -XX:+UseSerialGC -XX:TieredStopAtLevel=1</test.argLine>
+        <!-- The tests send their own Host header. The JDK HTTP client reads this property once, when it
+             is first used, so it is set for the whole test JVM and not by whichever test class loads first. -->
+        <test.argLine>-Xmx512m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Djdk.httpclient.allowRestrictedHeaders=host</test.argLine>
         <!-- Tags left out of a normal test run. deploy: needs the app image, runs in the CI image job. -->
         <test.excludedGroups>openapi,deploy</test.excludedGroups>
         <test.groups></test.groups>
