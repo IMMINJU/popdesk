@@ -56,7 +56,7 @@ C-7 보고 7절, `tasks.md` 6·7절, 구현 탭 보고의 "C-10에서 사람이 
 | V-11 | `InstanceLock.java:137,140` | DB가 내려가거나 다른 인스턴스가 잠금을 쥔 동안 warn이 1초에 한 줄 | 상태가 바뀔 때 한 번, 같은 상태면 1분에 한 번 |
 | V-12 | `deploy/compose.yml:82,134,138` | `${POPDESK_DB_PASSWORD}`가 없으면 빈 값으로 넘어가 엉뚱한 곳에서 실패한다(문서는 기본값 없음). `pg_isready`가 소켓을 봐 초기화 중 임시 서버를 준비됨으로 볼 수 있다 | `${POPDESK_DB_PASSWORD:?…}`, `pg_isready -h 127.0.0.1` |
 | V-13 | `server.tomcat.max-part-count` | Boot 기본이 10이면 첨부 9개 넘는 문의 등록이 500일 수 있다(추측) | 테스트로 먼저 확인. 맞으면 상한을 정해 413 |
-| V-15 | `PasswordConfiguration`, `ResetPasswordCommand` | Argon2 메모리 16MiB(Spring Security 기본)가 OWASP 최소보다 작다 | 19MiB·반복 2·병렬 1로, 두 곳이 한 곳에서 만든다(7절, 사람이 정함) |
+| V-15 | `PasswordConfiguration`, `ResetPasswordCommand` | Argon2 메모리 16MiB(Spring Security 기본)가 OWASP 최소보다 작다 | 19MiB·반복 2·병렬 1로, 두 곳이 한 곳에서 만든다(9절, 사람이 정함) |
 | V-14 | JDBC `logServerErrorDetail` | 운영자가 DB URL을 바꾸며 빠뜨리면 DB 오류 상세가 로그에 남는다 | Hikari `data-source-properties`와 `InstanceLock` 연결에도 넣는다 |
 
 문서(메인이 고친다):
@@ -80,10 +80,26 @@ C-7 보고 7절, `tasks.md` 6·7절, 구현 탭 보고의 "C-10에서 사람이 
 
 C-10이 길어져 0.1.0 전에 할 것을 줄였다.
 
-- 이번에 한다: V-1~V-3(끝남), V-4, V-5, V-6, V-12, V-15, 웹 변이 테스트 결과 합치기, 보안 검사 도구, 핵심 흐름 브라우저 확인.
+- 이번에 했다: V-1~V-3(ca61b3f), V-4·V-5·V-6·V-12·V-15(e1bec3e까지 다섯 커밋). 그 밖에 웹 변이 테스트 결과 합치기, 보안 검사 도구, 핵심 흐름 브라우저 확인.
 - 0.1.0 뒤, 1번 묶음 앞에 한다: V-7~V-11, V-13, V-14, 서버 PIT. 드물거나 로그 양 정도의 문제다. PIT는 Testcontainers 테스트라 웹보다 오래 걸려 릴리스 태그 뒤에 따로 돈다.
 
-## 7. 사람이 정한 것 (2026-10-10)
+## 7. 브라우저로 핵심 흐름을 눌러 봤다
+
+V-1~V-15를 합친 `main`의 이미지를 릴리스 compose와 `compose.dev.yml`(Mailpit)로 띄우고 `POPDESK_LOCALE=ko`로 Chrome DevTools에서 눌렀다.
+
+- 관리자 로그인 → 고객사 만들기 → 고객 초대 → Mailpit의 초대 메일 링크로 수락(주소창에서 토큰이 지워짐) → 포털에서 문의 등록(마크다운, 첨부 300KB) → 콘솔에서 문의 열기, 첨부 내려받기(sha256 같음, `attachment`·nosniff·CSP 머리글) → 공개 답변 → 고객 메일(한국어, 답변 내용과 상담원 정보 없음) → 포털에 "지원팀" 답변이 보임.
+- 마크다운: 제목, 굵게, 목록, 인용이 그려지고 `https` 링크만 링크가 된다. `javascript:` 주소는 글자로 남는다.
+- 콘솔 오류는 로그인 전 `/me` 401뿐이다.
+- 내용이 빈 문의가 등록된다. S0-AC-42가 내용에 상한만 두어 기준대로다.
+- 시각 회귀 도구와 손 접근성 점검은 따로 돌리지 않았다. 화면 테스트의 axe 검사와 이 확인으로 갈음하고, 시각 회귀는 ci.yml의 "붙일 관문" 목록에 남아 있다.
+
+## 8. C-10 동안 CI가 빨갰던 것과 고친 것
+
+- 숨긴 E2E를 옮긴 0f7aa1d부터 이미지 잡이 실패했다. 레포 경로 기본값을 바꿨다고 적었지만 치환이 적용되지 않아 이 PC 경로가 남았고, 메인이 푸시 뒤 CI를 보지 않았다. a9ebf6d에서 고쳤다.
+- E2E가 같은 JVM에서 먼저 돌며 JDK HTTP 클라이언트를 먼저 써서, 도움 클래스의 static 초기화로 걸던 `jdk.httpclient.allowRestrictedHeaders`가 듣지 않아 deploy 테스트가 실패했다. surefire argLine으로 옮겼다(e719e37).
+- 잠금 잡은 한 푸시에 잠근 테스트와 운영 쪽 파일이 같이 있으면 실패한다. 웹 변이 탭의 커밋(테스트와 Stryker 설정·package.json)과 V-4~15 구현 푸시(잠금 목록과 운영 코드)가 그렇게 걸렸다. C-11에서 다룬다.
+
+## 9. 사람이 정한 것 (2026-10-10)
 
 - Argon2 매개변수: 메모리 19MiB, 반복 2, 병렬 1로 올린다(V-15). features.md AUTH-5를 고쳤다. 해시 문자열에 매개변수가 들어 있어 있던 해시도 맞는다.
 - 믿는 프록시 기본값(ADR D-46): 기본값은 둔다. configuration.md TLS 절과 threat-model TM-28에 프록시 없는 사내망·Docker Desktop의 위험과 값을 좁히는 법을 적었다.
