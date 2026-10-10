@@ -122,9 +122,12 @@ public class AttachmentRepository {
                 .params(issueId, id).update();
     }
 
-    /** Whether the row is still {@code pending}; false too when there is no such row. */
-    boolean isPending(UUID id) {
-        return jdbc.sql("select count(*) from attachment where id = ? and state = 'pending'")
+    /**
+     * Whether the row was ended: it is {@code purging} or {@code purged}. False for a {@code pending} or
+     * {@code stored} row and when there is no such row.
+     */
+    boolean isEnded(UUID id) {
+        return jdbc.sql("select count(*) from attachment where id = ? and state in ('purging', 'purged')")
                 .params(id).query(Long.class).single() == 1;
     }
 

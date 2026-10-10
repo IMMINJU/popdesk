@@ -201,14 +201,16 @@ public class AttachmentService {
 
     /**
      * After the filing transaction failed, outside it and before the response: removes the contents of
-     * the filing's files whose rows are no longer {@code pending}. The cleanup ended those rows while
-     * step ② was still writing, and it never comes back to a row it ended, so nothing else would remove
-     * what step ② wrote afterwards. Rows that are still {@code pending} stay for the cleanup (S0-AC-63).
+     * the filing's files whose rows the cleanup ended ({@code purging} or {@code purged}). It ended them
+     * while step ② was still writing, and it never comes back to a row it ended, so nothing else would
+     * remove what step ② wrote afterwards. Rows that are still {@code pending} stay for the cleanup
+     * (S0-AC-63). A {@code stored} row is never touched: the filing can fail for the caller after its
+     * transaction was committed, and then the issue has the file.
      */
     public void discardEnded(List<UUID> ids) {
         for (UUID id : ids) {
             try {
-                if (!attachments.isPending(id)) {
+                if (attachments.isEnded(id)) {
                     storage.delete(id);
                 }
             } catch (RuntimeException e) {
