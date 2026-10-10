@@ -94,6 +94,15 @@ describe('CopyField 동작', () => {
     expect([input.selectionStart, input.selectionEnd]).toEqual([0, input.value.length]);
   });
 
+  test('CopyField 누름: 마우스로 칸을 눌러도 링크 전체를 고른다', async () => {
+    render(<CopyField label="초대 링크" value="https://popdesk.example/invite#t" copyLabel="복사" onCopy={() => undefined} />);
+    const user = userEvent.setup();
+    const input = screen.getByRole<HTMLInputElement>('textbox', { name: '초대 링크' });
+
+    await user.click(input);
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, input.value.length]);
+  });
+
   test('CopyField 맞춤법 검사: 링크 칸은 맞춤법 검사를 하지 않는다', () => {
     render(<CopyField label="초대 링크" value="https://popdesk.example/invite#t" copyLabel="복사" onCopy={() => undefined} />);
 

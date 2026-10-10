@@ -149,6 +149,8 @@ describe('MarkdownView 블록', () => {
     ['줄 가운데 네 칸은 코드가 아니다', 'a    b', '<p>a    b</p>'],
     ['코드 뒤 한 칸 들여쓴 줄은 코드가 아니다', '    a\n b', '<pre tabindex="0"><code>a</code></pre><p> b</p>'],
     ['목록 뒤 한 칸 들여쓴 줄은 이어지는 줄이 아니다', '- a\n b', '<ul><li>a</li></ul><p> b</p>'],
+    ['목록 뒤 줄 가운데 빈칸 둘은 들여쓰기가 아니다', '- a\nb  c', '<ul><li>a</li></ul><p>b  c</p>'],
+    ['목록 뒤 빈칸뿐인 줄은 목록을 끝낸다', '- a\n   \n- b', '<ul><li>a</li></ul><ul><li>b</li></ul>'],
   ])('MarkdownView 블록 %s', (_, source, want) => {
     expect(html(source)).toBe(want);
   });

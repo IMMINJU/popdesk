@@ -4,6 +4,7 @@ export default {
   // pnpm keeps plugins out of core's reach, so name the runner.
   plugins: ['@stryker-mutator/vitest-runner'],
   testRunner: 'vitest',
+  coverageAnalysis: 'perTest',
   vitest: { configFile: 'vitest.config.ts' },
   mutate: [
     'src/**/*.{ts,tsx}',

@@ -95,6 +95,12 @@ describe('MarkdownEditor 도구', () => {
     expect(t).toHaveValue('`npm run build`');
   });
 
+  test('MarkdownEditor 코드: 여러 줄 글에서 한 줄 안을 고르면 `로 감싼다', async () => {
+    const t = await useTool('코드', 'a\nb', 0, 1);
+
+    expect(t).toHaveValue('`a`\nb');
+  });
+
   test('MarkdownEditor 코드 블록: 여러 줄을 고르면 ``` 줄로 감싼다', async () => {
     const t = await useTool('코드', 'a\nb', 0, 3);
 
@@ -148,6 +154,7 @@ describe('MarkdownEditor 툴바 키보드', () => {
     bold.focus();
     await user.keyboard('{ArrowDown}');
     expect(document.activeElement).toBe(bold);
+    expect(bold).toHaveAttribute('tabindex', '0');
   });
 
   test('MarkdownEditor 툴바 누름: 누른 버튼이 다음 Tab 자리가 된다', async () => {
@@ -227,6 +234,24 @@ describe('MarkdownEditor 탭과 미리 보기', () => {
     await user.click(preview);
     expect(preview.getAttribute('aria-controls')).toBe(screen.getByRole('tabpanel', { name: '미리 보기' }).id);
     expect(write.getAttribute('aria-controls')).not.toBe(preview.getAttribute('aria-controls'));
+    expect([write.getAttribute('aria-controls'), preview.getAttribute('aria-controls')]).not.toContain('');
+  });
+
+  test('MarkdownEditor 탭 Home·End: 쓰기에서 Home은 쓰기에, 미리 보기에서 End는 미리 보기에 머문다', async () => {
+    render(<Controlled />);
+    const user = userEvent.setup();
+    const write = await found(() => screen.queryByRole('tab', { name: '쓰기' }), '탭 "쓰기"');
+    const preview = await found(() => screen.queryByRole('tab', { name: '미리 보기' }), '탭 "미리 보기"');
+
+    write.focus();
+    await user.keyboard('{Home}');
+    expect(document.activeElement).toBe(write);
+    expect(write).toHaveAttribute('aria-selected', 'true');
+
+    await user.click(preview);
+    await user.keyboard('{End}');
+    expect(document.activeElement).toBe(preview);
+    expect(preview).toHaveAttribute('aria-selected', 'true');
   });
 
   test('MarkdownEditor 미리 보기 중: 편집칸과 툴바를 숨긴다', async () => {
@@ -267,12 +292,22 @@ describe('MarkdownEditor 그 밖', () => {
     expect(t).toHaveValue('답변\n');
   });
 
+  test('MarkdownEditor Ctrl 다른 키: Ctrl+A 같은 다른 조합은 onSubmitShortcut을 부르지 않는다', async () => {
+    const onSubmitShortcut = vi.fn();
+    render(<Controlled initial="답변" onSubmitShortcut={onSubmitShortcut} />);
+    const user = userEvent.setup();
+
+    (await area()).focus();
+    await user.keyboard('{Control>}a{/Control}');
+    expect(onSubmitShortcut).not.toHaveBeenCalled();
+  });
+
   test('MarkdownEditor 글자 수: showCount나 maxLength 하나만 있으면 세지 않는다', () => {
     const { container, rerender } = render(<MarkdownEditor label="내용" minHeight={112} value="확인" onChange={() => undefined} showCount />);
-    expect(text(container)).not.toMatch(/\d+ \/ /);
+    expect(text(container)).not.toMatch(/\d+ \//);
 
     rerender(<MarkdownEditor label="내용" minHeight={112} value="확인" onChange={() => undefined} maxLength={4000} />);
-    expect(text(container)).not.toMatch(/\d+ \/ /);
+    expect(text(container)).not.toMatch(/\d+ \//);
   });
 
   test('MarkdownEditor ref: 함수 ref와 객체 ref 모두 편집칸을 받는다', async () => {

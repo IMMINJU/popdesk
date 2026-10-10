@@ -33,10 +33,10 @@ describe('TextField 동작', () => {
 
   test('TextField 글자 수: showCount만 있고 maxLength가 없으면, 또는 maxLength만 있으면 세지 않는다', () => {
     const { rerender, container } = render(<TextField label="이름" value="가나다" onChange={() => undefined} showCount />);
-    expect(text(container)).not.toMatch(/\d+ \/ /);
+    expect(text(container)).not.toMatch(/\d+ \//);
 
     rerender(<TextField label="이름" value="가나다" onChange={() => undefined} maxLength={200} />);
-    expect(text(container)).not.toMatch(/\d+ \/ /);
+    expect(text(container)).not.toMatch(/\d+ \//);
 
     rerender(<TextField label="이름" value="가나다" onChange={() => undefined} maxLength={1200} showCount />);
     expect(text(container)).toContain('3 / 1,200');
@@ -60,6 +60,13 @@ describe('Select 동작', () => {
 
     await user.selectOptions(screen.getByRole('combobox', { name: '고객사' }), 'beta');
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test('Select placeholder 없음: 빈 선택지를 두지 않는다', () => {
+    render(<Select label="고객사" options={OPTIONS} value="acme" onChange={() => undefined} />);
+
+    const select = screen.getByRole('combobox', { name: '고객사' });
+    expect(Array.from(select.querySelectorAll('option')).map((o) => o.value)).toEqual(['acme', 'beta']);
   });
 
   test('Select 기본: 읽기 전용이 아니면 모든 선택지와 placeholder를 둔다', () => {

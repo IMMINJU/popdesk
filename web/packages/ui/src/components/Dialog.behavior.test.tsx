@@ -208,6 +208,39 @@ describe('Dialog 동작', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  test('Dialog 겹침: 나중 것을 닫으면 밖으로 빠진 Esc는 다시 먼저 연 대화상자에 간다', async () => {
+    const firstClose = vi.fn();
+    function Two() {
+      const [second, setSecond] = useState(true);
+      return (
+        <>
+          <Dialog open title="첫째" closeLabel="닫기" onClose={firstClose}>
+            <input aria-label="첫째 칸" />
+          </Dialog>
+          <Dialog
+            open={second}
+            title="둘째"
+            closeLabel="둘째 닫기"
+            onClose={() => {
+              setSecond(false);
+            }}
+          >
+            <input aria-label="둘째 칸" />
+          </Dialog>
+        </>
+      );
+    }
+    render(<Two />);
+    const user = userEvent.setup();
+    await dialog('둘째');
+
+    await user.click(screen.getByRole('button', { name: '둘째 닫기' }));
+    expect(screen.queryByRole('dialog', { name: '둘째' })).toBeNull();
+    (document.activeElement as HTMLElement).blur();
+    await user.keyboard('{Escape}');
+    expect(firstClose).toHaveBeenCalledTimes(1);
+  });
+
   test('Dialog 덮개: 대화상자 바깥 덮개를 누르면 onClose', async () => {
     const onClose = vi.fn();
     render(open({ onClose }));

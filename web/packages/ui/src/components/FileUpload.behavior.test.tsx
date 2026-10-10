@@ -120,6 +120,16 @@ describe('FileUpload 동작', () => {
     expect(await input()).not.toHaveAttribute('aria-describedby');
   });
 
+  test('FileUpload 놓기 안내: dropHint를 주면 끌어 놓는 칸에 보이고, 없으면 그 자리가 없다', async () => {
+    const { rerender, container } = render(upload({ dropHint: '또는 여기로 끌어 놓으세요' }));
+    await input();
+    expect(text(container)).toContain('또는 여기로 끌어 놓으세요');
+
+    rerender(upload());
+    const zone = screen.getByText('파일 첨부').closest('label')?.parentElement;
+    expect(zone?.children).toHaveLength(2);
+  });
+
   test('FileUpload 줄 없음: 파일이 없으면 목록을 그리지 않는다', async () => {
     render(upload());
     await input();
