@@ -122,3 +122,16 @@ V-1~V-15를 합친 `main`의 이미지를 릴리스 compose와 `compose.dev.yml`
 - V-14의 `InstanceLock` 연결은 테스트로 만들 길이 없어 구현할 때 코드로 본다.
 - `POPDESK_TRUSTED_PROXIES`에 틀린 값을 주면 앱이 뜨지 않는다는 것을 `configuration.md`에 적었다.
 - 첨부 개수 상한은 수용 기준에 없다. 1번 묶음 되묻기에서 정한다.
+
+## 12. V-8~V-11·V-14·V-16을 고쳤다 (2026-10-10)
+
+탭 `s0-v2-i-server`(보고 `tasks\s0-v2-i-server-report.md`)의 커밋 아홉을 합쳤다. 여섯 클래스가 통과하고 계약 파일은 그대로다.
+
+- V-8: 첨부 `{id}`를 문자열로 받아 36자 UUID 표기가 아니면 없는 ID와 같은 404. 짧은 꼴이나 중괄호 표기도 이제 404다(conventions에 적음).
+- V-9: 등록이 실패한 뒤, 정리 작업이 끝낸 행(`purging`·`purged`)의 내용만 지운다. 탭의 첫 고침은 "pending이 아닌 것"을 지워 `stored`도 걸렸다. 커밋은 됐는데 응답 전에 연결이 끊기면 문의는 남고 첨부 내용만 사라질 수 있어 메인이 좁히게 했다.
+- V-10: 복원의 빈 DB 확인을 `pg_class`로.
+- V-11: 잠금을 못 잡는 까닭이 바뀔 때 한 번, 같은 까닭이면 1분에 한 번 warn. DB가 내려간 경우도 같다. 간격은 `System.nanoTime`으로 잰다(로그 간격이라 주입한 시계를 쓰지 않아도 된다고 봤다).
+- V-14: Hikari 풀, 잠금 연결, `popdesk` 명령의 연결에 `logServerErrorDetail=false`. URL에 `true`라고 적으면 URL이 이긴다(pgjdbc 문서로만 확인).
+- V-16: `server.tomcat.max-part-header-size`를 4KB로. 4바이트 글자 255자 이름(1,020바이트)과 다른 머리글이 들어간다. 4KB를 넘는 파트 머리글은 413이다(conventions에 적음).
+- 구현 탭이 더한 테스트 셋(`AttachmentIdTest`, `FourByteFileNameTest`, `FailedFilingKeepsStoredTest`)을 잠갔다.
+- 구현 탭 훅이 `AttachmentRepository.java`를 잠긴 `Repository.java`와 이름 끝이 같다고 막았다. 파일 이름 전체가 같을 때만 막게 훅을 고쳤다.
