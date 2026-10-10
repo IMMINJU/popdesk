@@ -46,7 +46,7 @@ C-7 보고 7절, `tasks.md` 6·7절, 구현 탭 보고의 "C-10에서 사람이 
 | V-1 | `web/packages/ui/src/markdown.tsx:168` 제목 정규식 | 10,000자 본문 한 줄(`# a` + 공백 + `#` + 공백 …)로 그리기 한 번에 18초. 고객 글 하나로 상담원 콘솔이 멈춘다 | 끝 자르기를 정규식 밖으로. 인용 중첩 깊이 상한도 같이 둔다 |
 | V-2 | `web/console/src/screens/C10MemberList.tsx` NewLinkDialog | 보내는 중에 닫은 뒤 온 답이 링크를 남겨, 다음에 다른 계정 B를 열면 A의 초대 링크가 B 이름과 함께 나온다(MAIL-3 위반, 잘못된 사람에게 계정이 넘어감) | 닫혔거나 계정이 바뀌었으면 답을 버린다. `InviteDialog`를 다시 열 때 앞 링크가 보이는 것도 같이 막는다 |
 | V-3 | `web/*/src/app/sessionContext.ts` `useToLogin` | 내려간 화면에 늦게 온 401이 `setMe(null)`을 불러 layout이 빈 화면에 갇힐 수 있다(코드로 추론) | `setMe`도 마운트된 동안에만 |
-| V-4 | `ReceivedPriority.java:54` | 문의 등록 JSON 본문을 상한 없이 `readAllBytes`. 로그인한 고객 하나가 힙을 다 쓸 수 있다 | 상한(64KB)을 넘으면 413 |
+| V-4 | `ReceivedPriority.java:54` | 문의 등록 JSON 본문을 상한 없이 `readAllBytes`. 로그인한 고객 하나가 힙을 다 쓸 수 있다 | 상한(256KB)을 넘으면 413. 처음 정한 64KB는 NFD 한글 10,000자(약 90KB, S0-AC-42)를 막아 올렸다 |
 | V-5 | `SendLoops.java:93-110` | `sender.attempt`가 RuntimeException을 던지면 시도 수가 안 바뀌어 그 행이 늘 맨 앞에 잡힌다. 채널 전체가 경보 없이 멈춘다 | `Attempt.failed("INTERNAL_ERROR")`로 다뤄 백오프·24시간 failed·경보를 탄다 |
 | V-6 | `InvitationService.java:93`, `FirstAdminSetup.java:76` | `POPDESK_LOCALE`을 검사하지 않아 `ko-KR`이나 빈 값이 계정 언어가 되고 메일이 영어로 간다 | 시작할 때 `en`·`ko`만 받고, 틀리면 키 이름을 남기고 S0-AC-02처럼 readiness DOWN. 읽는 곳을 하나로. configuration.md에 적는다(공개 계약이라 전체 경로) |
 | V-7 | `TrustedProxies.literal()` | `.:`처럼 IPv6 정규식에 맞는 값이 `InetAddress.getByName`의 이름 조회로 갈 수 있다(추측) | 테스트로 먼저 확인. 맞으면 첫 글자 검사 |

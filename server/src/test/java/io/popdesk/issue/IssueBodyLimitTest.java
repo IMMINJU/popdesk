@@ -27,7 +27,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The size limit of the JSON body of {@code POST /api/portal/issues} (verify.md V-4): 64 KB, counted
+ * The size limit of the JSON body of {@code POST /api/portal/issues} (verify.md V-4): 256 KB, counted
  * as 2^10 bytes like the other sizes (tasks.md 6절). A body over it is 413 {@code PAYLOAD_TOO_LARGE}
  * and files nothing; the largest body the field limits allow (a title of 200 and a content of 10,000
  * characters) fits with room to spare.
@@ -37,7 +37,7 @@ import tools.jackson.databind.json.JsonMapper;
  */
 class IssueBodyLimitTest extends BareAppTest {
 
-    private static final int LIMIT = 64 * 1024;
+    private static final int LIMIT = 256 * 1024;
     private static final String PATH = "/api/portal/issues";
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -49,7 +49,7 @@ class IssueBodyLimitTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("V-4 a JSON body of exactly 64 KB with the longest title and content is filed")
+    @DisplayName("V-4 a JSON body of exactly 256 KB with the longest title and content is filed")
     void bodyAtTheLimitIsFiled() {
         Scene s = steps.scene();
         String title = longestTitle();
@@ -65,7 +65,7 @@ class IssueBodyLimitTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("V-4 a JSON body one byte over 64 KB is 413 PAYLOAD_TOO_LARGE and files no issue")
+    @DisplayName("V-4 a JSON body one byte over 256 KB is 413 PAYLOAD_TOO_LARGE and files no issue")
     void bodyOneByteOverIsRefused() {
         Scene s = steps.scene();
         String title = longestTitle();
@@ -93,7 +93,7 @@ class IssueBodyLimitTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("V-4 a JSON body over 64 KB sent without Content-Length (chunked) is 413 PAYLOAD_TOO_LARGE and files no issue")
+    @DisplayName("V-4 a JSON body over 256 KB sent without Content-Length (chunked) is 413 PAYLOAD_TOO_LARGE and files no issue")
     void chunkedBodyOverTheLimitIsRefused() {
         Scene s = steps.scene();
         String title = longestTitle();
