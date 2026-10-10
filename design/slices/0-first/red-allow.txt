@@ -127,3 +127,4 @@ src/components/Toast.test.tsx.Toast > Toast axe: 성공·안내에 접근성 위
 io.popdesk.ops.EndpointMappingsTest.apiMappingsAreTheContract | S0-AC-91 C-4 껍데기 컨트롤러가 계약 연산을 그대로 매핑한다. @Hidden·그룹 밖 엔드포인트를 더하면 빨개진다(s0-tfix-c가 직접 확인)
 io.popdesk.ops.EndpointMappingsTest.otherMappingsOnlyRead | S0-AC-91 C-4 껍데기에 /api/ 밖 쓰기 매핑이 없다
 io.popdesk.ops.EndpointMappingsTest.noPasswordResetPath | S0-AC-97 C-4 껍데기에 비밀번호 복구 경로가 없다
+io.popdesk.issue.IssueBodyLimitTest.bodyAtTheLimitIsFiled | V-4 상한 바로 아래(정확히 64KB) 정상 본문은 지금도 받는다. 상한을 넣은 뒤 경계가 한 바이트 안쪽으로 밀리지 않는지 지킨다
