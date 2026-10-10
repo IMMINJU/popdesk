@@ -25,6 +25,9 @@ class SendLoops implements SmartLifecycle {
 
     private static final Duration ROUND = Duration.ofSeconds(1);
 
+    /** The error kind of an attempt that ended with an exception inside popdesk. */
+    static final String INTERNAL_ERROR = "INTERNAL_ERROR";
+
     private final OutboxDelivery delivery;
     private final OutboxRepository outbox;
     private final Wakeups wakeups;
@@ -107,7 +110,7 @@ class SendLoops implements SmartLifecycle {
                     return;
                 }
                 OutboxRow row = next.get();
-                Attempt attempt = sender.attempt(row);
+                Attempt attempt = attempt(row);
                 switch (attempt.outcome()) {
                     case SENT -> {
                         delivery.sent(row);
@@ -127,6 +130,22 @@ class SendLoops implements SmartLifecycle {
                         }
                     }
                 }
+            }
+        }
+
+        /**
+         * One attempt. A sender that throws, for example on a database error while it reads what to send,
+         * counts as a failed attempt: without that the row would stay first in line with its attempts
+         * unchanged and hold up the whole channel. Only the exception's class is logged; its message can
+         * hold an address or a link.
+         */
+        private Attempt attempt(OutboxRow row) {
+            try {
+                return sender.attempt(row);
+            } catch (RuntimeException e) {
+                log.warn("Sending outbox row {} ({}) ended with {}.", row.id(), sender.channel(),
+                        e.getClass().getSimpleName());
+                return Attempt.failed(INTERNAL_ERROR);
             }
         }
     }
