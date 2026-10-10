@@ -71,11 +71,16 @@ final class RestoreCommand {
         }
     }
 
-    /** Base tables outside the system schemas. */
+    /**
+     * Tables outside the system schemas, counted in the catalog: {@code information_schema.tables} shows
+     * only the tables this user owns or has a privilege on, and another role's table makes the database
+     * not empty all the same. Schema names that begin with {@code pg_} belong to the system (the
+     * catalog, TOAST, other sessions' temporary tables).
+     */
     private static long tableCount(Connection c) throws SQLException {
-        try (Statement s = c.createStatement(); ResultSet rs = s.executeQuery("select count(*) from "
-                + "information_schema.tables where table_type = 'BASE TABLE' "
-                + "and table_schema not in ('pg_catalog', 'information_schema')")) {
+        try (Statement s = c.createStatement(); ResultSet rs = s.executeQuery("select count(*) from pg_class c "
+                + "join pg_namespace n on n.oid = c.relnamespace where c.relkind in ('r', 'p') "
+                + "and n.nspname <> 'information_schema' and n.nspname !~ '^pg_'")) {
             rs.next();
             return rs.getLong(1);
         }
