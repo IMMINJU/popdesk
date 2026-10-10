@@ -88,7 +88,7 @@ ef5fd913f8dd1a86c503b7dcd69a63d2ff809708d8755e6d4d7a3ecb89cf5815  server/src/tes
 a6a07b193e5f6578f0ca38d8d5ef980e0fc8ab64d2ab6b6376fc18848b84c83e  server/src/test/java/io/popdesk/e2e/support/Json.java
 8dae9fbd8051c4b9d8d3a11cb6c0e05ca710253a5203d22e6ecc17d719e81df9  server/src/test/java/io/popdesk/e2e/support/Multipart.java
 e1b3395553f0d8e0c1285a685972557535ee2c2fd581b7a835a02a7ebdd8e9c3  server/src/test/java/io/popdesk/e2e/support/Prometheus.java
-e6327e35c15f3fba477d5dc9d61d440058658f2fc99189e0ae10a3daaa6ee4cb  server/src/test/java/io/popdesk/e2e/support/Settings.java
+2aec114e9a9364c591fb0b15967926d281f4f59a6f168c97e2bfb0555369c45e  server/src/test/java/io/popdesk/e2e/support/Settings.java
 4a8f6cd248d5f8e5aa6fd4c246263925de48396cfd2f72bae786a7283207f0f9  server/src/test/java/io/popdesk/e2e/support/StandIns.java
 7ce32cb72f5243d23c3ba9ff144ec197ca16e8833cc2e894a4c5e1b50f88e229  server/src/test/java/io/popdesk/e2e/support/Steps.java
 ba63c49cf719dbab7a67e2d5e5d1e3b6f77040a201c88bfff30a68216aa728de  server/src/test/java/io/popdesk/e2e/support/TestHostsResolverProvider.java

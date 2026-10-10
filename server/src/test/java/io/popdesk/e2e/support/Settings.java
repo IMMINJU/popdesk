@@ -13,9 +13,17 @@ public final class Settings {
         return env("POPDESK_TEST_IMAGE", "popdesk:test");
     }
 
-    /** The popdesk checkout that holds the release Compose file. */
+    /**
+     * The popdesk checkout that holds the release Compose file: {@code POPDESK_REPO}, else the
+     * directory Maven runs in when it holds {@code deploy/}, else its parent ({@code server/..}).
+     */
     public static Path repo() {
-        return Path.of(env("POPDESK_REPO", "C:\\Users\\minju\\popdesk"));
+        String set = System.getenv("POPDESK_REPO");
+        if (set != null && !set.isBlank()) {
+            return Path.of(set);
+        }
+        Path dir = Path.of("").toAbsolutePath();
+        return Files.isDirectory(dir.resolve("deploy")) ? dir : dir.getParent();
     }
 
     /** The release Compose file, used as it is. Only the image is replaced, by an override file. */
