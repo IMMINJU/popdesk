@@ -1,5 +1,6 @@
 package io.popdesk.notification.outbox;
 
+import io.popdesk.InstallationLocale;
 import io.popdesk.PublicAddress;
 import io.popdesk.PublicAddress.App;
 import io.popdesk.notification.IssueFacts;
@@ -38,12 +39,14 @@ class WebhookSender implements Sender {
     private final IssueFacts issues;
     private final PublicAddress address;
     private final Environment environment;
+    private final InstallationLocale locale;
     private volatile HttpClient client;
 
-    WebhookSender(IssueFacts issues, PublicAddress address, Environment environment) {
+    WebhookSender(IssueFacts issues, PublicAddress address, Environment environment, InstallationLocale locale) {
         this.issues = issues;
         this.address = address;
         this.environment = environment;
+        this.locale = locale;
     }
 
     @Override
@@ -91,7 +94,7 @@ class WebhookSender implements Sender {
     String text(WebhookKind kind, Issue issue) {
         String title = MailText.oneLine(issue.title());
         String link = address.origin(App.CONSOLE) + "/issues/" + issue.key();
-        boolean korean = MailText.korean(environment.getProperty("POPDESK_LOCALE"));
+        boolean korean = MailText.korean(locale.language());
         String what = switch (kind) {
             case ISSUE_CREATED -> korean ? "새 문의" : "New issue";
             case CUSTOMER_COMMENT -> korean ? "고객 댓글" : "Customer comment on";

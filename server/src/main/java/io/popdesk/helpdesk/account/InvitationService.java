@@ -2,6 +2,7 @@ package io.popdesk.helpdesk.account;
 
 import io.popdesk.ApiError;
 import io.popdesk.ApiException;
+import io.popdesk.InstallationLocale;
 import io.popdesk.PageRequest;
 import io.popdesk.Paged;
 import io.popdesk.PublicAddress;
@@ -38,7 +39,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -81,7 +81,7 @@ public class InvitationService implements InvitationLinks {
 
     InvitationService(AccountRepository accounts, CompanyRepository companies, MailQueue mail, AuditLog audit,
             PasswordEncoder passwords, PublicAddress address, Transactions transactions, Clock clock,
-            Environment environment) {
+            InstallationLocale locale) {
         this.accounts = accounts;
         this.companies = companies;
         this.mail = mail;
@@ -90,8 +90,7 @@ public class InvitationService implements InvitationLinks {
         this.address = address;
         this.transactions = transactions;
         this.clock = clock;
-        String configured = environment.getProperty("POPDESK_LOCALE");
-        this.locale = configured == null || configured.isBlank() ? "en" : configured.strip();
+        this.locale = locale.language();
     }
 
     /**

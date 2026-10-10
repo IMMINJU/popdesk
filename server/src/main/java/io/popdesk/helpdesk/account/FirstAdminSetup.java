@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.account;
 
+import io.popdesk.InstallationLocale;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -21,13 +22,16 @@ import org.springframework.transaction.TransactionException;
  * the app does not stop: it logs what to set, readiness stays down, and business requests get 503
  * {@code SETUP_REQUIRED} (S0-AC-02). The process keeps running so a container is not restarted again
  * and again. With an admin in the database the two values are not read at all (S0-AC-03).
+ *
+ * <p>A {@code POPDESK_LOCALE} that is not a language popdesk has ({@link InstallationLocale}) ends the
+ * same way, whether the database has an admin or not: accounts and messages would get a language no
+ * text exists for.
  */
 @Component
 public class FirstAdminSetup implements SmartInitializingSingleton {
 
     static final String EMAIL_KEY = "POPDESK_ADMIN_EMAIL";
     static final String PASSWORD_KEY = "POPDESK_ADMIN_PASSWORD";
-    static final String LOCALE_KEY = "POPDESK_LOCALE";
 
     /** The first admin's display name; there is no setting for it. The admin can change it later. */
     static final String ADMIN_NAME = "Admin";
@@ -37,31 +41,42 @@ public class FirstAdminSetup implements SmartInitializingSingleton {
     private final FirstAdminService service;
     private final PasswordEncoder passwords;
     private final Environment environment;
+    private final InstallationLocale locale;
 
     private volatile boolean setupRequired = true;
 
-    FirstAdminSetup(FirstAdminService service, PasswordEncoder passwords, Environment environment) {
+    FirstAdminSetup(FirstAdminService service, PasswordEncoder passwords, Environment environment,
+            InstallationLocale locale) {
         this.service = service;
         this.passwords = passwords;
         this.environment = environment;
+        this.locale = locale;
     }
 
-    /** Whether the app still waits for a first admin and takes no business requests. */
+    /** Whether the app still waits for a first admin or a valid language and takes no business requests. */
     public boolean setupRequired() {
         return setupRequired;
     }
 
     @Override
     public void afterSingletonsInstantiated() {
+        boolean adminExists;
         try {
             service.createTeamIfMissing();
-            if (service.adminExists()) {
-                setupRequired = false;
-                return;
-            }
+            adminExists = service.adminExists();
         } catch (DataAccessException | TransactionException e) {
             log.error("Could not read or create team 1 ({}). popdesk takes no requests until it is restarted with a "
                     + "working database.", e.getClass().getSimpleName());
+            return;
+        }
+        if (!locale.valid()) {
+            log.error("{} is empty or not a language popdesk has: set it to en or ko, or leave it out for en. "
+                    + "popdesk takes no requests and its readiness stays down until this is set and popdesk is "
+                    + "restarted.", InstallationLocale.KEY);
+            return;
+        }
+        if (adminExists) {
+            setupRequired = false;
             return;
         }
         Optional<String> problem = problem();
@@ -73,7 +88,7 @@ public class FirstAdminSetup implements SmartInitializingSingleton {
         String email = environment.getProperty(EMAIL_KEY).strip();
         String hash = passwords.encode(environment.getProperty(PASSWORD_KEY));
         try {
-            service.createAdminIfNone(email, ADMIN_NAME, hash, environment.getProperty(LOCALE_KEY, "en"));
+            service.createAdminIfNone(email, ADMIN_NAME, hash, locale.language());
             setupRequired = false;
             log.info("Created the first admin from {}.", EMAIL_KEY);
         } catch (DataAccessException | TransactionException e) {

@@ -24,9 +24,11 @@ class StartLog {
     private static final Logger log = LoggerFactory.getLogger(StartLog.class);
 
     private final ConfigurableEnvironment environment;
+    private final InstallationLocale locale;
 
-    StartLog(ConfigurableEnvironment environment) {
+    StartLog(ConfigurableEnvironment environment, InstallationLocale locale) {
         this.environment = environment;
+        this.locale = locale;
     }
 
     @EventListener(ApplicationStartedEvent.class)
@@ -36,12 +38,13 @@ class StartLog {
                     + "against docs/operate/configuration.md.", key);
         }
         log.info("popdesk settings: portal host {}, console host {}, public scheme {} and port {}, trusted proxies {}, "
-                        + "mail {}, webhook {}, storage {}",
+                        + "locale {}, mail {}, webhook {}, storage {}",
                 value("POPDESK_PORTAL_HOST", "portal.localhost"),
                 value("POPDESK_CONSOLE_HOST", "console.localhost"),
                 value("POPDESK_PUBLIC_SCHEME", "http"),
                 value("POPDESK_PUBLIC_PORT", "8080"),
                 value("POPDESK_TRUSTED_PROXIES", DEFAULT_TRUSTED_PROXIES),
+                locale.valid() ? locale.language() : "not valid",
                 on("SMTP_HOST"),
                 on("NOTIFY_WEBHOOK_URL"),
                 value("POPDESK_STORAGE", "db"));

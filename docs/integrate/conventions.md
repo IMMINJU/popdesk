@@ -104,7 +104,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 500 | `INTERNAL_ERROR` | An unexpected server error |
 | 501 | `NOT_IMPLEMENTED` | The endpoint is in the contract but not built yet. Only before a slice is finished; never in a release |
 | 503 | `SERVER_BUSY` | 16 uploads, or 16 downloads, are already running. `Retry-After` says when to try again |
-| 503 | `SETUP_REQUIRED` | The first admin could not be created, so the app takes no requests yet. The log says what to set |
+| 503 | `SETUP_REQUIRED` | The first admin could not be created, or `POPDESK_LOCALE` is not a value popdesk takes, so the app takes no requests yet. The log says what to set |
 
 A request to a host that is neither the portal host nor the console host gets 404 with a plain text note, not this body.
 

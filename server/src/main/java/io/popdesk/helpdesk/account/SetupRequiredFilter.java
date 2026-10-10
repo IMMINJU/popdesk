@@ -11,16 +11,16 @@ import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * While there is no first admin, every API request gets 503 {@code SETUP_REQUIRED} (conventions,
- * S0-AC-02). The log says what to set.
+ * While there is no first admin, or {@code POPDESK_LOCALE} is not valid, every API request gets 503
+ * {@code SETUP_REQUIRED} (conventions, S0-AC-02). The log says what to set.
  *
  * <p>Not a bean: the security filter chain runs it after the header writer, so the 503 carries the
  * security headers (S0-AC-16).
  */
 class SetupRequiredFilter extends OncePerRequestFilter {
 
-    static final String BODY = "{\"code\":\"SETUP_REQUIRED\",\"message\":\"popdesk is not set up yet: the first admin "
-            + "could not be created. The server log says what to set.\"}";
+    static final String BODY = "{\"code\":\"SETUP_REQUIRED\",\"message\":\"popdesk is not set up yet: a setting is "
+            + "missing or not valid. The server log says what to set.\"}";
 
     // Looked up on the first request: the filter is made while the web server is built, and taking the
     // setup then would run the migrations inside that step.
