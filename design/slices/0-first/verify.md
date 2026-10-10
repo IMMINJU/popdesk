@@ -110,3 +110,4 @@ V-1~V-15를 합친 `main`의 이미지를 릴리스 compose와 `compose.dev.yml`
 - 화면 `assets/**` 캐시: 1번 묶음으로 미룬다. 지금은 모든 화면 응답이 `no-store`라 느릴 뿐 틀린 동작은 없고, 바꾸려면 보안 머리글 기준(S0-AC)을 고쳐야 한다.
 - `MigrationStart`의 Flyway 내부 클래스(`FlywayMigrateException`): 그대로 둔다. Flyway를 올리다 이름이 바뀌면 컴파일이 깨져 바로 드러난다.
 - 이미지는 ghcr에 올리지 않았다(사람이 정함). 경위와 올릴 때 할 일은 `process.md` D에 있다.
+- trivy: 다이제스트를 고정한 뒤 이 PC에서 만든 이미지(amd64)에서 HIGH·CRITICAL 0건이다(JSON 보고 전체를 셈).
