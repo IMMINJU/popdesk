@@ -99,7 +99,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 404 | `NOT_FOUND` | The target does not exist or the caller may not see it (`COM-1`). Also a path the host does not serve |
 | 409 | `COMPANY_CODE_TAKEN` | Another customer company has this code |
 | 409 | `EMAIL_TAKEN` | An account has this email |
-| 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit. A proxy in front may answer 413 first with its own body |
+| 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit, or the JSON of a new issue (the body, or the `issue` part of a multipart request) is over 256 KB (262,144 bytes). A proxy in front may answer 413 first with its own body |
 | 429 | `RATE_LIMITED` | Over a rate limit (`COM-8`). `Retry-After` says when to try again |
 | 500 | `INTERNAL_ERROR` | An unexpected server error |
 | 501 | `NOT_IMPLEMENTED` | The endpoint is in the contract but not built yet. Only before a slice is finished; never in a release |
