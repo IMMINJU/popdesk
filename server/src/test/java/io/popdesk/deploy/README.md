@@ -31,7 +31,7 @@ Needs Docker with Compose v2.24 or later (the override file uses `!override` and
 | Observability Compose file | `deploy/compose.obs.yml`, dashboards in `deploy/grafana/*.json` |
 | Commands | `popdesk` on the `PATH` inside the app container. Restore runs in a new container, `docker compose run --rm app popdesk restore <file>`; dumps move with `docker compose cp` |
 | JVM options | The image sets the garbage collector in its own JVM options (`-XX:+Use...GC` in its environment, entry point, or the `java` command line). It launches the app with the `java` launcher and leaves `JDK_JAVA_OPTIONS` to the operator. The tests set the heap (`-Xmx384m`) and the trust store for the mail server this way, and change nothing else about the JVM |
-| Database settings | The release file reads `POPDESK_DB_PASSWORD` from the environment (`${POPDESK_DB_PASSWORD}`), as an operator's `.env` gives it |
+| Database settings | The release file reads `POPDESK_DB_PASSWORD` from the environment (`${POPDESK_DB_PASSWORD:?…}`, so Compose stops without it), as an operator's `.env` gives it |
 | Migrations | In Flyway's default location `classpath:db/migration`, with versions below 999 |
 
 `Stack` starts a project from these files plus a generated override that only makes it safe to run next to other tests: the image under test, random host ports (and `app` 8081 and `db` 5432 published for the test), volume names with the project name in front, and the first admin. Everything else comes from the repository's files.

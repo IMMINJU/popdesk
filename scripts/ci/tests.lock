@@ -1,5 +1,6 @@
 # sha256 of each locked test file (CRLF read as LF). Written by scripts/ci/tests-lock.py write.
 # The implementing side must not change these files or this list (design/process.md C).
+45af478527eba0e8179d6982f2d2e4cb3524a7a3caec6d64afe35cbcf1d7fca0  server/src/test/java/io/popdesk/InstallationLocaleTest.java
 246e4f66d9e6a5e294082a061379d3c2b6a5ed1a75ba12ad7f2245a7aa05ca8e  server/src/test/java/io/popdesk/ModulesTest.java
 9bcbeea8c05904d81b9d5445179481cd35bfad97b901bf552d7c308d8c6ad4c1  server/src/test/java/io/popdesk/OpenApiFilesTest.java
 31bff945bf6a6e6d875dae587f1f3d6d23c94b7c4858a0f1d8cd5f2dfa9947c7  server/src/test/java/io/popdesk/PopdeskApplicationTest.java
@@ -25,6 +26,7 @@ ff78ecdae4d3b0620c55a6f776eb74492bafab25b26f8ac3c2b11c1ee059c462  server/src/tes
 024c246d1acaafa921d640202e00e301444f54051713f7264ce2312d1cedc7d9  server/src/test/java/io/popdesk/attachment/StuckAttachments.java
 fbecd2494f12d0d9a913279dcf2ffc9d6f8050583f04397bb56d30e881eae9ad  server/src/test/java/io/popdesk/auth/AccountStatus.java
 dfcc7123513a2e8df898ddc2fbce200643595f54657c1f019a0471a35c687a4d  server/src/test/java/io/popdesk/auth/AuthChecks.java
+6db83d29562046051c398b18dadcd1800adabceacebe3d7a1fbbf36cace5ce08  server/src/test/java/io/popdesk/auth/EarlierPasswordHashTest.java
 a18d6abcfb84f5aa07b897ca2af807fbf5ed9a0641194b14c7d365b243c4c76a  server/src/test/java/io/popdesk/auth/FirstAdminPasswordNineCharactersTest.java
 ece416b2ecec8783f975fe218e5da786c98dea5c154fa158ec30b5bd2a01d916  server/src/test/java/io/popdesk/auth/FirstAdminPasswordOnlyWhitespaceTest.java
 ec34f966e99ad4a6d98261e15773e52edc3ba7ed53a9f1f84325b8ab1989c53e  server/src/test/java/io/popdesk/auth/FirstAdminPasswordRejectedBase.java
@@ -68,7 +70,7 @@ b96ef4f11aaaf1575783b52c3622dc9305e0f1b132880d4d6a1ca5338f18afe3  server/src/tes
 374c899d367ae1415ca636e8dc3694fd33c30955f55ea33e4b8af06495ece66d  server/src/test/java/io/popdesk/deploy/Metrics.java
 95acb034f998b7053ab51304925cf97da264248aed9291367dbba2a93a29c540  server/src/test/java/io/popdesk/deploy/ObservabilityComposeTest.java
 8b048e0b8d4a6b01a91945c725be7e31fb04922fbf78d6f6053fb332e82ae79d  server/src/test/java/io/popdesk/deploy/Once.java
-e60e318a72a209d7949581a3f95d3190cba835d0a2284d92d864714b83d1217e  server/src/test/java/io/popdesk/deploy/README.md
+355b469d309afa9fe458361675423e2e9fc55c383258b1b0f0faed0b8bcbd660  server/src/test/java/io/popdesk/deploy/README.md
 11e3f952278fc36a2e5762b7dbe4a94dadfa9f00b9d0fa99e27190480c604aff  server/src/test/java/io/popdesk/deploy/ReleaseComposeDatabaseTest.java
 6104a1dfbe6749eddc0d36317b7d2afe34c94ff4d52d217fcd225f3a3745b95b  server/src/test/java/io/popdesk/deploy/ReleaseComposeTest.java
 5332fd545b451a14c604255d79a6be54214456ba2a9f30b8b0b7cd5b7ea26942  server/src/test/java/io/popdesk/deploy/Repo.java

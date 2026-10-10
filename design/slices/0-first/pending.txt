@@ -3,11 +3,3 @@
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
 # 서버 줄은 구현 탭(tasks.md 3절)마다 묶었다. 탭이 병합되면 그 묶음을 지운다.
-
-# C-10 고칠 것 V-4·5·6·15(verify.md 6절): s0-v-fix-i-server가 병합되면 지운다.
-# deploy 태그 둘(ReleaseComposeDatabaseTest, ResetPasswordHashTest)은 이미지 잡이 이 파일을 따르지 않아 그때까지 실패한다.
-server io/popdesk/issue/IssueBodyLimitTest.java
-server io/popdesk/notify/SendLoopBrokenRowTest.java
-server io/popdesk/start/LocaleEmptyTest.java
-server io/popdesk/start/LocaleWithRegionTest.java
-server io/popdesk/auth/PasswordHashParametersTest.java
