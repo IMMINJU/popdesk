@@ -30,6 +30,9 @@ import org.springframework.stereotype.Component;
  * <p>If the connection is cut, the lock is gone with it. {@link #held()} turns false until a check,
  * once a second, has taken it again on a new connection. Send loops and scheduled jobs run only while
  * {@link #held()} is true.
+ *
+ * <p>While the lock cannot be taken again, the reason is logged when it changes and then once a
+ * minute, not on every check.
  */
 @Component
 public class InstanceLock implements DisposableBean {
@@ -48,6 +51,12 @@ public class InstanceLock implements DisposableBean {
 
     private static final String LOCK_TIMEOUT = "55P03";
 
+    /** How often the same reason for not having the lock is logged again. */
+    private static final long REPEAT_NANOS = Duration.ofMinutes(1).toNanos();
+
+    /** Why a check could not take the lock again. */
+    private enum Waiting { OTHER_INSTANCE, NO_CONNECTION }
+
     private final JdbcConnectionDetails database;
     private final Duration wait;
     private final ScheduledExecutorService watch = Executors.newSingleThreadScheduledExecutor(
@@ -55,6 +64,10 @@ public class InstanceLock implements DisposableBean {
 
     private volatile Connection connection;
     private volatile boolean held;
+
+    // Read and written by the watch thread only.
+    private Waiting waiting;
+    private long waitingLoggedAt;
 
     InstanceLock(JdbcConnectionDetails database, Environment environment) {
         this.database = database;
@@ -131,15 +144,32 @@ public class InstanceLock implements DisposableBean {
             if (lockWithin(again, Duration.ZERO)) {
                 connection = again;
                 held = true;
+                waiting = null;
                 log.info("Took the single-instance lock again.");
             } else {
                 closeQuietly(again);
-                log.warn("Could not take the single-instance lock again: another popdesk instance holds it.");
+                if (logNow(Waiting.OTHER_INSTANCE)) {
+                    log.warn("Could not take the single-instance lock again: another popdesk instance holds it. "
+                            + "Trying every second; this line comes again once a minute.");
+                }
             }
         } catch (SQLException | RuntimeException e) {
-            log.warn("Could not take the single-instance lock again ({}); trying again in a second.",
-                    e.getClass().getSimpleName());
+            if (logNow(Waiting.NO_CONNECTION)) {
+                log.warn("Could not take the single-instance lock again ({}). Trying every second; this line comes "
+                        + "again once a minute.", e.getClass().getSimpleName());
+            }
         }
+    }
+
+    /** Whether to log this reason now: it differs from the last one, or that one was logged a minute ago. */
+    private boolean logNow(Waiting reason) {
+        long now = System.nanoTime();
+        if (reason == waiting && now - waitingLoggedAt < REPEAT_NANOS) {
+            return false;
+        }
+        waiting = reason;
+        waitingLoggedAt = now;
+        return true;
     }
 
     /** Blocks up to {@code wait} for the lock. With no wait it only tries once. */
