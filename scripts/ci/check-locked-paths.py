@@ -7,8 +7,12 @@ Usage: check-locked-paths.py --base REF [--head REF] [--role impl|tests|any]
                 contract files, the gates, or merged migrations.
   --role tests  Test-writing side. May touch only test paths, the lock file, and the
                 slice's questions.md and red.md.
-  --role any    CI. Merged migrations stay as they are, and one branch must not change both
+  --role any    CI. Merged migrations stay as they are, and one commit must not change both
                 locked tests and production code (the side that writes tests does not implement).
+                Judged commit by commit: a push to main carries the commits of several tabs, and
+                the main session's commit that locks new tests, next to the implementing commits.
+                Splitting one change into two commits gets past this; the hash list and
+                --role impl before the merge are what catch that.
 
 Run from the repository root. Compares the merge base of REF and HEAD with HEAD.
 Changes to build or dependency files are printed as "needs a human look" but do not fail.
@@ -67,14 +71,34 @@ def base_lock(base):
         return {}
 
 
+def commits(base, head):
+    """Commits after base up to head, oldest first, without merges."""
+    return git("rev-list", "--reverse", "--no-merges", f"{base}..{head}").split()
+
+
+def commit_paths(commit):
+    """Paths one commit changed; a rename yields both the old and the new path."""
+    out = git("diff-tree", "--no-commit-id", "--name-status", "-r", "-M", "--root", commit)
+    paths = []
+    for line in out.splitlines():
+        parts = line.split("	")
+        paths.extend(parts[1:])
+    return paths
+
+
 def base_has(base, path):
     return subprocess.run(["git", "cat-file", "-e", f"{base}:{path}"], capture_output=True).returncode == 0
+
+
+# Under web/ but not the app: test tooling and its settings, and files that only pin dependencies.
+# The dependency files still get the "needs a human look" note.
+WEB_TOOLING_GLOBS = TEST_CONFIG_GLOBS + DEPENDENCY_GLOBS + ["web/patches/**", "**/.gitignore"]
 
 
 def is_production(path):
     return path.startswith("server/src/main/") or (
         path.startswith("web/") and not is_test(path) and not matches(path, GENERATED_GLOBS)
-        and not path.endswith(".stories.tsx")
+        and not matches(path, WEB_TOOLING_GLOBS) and not path.endswith(".stories.tsx")
     )
 
 
@@ -112,13 +136,17 @@ def main():
                 errors.append(f"test-writing side changed a file outside the test paths: {path}")
 
     if args.role == "any":
-        touched_locked = [p for _, p in changed if p in locked or p == LOCK_FILE]
-        touched_prod = [p for _, p in changed if is_production(p)]
-        if touched_locked and touched_prod:
-            errors.append(
-                "one branch changed both locked tests and production code; the side that writes tests "
-                f"does not implement. Locked: {touched_locked[:3]} Production: {touched_prod[:3]}"
-            )
+        for commit in commits(merge_base, args.head):
+            paths = commit_paths(commit)
+            # The list as it was before this commit, so tests locked earlier in the same push count.
+            before = base_lock(f"{commit}^")
+            touched_locked = [p for p in paths if p in before or p == LOCK_FILE]
+            touched_prod = [p for p in paths if is_production(p)]
+            if touched_locked and touched_prod:
+                errors.append(
+                    f"commit {commit[:7]} changed both locked tests and production code; the side that "
+                    f"writes tests does not implement. Locked: {touched_locked[:3]} Production: {touched_prod[:3]}"
+                )
 
     for n in notes:
         print(f"NOTE   {n}")
