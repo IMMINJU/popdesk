@@ -17,10 +17,11 @@
 
 ## 4. 변이 테스트
 
-- 웹 Stryker: 탭 `s0-v-mut-web`. 결과는 그 탭 보고(`tasks\s0-v-mut-web-report.md`)를 합칠 때 이 절에 옮긴다.
-  - Stryker vitest 러너 10.0.0이 vitest 5의 테스트 이름 형식과 맞지 않아 모든 변이가 테스트 0개로 Survived가 됐다. `pnpm patch`로 고쳤다.
-  - ui: 48.37% → 81.25%, 동작 테스트 18파일. 마크다운 링크 검사 정규식의 `^`를 빼도 잡는 테스트가 없었다(운영 코드는 맞았다). 지금은 잡는다.
-  - console·portal은 화면 테스트가 무거워 한 패키지에 12시간 넘게 걸린다. 판단이 걸린 `src/app`의 여섯 파일(sessionContext, result, messages, attachments, paging, navigate)만 돌리고 나머지는 목록으로 남긴다.
+- 웹 Stryker(탭 `s0-v-mut-web`, 보고 `tasks\s0-v-mut-web-report.md`): 동작 테스트 24파일을 더했다(새 파일만, 잠금).
+  - Stryker vitest 러너 10.0.0이 vitest 5의 테스트 이름 형식과 맞지 않아 모든 변이가 테스트 0개로 Survived가 됐다. `pnpm patch`로 고쳤다(`web/patches/`, 업스트림이 고치면 지운다).
+  - ui 전체 48.37% → 81.25%. C-4 껍데기 때문에 처음부터 통과를 허용한 컴포넌트를 모두 포함한다. 파일별 점수는 탭 보고에 있다.
+  - console 56.90% → 96.90%, portal 57.26% → 96.71%. 판단이 걸린 `src/app` 여섯 파일만(sessionContext, result, messages, attachments, paging, navigate). 화면 파일은 한 패키지에 12시간 넘게 걸려 미뤘다.
+  - 운영 코드는 맞고 테스트가 빠졌던 곳: 마크다운 링크 허용 목록·`<주소>`·맨 주소 정규식의 `^`, `safeNext`의 제어 문자 검사와 `/login`·`/invite`로 되돌아가기 막기. 지금은 테스트가 잡는다.
 - 서버 PIT: 웹이 끝난 뒤 돈다.
 
 ## 5. 보안 검사 도구는 메모리 부족으로 못 돌렸다
