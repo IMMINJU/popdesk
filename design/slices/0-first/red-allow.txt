@@ -128,3 +128,11 @@ io.popdesk.ops.EndpointMappingsTest.apiMappingsAreTheContract | S0-AC-91 C-4 껍
 io.popdesk.ops.EndpointMappingsTest.otherMappingsOnlyRead | S0-AC-91 C-4 껍데기에 /api/ 밖 쓰기 매핑이 없다
 io.popdesk.ops.EndpointMappingsTest.noPasswordResetPath | S0-AC-97 C-4 껍데기에 비밀번호 복구 경로가 없다
 io.popdesk.issue.IssueBodyLimitTest.bodyAtTheLimitIsFiled | V-4 상한 바로 아래(정확히 256KB) 정상 본문은 지금도 받는다. 상한을 넣은 뒤 경계가 한 바이트 안쪽으로 밀리지 않는지 지킨다
+io.popdesk.start.TrustedProxiesNotAnAddressTest.dotColonIsRefused | V-7 추측이 틀렸다. JDK는 ':'가 든 값을 IPv6 리터럴로만 읽어 이름 조회 없이 UnknownHostException을 내고, 앱은 키 이름을 적은 예외로 시작을 멈춘다
+io.popdesk.attachment.FilingManyFilesTest.tenFiles | V-13 추측이 틀렸다. Spring Boot 4.1.1의 server.tomcat.max-part-count 기본값이 50이라 파일 10개(11파트)는 처음부터 201이다
+io.popdesk.attachment.FilingManyFilesTest.thirtyFiles | V-13 같은 까닭. 파일 30개(31파트)도 50파트 안이다
+io.popdesk.attachment.FilingManyFilesTest.twoHundredFiles | V-13 50파트를 넘는 요청은 이미 413 PAYLOAD_TOO_LARGE다(MaxUploadSizeExceededException 처리). 500이 아니다
+io.popdesk.ops.DatabaseErrorDetailLogTest.detailOfUnexpectedError | V-14 요청 경로는 ApiExceptionHandler가 예외 클래스와 SQL state만 적어 DETAIL이 처음부터 로그에 없다
+io.popdesk.ops.DatabaseErrorDetailLogTest.detailOfUniqueViolation | V-14 같은 까닭. 409 경로도 예외 메시지를 로그에 적지 않는다
+io.popdesk.attachment.LongFileNameTest.filingWithAsciiName | V-16 견줄 사례. ASCII 255자 이름은 파트 머리글이 512B 안이라 처음부터 201이다
+io.popdesk.attachment.LongFileNameTest.uploadWithAsciiName | V-16 같은 까닭
