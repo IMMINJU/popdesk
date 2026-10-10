@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.system;
 
 import io.popdesk.helpdesk.Role;
+import io.popdesk.helpdesk.account.PasswordHashes;
 import io.popdesk.helpdesk.account.PasswordRules;
 import io.popdesk.helpdesk.system.PopdeskCommand.Failed;
 import java.io.Console;
@@ -13,7 +14,6 @@ import java.time.Clock;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
-import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 
 /**
  * {@code popdesk admin reset-password <email>} (ACCT-6, S0-AC-97): for when no admin can sign in. It
@@ -59,7 +59,7 @@ final class ResetPasswordCommand {
                         + PasswordRules.MIN_LENGTH + " to " + PasswordRules.MAX_LENGTH
                         + " characters, not only spaces, and not the email. Nothing was changed.");
             }
-            String hash = Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8().encode(password);
+            String hash = PasswordHashes.encoder().encode(password);
             save(c, admin, hash);
             System.out.println("The password of " + admin.email() + " is set. The account is unlocked and its "
                     + "sessions have ended.");
