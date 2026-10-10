@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -118,7 +117,7 @@ class PortalAttachmentController {
     @GetMapping("/{id}")
     ResponseEntity<Resource> downloadAttachment(
             @PathVariable String key,
-            @PathVariable UUID id,
+            @Parameter(schema = @Schema(type = "string", format = "uuid")) @PathVariable String id,
             @RequestHeader(name = HttpHeaders.RANGE, required = false) @Nullable String range) {
         AttachmentService.Download download = attachments.download(CurrentAccount.get().viewer(), key, id);
         return ResponseEntity.ok().headers(AttachmentHeaders.of(download.attachment())).body(download.contents());
@@ -130,7 +129,9 @@ class PortalAttachmentController {
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @RequestMapping(path = "/{id}", method = RequestMethod.HEAD)
-    ResponseEntity<Void> headAttachment(@PathVariable String key, @PathVariable UUID id) {
+    ResponseEntity<Void> headAttachment(
+            @PathVariable String key,
+            @Parameter(schema = @Schema(type = "string", format = "uuid")) @PathVariable String id) {
         AttachmentRow attachment = attachments.get(CurrentAccount.get().viewer(), key, id);
         return ResponseEntity.ok().headers(AttachmentHeaders.of(attachment))
                 .contentLength(attachment.size()).build();
@@ -145,7 +146,9 @@ class PortalAttachmentController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void deleteAttachment(@PathVariable String key, @PathVariable UUID id) {
+    void deleteAttachment(
+            @PathVariable String key,
+            @Parameter(schema = @Schema(type = "string", format = "uuid")) @PathVariable String id) {
         attachments.delete(CurrentAccount.get().viewer(), key, id);
     }
 }

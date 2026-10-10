@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -222,16 +223,33 @@ public class AttachmentService {
                 attachments.count(viewer, issue.id()));
     }
 
-    /** The stored attachment, if the viewer may see it; else 404 for every reason alike (S0-AC-102). */
-    public AttachmentRow get(Viewer viewer, String key, UUID id) {
-        return attachments.find(viewer, issue(viewer, key).id(), id).orElseThrow(ApiException::notFound);
+    /**
+     * The stored attachment, if the viewer may see it; else 404 for every reason alike (S0-AC-102). The
+     * ID comes as the path had it: one that is not a UUID is an ID no attachment has.
+     */
+    public AttachmentRow get(Viewer viewer, String key, String id) {
+        UUID attachmentId = attachmentId(id).orElseThrow(ApiException::notFound);
+        return attachments.find(viewer, issue(viewer, key).id(), attachmentId).orElseThrow(ApiException::notFound);
+    }
+
+    /** The UUID that is written exactly as {@code id}, in either letter case; no other spelling of it counts. */
+    static Optional<UUID> attachmentId(String id) {
+        if (id == null || id.length() != 36) {
+            return Optional.empty();
+        }
+        try {
+            UUID parsed = UUID.fromString(id);
+            return parsed.toString().equalsIgnoreCase(id) ? Optional.of(parsed) : Optional.empty();
+        } catch (IllegalArgumentException e) {
+            return Optional.empty();
+        }
     }
 
     /**
      * The attachment and its contents after the scope check of {@link #get}. The contents are read in
      * pieces of 1 MB while the response is written, each piece its own statement (S0-AC-59).
      */
-    public Download download(Viewer viewer, String key, UUID id) {
+    public Download download(Viewer viewer, String key, String id) {
         AttachmentRow attachment = get(viewer, key, id);
         return new Download(attachment, new AttachmentContents(attachment.size(),
                 (offset, length) -> storage.read(attachment.id(), offset, length)));
@@ -244,8 +262,9 @@ public class AttachmentService {
      * committed, then the file goes and the row becomes {@code purged}. When removing the file fails the
      * delete still succeeds; the row stays {@code purging} and the cleanup finishes it.
      */
-    public void delete(Viewer viewer, String key, UUID id) {
-        AttachmentRow attachment = get(viewer, key, id);
+    public void delete(Viewer viewer, String key, String attachmentId) {
+        AttachmentRow attachment = get(viewer, key, attachmentId);
+        UUID id = attachment.id();
         if (!viewer.admin() && attachment.uploadedById() != viewer.accountId()) {
             throw ApiException.forbidden();
         }
