@@ -25,6 +25,7 @@ d07cb5f6c2da5761fbdde5b10fdc810a95b751ed064d45b7005371c24e28d10b  server/src/tes
 2bc01923db73aaef0d290ba35aac114477c5c6fcf37f58744d68ffa56fb34e9a  server/src/test/java/io/popdesk/attachment/FilingManyFilesTest.java
 ff78ecdae4d3b0620c55a6f776eb74492bafab25b26f8ac3c2b11c1ee059c462  server/src/test/java/io/popdesk/attachment/HeldRequest.java
 3a7ea96a0bb08b02762c013ee4c702f02404e9eeb7282c33e819b55142525831  server/src/test/java/io/popdesk/attachment/Hold.java
+4f5fd546c9817c710ae2cfbc4db1bcaa3374af6000af985222800a910d6cbbdf  server/src/test/java/io/popdesk/attachment/LongFileNameTest.java
 9a0c75ddaa108beadd4c405c59f1a307004db460a12203746e396566dfeef824  server/src/test/java/io/popdesk/attachment/StatementLog.java
 024c246d1acaafa921d640202e00e301444f54051713f7264ce2312d1cedc7d9  server/src/test/java/io/popdesk/attachment/StuckAttachments.java
 fbecd2494f12d0d9a913279dcf2ffc9d6f8050583f04397bb56d30e881eae9ad  server/src/test/java/io/popdesk/auth/AccountStatus.java
