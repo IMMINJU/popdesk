@@ -4,7 +4,7 @@
 #   docker compose -f compose.yml up -d
 #
 # Settings come from the environment or from an .env file next to this file: POPDESK_DB_PASSWORD
-# (required, no default), and the keys of configuration.md, for example POPDESK_ADMIN_EMAIL and
+# (required, no default; Compose stops without it), and the keys of configuration.md, for example POPDESK_ADMIN_EMAIL and
 # POPDESK_ADMIN_PASSWORD on the first start. Keys you do not set are not passed to the app.
 
 services:
@@ -21,7 +21,7 @@ services:
     environment:
       POPDESK_DB_URL: jdbc:postgresql://db:5432/popdesk?logServerErrorDetail=false
       POPDESK_DB_USER: popdesk
-      POPDESK_DB_PASSWORD: ${POPDESK_DB_PASSWORD}
+      POPDESK_DB_PASSWORD: ${POPDESK_DB_PASSWORD:?Set POPDESK_DB_PASSWORD, for example in an .env file next to this file}
       # Passed on only when set.
       POPDESK_ADMIN_EMAIL:
       POPDESK_ADMIN_PASSWORD:
@@ -73,11 +73,13 @@ services:
     environment:
       POSTGRES_USER: popdesk
       POSTGRES_DB: popdesk
-      POSTGRES_PASSWORD: ${POPDESK_DB_PASSWORD}
+      POSTGRES_PASSWORD: ${POPDESK_DB_PASSWORD:?Set POPDESK_DB_PASSWORD, for example in an .env file next to this file}
     volumes:
       - db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "popdesk", "-d", "popdesk"]
+      # Over TCP, not the socket: while the image initializes an empty volume it runs a temporary server
+      # that listens on the socket only, and the app must not take that one for the database.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "popdesk", "-d", "popdesk"]
       start_period: 1m
       start_interval: 1s
       interval: 10s
