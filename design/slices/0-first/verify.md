@@ -103,3 +103,10 @@ V-1~V-15를 합친 `main`의 이미지를 릴리스 compose와 `compose.dev.yml`
 
 - Argon2 매개변수: 메모리 19MiB, 반복 2, 병렬 1로 올린다(V-15). features.md AUTH-5를 고쳤다. 해시 문자열에 매개변수가 들어 있어 있던 해시도 맞는다.
 - 믿는 프록시 기본값(ADR D-46): 기본값은 둔다. configuration.md TLS 절과 threat-model TM-28에 프록시 없는 사내망·Docker Desktop의 위험과 값을 좁히는 법을 적었다.
+
+## 10. 릴리스 D에서 본 것 (2026-10-10)
+
+- 베이스 이미지 다이제스트: `Dockerfile`의 세 `FROM`을 태그와 다중 아키텍처 인덱스 다이제스트로 고정했다. `v0.1.0` 태그를 나중에 다시 빌드해도 같은 층에서 시작한다. `apt-get`으로 넣는 `postgresql-client-16`은 고정하지 않았다.
+- 화면 `assets/**` 캐시: 1번 묶음으로 미룬다. 지금은 모든 화면 응답이 `no-store`라 느릴 뿐 틀린 동작은 없고, 바꾸려면 보안 머리글 기준(S0-AC)을 고쳐야 한다.
+- `MigrationStart`의 Flyway 내부 클래스(`FlywayMigrateException`): 그대로 둔다. Flyway를 올리다 이름이 바뀌면 컴파일이 깨져 바로 드러난다.
+- 이미지는 ghcr에 올리지 않았다(사람이 정함). 경위와 올릴 때 할 일은 `process.md` D에 있다.

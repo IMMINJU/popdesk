@@ -13,7 +13,7 @@
 
     <groupId>io.popdesk</groupId>
     <artifactId>popdesk-server</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0</version>
     <name>popdesk-server</name>
     <description>popdesk server: one Spring Boot app serving the customer portal and the agent console</description>
     <url>https://github.com/IMMINJU/popdesk</url>

@@ -100,6 +100,17 @@
 - SBOM은 CI가 만들어 릴리스마다 붙인다(D-29). 이미지 서명은 여력이 될 때. `SECURITY.md` 신고 경로는 처음부터.
 - RTO 실측 값(`docs/operate/`)을 다시 잰다(D-33).
 
+### 0.1.0은 태그와 견본만 남기고 이미지는 올리지 않았다 (2026-10-10 사람이 정함)
+
+지금은 다른 곳에서 설치할 사람이 없어 ghcr에 올리기를 미뤘다. 설치할 사람이 생기거나 레포를 공개할 때 아래를 한다.
+
+- 릴리스 워크플로: amd64·arm64 빌드(D-45), ghcr에 올리기, SBOM(D-29), compose 파일을 릴리스에 붙이기.
+- 올린 이미지로 trivy를 다시 돌리고, 견본에 `sample.repodigest`를 붙인다.
+- RTO를 재서 `docs/operate/`에 적는다(D-33). 지금은 잰 값이 문서에 없다.
+- 문서의 "popdesk is not released yet" 줄(`configuration.md`, `upgrade.md`, `conventions.md`, `permissions.md`)을 고친다.
+
+0.1.0에서 한 것: `v0.1.0` 태그, 베이스 이미지 다이제스트 고정, 태그의 코드로 이 PC에서 만든 이미지(amd64)로 trivy와 업그레이드 견본, 릴리스 노트(`docs/release-notes/0.1.0.md`). v0.2의 업그레이드 테스트는 `v0.1.0` 태그를 다시 빌드한 이미지가 아니라 견본 덤프와 새 이미지로 돈다(`deploy/upgrade/README.md`).
+
 ## 산출물 처리 (D-27)
 
 | 처리 | 산출물 | 자리 |

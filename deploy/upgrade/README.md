@@ -41,4 +41,6 @@ A failed queue row is deleted by the app 7 days after it failed, so the outbox c
 2. Attach `sample.dump`, `sample.image`, and `sample.expected.json` to the release. `sample.image` is the local image ID, so also attach `sample.repodigest` with the image's registry digest (`docker image inspect --format '{{index .RepoDigests 0}}'`).
 3. Later versions run `upgrade-test.py` with each kept sample and the new image.
 
+0.1.0 was tagged without publishing an image. Its sample was made from an image built locally from the tag, so it has `sample.image` and no `sample.repodigest`. To get that image again, build the tag (`docker build -t ghcr.io/imminju/popdesk:0.1.0 .` at `v0.1.0`); the base images are pinned by digest.
+
 The self test is `server/src/test/java/io/popdesk/deploy/UpgradeHarnessTest.java`: a broken migration `V999` must make every check fail.
