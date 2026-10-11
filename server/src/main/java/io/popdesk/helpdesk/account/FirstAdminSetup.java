@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.account;
 
 import io.popdesk.InstallationLocale;
+import io.popdesk.helpdesk.audit.AuditRetention;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -25,7 +26,8 @@ import org.springframework.transaction.TransactionException;
  *
  * <p>A {@code POPDESK_LOCALE} that is not a language popdesk has ({@link InstallationLocale}) ends the
  * same way, whether the database has an admin or not: accounts and messages would get a language no
- * text exists for.
+ * text exists for. So does a {@code POPDESK_AUDIT_RETENTION} that is not a period of 30 days or more
+ * ({@link AuditRetention}, S1B-AC-20): a typo there must not delete audit entries.
  */
 @Component
 public class FirstAdminSetup implements SmartInitializingSingleton {
@@ -42,18 +44,20 @@ public class FirstAdminSetup implements SmartInitializingSingleton {
     private final PasswordEncoder passwords;
     private final Environment environment;
     private final InstallationLocale locale;
+    private final AuditRetention retention;
 
     private volatile boolean setupRequired = true;
 
     FirstAdminSetup(FirstAdminService service, PasswordEncoder passwords, Environment environment,
-            InstallationLocale locale) {
+            InstallationLocale locale, AuditRetention retention) {
         this.service = service;
         this.passwords = passwords;
         this.environment = environment;
         this.locale = locale;
+        this.retention = retention;
     }
 
-    /** Whether the app still waits for a first admin or a valid language and takes no business requests. */
+    /** Whether the app still waits for a first admin or a valid setting and takes no business requests. */
     public boolean setupRequired() {
         return setupRequired;
     }
@@ -73,6 +77,13 @@ public class FirstAdminSetup implements SmartInitializingSingleton {
             log.error("{} is empty or not a language popdesk has: set it to en or ko, or leave it out for en. "
                     + "popdesk takes no requests and its readiness stays down until this is set and popdesk is "
                     + "restarted.", InstallationLocale.KEY);
+        }
+        if (!retention.valid()) {
+            log.error("{} is not a period popdesk takes: it must be an ISO-8601 duration of days and time, such as "
+                    + "P365D, and at least P30D. Leave it out for P365D. popdesk takes no requests and its readiness "
+                    + "stays down until this is set and popdesk is restarted.", AuditRetention.KEY);
+        }
+        if (!locale.valid() || !retention.valid()) {
             return;
         }
         if (adminExists) {

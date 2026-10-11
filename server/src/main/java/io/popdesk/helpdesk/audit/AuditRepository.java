@@ -3,6 +3,7 @@ package io.popdesk.helpdesk.audit;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -17,7 +18,7 @@ import org.springframework.stereotype.Repository;
 /**
  * Reads audit rows (table {@code audit_log}) and the chain's one row ({@code audit_chain}). Writing
  * goes through {@link AuditChainRepository}, on the connection of the caller's transaction. Rows are never
- * changed once written.
+ * changed once written; the retention period alone removes them, from the front of the chain.
  */
 @Repository
 class AuditRepository {
@@ -46,6 +47,37 @@ class AuditRepository {
     Optional<AuditRow> find(long id) {
         return jdbc.query("select " + COLUMNS + " from audit_log where id = ?", (rs, n) -> row(rs), id).stream()
                 .findFirst();
+    }
+
+    /**
+     * Locks the chain's row as appending does ({@code FOR NO KEY UPDATE}), so nothing joins the chain
+     * until the caller's transaction ends.
+     */
+    Chain lockChain() {
+        return jdbc.queryForObject("select head_seq, head_hash, anchor_seq, anchor_hash from audit_chain "
+                + "for no key update", (rs, n) -> new Chain(rs.getLong(1), rs.getString(2), rs.getLong(3),
+                rs.getString(4)));
+    }
+
+    /**
+     * The last entry of the run at the front of the chain in which every entry happened before
+     * {@code cutoff}: the entry right before the first one that did not, or the last entry when all
+     * did. Empty when the first entry is not that old.
+     */
+    Optional<AuditRow> lastOfFrontBefore(Instant cutoff) {
+        return jdbc.query("select " + COLUMNS + " from audit_log where seq < coalesce((select min(seq) from audit_log "
+                + "where occurred_at >= ?), 9223372036854775807) order by seq desc limit 1", (rs, n) -> row(rs),
+                cutoff.atOffset(ZoneOffset.UTC)).stream().findFirst();
+    }
+
+    /** Deletes the entries up to {@code seq}; returns how many. The retention period's only. */
+    long deleteUpTo(long seq) {
+        return jdbc.update("delete from audit_log where seq <= ?", seq);
+    }
+
+    /** Moves where the chain starts to the last entry removed. */
+    void updateAnchor(long seq, String hash) {
+        jdbc.update("update audit_chain set anchor_seq = ?, anchor_hash = ?", seq, hash);
     }
 
     Chain chain() {

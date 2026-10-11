@@ -11,7 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * While there is no first admin, or {@code POPDESK_LOCALE} is not valid, every API request gets 503
+ * While there is no first admin, or {@code POPDESK_LOCALE} or {@code POPDESK_AUDIT_RETENTION} is not
+ * valid, every API request gets 503
  * {@code SETUP_REQUIRED} (conventions, S0-AC-02). The log says what to set.
  *
  * <p>Not a bean: the security filter chain runs it after the header writer, so the 503 carries the

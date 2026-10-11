@@ -9,8 +9,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.stereotype.Service;
@@ -21,8 +23,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Reading the audit log: pages (AUDIT-3), exports (AUDIT-8), and the integrity check of its hash chain
- * (AUDIT-7). Admins only; the security filter chain has checked that. Nothing here changes or removes
- * an entry.
+ * (AUDIT-7). Admins only; the security filter chain has checked that. Nothing here changes an entry,
+ * and only {@link #removeOlderThan}, for the retention period, removes any.
  */
 @Service
 public class AuditService {
@@ -194,6 +196,31 @@ public class AuditService {
         } finally {
             verificationRunning.set(false);
         }
+    }
+
+    /**
+     * Removes the entries that happened before {@code cutoff}, from the front of the chain and only
+     * as far as they follow one another (S1B-AC-19, S1B-AC-21): an old entry behind a newer one stays
+     * until that one is old too, so the chain never loses its middle. An entry can be behind a newer
+     * one because its time is taken when it is recorded and its place when its transaction commits.
+     *
+     * <p>One transaction: the chain's row is locked first, as appending locks it, then the entries go,
+     * and the chain's starting point becomes the place and hash of the last one removed. The integrity
+     * check reads a snapshot, so it sees the chain before or after, never in between.
+     *
+     * @return how many entries were removed
+     */
+    public long removeOlderThan(Instant cutoff) {
+        return transactions.run(() -> {
+            repository.lockChain();
+            Optional<AuditRow> last = repository.lastOfFrontBefore(cutoff);
+            if (last.isEmpty()) {
+                return 0L;
+            }
+            long removed = repository.deleteUpTo(last.get().seq());
+            repository.updateAnchor(last.get().seq(), last.get().hash());
+            return removed;
+        });
     }
 
     /** The walk along the chain: the entry before, and the first entry that does not follow. */
