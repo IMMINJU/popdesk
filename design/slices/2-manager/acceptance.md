@@ -54,7 +54,7 @@
 | S2-AC-16 | The system shall 구성원 목록에서 걸려 있는 소속 요청을 담당자가 넣은 이름과 이메일, 상태 `INVITED`인 행으로 준다. 새 계정의 행과 칸과 값의 꼴이 같다. (MGR-3, TM-35) |
 | S2-AC-17 | If 그 이메일이 이미 이 고객사 구성원 목록의 행이면(소속이거나 걸려 있는 요청), then the system shall 409 `ALREADY_LISTED`로 답하고 아무것도 바꾸지 않는다. (MGR-3) |
 | S2-AC-18 | If 고객사가 `ARCHIVED`이면, then the system shall 초대를 400 `COMPANY_NOT_ACTIVE`로 답한다. `SUSPENDED`인 고객사에는 초대할 수 있다. (PROJ-3) |
-| S2-AC-19 | If 이메일이나 이름이 관리자 초대의 입력 규칙에 맞지 않으면, then the system shall 계정이 있는지 보기 전에 400으로 답한다. (INVITE-1, COM-1) |
+| S2-AC-19 | If 이메일이나 이름이 관리자 초대의 입력 규칙에 맞지 않으면, then the system shall 계정이 있는지 보기 전에 400으로 답한다. 담당자인지는 그보다 먼저 본다(소속이 아니면 틀린 입력이어도 404, 담당자가 아니면 403). (INVITE-1, COM-1, COM-2) |
 | S2-AC-20 | The system shall 담당자의 초대와 다시 보내기를 합쳐 한 계정에 60초 동안 20번까지 받는다. 넘으면 429와 `Retry-After`다. (COM-8, TM-35) |
 | S2-AC-21 | If 그 고객사의 수락 전 소속과 걸려 있는 소속 요청을 합쳐 100개이면, then the system shall 초대를 409 `TOO_MANY_PENDING`으로 답한다. (5절 3) |
 | S2-AC-22 | The system shall 담당자의 초대 요청에 역할과 고객사를 고르는 칸을 두지 않는다. 계정은 늘 고객이고 고객사는 경로의 그 고객사다. (MGR-3) |
@@ -78,7 +78,7 @@
 
 | ID | 기준 |
 |---|---|
-| S2-AC-33 | When 관리자가 소속 요청 목록을 요청하면, the system shall 걸려 있는 요청을 오래된 것부터 COM-4로 쪽 나눠 준다. 항목에는 고객사, 요청한 담당자, 담당자가 넣은 이름과 이메일, 그 이메일의 계정(ID, 이름, 역할, 상태), 요청한 시각이 있다. 고객사로 거를 수 있다. 상담원에게는 403이다. (MGR-6) |
+| S2-AC-33 | When 관리자가 소속 요청 목록을 요청하면, the system shall 걸려 있는 요청을 오래된 것부터 COM-4로 쪽 나눠 준다. 항목에는 고객사, 요청한 담당자, 담당자가 넣은 이름과 이메일, 그 이메일의 계정(ID, 이름, 역할, 상태), 요청한 시각이 있다. 고객사로 거를 수 있다. 상담원에게는 403이고, 상담원이 받는 고객사 응답의 걸린 요청 수는 늘 0이다. (MGR-6) |
 | S2-AC-34 | When 관리자가 요청을 승인하면, the system shall 그 계정을 그 고객사에 소속시키고 요청을 닫는다. 담당자의 구성원 목록에서 그 행은 같은 행 ID로 남고 계정의 실제 이름과 상태를 보인다. (MGR-3, MGR-6) |
 | S2-AC-35 | When 관리자가 요청을 거절하면, the system shall 요청을 닫는다. 담당자의 구성원 목록에서 그 행이 사라지고 계정은 바뀌지 않는다. (MGR-3, MGR-6) |
 | S2-AC-36 | If 요청의 계정이 고객이 아니거나 고객사가 `ARCHIVED`이면, then the system shall 승인을 400으로 답한다(`NOT_A_CUSTOMER`, `COMPANY_NOT_ACTIVE`). 거절은 된다. (MGR-6, PROJ-3) |
