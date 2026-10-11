@@ -1,0 +1,48 @@
+// 2번 묶음 screens.md "콘솔 알림함" 절: 관리자의 옆 메뉴 "고객사"에 걸려 있는 소속 요청의 합을 숫자로 붙인다. 0이면 없다(S2-AC-48).
+// 링크의 접근 가능한 이름은 글자 뒤에 무엇의 수인지가 붙는다("고객사 소속 요청 3건"). 보이는 숫자는 aria-hidden이다.
+// 화면이 합을 소속 요청 목록의 total로 얻든 고객사 목록의 수를 더하든 같은 수가 나오게 가짜 서버가 맞춘다.
+import { describe, expect, test } from 'vitest';
+import { ACME, AGENT, BETA, found, hrefPath, link, renderAt, screen, state, text, within } from '../__tests__/console';
+import { pending, request } from '../__tests__/console2';
+
+const IN_BETA = { code: BETA.code, name: BETA.name };
+
+/** The digits a sighted user sees in the link; the screen reader gets them from the link's name. */
+function shownCount(a: HTMLElement): string[] {
+  return Array.from(a.querySelectorAll('[aria-hidden="true"]'))
+    .map((el) => text(el))
+    .filter((t) => /^\d+$/.test(t));
+}
+
+describe('콘솔 옆 메뉴: 고객사의 소속 요청 수 (2번 묶음)', () => {
+  test('S2-AC-48 옆 메뉴(관리자): "고객사"에 걸려 있는 요청의 합이 붙고, 링크의 이름은 "고객사 소속 요청 3건"', async () => {
+    state.companies = [ACME, BETA];
+    pending.requests = [request({ id: 301 }), request({ id: 302 }), request({ id: 303, company: IN_BETA })];
+    renderAt('/issues');
+
+    const companies = await link('고객사 소속 요청 3건');
+    expect(hrefPath(companies)).toBe('/companies');
+    expect(companies.closest('nav'), '메뉴 안').not.toBeNull();
+    expect(shownCount(companies)).toEqual(['3']);
+    expect(shownCount(await link('구성원')), '다른 항목').toEqual([]);
+  });
+
+  test('S2-AC-48 옆 메뉴(관리자): 걸려 있는 요청이 없으면 숫자가 없고 이름은 "고객사"뿐이다', async () => {
+    state.companies = [ACME, BETA];
+    renderAt('/issues');
+
+    const companies = await link('고객사');
+    expect(text(companies)).toBe('고객사');
+  });
+
+  test('S2-AC-48 옆 메뉴(상담원): "고객사" 항목도 숫자도 없다', async () => {
+    state.me = AGENT;
+    pending.requests = [request({ id: 301 }), request({ id: 302 })];
+    renderAt('/issues');
+
+    const nav = await found(() => screen.queryByRole('navigation'), '메뉴');
+    await link('문의');
+    expect(within(nav).queryAllByRole('link', { name: /고객사|소속 요청/ })).toHaveLength(0);
+    expect(text(nav)).not.toMatch(/\d/);
+  });
+});
