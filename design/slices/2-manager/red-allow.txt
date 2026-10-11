@@ -1,0 +1,3 @@
+# C-6 처음부터 통과해도 되는 테스트. 형식: <이름> | <이유> (scripts/ci/check-red.py --allow)
+
+io.popdesk.manager.ManagerMarkTest.agentsCannotMark | S2-AC-02 보안 설정이 /api/console/companies/*/customers/**를 이미 상담원에게 403으로 막는다. 구현 뒤에도 그대로여야 한다

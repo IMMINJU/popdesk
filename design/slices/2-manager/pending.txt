@@ -5,3 +5,11 @@
 # 서버 줄은 구현 탭마다 묶는다. 탭이 병합되면 그 묶음을 지운다.
 server io/popdesk/boundary/BoundaryListTest.java
 server io/popdesk/project/NoStoreTest.java
+server io/popdesk/manager/ManagerIssueScopeTest.java
+server io/popdesk/manager/ManagerMarkTest.java
+server io/popdesk/manager/MemberAccessTest.java
+server io/popdesk/manager/MemberInviteRateLimitTest.java
+server io/popdesk/manager/MemberInviteTest.java
+server io/popdesk/manager/MemberListTest.java
+server io/popdesk/manager/MemberMailTest.java
+server io/popdesk/manager/MemberRemoveTest.java
