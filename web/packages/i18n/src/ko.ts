@@ -55,4 +55,7 @@ export const ko = {
 
   // Slice 1b (design/slices/1b-audit/screens.md 1절).
   'auditLog.title': '감사 로그',
+
+  // Slice 2 (design/slices/2-manager/screens.md 1절).
+  'companyPeople.title': '우리 회사 사람',
 } as const;

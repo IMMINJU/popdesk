@@ -1882,6 +1882,47 @@ textarea {
   height: 12px;
 }
 
+/* Row menu: fixed list, so a table's sideways scroll does not cut it off --- */
+
+.pd-row-menu {
+  display: inline-flex;
+}
+
+.pd-row-menu-list {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+}
+
+.pd-row-menu-item {
+  height: 36px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pd-row-menu-item:hover,
+.pd-row-menu-item:focus-visible {
+  background: var(--accent-subtle);
+}
+
+.pd-row-menu-item[data-tone='danger'] {
+  color: var(--danger);
+}
+
 /* App shell ------------------------------------------------------------- */
 
 .pd-skip-link {

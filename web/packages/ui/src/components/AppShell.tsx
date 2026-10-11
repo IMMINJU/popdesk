@@ -9,6 +9,11 @@ export interface NavItem {
   label: string;
   /** `aria-current="page"`. */
   current?: boolean;
+  /**
+   * A number beside the label, e.g. the pending membership requests on 고객사.
+   * Absent or 0 draws nothing.
+   */
+  count?: number;
 }
 
 export interface AppShellProps {

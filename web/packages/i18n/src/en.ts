@@ -56,4 +56,7 @@ export const en: Record<keyof typeof ko, string> = {
 
   // Slice 1b (design/slices/1b-audit/screens.md 1절).
   'auditLog.title': 'Audit log',
+
+  // Slice 2 (design/slices/2-manager/screens.md 1절).
+  'companyPeople.title': 'People in our company',
 };
