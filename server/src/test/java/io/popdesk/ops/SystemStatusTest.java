@@ -21,14 +21,15 @@ class SystemStatusTest extends BareAppTest {
     static final Set<String> CHANNEL_FIELDS = Set.of("enabled", "lastSuccessAt", "queued", "failed");
 
     @Test
-    @DisplayName("S0-AC-81 without SMTP and webhook both channels are off, each with exactly the four fields")
+    @DisplayName("S0-AC-81 S1B-AC-33 without SMTP, webhook, and the outside copy all three channels are off, each "
+            + "with exactly the four fields")
     void channelsOff() {
         Session admin = fixtures.signInAdmin();
 
         JsonNode status = admin.client().get(STATUS).expect(200).json();
 
-        assertThat(fieldNames(status)).isEqualTo(Set.of("mail", "webhook"));
-        for (String channel : Set.of("mail", "webhook")) {
+        assertThat(fieldNames(status)).isEqualTo(Set.of("mail", "webhook", "auditForward"));
+        for (String channel : Set.of("mail", "webhook", "auditForward")) {
             JsonNode c = status.path(channel);
             assertThat(fieldNames(c)).as(channel).isEqualTo(CHANNEL_FIELDS);
             assertThat(c.path("enabled").isBoolean()).as("%s.enabled", channel).isTrue();
@@ -37,6 +38,8 @@ class SystemStatusTest extends BareAppTest {
             assertThat(c.path("failed").isIntegralNumber()).as("%s.failed", channel).isTrue();
         }
         assertThat(status.path("webhook").path("lastSuccessAt").isNull()).as("webhook.lastSuccessAt").isTrue();
+        assertThat(status.path("auditForward").path("lastSuccessAt").isNull()).as("auditForward.lastSuccessAt")
+                .isTrue();
     }
 
     @Test

@@ -127,6 +127,11 @@ export function channel(over: Partial<ChannelStatus> = {}): ChannelStatus {
   return { enabled: true, failed: 0, queued: 0, lastSuccessAt: T0, ...over };
 }
 
+/** The outside copy of the audit log, not configured (S1B-AC-33). */
+export function auditForwardOff(): ChannelStatus {
+  return channel({ enabled: false, lastSuccessAt: null });
+}
+
 export function failedDelivery(over: Partial<FailedDelivery> = {}): FailedDelivery {
   return {
     id: 501,
@@ -134,6 +139,7 @@ export function failedDelivery(over: Partial<FailedDelivery> = {}): FailedDelive
     createdAt: T0,
     lastErrorKind: 'CONNECTION_REFUSED',
     recipientAccountId: 11,
+    auditEntryId: null,
     ...over,
   };
 }
@@ -224,7 +230,7 @@ export const state: {
   invitations: [],
   customers: [],
   agents: [],
-  status: { mail: channel(), webhook: channel() },
+  status: { mail: channel(), webhook: channel(), auditForward: auditForwardOff() },
   failed: [],
 };
 
@@ -240,7 +246,7 @@ function resetState() {
   state.invitations = [];
   state.customers = [];
   state.agents = [];
-  state.status = { mail: channel(), webhook: channel() };
+  state.status = { mail: channel(), webhook: channel(), auditForward: auditForwardOff() };
   state.failed = [];
 }
 

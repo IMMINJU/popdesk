@@ -237,10 +237,11 @@ class OpsAlertTest extends ConnectedAppTest {
                 .stream().findFirst().orElse(null));
 
         assertThat(OpsChecks.fieldNames(row))
-                .isEqualTo(Set.of("id", "channel", "createdAt", "lastErrorKind", "recipientAccountId"));
+                .isEqualTo(Set.of("id", "channel", "createdAt", "lastErrorKind", "recipientAccountId", "auditEntryId"));
         assertThat(row.path("lastErrorKind").asString("")).as("lastErrorKind").isNotBlank();
         assertThat(row.has("recipientAccountId") && row.path("recipientAccountId").isNull())
                 .as("recipientAccountId of a webhook row").isTrue();
+        assertThat(row.path("auditEntryId").isNull()).as("auditEntryId of a webhook row").isTrue();
         ApiResponse status = again.client().get(SystemStatusTest.STATUS).expect(200);
         assertThat(status.json().path("webhook").path("failed").asLong(-1)).as("webhook.failed").isGreaterThanOrEqualTo(1);
     }
