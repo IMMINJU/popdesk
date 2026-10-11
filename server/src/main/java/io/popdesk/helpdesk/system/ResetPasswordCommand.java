@@ -19,8 +19,8 @@ import java.util.Optional;
  * {@code popdesk admin reset-password <email>} (ACCT-6, S0-AC-97): for when no admin can sign in. It
  * needs a terminal and asks twice for the new password without echoing it. The password must keep the
  * password rules (AUTH-5); it is never printed, logged, or put in the audit row. In one transaction it
- * sets the hash (Argon2id as the app does), lifts the sign-in lock, ends the account's sessions, and
- * writes an {@code ADMIN_PASSWORD_RESET} audit row whose person is popdesk itself (account 0).
+ * sets the hash (Argon2id as the app does) and the time of the change, which also ends the session of
+ * a sign-in that was still running, lifts the sign-in lock, ends the account's sessions, and writes an {@code ADMIN_PASSWORD_RESET} audit row whose person is popdesk itself (account 0).
  *
  * <p>Without a terminal, for an unknown email, for an account that is not {@code ADMIN}, or when the
  * two entries differ or break a rule, it changes nothing and fails. It does not ask again.
@@ -86,11 +86,13 @@ final class ResetPasswordCommand {
         c.setAutoCommit(false);
         try {
             try (PreparedStatement s = c.prepareStatement("update account set password_hash = ?, failed_sign_ins = 0, "
-                    + "locked_until = null, updated_at = ? where id = ? and role = ?")) {
+                    + "locked_until = null, password_changed_at = ?, updated_at = ? where id = ? and role = ?")) {
+                Timestamp now = Timestamp.from(clock.instant());
                 s.setString(1, hash);
-                s.setTimestamp(2, Timestamp.from(clock.instant()));
-                s.setLong(3, admin.id());
-                s.setString(4, Role.ADMIN.name());
+                s.setTimestamp(2, now);
+                s.setTimestamp(3, now);
+                s.setLong(4, admin.id());
+                s.setString(5, Role.ADMIN.name());
                 if (s.executeUpdate() != 1) {
                     throw new Failed("The account changed while the command ran. Nothing was changed.");
                 }
