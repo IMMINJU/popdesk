@@ -18,6 +18,10 @@ export interface AppShellProps {
   /** Console: 문의, and for admins 고객사·구성원·시스템 상태. Portal has none in the first slice. */
   nav: readonly NavItem[];
   userName: string;
+  /** The user's photo. Absent or `null` shows the initials (S1A-AC-60). */
+  userPhotoUrl?: string | null;
+  /** Draws the photo and the name as a link with the app's router, e.g. to 내 정보. Default: no link. */
+  renderUserLink?: (children: ReactNode) => ReactNode;
   onLogout: () => void;
   logoutLabel: string;
   /** "본문으로 건너뛰기". */
@@ -74,10 +78,15 @@ export function AppShell({ mainRef, ...props }: AppShellProps) {
         </ul>
       </nav>
     ) : null;
+  const who = (
+    <>
+      <Avatar name={props.userName} photoUrl={props.userPhotoUrl ?? null} size="sm" decorative />
+      <span className="pd-shell-user-name">{props.userName}</span>
+    </>
+  );
   const user = (
     <div className="pd-shell-user">
-      <Avatar name={props.userName} size="sm" decorative />
-      <span className="pd-shell-user-name">{props.userName}</span>
+      {props.renderUserLink ? props.renderUserLink(who) : who}
       <Button variant="quiet" size="sm" pending={props.logoutPending ?? false} onClick={props.onLogout}>
         {props.logoutLabel}
       </Button>

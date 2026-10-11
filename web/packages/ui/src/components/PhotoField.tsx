@@ -1,5 +1,8 @@
-import { useId } from 'react';
+import { useId, type ChangeEvent } from 'react';
+import { Spinner } from '../icons';
+import { Alert } from './Alert';
 import { Avatar } from './Avatar';
+import { Button } from './Button';
 
 export interface PhotoFieldProps {
   /** Person name, used for the initials when there is no photo. */
@@ -26,20 +29,50 @@ export interface PhotoFieldProps {
   removeLabel: string;
 }
 
-/**
- * 사진 없음, 사진 있음, 올리는 중, 오류 (1a screens.md 1절 내 정보).
- * Contract shell: the markup only. C-9 fills in the look, the callbacks and the blocking.
- */
+/** 사진 없음, 사진 있음, 올리는 중, 오류 (1a screens.md 1절 내 정보). */
 export function PhotoField(props: PhotoFieldProps) {
   const inputId = useId();
+  const helpId = `${inputId}-help`;
+  const uploading = props.uploading ?? false;
+  const pick = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Cleared so that picking the same file again, after a failure, is a change.
+    e.target.value = '';
+    if (file && !uploading) props.onUpload(file);
+  };
   return (
-    <div data-pd="PhotoField" data-uploading={props.uploading ? 'true' : undefined}>
-      <Avatar name={props.name} photoUrl={props.photoUrl ?? null} decorative />
-      <label htmlFor={inputId}>{props.photoUrl ? props.changeLabel : props.uploadLabel}</label>
-      <input id={inputId} type="file" accept={props.accept} />
-      {props.photoUrl && <button type="button">{props.removeLabel}</button>}
-      {props.helpText && <p>{props.helpText}</p>}
-      {props.error && <p>{props.error}</p>}
+    <div className="pd-photo-field" data-pd="PhotoField" data-uploading={uploading ? 'true' : undefined}>
+      <div className="pd-photo-row">
+        <Avatar name={props.name} photoUrl={props.photoUrl ?? null} />
+        <div className="pd-photo-main">
+          <div className="pd-photo-actions">
+            <input
+              id={inputId}
+              className="pd-upload-input"
+              type="file"
+              accept={props.accept}
+              disabled={uploading}
+              aria-describedby={props.helpText ? helpId : undefined}
+              onChange={pick}
+            />
+            <label className="pd-upload-label" htmlFor={inputId}>
+              {props.photoUrl ? props.changeLabel : props.uploadLabel}
+            </label>
+            {props.photoUrl && (
+              <Button variant="quiet" size="sm" blocked={uploading} onClick={props.onRemove}>
+                {props.removeLabel}
+              </Button>
+            )}
+            {uploading && <Spinner />}
+          </div>
+          {props.helpText && (
+            <p id={helpId} className="pd-field-help">
+              {props.helpText}
+            </p>
+          )}
+        </div>
+      </div>
+      {props.error && <Alert tone="error">{props.error}</Alert>}
     </div>
   );
 }

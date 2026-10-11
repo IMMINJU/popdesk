@@ -1661,6 +1661,41 @@ textarea {
   object-fit: cover;
 }
 
+/* Photo field ----------------------------------------------------------- */
+
+.pd-photo-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pd-photo-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.pd-photo-field .pd-avatar {
+  width: var(--space-16);
+  height: var(--space-16);
+  font-size: var(--text-xl);
+}
+
+.pd-photo-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pd-photo-actions {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* Copy field ------------------------------------------------------------ */
 
 .pd-copy-row {
@@ -1880,6 +1915,22 @@ textarea {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--text-sm);
+}
+
+.pd-shell-user-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.pd-shell-user-link:hover .pd-shell-user-name {
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 .pd-shell-main {
