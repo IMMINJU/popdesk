@@ -53,4 +53,7 @@ export const en: Record<keyof typeof ko, string> = {
   'myInfo.currentPasswordHide': 'Hide current password',
   'myInfo.currentPasswordWrong': 'The current password is wrong.',
   'myInfo.passwordChanged': 'Password changed. Other devices have to sign in again.',
+
+  // Slice 1b (design/slices/1b-audit/screens.md 1절).
+  'auditLog.title': 'Audit log',
 };

@@ -49,3 +49,13 @@ export const StickyColumn: Story = {
 };
 export const Compact: Story = { args: { density: 'compact' } };
 export const Comfortable: Story = { args: { density: 'comfortable' } };
+/**
+ * 줄 펼치기: each row can open to show more (C-12 shows an entry's hashes there).
+ * Shell only: the props are taken but the rows do not open yet (C-9 fills it in).
+ */
+export const Expandable: Story = {
+  args: {
+    renderExpanded: (r) => <code>{r.id}</code>,
+    expandLabel: (r) => `${r.name} 자세히`,
+  },
+};

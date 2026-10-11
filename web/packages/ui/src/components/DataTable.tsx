@@ -33,6 +33,14 @@ export interface DataTableProps<Row> {
   error?: ReactNode;
   /** 촘촘 (console) or 여유 (portal). Default follows the app density. */
   density?: 'compact' | 'comfortable';
+  /**
+   * 줄 펼치기: what a row shows under itself when opened, e.g. the hashes of an
+   * audit entry. Without it the table draws as before. Shell only for now: the
+   * button and the opened row come in C-9.
+   */
+  renderExpanded?: (row: Row) => ReactNode;
+  /** Name of a row's 펼치기 button, e.g. "항목 12 자세히". Used with `renderExpanded`. */
+  expandLabel?: (row: Row) => string;
 }
 
 /**

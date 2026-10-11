@@ -52,4 +52,7 @@ export const ko = {
   'myInfo.currentPasswordHide': '지금 비밀번호 숨기기',
   'myInfo.currentPasswordWrong': '지금 비밀번호가 맞지 않습니다.',
   'myInfo.passwordChanged': '비밀번호를 바꿨습니다. 다른 기기에서는 다시 로그인해야 합니다.',
+
+  // Slice 1b (design/slices/1b-audit/screens.md 1절).
+  'auditLog.title': '감사 로그',
 } as const;

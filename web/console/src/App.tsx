@@ -4,6 +4,7 @@ import { AdminOnly, ConsoleLayout, NotFound } from './app/layout';
 import { SessionProvider } from './app/session';
 import { ToastProvider } from './app/toast';
 import { C10MemberList } from './screens/C10MemberList';
+import { C12AuditLog } from './screens/C12AuditLog';
 import { C16PasswordForgot } from './screens/C16PasswordForgot';
 import { C17PasswordReset } from './screens/C17PasswordReset';
 import { C18SystemStatus } from './screens/C18SystemStatus';
@@ -19,6 +20,7 @@ import { C9CompanyDetail } from './screens/C9CompanyDetail';
 // list; signed-in screens sit in ConsoleLayout, admin screens also in AdminOnly.
 // Slice 1a adds C-16 and C-17 (signed out; C-17 takes its token after `#`, like
 // the invitation) and C-6 (signed in, every role).
+// Slice 1b adds C-12 (admin only).
 const routes: RouteObject[] = [
   { index: true, element: <Navigate to="/issues" replace /> },
   { path: '/login', element: <C1Login /> },
@@ -34,6 +36,7 @@ const routes: RouteObject[] = [
       { path: '/companies', element: <AdminOnly><C8CompanyList /></AdminOnly> },
       { path: '/companies/:code', element: <AdminOnly><C9CompanyDetail /></AdminOnly> },
       { path: '/members', element: <AdminOnly><C10MemberList /></AdminOnly> },
+      { path: '/audit-log', element: <AdminOnly><C12AuditLog /></AdminOnly> },
       { path: '/system', element: <AdminOnly><C18SystemStatus /></AdminOnly> },
       { path: '*', element: <NotFound listHref="/issues" listLabel="문의 목록으로" /> },
     ],
