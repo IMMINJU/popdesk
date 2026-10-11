@@ -237,3 +237,51 @@ Decided in ADR D-44.
 - In update requests (`PATCH`):
   - A field left out of the request keeps its current value.
   - A field sent as `null` is cleared. This works only for fields that may be empty; sending `null` for a required field is 400.
+
+## Audit log hash chain
+
+Every audit entry has a place in one chain and a hash over its values and the entry before it (AUDIT-6). An export is enough to compute every hash again; `docs/integrate/audit-verify.py` does it with the Python standard library.
+
+- `seq` is the entry's place in the chain, from 1, without gaps. The chain's order is `seq`, not the time: an entry's time is when the action was done, and it joins the chain when its change is committed, so two entries can have times in the other order.
+- `hash = SHA-256(prevHash ‖ canonical JSON)`, written as 64 lowercase hex characters. `prevHash` goes in as its 64 characters (64 ASCII bytes), not as 32 bytes. With a shell: `printf '%s%s' "$prevHash" "$json" | sha256sum`.
+- `prevHash` is the `hash` of the entry with the `seq` before. The first entry's `prevHash` is 64 zeros.
+- The canonical JSON is the UTF-8 text of this object by RFC 8785 (JCS): keys sorted by UTF-16 code units, no whitespace, strings escaped as `JSON.stringify` does.
+
+  ```json
+  {"action":"…","actor":{"accountId":1,"email":"…","name":"…"},"changes":{…},"occurredAt":"2026-10-08T03:15:00.123456Z","target":{…}}
+  ```
+
+  - All five keys are always there. `target` and `changes` are `null` when the entry has none; `email` and `name` are `null` for popdesk itself (`accountId` 0).
+  - `occurredAt` is UTC with exactly six fraction digits and `Z`.
+  - `target` and `changes` are the stored values as they are. A time inside them is text in the same form as `occurredAt`.
+  - Values hold no fractions: every number is a whole number of at most 64 bits. So no number needs the number rules of RFC 8785.
+- An entry that changes a value keeps it under the field's name as `{"from": before, "to": after}`. An entry that sets values for the first time (creating a company, an invitation) keeps the value itself. New kinds of entry follow this.
+- A name once used for `action`, or for a key of an entry, is never renamed: it is part of the hash.
+- After the retention period removed old entries, the chain starts at the first entry that is left. Its `prevHash` is the `hash` of the last entry removed, which popdesk keeps as the chain's starting point; the integrity check starts there.
+
+The integrity check (`verifyAuditLog`) computes the same from the database and also compares the last entry with the recorded end of the chain. It finds a changed entry, a removed entry, and removed last entries. It cannot find a chain that someone with write access to the database computed again from start to end; keep the last `hash` of an export somewhere else, or send the entries to another system as they are written.
+
+## Audit log export
+
+`exportAuditLog` gives the entries the filters find, in chain order (`seq`, lowest first), up to the end of the chain as it was when the export started. The hashes are the stored ones; the export never computes them again.
+
+JSON Lines (`application/x-ndjson`): one JSON object per line, lines end with a line feed.
+
+| Field | Value |
+|---|---|
+| `id` | The entry's ID |
+| `seq` | Its place in the chain |
+| `prevHash`, `hash` | As in the hash chain |
+| `action` | The kind of action |
+| `actor` | `{"accountId", "name", "email"}` as stored when the entry was written |
+| `target`, `changes` | The stored JSON, or `null` |
+| `occurredAt` | UTC with six fraction digits |
+
+Use JSON Lines to check the chain. Only a file made without a filter has every entry; a filtered file has gaps in `seq`.
+
+CSV (`text/csv; charset=UTF-8`) is for reading in a spreadsheet. The file starts with a byte order mark; rows end with CRLF; the first row is the header.
+
+- Columns: `id`, `seq`, `prevHash`, `hash`, `action`, `actorAccountId`, `actorName`, `actorEmail`, `target`, `changes`, `occurredAt`.
+- `target` and `changes` are JSON text in one column each (`null` when the entry has none). `actorName` and `actorEmail` are empty for popdesk itself.
+- Every value is in double quotes, and a quote inside is doubled.
+- A value that starts with `=`, `+`, `-`, `@`, a tab, or a line break gets an apostrophe (`'`) in front, so a spreadsheet does not run it as a formula. The apostrophe is not part of the stored value; do not compute hashes from a CSV file.
