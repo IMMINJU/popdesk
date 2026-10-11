@@ -149,6 +149,17 @@ def check_every_table_has_rows(project):
         raise HarnessError(f"The sample leaves these business tables empty: {empty}. Add data for them.")
 
 
+def check_audit_chain(project):
+    """The chain's one row (audit_chain, 1b) is filled by what the sample did, not only by the migration:
+    its head is the last of the sample's audit rows, and every row has its place and hash."""
+    rows = int(project.sql("select count(*) from audit_log"))
+    head = project.sql("select head_seq || ' ' || head_hash from audit_chain").split()
+    last = project.sql("select seq || ' ' || hash from audit_log order by seq desc limit 1").split()
+    if rows == 0 or head != last or int(head[0]) != rows:
+        raise HarnessError(f"The sample's audit chain does not end at its last audit row: {rows} rows, "
+                           f"head {head}, last row {last}.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--image", required=True)
@@ -169,6 +180,7 @@ def main():
             raise HarnessError("The app did not become healthy:\n" + project.logs("app")[-4000:])
         admin, kept, with_photo = fill(project)
         check_every_table_has_rows(project)
+        check_audit_chain(project)
 
         expected = {
             "issues": read_issues(admin),

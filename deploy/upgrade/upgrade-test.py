@@ -73,13 +73,21 @@ def check_outbox(project, expected):
 
 
 def check_audit(project, expected):
-    """Every audit row of the sample is still there, unchanged. New rows (the restore, sign-ins) may follow."""
+    """Every audit row of the sample is still there, unchanged. New rows (the restore, sign-ins) may follow.
+
+    A row is compared by the columns it had in the sample: a later version may add columns (1b added
+    seq, prev_hash, and hash to the rows of a 0.1.0 sample), and those are not a change of the row.
+    """
     actual = {row["id"]: row for row in read_audit(project)}
     ok = True
     for row in expected["audit"]:
-        if actual.get(row["id"]) != row:
-            log(f"audit: expected {row}, found {actual.get(row['id'])}")
-            ok = False
+        found = actual.get(row["id"])
+        if found is not None and found["action"] == row["action"]:
+            now = json.loads(found["row"])
+            if all(column in now and now[column] == value for column, value in json.loads(row["row"]).items()):
+                continue
+        log(f"audit: expected {row}, found {found}")
+        ok = False
     return ok
 
 
