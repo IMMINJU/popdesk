@@ -421,6 +421,27 @@
         "required" : [ "code", "name" ],
         "type" : "object"
       },
+      "CompanyReporter" : {
+        "properties" : {
+          "accountId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "photoUpdatedAt" : {
+            "description" : "When the profile photo last changed; null without a photo (`getPhoto`).",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "accountId", "email", "name", "photoUpdatedAt" ],
+        "type" : "object"
+      },
       "CreateCommentRequest" : {
         "properties" : {
           "content" : {
@@ -1086,6 +1107,36 @@
           "items" : {
             "items" : {
               "$ref" : "#/components/schemas/CompanyMember"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PagedCompanyReporter" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CompanyReporter"
             },
             "type" : "array"
           },
@@ -3576,6 +3627,102 @@
         "tags" : [ "Companies" ]
       }
     },
+    "/api/console/companies/{code}/reporters" : {
+      "get" : {
+        "description" : "The `ACTIVE` customers who belong to the company, in name order: who can be `reporterId` of `createIssue` (S3-AC-40). For agents assigned to the company and for admins. Customers who have not accepted their invitation and suspended ones are left out.",
+        "operationId" : "listCompanyReporters",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only customers whose name or email holds this text, 1 to 100 characters. Case is ignored; `%` and `_` are ordinary characters (COM-5).",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedCompanyReporter"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`). `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the caller cannot see it."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 60 lists with `q` in 60 seconds, counted together with the other lists that search (COM-8)."
+          }
+        },
+        "summary" : "Customers an issue can be filed on behalf of",
+        "tags" : [ "Companies" ]
+      }
+    },
     "/api/console/companies/{code}/status" : {
       "put" : {
         "description" : "`ACTIVE` to `SUSPENDED` and back, or either to `ARCHIVED` (S1A-AC-44). The status the company already has is 200 too, for `ACTIVE` and `SUSPENDED`. Nothing new can be filed in a company that is not `ACTIVE`; what is there stays readable (S1A-AC-46, S1A-AC-47).",
@@ -4002,7 +4149,7 @@
         }, {
           "description" : "Only issues of the company with this code. A company the caller cannot see gives an empty page (S3-AC-02).",
           "in" : "query",
-          "name" : "company",
+          "name" : "companyCode",
           "required" : false,
           "schema" : {
             "type" : "string"

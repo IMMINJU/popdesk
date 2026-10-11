@@ -242,6 +242,10 @@
             "description" : "Visible only to the reporter and staff.",
             "type" : "boolean"
           },
+          "reopenable" : {
+            "description" : "`reopenIssue` can work now: the issue is `RESOLVED`, or `CLOSED` for less than 14 days (STATUS-4). It says nothing about who the caller is.",
+            "type" : "boolean"
+          },
           "reporter" : {
             "$ref" : "#/components/schemas/Person"
           },
@@ -267,7 +271,7 @@
             "type" : "integer"
           }
         },
-        "required" : [ "closedAt", "companyCode", "companyName", "content", "createdAt", "filedBySupport", "key", "priority", "private", "reporter", "resolvedAt", "status", "title", "updatedAt", "version" ],
+        "required" : [ "closedAt", "companyCode", "companyName", "content", "createdAt", "filedBySupport", "key", "priority", "private", "reopenable", "reporter", "resolvedAt", "status", "title", "updatedAt", "version" ],
         "type" : "object"
       },
       "IssueSummary" : {
@@ -1052,7 +1056,7 @@
         }, {
           "description" : "Only issues of the company with this code. A company the caller does not belong to gives an empty page.",
           "in" : "query",
-          "name" : "company",
+          "name" : "companyCode",
           "required" : false,
           "schema" : {
             "type" : "string"

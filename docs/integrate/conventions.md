@@ -225,7 +225,7 @@ A `page` past the last page returns an empty `items`. A `page` below 1 or a `siz
 - Matching ignores case and finds the text anywhere in the field, not by word.
 - `%` and `_` are ordinary characters, not wildcards.
 - Search uses a trigram index (D-13).
-- The issue lists search the title and the content as it is shown: the text of a link, the description of an image, and the text of code are searched; Markdown marks (`**`, `#`, list marks, code fences) and the addresses of links and images are not.
+- The issue lists search the title and the content as it is shown: the text of a link, the description of an image, and the text of code are searched; Markdown marks (`**`, `#`, list marks, code fences) and the addresses of links and images are not. Raw HTML in the content is searched as written.
 
 ## Text input
 

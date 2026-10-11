@@ -573,6 +573,8 @@ export interface components {
             priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
             /** @description Visible only to the reporter and staff. */
             private: boolean;
+            /** @description `reopenIssue` can work now: the issue is `RESOLVED`, or `CLOSED` for less than 14 days (STATUS-4). It says nothing about who the caller is. */
+            reopenable: boolean;
             reporter: components["schemas"]["Person"];
             /**
              * Format: date-time
@@ -1119,7 +1121,7 @@ export interface operations {
                 /** @description Only issues with one of these statuses. Give it once for each status. */
                 status?: ("RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED")[];
                 /** @description Only issues of the company with this code. A company the caller does not belong to gives an empty page. */
-                company?: string;
+                companyCode?: string;
                 /** @description `true`: only issues the caller reported. */
                 mine?: boolean;
                 /** @description Only issues whose title or content, as shown, holds this text, 1 to 100 characters. Case is ignored; `%` and `_` are ordinary characters (COM-5). */

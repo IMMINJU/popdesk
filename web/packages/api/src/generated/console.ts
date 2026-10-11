@@ -402,6 +402,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/console/companies/{code}/reporters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Customers an issue can be filed on behalf of
+         * @description The `ACTIVE` customers who belong to the company, in name order: who can be `reporterId` of `createIssue` (S3-AC-40). For agents assigned to the company and for admins. Customers who have not accepted their invitation and suspended ones are left out.
+         */
+        get: operations["listCompanyReporters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/console/companies/{code}/status": {
         parameters: {
             query?: never;
@@ -1296,6 +1316,17 @@ export interface components {
             code: string;
             name: string;
         };
+        CompanyReporter: {
+            /** Format: int64 */
+            accountId: number;
+            email: string;
+            name: string;
+            /**
+             * Format: date-time
+             * @description When the profile photo last changed; null without a photo (`getPhoto`).
+             */
+            photoUpdatedAt: string | null;
+        };
         CreateCommentRequest: {
             /** @description Markdown, 1 to 4,000 characters. */
             content: string;
@@ -1643,6 +1674,23 @@ export interface components {
         };
         PagedCompanyMember: {
             items: components["schemas"]["CompanyMember"][];
+            /**
+             * Format: int32
+             * @description Page number, starting at 1.
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Items per page, 1 to 100.
+             */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
+        };
+        PagedCompanyReporter: {
+            items: components["schemas"]["CompanyReporter"][];
             /**
              * Format: int32
              * @description Page number, starting at 1.
@@ -3328,6 +3376,71 @@ export interface operations {
             };
         };
     };
+    listCompanyReporters: {
+        parameters: {
+            query?: {
+                /** @description Only customers whose name or email holds this text, 1 to 100 characters. Case is ignored; `%` and `_` are ordinary characters (COM-5). */
+                q?: string;
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description 1 to 100. */
+                size?: number;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedCompanyReporter"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`). `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the caller cannot see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 60 lists with `q` in 60 seconds, counted together with the other lists that search (COM-8). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     changeCompanyStatus: {
         parameters: {
             query?: never;
@@ -3671,7 +3784,7 @@ export interface operations {
                 /** @description Only issues with one of these statuses. Give it once for each status. */
                 status?: ("RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED")[];
                 /** @description Only issues of the company with this code. A company the caller cannot see gives an empty page (S3-AC-02). */
-                company?: string;
+                companyCode?: string;
                 /** @description Only issues with this assignee: an account ID, `me` for the caller, `none` for issues without an assignee, or `unavailable` for issues whose assignee can no longer see them (S3-AC-03, S3-AC-04). */
                 assignee?: string;
                 /** @description Only issues this account reported. An account that does not exist gives an empty page (S3-AC-05). */

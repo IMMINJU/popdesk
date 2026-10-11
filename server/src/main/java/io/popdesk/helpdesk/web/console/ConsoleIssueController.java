@@ -87,7 +87,7 @@ class ConsoleIssueController {
             @Parameter(description = "Only issues with one of these statuses. Give it once for each status.")
                     @RequestParam(required = false) @Nullable List<IssueStatus> status,
             @Parameter(description = "Only issues of the company with this code. A company the caller cannot see "
-                    + "gives an empty page (S3-AC-02).") @RequestParam(required = false) @Nullable String company,
+                    + "gives an empty page (S3-AC-02).") @RequestParam(required = false) @Nullable String companyCode,
             @Parameter(description = "Only issues with this assignee: an account ID, `me` for the caller, `none` "
                     + "for issues without an assignee, or `unavailable` for issues whose assignee can no longer "
                     + "see them (S3-AC-03, S3-AC-04).") @RequestParam(required = false) @Nullable String assignee,

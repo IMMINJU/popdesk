@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -248,6 +249,28 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @GetMapping("/{code}/assignees")
     AssigneeCandidates listAssigneeCandidates(@PathVariable String code) {
+        throw new NotImplementedException();
+    }
+
+    @Operation(operationId = "listCompanyReporters", summary = "Customers an issue can be filed on behalf of",
+            description = "The `ACTIVE` customers who belong to the company, in name order: who can be "
+                    + "`reporterId` of `createIssue` (S3-AC-40). For agents assigned to the company and for "
+                    + "admins. Customers who have not accepted their invitation and suspended ones are left out.")
+    @ApiResponse(responseCode = "200", description = "One page.")
+    @ApiResponse(responseCode = "400", description = PAGE_400 + " `q` empty or over 100 characters (`TOO_SHORT`, "
+            + "`TOO_LONG`).")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "404", description = NOT_FOUND)
+    @ApiResponse(responseCode = "429", description = "`RATE_LIMITED`: more than 60 lists with `q` in 60 seconds, "
+            + "counted together with the other lists that search (COM-8).")
+    @GetMapping("/{code}/reporters")
+    Paged<CompanyReporter> listCompanyReporters(
+            @PathVariable String code,
+            @Parameter(description = "Only customers whose name or email holds this text, 1 to 100 characters. "
+                    + "Case is ignored; `%` and `_` are ordinary characters (COM-5).")
+                    @RequestParam(required = false) @Nullable String q,
+            @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
         throw new NotImplementedException();
     }
 

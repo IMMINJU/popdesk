@@ -23,6 +23,8 @@ public record Issue(
                 nullable = true) OffsetDateTime resolvedAt,
         @Schema(description = "When the issue became `CLOSED`; null while it is open. It can be reopened for 14 "
                 + "days from then.", nullable = true) OffsetDateTime closedAt,
+        @Schema(description = "`reopenIssue` can work now: the issue is `RESOLVED`, or `CLOSED` for less than 14 "
+                + "days (STATUS-4). It says nothing about who the caller is.") boolean reopenable,
         @Schema(description = "Goes up by 1 on every change to the issue (S0-AC-45).") long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {}

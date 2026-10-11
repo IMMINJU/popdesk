@@ -44,7 +44,7 @@ import org.springframework.web.multipart.MultipartFile;
 class PortalIssueController {
 
     /** Query parameters of the list; anything else, such as a staff-only filter, is 400 (S0-AC-48). */
-    private static final Set<String> LIST_PARAMETERS = Set.of("page", "size", "status", "company", "mine", "q");
+    private static final Set<String> LIST_PARAMETERS = Set.of("page", "size", "status", "companyCode", "mine", "q");
 
     private final IssueService issues;
     private final AttachmentService attachments;
@@ -57,7 +57,7 @@ class PortalIssueController {
     static Issue issue(IssueRow row) {
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
-                false, null, null, row.version(), utc(row.createdAt()), utc(row.updatedAt()));
+                false, null, null, false, row.version(), utc(row.createdAt()), utc(row.updatedAt()));
     }
 
     static IssueSummary summary(IssueRow row) {
@@ -186,7 +186,7 @@ class PortalIssueController {
             @Parameter(description = "Only issues with one of these statuses. Give it once for each status.")
                     @RequestParam(required = false) @Nullable List<IssueStatus> status,
             @Parameter(description = "Only issues of the company with this code. A company the caller does not "
-                    + "belong to gives an empty page.") @RequestParam(required = false) @Nullable String company,
+                    + "belong to gives an empty page.") @RequestParam(required = false) @Nullable String companyCode,
             @Parameter(description = "`true`: only issues the caller reported.")
                     @RequestParam(required = false) @Nullable Boolean mine,
             @Parameter(description = "Only issues whose title or content, as shown, holds this text, 1 to 100 "
