@@ -40,7 +40,7 @@ export { PriorityPicker, type PriorityPickerProps } from './components/PriorityP
 export { ProgressBar, type ProgressBarProps } from './components/ProgressBar';
 export { RadioGroup, type RadioGroupProps } from './components/RadioGroup';
 export { RelativeTime, type RelativeTimeProps } from './components/RelativeTime';
-export { Select, type SelectProps } from './components/Select';
+export { Select, type SelectOption, type SelectProps } from './components/Select';
 export { Skeleton, type SkeletonProps } from './components/Skeleton';
 export { StatusBadge, type StatusBadgeProps } from './components/StatusBadge';
 export { TextField, type TextFieldProps } from './components/TextField';

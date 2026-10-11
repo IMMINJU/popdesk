@@ -22,3 +22,7 @@ export const WithHelp: Story = {
 export const WithCount: Story = {
   args: { label: '제목', type: 'text', value: '첨부가 안 올라갑니다', maxLength: 200, showCount: true },
 };
+/** 날짜: the browser's date field (C-12 기간 필터). The value is `YYYY-MM-DD`. */
+export const Date: Story = {
+  args: { label: '부터', type: 'date', value: '2026-10-01', autoComplete: 'off' },
+};

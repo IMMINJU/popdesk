@@ -30,3 +30,21 @@ export const Loading: Story = { args: { loading: true, options: [] } };
 export const SingleReadOnly: Story = {
   args: { options: [{ value: 'ACME', label: 'Acme' }], value: 'ACME', readOnly: true },
 };
+/**
+ * 묶음: options that carry the same `group` belong under that name (C-12 종류 필터).
+ * Shell only: `group` is taken but the options are not shown grouped yet (C-9 fills it in).
+ */
+export const Grouped: Story = {
+  args: {
+    label: '종류',
+    placeholder: '전체',
+    options: [
+      { value: 'SIGN_IN', label: '로그인 기록' },
+      { value: 'SIGN_IN_SUCCEEDED', label: '로그인', group: '로그인 기록' },
+      { value: 'SIGN_IN_FAILED', label: '로그인 실패', group: '로그인 기록' },
+      { value: 'ACCOUNT', label: '계정' },
+      { value: 'ACCOUNT_SUSPENDED', label: '계정 정지', group: '계정' },
+      { value: 'ACCOUNT_REACTIVATED', label: '정지 풀기', group: '계정' },
+    ],
+  },
+};

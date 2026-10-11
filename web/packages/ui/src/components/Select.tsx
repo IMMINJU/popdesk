@@ -4,9 +4,18 @@ import type { Option } from '../types';
 import { describedBy } from '../aria';
 import { FieldError, FieldHelp } from './fieldParts';
 
+export interface SelectOption extends Option {
+  /**
+   * 묶음 이름, e.g. "계정". Options with the same `group` are shown together under
+   * it. Shell only for now: the grouping is drawn in C-9. A choice that stands
+   * for a whole group (C-12 "로그인 기록") is a plain option without `group`.
+   */
+  group?: string;
+}
+
 export interface SelectProps {
   label: string;
-  options: readonly Option[];
+  options: readonly SelectOption[];
   /** Empty string means nothing chosen yet. */
   value: string;
   onChange: (value: string) => void;

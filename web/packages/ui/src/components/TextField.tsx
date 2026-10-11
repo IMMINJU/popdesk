@@ -9,8 +9,8 @@ export interface TextFieldProps {
   onChange: (value: string) => void;
   id?: string;
   name?: string;
-  /** Default `text`. */
-  type?: 'text' | 'email' | 'url' | 'search';
+  /** Default `text`. `date` takes and gives `YYYY-MM-DD`, or an empty string. */
+  type?: 'text' | 'email' | 'url' | 'search' | 'date';
   autoComplete?: string;
   placeholder?: string;
   /** 도움말 under the field, joined with `aria-describedby`. */
