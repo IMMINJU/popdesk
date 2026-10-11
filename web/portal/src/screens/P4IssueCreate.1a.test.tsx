@@ -1,5 +1,5 @@
-// 1a screens.md 2절 P-4 문의 등록: 중지·보관된 고객사는 고를 수 없고 까닭을 적는다(S1A-AC-46, 49).
-// 한 번에 붙이는 파일은 20개까지이고 서버의 413도 같은 문구다(S1A-AC-65).
+// 1a screens.md 2절 P-4 문의 등록: 멈춘·보관된 고객사는 고를 수 없고 까닭을 적는다(S1A-AC-46, 49).
+// 한 번에 붙이는 파일은 20개까지이고 앱의 413(JSON 본문)도 같은 문구다. 본문이 JSON이 아닌 413은 앞단 상한 문구다(S1A-AC-65).
 import { describe, expect, test } from 'vitest';
 import {
   ACME,
@@ -30,19 +30,19 @@ const files = (from: number, to: number) => Array.from({ length: to - from + 1 }
 const fileRows = () => screen.queryAllByRole('listitem').filter((li) => /f\d+\.txt/.test(text(li)));
 
 describe('P-4 문의 등록 (1a)', () => {
-  test('S1A-AC-46 P-4 고객사 고르기: 중지·보관된 고객사는 고를 수 없게 보이고 "새 문의를 받지 않습니다"를 적는다', async () => {
+  test('S1A-AC-46 P-4 고객사 고르기: 멈춘·보관된 고객사는 고를 수 없게 보이고 "새 문의를 받지 않습니다"를 적는다', async () => {
     state.companies = [ACME, SUSPENDED, ARCHIVED];
     renderAt('/issues/new');
 
     const company = await field<HTMLSelectElement>(/^고객사/, 'select');
     const option = (code: string) => Array.from(company.options).find((o) => o.value === code);
     expect(option(ACME.code)?.disabled, '사용 중인 고객사').toBe(false);
-    expect(option(SUSPENDED.code)?.disabled, '중지된 고객사').toBe(true);
+    expect(option(SUSPENDED.code)?.disabled, '멈춘 고객사').toBe(true);
     expect(option(ARCHIVED.code)?.disabled, '보관된 고객사').toBe(true);
     expect(pageText()).toContain(NOT_ACTIVE_TEXT);
   });
 
-  test('S1A-AC-46 P-4 소속 고객사가 모두 중지·보관: 등록 버튼 대신 "새 문의를 받지 않습니다" 안내를 보인다', async () => {
+  test('S1A-AC-46 P-4 소속 고객사가 모두 멈춤·보관: 등록 버튼 대신 "새 문의를 받지 않습니다" 안내를 보인다', async () => {
     state.companies = [SUSPENDED, ARCHIVED];
     renderAt('/issues/new');
 
@@ -70,7 +70,7 @@ describe('P-4 문의 등록 (1a)', () => {
     expect(pageText()).not.toContain('f21.txt');
   });
 
-  test('S1A-AC-65 P-4 서버의 413: 같은 문구 "한 번에 20개까지 붙일 수 있습니다"를 띠로 보이고 입력은 지우지 않는다', async () => {
+  test('S1A-AC-65 P-4 앱의 413(JSON 본문): 같은 문구 "한 번에 20개까지 붙일 수 있습니다"를 띠로 보이고 입력은 지우지 않는다', async () => {
     on('post', '/api/portal/issues', () => errors.payloadTooLarge());
     const { user } = renderAt('/issues/new');
     await user.type(await title(), '프린터가 안 됩니다');
@@ -81,5 +81,17 @@ describe('P-4 문의 등록 (1a)', () => {
     expect(await title()).toHaveValue('프린터가 안 됩니다');
     expect(fileRows()).toHaveLength(2);
     expect(window.location.pathname).toBe('/issues/new');
+  });
+
+  test('S1A-AC-65 P-4 앞단의 413(JSON이 아닌 본문): "20개까지"가 아니라 "파일이 서버 앞단의 크기 상한에 걸렸습니다"를 보인다', async () => {
+    on('post', '/api/portal/issues', () => errors.proxyPayloadTooLarge());
+    const { user } = renderAt('/issues/new');
+    await user.type(await title(), '프린터가 안 됩니다');
+    await user.upload(await attachInput(), files(1, 2));
+    await user.click(await button('올리기'));
+
+    await alertWith('파일이 서버 앞단의 크기 상한에 걸렸습니다');
+    expect(pageText()).not.toContain(TOO_MANY_TEXT);
+    expect(await title()).toHaveValue('프린터가 안 됩니다');
   });
 });

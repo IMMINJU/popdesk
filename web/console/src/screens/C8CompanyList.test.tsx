@@ -75,17 +75,27 @@ async function fillCreate(user: User, d: ReturnType<typeof inDialog>, values = {
 }
 
 describe('C-8 고객사 목록', () => {
-  test('C-8 데이터 있음: 표에 코드, 이름, 회사명, 상태 배지(사용 중·멈춤·보관)와 위에 "고객사 만들기"', async () => {
+  test('S1A-AC-49 C-8 데이터 있음: 표에 코드, 이름, 회사명, 상태 배지(사용 중·멈춤·보관)와 위에 "고객사 만들기". 보관된 고객사는 "보관된 고객사 보기"를 켜야 나온다', async () => {
     state.companies = [
       ACME,
       company({ code: 'BETA', name: '베타상사', legalName: '베타상사 유한회사', status: 'SUSPENDED' }),
       company({ code: 'OLD', name: '올드', legalName: '올드 주식회사', status: 'ARCHIVED' }),
     ];
-    renderAt('/companies');
+    const { user } = renderAt('/companies');
 
     const acme = text(await rowOf('ACME'));
     for (const part of ['ACME', '에이크미', '에이크미 주식회사', '사용 중']) expect(acme).toContain(part);
     expect(text(await rowOf('BETA'))).toContain('멈춤');
+    // 1a(S1A-AC-49): 보관된 고객사는 기본으로 숨기고 "보관된 고객사 보기"를 켜면 나온다.
+    const showArchived = await found(
+      () =>
+        screen.queryByRole('checkbox', { name: '보관된 고객사 보기' }) ??
+        screen.queryByRole('switch', { name: '보관된 고객사 보기' }) ??
+        screen.queryByRole('button', { name: '보관된 고객사 보기' }),
+      '"보관된 고객사 보기"',
+    );
+    expect(screen.queryAllByRole('row').filter((r) => text(r).includes('OLD')), '처음에는 보관된 고객사 줄이 없다').toHaveLength(0);
+    await user.click(showArchived);
     expect(text(await rowOf('OLD'))).toContain('보관');
     await createButton();
   });

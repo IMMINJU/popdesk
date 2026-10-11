@@ -225,17 +225,6 @@ describe('C-9 고객사 상세', () => {
     expect(screen.queryByRole('button', { name: '상담원 배정' })).toBeNull();
   });
 
-  test('C-9 배정 빼기는 이번 묶음에 없다: 배정 상담원 줄에 "배정 빼기" 버튼이 없다', async () => {
-    state.agents = [member({ accountId: 2, email: 'lee@popdesk.test', name: '이상담' })];
-    renderAt(URL_ACME);
-
-    const agents = await agentsSection();
-    await eventually(() => {
-      expect(text(agents)).toContain('이상담');
-    });
-    expect(within(agents).queryByRole('button', { name: /배정 빼기|빼기/ })).toBeNull();
-  });
-
   test('C-9 404: 없는 고객사는 "찾을 수 없습니다"와 목록 링크', async () => {
     renderAt('/companies/NOPE');
 

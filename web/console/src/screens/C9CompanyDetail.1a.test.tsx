@@ -32,7 +32,7 @@ import { answered, region, rejected, route, rowOf, settle } from '../__tests__/c
 
 const URL_ACME = '/companies/ACME';
 const COMPANY = '/api/console/companies/ACME';
-const SUSPENDED_BAND = '중지된 고객사입니다. 새 문의를 받지 않습니다.';
+const SUSPENDED_BAND = '멈춘 고객사입니다. 새 문의를 받지 않습니다.';
 const ARCHIVED_BAND = '보관된 고객사입니다. 되돌릴 수 없습니다.';
 
 const KIM = member({ accountId: 11, email: 'kim@acme.test', name: '김고객' });
@@ -101,12 +101,12 @@ describe('C-9 고객사 상세 (1a)', () => {
     await title('에이크미 코리아');
   });
 
-  test('S1A-AC-44 C-9 상태 ACTIVE: "중지"·"보관" 버튼. 중지하면 띠 "중지된 고객사입니다. 새 문의를 받지 않습니다."와 "다시 사용"·"보관"', async () => {
+  test('S1A-AC-44 C-9 상태 ACTIVE: "멈춤"·"보관" 버튼. 멈추면 띠 "멈춘 고객사입니다. 새 문의를 받지 않습니다."와 "다시 사용"·"보관"', async () => {
     const { user } = renderAt(URL_ACME);
     await title(ACME.name);
     await button('보관');
     expect(pageText()).not.toContain(SUSPENDED_BAND);
-    await user.click(await button('중지'));
+    await user.click(await button('멈춤'));
 
     const [put] = await sent('PUT', `${COMPANY}/status`);
     expect(await put?.body).toEqual({ status: 'SUSPENDED' });
@@ -115,7 +115,7 @@ describe('C-9 고객사 상세 (1a)', () => {
     });
     await button('다시 사용');
     await button('보관');
-    expect(screen.queryByRole('button', { name: '중지' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '멈춤' })).toBeNull();
   });
 
   test('S1A-AC-44 C-9 상태 SUSPENDED: "다시 사용"을 누르면 ACTIVE로 바꾸고 띠가 사라진다', async () => {
@@ -125,7 +125,7 @@ describe('C-9 고객사 상세 (1a)', () => {
 
     const [put] = await sent('PUT', `${COMPANY}/status`);
     expect(await put?.body).toEqual({ status: 'ACTIVE' });
-    await button('중지');
+    await button('멈춤');
     expect(pageText()).not.toContain(SUSPENDED_BAND);
   });
 
@@ -289,7 +289,7 @@ describe('C-9 고객사 상세 (1a)', () => {
     },
   );
 
-  test('S1A-AC-58 C-9 대상이 바뀐 뒤 온 답: ACME를 중지하는 중에 BETA로 가면, 뒤에 온 ACME의 답을 BETA 화면에 보이지 않는다', async () => {
+  test('S1A-AC-58 C-9 대상이 바뀐 뒤 온 답: ACME를 멈추는 중에 BETA로 가면, 뒤에 온 ACME의 답을 BETA 화면에 보이지 않는다', async () => {
     state.companies = [ACME, BETA];
     const release = gate();
     route('put', `${COMPANY}/status`, async () => {
@@ -297,7 +297,7 @@ describe('C-9 고객사 상세 (1a)', () => {
       return Response.json(company({ status: 'SUSPENDED' }));
     });
     const { user } = renderAt(URL_ACME);
-    await user.click(await button('중지'));
+    await user.click(await button('멈춤'));
     await sent('PUT', `${COMPANY}/status`);
     await user.click(await link('고객사'));
     await user.click(await link(BETA.name));
@@ -312,7 +312,7 @@ describe('C-9 고객사 상세 (1a)', () => {
     expect(pageText()).not.toContain(SUSPENDED_BAND);
     expect(window.location.pathname).toBe('/companies/BETA');
     await title(BETA.name);
-    await button('중지');
+    await button('멈춤');
   });
 
   test('C-9 axe (1a): 빼기가 있는 두 목록과 열린 보관 확인 대화상자에 접근성 위반이 없다', async () => {
