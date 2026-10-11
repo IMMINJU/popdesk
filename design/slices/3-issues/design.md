@@ -12,7 +12,7 @@
 | # | 정할 것 | 정한 것 | 까닭 | 버린 대안 |
 |---|---|---|---|---|
 | 1 | 검색할 글자를 두는 곳 | `issue`에 칸 `search_text`를 두고, 문의를 만들거나 고칠 때 서버가 "제목, 줄바꿈, 내용의 화면 글자"를 넣는다. 이 칸 하나에 `pg_trgm` GIN 색인을 건다 | ISSUE-5가 마크다운 기호와 링크 주소를 빼고 찾으라고 한다. 원문에서 찾으면 `**`나 주소의 글자가 걸린다. 칸 하나면 제목과 내용을 한 색인으로 찾는다 | 원문(`title`, `content`)에 색인 둘. 규칙과 어긋나고 나중에 바꾸면 있던 문의를 다시 채워야 한다 |
-| 2 | 화면 글자를 뽑는 법 (새 결정 D-56) | 서버에 `org.commonmark:commonmark`(BSD-2, 순수 Java)를 더해 내용을 풀고 글자만 모은다. HTML을 만드는 데는 쓰지 않는다 | 서버에 마크다운을 읽는 코드가 없다 [소스: `server/pom.xml`에 없음]. 정규식으로 벗기면 코드 울타리와 겹친 기호에서 틀린다 | 정규식 / 화면이 뽑아 보내기(믿을 수 없는 값이 색인에 든다) / DB 함수로 벗기기 |
+| 2 | 화면 글자를 뽑는 법 (새 결정 D-56) | 서버에 `org.commonmark:commonmark` 0.30.0(BSD-2, 순수 Java, jar 하나 220 KB. 0.30.1은 2026-10-10에 나와 아직 쓰지 않는다)을 더해 내용을 풀고 글자만 모은다. HTML을 만드는 데는 쓰지 않는다 | 서버에 마크다운을 읽는 코드가 없다 [소스: `server/pom.xml`에 없음]. 정규식으로 벗기면 코드 울타리와 겹친 기호에서 틀린다 | 정규식 / 화면이 뽑아 보내기(믿을 수 없는 값이 색인에 든다) / DB 함수로 벗기기 |
 | 3 | 이력을 두는 곳 | 새 표 `issue_history`. 한 줄이 바뀐 칸 하나다. 값은 글자로 둔다: 상태와 우선순위는 이름, 담당자는 계정 ID, 제목과 내용은 글 그대로 | HIST-1의 항목 그대로다. 담당자를 ID로 두면 읽을 때 지금 이름을 붙인다(익명화하면 익명 이름이 나온다). 7번의 영구 삭제가 제목·내용 값을 비울 수 있다(TRASH-3) | 감사 로그에 같이 두기. 감사 로그는 관리자만 보고 해시 사슬에 묶여 값을 비울 수 없다 |
 | 4 | 이력의 칸 이름 | `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, `PRIORITY`. 뒤 묶음이 `DUE_DATE`, `LABEL`, `ATTACHMENT`, `LINK`, `DELETED`를 더한다. 표에 값 목록 제약을 두지 않는다 | 뒤 묶음마다 제약을 고치는 마이그레이션을 쓰지 않는다. 이름은 계약에 나가므로 지금 정한다 | 묶음마다 제약 넓히기 |
 | 5 | 있던 문의의 이력 | V9가 있던 문의마다 `CREATED` 한 건을 넣는다(한 사람은 올린 고객, 시각은 올린 시각) | 이력이 `CREATED`로 시작한다는 것을 화면과 7번 묶음이 믿을 수 있다. 0.2.0까지는 포털 등록뿐이라 올린 고객이 만든 사람이다 | 비워 두기. 옛 문의만 이력이 빈다 |
@@ -21,7 +21,8 @@
 | 8 | 새 오류 코드 | 400 `INVALID_TRANSITION`, 400 `NOT_REOPENABLE`, 409 `VERSION_CONFLICT`, 409 `IDEMPOTENCY_KEY_REUSED`. 담당자와 대리 등록 고객이 맞지 않는 것은 새 코드 없이 `INVALID_INPUT`과 `fields`의 `UNKNOWN_VALUE`다 | 코드는 공개 계약이다. 계약 탭이 `conventions.md` 표에 먼저 더한다. `UNKNOWN_VALUE`는 "고를 수 없는 것을 가리킴"으로 이미 있다 [소스: `conventions.md`] | `ASSIGNEE_NOT_ELIGIBLE` 같은 코드. 까닭을 가르게 된다 |
 | 9 | 웹훅과 메일의 종류 이름 | 웹훅 `ISSUE_RESOLVED`, `ISSUE_CLOSED`, `ISSUE_REOPENED`, `ASSIGNEE_CHANGED`. 메일 `ISSUE_FILED_ON_BEHALF`. 대리 등록의 웹훅은 있던 `ISSUE_CREATED`다 | 대기 표의 `kind`에 들어간다. 올라오는 중에 대기에 남은 행이 있을 수 있어 이름을 바꾸지 못한다. `kind`에는 값 제약이 없다 [소스: V3] | 상태마다 종류 하나씩 |
 | 10 | 담당 비우기의 감사 값 | 있던 종류(`AGENT_UNASSIGNED`, `ACCOUNT_SUSPENDED`)의 바뀐 값에 키 `clearedIssues`(정수)를 더한다. 비우지 않았으면 키가 없다 | 키 이름은 해시에 들어가 바꿀 수 없다 [소스: `conventions.md` 해시 사슬]. 키를 더하는 것은 된다. 비우지 않은 항목이 지금과 같아야 1a의 잠긴 테스트가 그대로 통과한다 [추론] | 새 종류 `ASSIGNMENTS_CLEARED` |
-| 11 | `pg_trgm`을 만드는 곳 | V9의 첫 문장 `CREATE EXTENSION IF NOT EXISTS pg_trgm`. 실패하면 앱이 뜨지 않고 까닭을 남긴다(S3-AC-91) | PostgreSQL 13부터 `pg_trgm`은 DB 주인이 만들 수 있는 확장이다 [추론: 이미지의 16에서 실험]. 바깥 DB에서 권한이 없으면 관리자가 한 번 만들어 준다 | 확장 없이 순차 검색. D-13과 어긋난다 |
+| 11 | `pg_trgm`을 만드는 곳 | V9의 첫 문장 `CREATE EXTENSION IF NOT EXISTS pg_trgm`. 실패하면 앱이 뜨지 않고 까닭을 남긴다(S3-AC-91) | `pg_trgm`은 DB 주인이 만들 수 있는 확장이고 compose의 이미지에 들어 있다 [실험 1]. 권한이 없으면 SQLSTATE `42501`이다. 관리자가 미리 만들어 두면 `IF NOT EXISTS`가 지난다 | 확장 없이 순차 검색. D-13과 어긋난다 |
+| 12 | 마이그레이션의 차례 | V9(SQL: 확장, 칸, 표, 있던 문의의 `CREATED`, 계정 색인) → V10(Java: 있던 문의의 `search_text` 채우기) → V11(SQL: `search_text`의 GIN 색인) | 색인을 먼저 만들고 채우면 10만 건에 8분, 채운 뒤 만들면 70초다 [실험 4] | V9에서 색인까지 만들기 |
 
 ### 새 결정 D-56 (2026-10-12 메인이 정함, 사용자 확인 전)
 
@@ -38,8 +39,8 @@
 |---|---|---|
 | 확장 | `pg_trgm` | 0절 11 |
 | `issue` | 칸 다섯: `assignee_id bigint`(계정, `null` 허용), `created_by bigint`(계정, `null` 허용), `resolved_at timestamptz`, `closed_at timestamptz`, `search_text text NOT NULL DEFAULT ''` | 있던 행은 담당자·만든 사람·두 시각이 없다(S3-AC-89). 있던 문의는 모두 `RECEIVED`다 [소스: 상태를 바꾸는 코드가 없다] |
-| `issue` 색인 | `search_text`에 GIN(`gin_trgm_ops`). `(assignee_id)`에서 `assignee_id IS NOT NULL`인 행만. `(status, created_at)` | 검색, "내가 담당", 상태 필터 |
-| 새 표 `issue_history` | `id bigint`(기본 키, 순서), `tenant_id bigint NOT NULL`, `issue_id uuid`(문의), `kind text`(`CREATED`·`CHANGED`), `field text`(`CREATED`면 `null`), `old_value text`, `new_value text`, `actor_id bigint NOT NULL`(시스템은 0), `created_at`. 색인 `(issue_id, id)` | 0절 3, 4. `actor_id`에 외래 키를 걸지는 계약 탭이 감사 로그가 계정 0을 어떻게 두는지 보고 맞춘다 [추론] |
+| `issue` 색인 | `(assignee_id)`에서 `assignee_id IS NOT NULL`인 행만. `(status, created_at)`. `search_text`의 GIN(`gin_trgm_ops`)은 V11에서 만든다 | "내가 담당", 상태 필터, 검색 |
+| 새 표 `issue_history` | `id bigint`(기본 키, 순서), `tenant_id bigint NOT NULL`, `issue_id uuid`(문의), `kind text`(`CREATED`·`CHANGED`), `field text`(`CREATED`면 `null`), `old_value text`, `new_value text`, `actor_id bigint NOT NULL`(시스템은 0), `created_at`. 색인 `(issue_id, id)` | 0절 3, 4. `actor_id`에는 외래 키를 걸지 않는다. 계정 0인 행이 없어 시스템을 넣지 못한다 [계약 탭이 확인] |
 | 있던 문의의 이력 | V9의 `INSERT … SELECT`로 문의마다 `CREATED` 한 건 | 0절 5 |
 | 새 표 `issue_idempotency` | `tenant_id`, `account_id`, `key text`, `request_hash text`, `issue_id uuid`, `created_at`. 기본 키 `(account_id, key)`. 색인 `(created_at)` | 0절 7. 문의 외래 키는 첨부처럼 `DEFERRABLE INITIALLY DEFERRED`다(문의 행이 트랜잭션 끝에서 들어간다) [소스: `architecture.md` 잠금 순서] |
 | `account` 색인 | `name`과 `email`에 GIN(`gin_trgm_ops`) | S3-AC-17. 계정 검색의 SQL은 그대로다 |
@@ -49,7 +50,10 @@
 - V10은 앱의 서비스 클래스를 부르지 않고 마이그레이션 안에 글자 뽑기를 둔다. 나중에 앱의 뽑는 법이 바뀌어도 나간 마이그레이션은 그대로다(D-24). 앱과 마이그레이션이 같은 결과를 내는지는 구현 탭의 단위 테스트가 한 번 견준다.
 - 표 둘이 늘어나므로 `deploy/upgrade/make-sample.py`가 채운다(S3-AC-90). 이력은 상태를 바꾸고 담당자를 정하면 생긴다. 등록 키는 키를 붙인 등록 한 번으로 생긴다.
 - 옛 이미지는 이 스키마에서 뜨지 않는다(D-46). 릴리스 노트에 되돌릴 수 없는 마이그레이션과 `pg_trgm`을 적는다(D-24).
-- 검색어가 한두 글자면 색인을 타지 않고 훑는다. 받아들인다(목표 규모는 문의 수십만 건, `architecture.md` 7절). 7절 실험으로 시간을 잰다.
+- 검색어가 한두 글자면 색인을 타지 않고 훑는다. 10만 건에 2초, 한국어는 4초쯤이다 [실험 4]. 받아들이고 요청 수 제한으로만 막는다. 수십만 건에서 느려지면 그때 최소 글자 수를 정한다.
+- 10만 건에서 색인은 293 MB, 표는 535 MB다 [실험 4]. 릴리스 노트에 DB가 커진다고 적는다.
+- DB의 ctype이 `C`이면 한글에서 트라이그램이 나오지 않아 한국어 검색이 늘 훑는다 [실험 4]. 결과는 맞다. compose 설치는 `en_US.utf8`이라 걸리지 않는다. `docs/operate/`의 바깥 DB 안내에 적는다.
+- 등록이 `issue_history`에 한 줄을 넣으므로 "등록 뒤 더해진 행은 문의 행뿐"이라고 단언하는 잠긴 테스트(`notify.NoWebhookTest`)는 요구가 바뀐 것이다. 테스트 쪽 탭이 맞춘다 [실험 5].
 
 ## 2. 문의를 바꾸는 요청의 꼴
 
@@ -71,8 +75,9 @@
 
 - 필터는 `IssueScope.SQL` 뒤에 `AND`로만 붙인다 [소스: 범위는 모든 읽기에 붙는 한 조건이다]. 범위를 대신하거나 `OR`로 잇는 조건을 만들지 않는다(S3-AC-06, 10). 건수(`totalElements`)도 같은 조건으로 센다.
 - "담당자가 볼 수 없음"은 SQL 조건 하나다: 담당자가 있고, 그 계정이 `ACTIVE`가 아니거나, 상담원인데 `company_agent`에 그 고객사의 행이 없다. 목록과 상세의 표시, 필터가 같은 조건을 쓴다.
+- 검색어가 있으면 검색 조건으로 먼저 좁힌 뒤 정렬한다(좁힌 결과를 `MATERIALIZED` CTE로 두는 꼴). 그냥 `ORDER BY created_at DESC LIMIT 20`을 붙이면 계획기가 최신순 색인을 거꾸로 훑어 10만 건에서 2.1초가 걸렸다 [실험 4]. S3-AC-94.
 - 검색은 `search_text ILIKE ? ESCAPE '\'`다. 검색어의 `%`, `_`, `\`는 계정 검색과 같은 함수로 바꾼다 [소스: `AccountRepository`]. 계정 검색에는 `ESCAPE` 절이 없어 DB 기본값에 기대고 있다. 같이 붙인다.
-- 검색어는 로그에 남기지 않는다(S3-AC-92). 요청 로그가 쿼리 문자열을 적는지 계약 탭이 본다 [추론].
+- 검색어는 로그에 남기지 않는다(S3-AC-92). 앱에는 접근 로그도 쿼리 문자열을 적는 코드도 없다 [계약 탭이 확인].
 - 요청 수 제한(S3-AC-15)은 `q`가 있을 때만 센다. 문의 목록과 계정 목록이 한 통을 쓴다.
 
 ## 4. 등록 키
@@ -89,6 +94,9 @@
 
 - 포털 등록과 같은 서비스 함수(`IssueService.prepare`, `file`)를 쓰고, 올린 사람과 만든 사람, 받은 경로만 다르게 넘긴다 [소스: 경로는 지금 `PORTAL`로 박혀 있다].
 - 고객의 자격(그 고객사 소속, `ACTIVE`, 고객 역할)은 등록 트랜잭션 안에서 본다.
+- 고객을 고르는 목록은 새 경로(`…/companies/{code}/reporters`)다. 있던 소속 고객 목록은 관리자 전용 그대로다(`acceptance.md` 5절 12).
+- 콘솔 대리 등록의 본문도 포털처럼 256 KB에서 413이다(`conventions.md`).
+- `popdesk restore`의 `pg_restore`에 `--no-comments`를 더한다(S3-AC-93). 확장의 주인이 아닌 사용자는 `COMMENT ON EXTENSION`에서 실패한다 [실험 2].
 - 메일은 `STAFF_COMMENT`와 같은 길이다: 대기 행에 받는 계정과 문의만 두고, 제목과 주소는 보낼 때 읽고, 보내기 직전에 `IssueVisibility`로 다시 본다 [소스].
 - 메일의 글은 `MailText`에 한국어와 영어로 더한다. 문의 제목은 메일 제목에 들어가고(첫 묶음의 댓글 메일과 같다) 내용은 넣지 않는다.
 
