@@ -79,7 +79,7 @@
 - 보기의 순서는 시각 내림차순, 같으면 `seq` 내림차순이다. 쪽 나누기는 COM-4(`page`, `size`).
 - 응답의 바뀐 값은 저장된 꼴 그대로다: `{칸: {from, to}}` [소스: `AccountService.change`]. 해시에 들어간 값이라 이름을 바꿔 줄 수 없다(내보낸 파일로 다시 계산해야 한다). 화면이 `from`과 `to`가 있는 값을 "전 → 뒤"로 보인다. 값이 바뀌는 일을 새로 남길 때는 이 꼴을 쓴다고 `conventions.md`에 적는다. 1a에서 넘어온 "전·뒤 방향을 테스트가 보지 않는다"는 이 묶음의 테스트가 종류마다 본다(S1B-AC-07).
 - 내보내기: ① 짧은 트랜잭션에서 지금의 머리 번호와 조건에 맞는 건수를 읽고 `AUDIT_EXPORTED`를 남긴다 ② 머리 번호까지만 `seq` 오름차순으로 커서로 흘려 보낸다. 그래서 파일에 자기 자신의 내보내기 항목은 없다.
-- JSON Lines 한 줄: `id`, `seq`, `prevHash`, `hash`, `action`, `actor`, `target`, `changes`, `occurredAt`. CSV는 첫 줄이 머리글이고 칸 이름이 같다. `actor`는 세 칸(`actorAccountId`, `actorName`, `actorEmail`)으로 펴고 `target`·`changes`는 JSON 글자 한 칸이다. CSV는 사람이 읽는 용도이고 사슬 확인은 JSON Lines로 한다.
+- JSON Lines 한 줄: `id`, `seq`, `prevHash`, `hash`, `action`, `actor`, `target`, `changes`, `occurredAt`. CSV는 첫 줄이 머리글이고 칸 이름이 같다. `actor`는 세 칸(`actorAccountId`, `actorName`, `actorEmail`)으로 펴고 `target`·`changes`는 JSON 글자 한 칸이다. CSV는 사람이 읽는 용도이고 사슬 확인은 JSON Lines로 한다. CSV 파일 앞에는 BOM을 넣는다(엑셀에서 한글 이름이 깨지지 않게. C-9에서 정함).
 - 동시 수 2는 프로필 사진과 같은 꼴이다(`Semaphore`, 503과 `Retry-After`) [소스: `PhotoService`]. 응답은 `Cache-Control: no-store`. 자리를 먼저 잡고 그 뒤에 `AUDIT_EXPORTED`를 남긴다. 거절된 내보내기는 항목을 남기지 않는다(C-5의 `AuditExportLimitTest`가 이 순서에 기댄다).
 - CSV의 수식 막기에서 탭과 줄바꿈으로 시작하는 값은 API로 넣을 길이 없다(이름 입력이 앞뒤 공백을 지운다). 이 둘은 구현 쪽 단위 테스트가 본다.
 - 화면은 받기 전에 같은 주소를 `HEAD`로 먼저 부른다(첨부와 같다) [소스: `attachments.ts`]. `HEAD`는 감사 항목을 남기지 않는다.
@@ -119,3 +119,12 @@
 2. C-4 계약: 컨트롤러 껍데기와 계약 파일, 클라이언트, 화면과 story 껍데기.
 3. C-5 테스트: 서버 셋(2.1·2.5 보기와 내보내기, 2.2~2.4 사슬·확인·보관, 2.6·2.8 사본과 업그레이드), 웹 하나, 숨긴 E2E 하나.
 4. 그 뒤는 `process.md` C-6~C-11. 코드가 든 푸시는 단계마다 한 번이다.
+
+## 7. C-10에서 볼 것 (구현 탭이 알린 것)
+
+- `application.yml`의 `spring.mvc.async.request-timeout: 0`: 긴 내보내기가 30초에 끊기지 않게 없앴다. 받는 쪽이 멈췄을 때 내보내기 자리가 돌아오는지 본다.
+- `ApiExceptionHandler`: 여러 값을 받는 enum 쿼리의 틀린 값이 `INVALID_FORMAT`에서 `UNKNOWN_VALUE`로 바뀌었다. 문의 목록의 상태 필터 같은 앞 묶음의 엔드포인트가 같이 바뀌었는지와 `conventions.md`가 맞는지 본다.
+- V7은 소수나 64비트를 넘는 수가 든 옛 감사 행을 만나면 실패해 앱이 뜨지 않는다. 지금 남기는 값에는 없다.
+- 무결성 확인은 끊긴 곳을 찾은 뒤에도 끝까지 읽는다.
+- 웹: `expiresAt`, `lockedUntil`의 칸 이름과 시각을 한국어 말과 지역 시각으로. 내보내기 뒤 1.5초 다시 불러오기가 모자라지 않은지. 줄마다 Tab이 셋 멈추는 것.
+- `UpgradeHarnessTest`의 V999를 고쳤다(행이 하나뿐인 감사 표는 둔다). 이미지 테스트에서 통과하는지 본다.
