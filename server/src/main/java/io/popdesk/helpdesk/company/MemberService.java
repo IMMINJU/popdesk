@@ -233,15 +233,23 @@ public class MemberService {
 
     /**
      * The name of a manager's invitation: the rules of an admin's, and no control character such as a
-     * line break or a tab, because the name goes into the invitation mail (S2-AC-53).
+     * line break or a tab, because the name goes into the invitation mail (S2-AC-53). The Unicode line
+     * and paragraph separators (U+2028, U+2029) break a line too and are not ISO control characters.
      */
     private static String name(String received, List<ApiError.FieldError> errors) {
         String name = TextInput.required("name", received, InvitationService.NAME_MAX, errors);
-        if (name != null && name.codePoints().anyMatch(Character::isISOControl)) {
+        if (name != null && name.codePoints().anyMatch(MemberService::breaksLine)) {
             errors.add(new ApiError.FieldError("name", "INVALID_FORMAT"));
             return null;
         }
         return name;
+    }
+
+    private static boolean breaksLine(int codePoint) {
+        int type = Character.getType(codePoint);
+        return Character.isISOControl(codePoint)
+                || type == Character.LINE_SEPARATOR
+                || type == Character.PARAGRAPH_SEPARATOR;
     }
 
     private static ApiException memberIsManager() {
