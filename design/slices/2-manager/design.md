@@ -18,6 +18,18 @@
 | 5 | 감사 종류의 이름 | 새 종류 여섯: `MANAGER_MARKED`, `MANAGER_UNMARKED`, `MEMBERSHIP_REQUESTED`, `MEMBERSHIP_REQUEST_WITHDRAWN`, `MEMBERSHIP_REQUEST_APPROVED`, `MEMBERSHIP_REQUEST_REJECTED`. 담당자의 초대, 다시 보내기, 빼기는 있던 종류(`INVITATION_CREATED`, `INVITATION_RESENT`, `INVITATION_CANCELLED`, `CUSTOMER_REMOVED`)를 쓴다 | 종류 이름은 해시에 들어가 나중에 바꿀 수 없다 [소스: `AuditAction`의 머리말]. 누가 했는지는 "한 사람"이 말하므로 담당자용 종류를 따로 두지 않는다 | `MANAGER_INVITED`처럼 담당자용 종류 두기. 같은 일에 이름이 둘이 된다 |
 | 6 | 새 결정 기록 | 없다. D-35의 세부다 | 새 설정 키, 새 의존성, 공개 계약의 규칙 변경이 없다 | – |
 
+### 감사 항목의 꼴 (테스트 탭의 질문에 메인이 정함, 2026-10-12)
+
+대상과 바뀐 값은 해시에 들어가므로 나중에 바꿀 수 없다. 있던 소속 항목(`CUSTOMER_ADDED`: 대상 `{type: COMPANY, code, accountId}`, 바뀐 값 `{member: true}`)과 같은 꼴로 둔다.
+
+| 종류 | 대상 | 바뀐 값 |
+|---|---|---|
+| `MANAGER_MARKED`, `MANAGER_UNMARKED` | `{type: COMPANY, code, accountId}`(지정된 고객) | `{manager: true}` / `{manager: false}` |
+| `MEMBERSHIP_REQUESTED` | `{type: COMPANY, code, accountId}`(요청의 대상 계정) | `{email, name}`(담당자가 넣은 값) |
+| `MEMBERSHIP_REQUEST_WITHDRAWN`, `…_APPROVED`, `…_REJECTED` | 같다 | `{email}` |
+
+대상의 종류를 새로 만들지 않는다. 감사 로그 화면의 대상 필터(고객사, 계정)가 그대로 듣는다.
+
 ## 1. 데이터 (마이그레이션 V8)
 
 | 바뀌는 것 | 내용 | 까닭 |

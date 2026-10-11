@@ -8,3 +8,8 @@ src/components/AppShell.navCount.test.tsx.AppShell NavItem의 count (2번 묶음
 src/components/AppShell.navCount.test.tsx.AppShell NavItem의 count (2번 묶음) > AppShell 포털의 nav: app이 portal이어도 nav를 주면 항목이 링크로 보인다 | design.md 6절 `AppShell`은 `app`과 관계없이 `nav`를 그린다. 구현 뒤에도 그대로여야 한다
 src/components/RowMenu.shared.test.tsx.RowMenu (@popdesk/ui) > RowMenu 이름: 버튼과 열린 목록이 label을 접근 가능한 이름으로 갖고, 항목은 준 순서대로다 | design.md 6절 C-4 껍데기가 이미 옮겼다. 구현 뒤에도 그대로여야 한다
 src/components/RowMenu.shared.test.tsx.RowMenu (@popdesk/ui) > RowMenu axe: 닫혔을 때와 열렸을 때 접근성 위반이 없다 | design.md 6절 C-4 껍데기가 이미 옮겼다. 구현 뒤에도 그대로여야 한다
+io.popdesk.manager.MembershipRequestTest.agentCannotList | S2-AC-33 보안 설정이 /api/console/membership-requests/**를 이미 상담원에게 403으로 막는다. 구현 뒤에도 그대로여야 한다
+io.popdesk.manager.MemberDecidedCasesTest.adminInvitationStillTakesTheName(String, String)[1] | S2-AC-53 관리자 초대는 지금도 이름의 줄바꿈과 탭을 201로 받는다. 구현 뒤에도 바뀌지 않는다는 것을 지킨다
+io.popdesk.manager.MemberDecidedCasesTest.adminInvitationStillTakesTheName(String, String)[2] | S2-AC-53 관리자 초대는 지금도 이름의 줄바꿈과 탭을 201로 받는다. 구현 뒤에도 바뀌지 않는다는 것을 지킨다
+io.popdesk.manager.MemberDecidedCasesTest.adminInvitationStillTakesTheName(String, String)[3] | S2-AC-53 관리자 초대는 지금도 이름의 줄바꿈과 탭을 201로 받는다. 구현 뒤에도 바뀌지 않는다는 것을 지킨다
+io.popdesk.manager.MemberDecidedCasesTest.adminInvitationStillTakesTheName(String, String)[4] | S2-AC-53 관리자 초대는 지금도 이름의 줄바꿈과 탭을 201로 받는다. 구현 뒤에도 바뀌지 않는다는 것을 지킨다

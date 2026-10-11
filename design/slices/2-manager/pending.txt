@@ -3,7 +3,6 @@
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
 # 서버 줄은 구현 탭마다 묶는다. 탭이 병합되면 그 묶음을 지운다.
-server io/popdesk/boundary/BoundaryListTest.java
 server io/popdesk/project/NoStoreTest.java
 server io/popdesk/manager/ManagerIssueScopeTest.java
 server io/popdesk/manager/ManagerMarkTest.java
@@ -23,3 +22,8 @@ web src/screens/P6MyInfo.manager.test.tsx
 web src/screens/P8Members.actions.test.tsx
 web src/screens/P8Members.late.test.tsx
 web src/screens/P8Members.test.tsx
+server io/popdesk/manager/ManagerAuditTest.java
+server io/popdesk/manager/MemberDecidedCasesTest.java
+server io/popdesk/manager/MembershipRequestMailTest.java
+server io/popdesk/manager/MembershipRequestTest.java
+server io/popdesk/deploy/ManagerUpgradeTest.java

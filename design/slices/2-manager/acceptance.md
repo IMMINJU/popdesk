@@ -82,8 +82,8 @@
 | S2-AC-33 | When 관리자가 소속 요청 목록을 요청하면, the system shall 걸려 있는 요청을 오래된 것부터 COM-4로 쪽 나눠 준다. 항목에는 고객사, 요청한 담당자, 담당자가 넣은 이름과 이메일, 그 이메일의 계정(ID, 이름, 역할, 상태), 요청한 시각이 있다. 고객사로 거를 수 있다. 상담원에게는 403이고, 상담원이 받는 고객사 응답의 걸린 요청 수는 늘 0이다. (MGR-6) |
 | S2-AC-34 | When 관리자가 요청을 승인하면, the system shall 그 계정을 그 고객사에 소속시키고 요청을 닫는다. 담당자의 구성원 목록에서 그 행은 같은 행 ID로 남고 계정의 실제 이름과 상태를 보인다. (MGR-3, MGR-6) |
 | S2-AC-35 | When 관리자가 요청을 거절하면, the system shall 요청을 닫는다. 담당자의 구성원 목록에서 그 행이 사라지고 계정은 바뀌지 않는다. (MGR-3, MGR-6) |
-| S2-AC-36 | If 요청의 계정이 고객이 아니거나 고객사가 `ARCHIVED`이면, then the system shall 승인을 400으로 답한다(`NOT_A_CUSTOMER`, `COMPANY_NOT_ACTIVE`). 거절은 된다. (MGR-6, PROJ-3) |
-| S2-AC-37 | If 이미 닫힌 요청에 같은 처리를 다시 하면, then the system shall 그대로 200으로 답한다. 반대 처리를 하거나 담당자가 거둔 요청이면 409 `REQUEST_CLOSED`다. (PROJ-4와 같은 꼴) |
+| S2-AC-36 | If 요청의 계정이 고객이 아니거나 고객사가 `ARCHIVED`이면, then the system shall 승인을 400으로 답한다(`NOT_A_CUSTOMER`, `COMPANY_NOT_ACTIVE`). 거절은 된다. 정지된 고객의 요청은 승인할 수 있다(콘솔의 소속 더하기가 계정의 상태를 보지 않는 것과 같다). (MGR-6, PROJ-3) |
+| S2-AC-37 | If 이미 닫힌 요청에 같은 처리를 다시 하면, then the system shall 그대로 200으로 답한다. 반대 처리를 하거나 담당자가 거둔 요청이면 409 `REQUEST_CLOSED`다. 같은 때 온 승인과 거절은 하나만 된다(이 경우는 테스트를 두지 않았다. 동시 요청을 보내는 공용 도움이 없다. 요청 행을 잠그는 것으로 지킨다, `design.md` 5절). (PROJ-4와 같은 꼴) |
 | S2-AC-38 | When 관리자가 콘솔의 소속 더하기로 그 계정을 그 고객사에 소속시키면, the system shall 걸려 있던 요청을 승인된 것으로 닫는다. (MGR-6) |
 | S2-AC-39 | When 소속 요청이 생기면, the system shall `ACTIVE` 관리자 모두의 콘솔 알림함에 항목을 넣는다. 메일은 보내지 않는다. (5절 5) |
 | S2-AC-40 | The system shall 요청이 생기고, 승인되고, 거절되고, 거둬져도 요청의 대상 계정에게는 메일과 알림을 보내지 않는다. (MGR-3, 5절 5) |
