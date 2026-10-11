@@ -66,7 +66,14 @@ export function issue(over: Partial<Issue> = {}): Issue {
     companyCode: ACME.code,
     companyName: ACME.name,
     channel: 'PORTAL',
+    createdBy: null,
+    assignee: null,
+    assigneeUnavailable: false,
+    nextStatuses: [],
+    reopenable: false,
     firstResponseAt: null,
+    resolvedAt: null,
+    closedAt: null,
     createdAt: T0,
     updatedAt: T0,
     version: 1,
@@ -76,7 +83,21 @@ export function issue(over: Partial<Issue> = {}): Issue {
 
 export function summary(over: Partial<IssueSummary> = {}): IssueSummary {
   const { key, title, status, priority, private: isPrivate, reporter, companyCode, companyName, createdAt } = issue();
-  return { key, title, status, priority, private: isPrivate, reporter, companyCode, companyName, createdAt, ...over };
+  return {
+    key,
+    title,
+    status,
+    priority,
+    private: isPrivate,
+    reporter,
+    companyCode,
+    companyName,
+    filedOnBehalf: false,
+    assignee: null,
+    assigneeUnavailable: false,
+    createdAt,
+    ...over,
+  };
 }
 
 export function comment(over: Partial<Comment> = {}): Comment {

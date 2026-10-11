@@ -29,14 +29,17 @@ class PortalIssueContractTest {
     /**
      * The customer's issue and comment types and their fields, as fixed for this slice.
      * {@code Person.photoUpdatedAt} came with slice 1a (S1A-AC-25, S1A-AC-26): the time a customer's
-     * photo last changed, never a staff member's.
+     * photo last changed, never a staff member's. Slice 3 added {@code filedBySupport} (a flag, never
+     * the agent who filed: S3-AC-36), {@code resolvedAt} and {@code closedAt}, and on the issue
+     * {@code reopenable} (S3-AC-59).
      */
     private static final Map<String, List<String>> SNAPSHOT = new TreeMap<>(Map.of(
             "Comment", List.of("author", "content", "createdAt", "id"),
-            "Issue", List.of("companyCode", "companyName", "content", "createdAt", "key", "priority", "private",
-                    "reporter", "status", "title", "updatedAt", "version"),
-            "IssueSummary", List.of("companyCode", "companyName", "createdAt", "key", "priority", "private",
-                    "reporter", "status", "title"),
+            "Issue", List.of("closedAt", "companyCode", "companyName", "content", "createdAt", "filedBySupport",
+                    "key", "priority", "private", "reopenable", "reporter", "resolvedAt", "status", "title",
+                    "updatedAt", "version"),
+            "IssueSummary", List.of("closedAt", "companyCode", "companyName", "createdAt", "filedBySupport", "key",
+                    "priority", "private", "reporter", "resolvedAt", "status", "title"),
             "PagedComment", List.of("items", "page", "size", "totalElements", "totalPages"),
             "PagedIssueSummary", List.of("items", "page", "size", "totalElements", "totalPages"),
             "Person", List.of("accountId", "kind", "name", "photoUpdatedAt")));

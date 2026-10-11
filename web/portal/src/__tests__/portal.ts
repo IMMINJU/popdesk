@@ -59,6 +59,10 @@ export function issue(over: Partial<Issue> = {}): Issue {
     reporter: ME_PERSON,
     companyCode: ACME.code,
     companyName: ACME.name,
+    filedBySupport: false,
+    resolvedAt: null,
+    closedAt: null,
+    reopenable: false,
     createdAt: T0,
     updatedAt: T0,
     version: 1,
@@ -68,7 +72,21 @@ export function issue(over: Partial<Issue> = {}): Issue {
 
 export function summary(over: Partial<IssueSummary> = {}): IssueSummary {
   const { key, title, status, priority, private: isPrivate, reporter, companyCode, companyName, createdAt } = issue();
-  return { key, title, status, priority, private: isPrivate, reporter, companyCode, companyName, createdAt, ...over };
+  return {
+    key,
+    title,
+    status,
+    priority,
+    private: isPrivate,
+    reporter,
+    companyCode,
+    companyName,
+    filedBySupport: false,
+    resolvedAt: null,
+    closedAt: null,
+    createdAt,
+    ...over,
+  };
 }
 
 export function comment(over: Partial<Comment> = {}): Comment {

@@ -70,8 +70,9 @@ class PortalIssueFieldsTest extends BareAppTest {
                 .noneMatch(f -> PortalIssueContractTest.STAFF_ONLY.stream()
                         .anyMatch(f.toLowerCase(Locale.ROOT)::contains)));
         assertThat(items(comments)).hasSize(2);
-        assertThat(detail.json().propertyNames()).containsExactlyInAnyOrder("companyCode", "companyName", "content",
-                "createdAt", "key", "priority", "private", "reporter", "status", "title", "updatedAt", "version");
+        assertThat(detail.json().propertyNames()).containsExactlyInAnyOrder("closedAt", "companyCode", "companyName",
+                "content", "createdAt", "filedBySupport", "key", "priority", "private", "reopenable", "reporter",
+                "resolvedAt", "status", "title", "updatedAt", "version");
         assertThat(items(comments).getFirst().propertyNames())
                 .containsExactlyInAnyOrder("author", "content", "createdAt", "id");
     }

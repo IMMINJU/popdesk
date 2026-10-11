@@ -14,14 +14,17 @@ import io.popdesk.support.Wait;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
  * Without {@code NOTIFY_WEBHOOK_URL} (setup "bare") filing an issue and a customer's comment put
- * nothing in the send queue: the only rows they add are the issue and the comment, and no table
- * gets a row that is deleted again (a queue row handled at once).
+ * nothing in the send queue: they add no row to the table the mails went through, one row holds the
+ * title and one the comment, and no table gets a row that is deleted again (a queue row handled at
+ * once). Rows of other tables are not this test's: filing also writes the issue's history (S3-AC-61).
  */
 class NoWebhookTest extends BareAppTest {
 
@@ -44,10 +47,15 @@ class NoWebhookTest extends BareAppTest {
         String title = Unique.text("Unhooked");
         String content = "Unhooked comment " + Unique.number();
         // The scene's two invitation mails were queued and handled; wait until the statistics show both
-        // rows deleted, so that they do not count as rows of the requests below.
-        Wait.until("the scene's two mail rows counted as deleted", Duration.ofSeconds(25), () ->
-                TableActivity.insertedAndDeleted(beforeScene, activity.counts()).values().stream()
-                        .anyMatch(c -> c.deleted() >= 2) ? s : null);
+        // rows deleted, so that they do not count as rows of the requests below. The table they went
+        // through is the send queue.
+        Set<String> queue = Wait.until("the scene's two mail rows counted as deleted", Duration.ofSeconds(25), () -> {
+            Set<String> tables = TableActivity.insertedAndDeleted(beforeScene, activity.counts()).entrySet().stream()
+                    .filter(e -> e.getValue().deleted() >= 2)
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toSet());
+            return tables.isEmpty() ? null : tables;
+        });
         Snapshot before = rows.snapshot();
         Map<String, Counts> countsBefore = activity.counts();
 
@@ -61,7 +69,7 @@ class NoWebhookTest extends BareAppTest {
         List<Row> commentRows = added.stream().filter(r -> !rows.columnsContaining(r, content).isEmpty()).toList();
         assertThat(issueRows).as("added rows holding the title").hasSize(1);
         assertThat(commentRows).as("added rows holding the comment").hasSize(1);
-        assertThat(added).as("rows added by filing and commenting, other than the issue and the comment")
-                .allSatisfy(r -> assertThat(List.of(issueRows.getFirst(), commentRows.getFirst())).contains(r));
+        assertThat(added).as("rows added by filing and commenting, in the send queue %s", queue)
+                .noneMatch(r -> queue.contains(r.table()));
     }
 }

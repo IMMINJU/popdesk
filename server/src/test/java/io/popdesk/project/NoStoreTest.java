@@ -148,12 +148,14 @@ class NoStoreTest extends BareAppTest {
         // The members of a company are read by its manager only (S2-AC-09), so the customer is one (S2-AC-01).
         admin.client().put("/api/console/companies/" + company.code() + "/customers/" + customer.accountId()
                 + "/manager").send().expectStatus(200);
-        fixtures.agent(admin, company.code());
+        // An agent's open assignments in a company are read for an agent assigned to it, by an admin (S3-AC-68).
+        Session agent = fixtures.agent(admin, company.code());
         Issue issue = fixtures.fileIssue(customer, company.code());
         Attachment file = fixtures.attach(customer, issue.key(), File.text("nostore-" + Unique.number() + ".txt",
                 "No store, read " + Unique.number()));
         fixtures.comment(admin, issue.key(), "No store answer " + Unique.number());
-        Map<String, String> values = Map.of("{key}", issue.key(), "{code}", company.code(), "{id}", file.id());
+        Map<String, String> values = Map.of("{key}", issue.key(), "{code}", company.code(), "{id}", file.id(),
+                "{accountId}", String.valueOf(agent.accountId()));
         List<String> failed = new ArrayList<>();
 
         for (Operation op : operations()) {
