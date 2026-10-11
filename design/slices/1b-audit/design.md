@@ -100,8 +100,9 @@
 ## 5. 쓸 컴포넌트와 토큰
 
 - 새 화면 `C12AuditLog`. 공용 컴포넌트는 있는 것을 쓴다: `DataTable`, `Pagination`, `Select`, `TextField`(날짜), `Alert`, `EmptyState`, `RelativeTime`, `CopyField`, `Button`.
-- 고치는 공용 컴포넌트: `DataTable`에 줄 펼치기가 없으면 더한다(해시를 보이는 자리). C-4에서 props를 정한다.
-- 계정 찾기는 C-9 고객사 상세의 것을 화면 밖으로 꺼내 같이 쓴다.
+- 고치는 공용 컴포넌트(C-4에서 props를 정했다): `DataTable`의 줄 펼치기(`renderExpanded`, `expandLabel`. 펼친 상태는 표가 안에서 쥔다), `Select` 선택지의 묶음 이름(`group`), `TextField`의 `type`에 `date`.
+- 계정 찾기는 C-9 고객사 상세의 것을 콘솔의 `app/`으로 꺼내 같이 쓴다. `@popdesk/ui`에는 두지 않는다.
+- 내보내기는 메뉴 없이 버튼 둘이다. 새 메뉴 컴포넌트를 만들지 않는다.
 - 새 토큰은 없다. 결과 띠는 `Alert`의 성공·오류 꼴이다.
 
 ## 6. 일하는 차례
