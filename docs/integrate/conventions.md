@@ -86,6 +86,16 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 |---|---|---|
 | 400 | `INVALID_INPUT` | One or more request fields or query parameters are invalid. `fields` lists all of them |
 | 400 | `INVITATION_INVALID` | The invitation token is unknown, expired, already used, or replaced by a newer one. One body for all of these |
+| 400 | `PASSWORD_RESET_INVALID` | The password reset token is unknown, over 1 hour old, already used, or replaced by a newer one, its account is no longer `ACTIVE`, or it is sent to the other app's host. One body for all of these |
+| 400 | `CURRENT_PASSWORD_WRONG` | The current password sent with a password change is wrong |
+| 400 | `UNSUPPORTED_IMAGE` | The profile photo is not a PNG, JPEG, or WebP file, judged by its content, or it cannot be decoded |
+| 400 | `IMAGE_TOO_LARGE` | The profile photo has too many pixels: width times height over 25 million for PNG and JPEG, 12 million for WebP |
+| 400 | `OWN_ACCOUNT` | An admin tries to suspend their own account or change their own role |
+| 400 | `CUSTOMER_ROLE_FIXED` | A role change to `CUSTOMER`, or of a customer's account. Only `AGENT` and `ADMIN` change into each other |
+| 400 | `LAST_ADMIN` | The suspension or role change would leave no `ACTIVE` admin |
+| 400 | `INVITATION_NOT_ACCEPTED` | The account never accepted its invitation, so its suspension cannot be lifted. Send the invitation again instead |
+| 400 | `INVITATION_ALREADY_ACCEPTED` | The account accepted its invitation before, so the invitation cannot be sent again or cancelled |
+| 400 | `COMPANY_ARCHIVED` | The customer company is `ARCHIVED`: its status, name, and legal name no longer change |
 | 400 | `COMPANY_NOT_ACTIVE` | The customer company is not `ACTIVE`, so nothing can be filed in or added to it |
 | 400 | `ISSUE_CLOSED` | The issue is `CLOSED`: no comments, attachments, or edits |
 | 400 | `FILE_EMPTY` | The uploaded file has 0 bytes |
@@ -99,11 +109,11 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 404 | `NOT_FOUND` | The target does not exist or the caller may not see it (`COM-1`). Also a path the host does not serve |
 | 409 | `COMPANY_CODE_TAKEN` | Another customer company has this code |
 | 409 | `EMAIL_TAKEN` | An account has this email |
-| 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit, or the JSON of a new issue (the body, or the `issue` part of a multipart request) is over 256 KB (262,144 bytes). The headers of one multipart part, which carry the file name, are limited to 4 KB: a file name far over 255 characters gets this 413, not the 400 `TOO_LONG`. A proxy in front may answer 413 first with its own body |
+| 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit, a profile photo is over 2 MB (2,097,152 bytes), or the JSON of a new issue (the body, or the `issue` part of a multipart request) is over 256 KB (262,144 bytes). The headers of one multipart part, which carry the file name, are limited to 4 KB: a file name far over 255 characters gets this 413, not the 400 `TOO_LONG`. A proxy in front may answer 413 first with its own body |
 | 429 | `RATE_LIMITED` | Over a rate limit (`COM-8`). `Retry-After` says when to try again |
 | 500 | `INTERNAL_ERROR` | An unexpected server error |
 | 501 | `NOT_IMPLEMENTED` | The endpoint is in the contract but not built yet. Only before a slice is finished; never in a release |
-| 503 | `SERVER_BUSY` | 16 uploads, or 16 downloads, are already running. `Retry-After` says when to try again |
+| 503 | `SERVER_BUSY` | 16 uploads, or 16 downloads, are already running, or 2 profile photos are already being decoded. `Retry-After` says when to try again |
 | 503 | `SETUP_REQUIRED` | The first admin could not be created, or `POPDESK_LOCALE` is not a value popdesk takes, so the app takes no requests yet. The log says what to set |
 
 A request to a host that is neither the portal host nor the console host gets 404 with a plain text note, not this body.

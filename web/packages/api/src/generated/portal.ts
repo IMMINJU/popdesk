@@ -155,6 +155,74 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /**
+         * Change the caller's name or language
+         * @description A field left out keeps its value. Later email to the account uses the new language (S1A-AC-16).
+         */
+        patch: operations["updateMe"];
+        trace?: never;
+    };
+    "/api/portal/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change the caller's password
+         * @description Ends every other session of the account and gives this one a new session ID (S1A-AC-02, S1A-AC-17).
+         */
+        put: operations["changeMyPassword"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portal/me/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set the caller's profile photo
+         * @description Takes a PNG, JPEG, or WebP file of up to 2 MB, judged by its content. The server keeps only a copy scaled to fit 256 px and encoded again, without the original or its metadata (S1A-AC-20, S1A-AC-21). A new photo replaces the old one.
+         */
+        post: operations["uploadMyPhoto"];
+        /**
+         * Delete the caller's profile photo
+         * @description Succeeds also when there is no photo (S1A-AC-24).
+         */
+        delete: operations["deleteMyPhoto"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portal/photos/{accountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Profile photo of a customer
+         * @description The caller's own photo, or that of a customer of a company the caller belongs to (S1A-AC-25). Never a staff photo (S1A-AC-26). Always PNG, with `X-Content-Type-Options: nosniff` and `Cache-Control: private` (S1A-AC-87).
+         */
+        get: operations["getPhoto"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -192,6 +260,46 @@ export interface paths {
          * @description Sets the password, makes the account `ACTIVE`, and signs it in to its app (S0-AC-36). The response has `Cache-Control: no-store` (S0-AC-101).
          */
         post: operations["acceptInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/password-reset/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a new password with a reset link
+         * @description Sets the password, lifts a sign-in lock, and ends every session of the account. It does not sign in (S1A-AC-09, S1A-AC-04). The response has `Cache-Control: no-store` (S1A-AC-14).
+         */
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/password-reset/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask for a password reset email
+         * @description Queues an email with a reset link for an `ACTIVE` account of the app of the host the request came to (S1A-AC-06). The link works for 1 hour and replaces an earlier one; a second request within 15 minutes sends nothing (S1A-AC-12). The answer is the same whether or not an email is sent (S1A-AC-05).
+         */
+        post: operations["requestPasswordReset"];
         delete?: never;
         options?: never;
         head?: never;
@@ -283,6 +391,11 @@ export interface components {
             size: number;
             uploadedBy: components["schemas"]["Person"];
         };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            /** @description 10 to 72 characters, not only whitespace, not the same as the email (AUTH-5). */
+            newPassword: string;
+        };
         Comment: {
             author: components["schemas"]["Person"];
             /** @description Markdown, as written (COM-6). */
@@ -366,10 +479,24 @@ export interface components {
             title: string;
         };
         Me: {
+            /** @description The companies the customer belongs to, whatever their status, in code order. */
+            companies: components["schemas"]["Company"][];
             email: string;
+            /** @description Whether the account has a profile photo (`getPhoto`). */
+            hasPhoto: boolean;
             /** Format: int64 */
             id: number;
+            /**
+             * @description Language of the screens and of the account's email.
+             * @enum {string}
+             */
+            locale: "ko" | "en";
             name: string;
+            /**
+             * @description Always `CUSTOMER` on the portal.
+             * @enum {string}
+             */
+            role: "CUSTOMER" | "AGENT" | "ADMIN";
         };
         PagedAttachment: {
             items: components["schemas"]["Attachment"][];
@@ -439,18 +566,39 @@ export interface components {
             /** Format: int32 */
             totalPages: number;
         };
-        /** @description A customer, or the support team. For `SUPPORT_TEAM` both `accountId` and `name` are null. */
+        /** @description A customer, or the support team. For `SUPPORT_TEAM` `accountId`, `name`, and `hasPhoto` are all null. */
         Person: {
             /** Format: int64 */
             accountId: number | null;
+            /** @description Whether the customer has a profile photo (`getPhoto`). Always null for `SUPPORT_TEAM`: the portal never shows a staff photo (S1A-AC-26). */
+            hasPhoto: boolean | null;
             /** @enum {string} */
             kind: "CUSTOMER" | "SUPPORT_TEAM";
             name: string | null;
+        };
+        RequestPasswordResetRequest: {
+            /** @description Leading and trailing whitespace and case are ignored. */
+            email: string;
+        };
+        ResetPasswordRequest: {
+            /** @description 10 to 72 characters, not only whitespace, not the same as the email (AUTH-5). */
+            password: string;
+            /** @description The token from the reset link's fragment (after `#`). Sent only in the body. */
+            token: string;
         };
         SignInRequest: {
             /** @description Leading and trailing whitespace and case are ignored. */
             email: string;
             password: string;
+        };
+        UpdateMeRequest: {
+            /**
+             * @description Language of the screens and of the account's email.
+             * @enum {string}
+             */
+            locale?: "ko" | "en";
+            /** @description 1 to 50 characters. */
+            name?: string;
         };
     };
     responses: never;
@@ -1131,6 +1279,263 @@ export interface operations {
             };
         };
     };
+    updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `name` empty or over 50, or `null` (`REQUIRED`); `locale` not `ko` or `en` (`UNKNOWN_VALUE`), or `null` (`REQUIRED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    changeMyPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description The password is changed. The session cookie is set again. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `CURRENT_PASSWORD_WRONG` (S1A-AC-18). `INVALID_INPUT`: the new password breaks AUTH-5 (field `newPassword`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    uploadMyPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Stored. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description `UNSUPPORTED_IMAGE`: not one of the three formats, or it cannot be decoded (S1A-AC-22). `IMAGE_TOO_LARGE`: width times height is over 25 million pixels for PNG and JPEG, 12 million for WebP (S1A-AC-23). `INVALID_INPUT`: no `file` part (`REQUIRED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: the file is over 2 MB (S1A-AC-22). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 10 uploads in 60 seconds (S1A-AC-28). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `SERVER_BUSY`: 2 photos are being decoded; try again after `Retry-After` (S1A-AC-88). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteMyPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account has no photo now. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The photo. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account, a customer of another company, an agent or admin, or an account without a photo. One body for all. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     getCsrfToken: {
         parameters: {
             query?: never;
@@ -1180,6 +1585,95 @@ export interface operations {
             };
             /** @description `CSRF_TOKEN_INVALID`. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description The password is changed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `PASSWORD_RESET_INVALID`: the token is unknown, over 1 hour old, used, or replaced by a newer one, the account is no longer `ACTIVE`, or the token is sent to the other app's host; one body for all (S1A-AC-10, S1A-AC-84). `INVALID_INPUT`: the password breaks AUTH-5 (field `password`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`); the token stays usable (S1A-AC-11). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    requestPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestPasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Taken. The same empty answer whether the email is unknown, the account is invited or suspended, or it belongs to the other app. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `INVALID_INPUT`: `email` is empty (`REQUIRED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 20 requests from one IP address in 60 seconds. `Retry-After` says when to try again (S1A-AC-13). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

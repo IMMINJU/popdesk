@@ -30,7 +30,7 @@ class ConsoleCommentController {
     }
 
     static Comment comment(CommentRow row) {
-        return new Comment(row.id(), new Person(row.authorId(), row.authorName(), row.authorRole()), row.internal(),
+        return new Comment(row.id(), new Person(row.authorId(), row.authorName(), row.authorRole(), false), row.internal(),
                 row.content(), ConsoleIssueController.utc(row.createdAt()));
     }
 

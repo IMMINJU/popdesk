@@ -30,14 +30,14 @@ class ConsoleIssueController {
 
     static Issue issue(IssueRow row) {
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
-                row.priority(), row.privateIssue(), new Person(row.reporterId(), row.reporterName(), row.reporterRole()),
+                row.priority(), row.privateIssue(), new Person(row.reporterId(), row.reporterName(), row.reporterRole(), false),
                 IssueChannel.valueOf(row.channel()), utc(row.firstResponseAt()), row.version(), utc(row.createdAt()),
                 utc(row.updatedAt()));
     }
 
     static IssueSummary summary(IssueRow row) {
         return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
-                row.priority(), row.privateIssue(), new Person(row.reporterId(), row.reporterName(), row.reporterRole()),
+                row.priority(), row.privateIssue(), new Person(row.reporterId(), row.reporterName(), row.reporterRole(), false),
                 utc(row.createdAt()));
     }
 

@@ -24,6 +24,10 @@
           "email" : {
             "type" : "string"
           },
+          "hasPhoto" : {
+            "description" : "Whether the account has a profile photo (`getPhoto`).",
+            "type" : "boolean"
+          },
           "id" : {
             "format" : "int64",
             "type" : "integer"
@@ -40,7 +44,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "createdAt", "email", "id", "name", "role", "status" ],
+        "required" : [ "createdAt", "email", "hasPhoto", "id", "name", "role", "status" ],
         "type" : "object"
       },
       "ApiError" : {
@@ -115,6 +119,40 @@
           }
         },
         "required" : [ "commentId", "contentType", "createdAt", "deleted", "deletedAt", "deletedBy", "fileName", "id", "internal", "size", "uploadedBy" ],
+        "type" : "object"
+      },
+      "ChangeCompanyStatusRequest" : {
+        "properties" : {
+          "status" : {
+            "enum" : [ "ACTIVE", "SUSPENDED", "ARCHIVED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "status" ],
+        "type" : "object"
+      },
+      "ChangePasswordRequest" : {
+        "properties" : {
+          "currentPassword" : {
+            "type" : "string"
+          },
+          "newPassword" : {
+            "description" : "10 to 72 characters, not only whitespace, not the same as the email (AUTH-5).",
+            "type" : "string"
+          }
+        },
+        "required" : [ "currentPassword", "newPassword" ],
+        "type" : "object"
+      },
+      "ChangeRoleRequest" : {
+        "properties" : {
+          "role" : {
+            "description" : "`AGENT` or `ADMIN`.",
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "role" ],
         "type" : "object"
       },
       "ChannelStatus" : {
@@ -200,6 +238,10 @@
           "email" : {
             "type" : "string"
           },
+          "hasPhoto" : {
+            "description" : "Whether the account has a profile photo (`getPhoto`).",
+            "type" : "boolean"
+          },
           "name" : {
             "type" : "string"
           },
@@ -208,7 +250,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "accountId", "email", "name", "status" ],
+        "required" : [ "accountId", "email", "hasPhoto", "name", "status" ],
         "type" : "object"
       },
       "CompanyRef" : {
@@ -443,12 +485,28 @@
       },
       "Me" : {
         "properties" : {
+          "companies" : {
+            "description" : "The companies an agent is assigned to, in code order; `[]` for an admin, who sees every company.",
+            "items" : {
+              "$ref" : "#/components/schemas/CompanyRef"
+            },
+            "type" : "array"
+          },
           "email" : {
             "type" : "string"
+          },
+          "hasPhoto" : {
+            "description" : "Whether the account has a profile photo (`getPhoto`).",
+            "type" : "boolean"
           },
           "id" : {
             "format" : "int64",
             "type" : "integer"
+          },
+          "locale" : {
+            "description" : "Language of the screens and of the account's email.",
+            "enum" : [ "ko", "en" ],
+            "type" : "string"
           },
           "name" : {
             "type" : "string"
@@ -458,7 +516,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "email", "id", "name", "role" ],
+        "required" : [ "companies", "email", "hasPhoto", "id", "locale", "name", "role" ],
         "type" : "object"
       },
       "Notification" : {
@@ -754,11 +812,25 @@
         "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
         "type" : "object"
       },
+      "PasswordResetLink" : {
+        "properties" : {
+          "resetLink" : {
+            "description" : "The reset link, only when SMTP is not configured; shown once, the token is in the fragment after `#`. `null` when the reset email is sent.",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "resetLink" ],
+        "type" : "object"
+      },
       "PendingInvitation" : {
         "properties" : {
           "accountId" : {
             "format" : "int64",
             "type" : "integer"
+          },
+          "cancelled" : {
+            "description" : "An admin cancelled the invitation; the link does not work until it is sent again (S1A-AC-42).",
+            "type" : "boolean"
           },
           "companies" : {
             "description" : "The companies a customer was invited to; `[]` for staff.",
@@ -790,7 +862,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "accountId", "companies", "email", "expired", "expiresAt", "invitedAt", "name", "role" ],
+        "required" : [ "accountId", "cancelled", "companies", "email", "expired", "expiresAt", "invitedAt", "name", "role" ],
         "type" : "object"
       },
       "Person" : {
@@ -798,6 +870,10 @@
           "accountId" : {
             "format" : "int64",
             "type" : "integer"
+          },
+          "hasPhoto" : {
+            "description" : "Whether the account has a profile photo (`getPhoto`).",
+            "type" : "boolean"
           },
           "name" : {
             "type" : "string"
@@ -807,7 +883,31 @@
             "type" : "string"
           }
         },
-        "required" : [ "accountId", "name", "role" ],
+        "required" : [ "accountId", "hasPhoto", "name", "role" ],
+        "type" : "object"
+      },
+      "RequestPasswordResetRequest" : {
+        "properties" : {
+          "email" : {
+            "description" : "Leading and trailing whitespace and case are ignored.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "email" ],
+        "type" : "object"
+      },
+      "ResetPasswordRequest" : {
+        "properties" : {
+          "password" : {
+            "description" : "10 to 72 characters, not only whitespace, not the same as the email (AUTH-5).",
+            "type" : "string"
+          },
+          "token" : {
+            "description" : "The token from the reset link's fragment (after `#`). Sent only in the body.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "password", "token" ],
         "type" : "object"
       },
       "SignInRequest" : {
@@ -844,6 +944,42 @@
         },
         "required" : [ "count" ],
         "type" : "object"
+      },
+      "UpdateAccountRequest" : {
+        "properties" : {
+          "name" : {
+            "description" : "1 to 50 characters.",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "UpdateCompanyRequest" : {
+        "properties" : {
+          "legalName" : {
+            "description" : "1 to 100 characters.",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "1 to 100 characters.",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "UpdateMeRequest" : {
+        "properties" : {
+          "locale" : {
+            "description" : "Language of the screens and of the account's email.",
+            "enum" : [ "ko", "en" ],
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "1 to 50 characters.",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
       }
     }
   },
@@ -860,7 +996,7 @@
   "paths" : {
     "/api/console/accounts" : {
       "get" : {
-        "description" : "Every account, newest first (C-10). `role` narrows it, for example to pick an agent to assign (C-9).",
+        "description" : "Every account, newest first (C-10). `role` narrows it, for example to pick an agent to assign (C-9); `status` and `q` narrow it further (S1A-AC-29).",
         "operationId" : "listAccounts",
         "parameters" : [ {
           "description" : "Only accounts with this role.",
@@ -869,6 +1005,23 @@
           "required" : false,
           "schema" : {
             "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only accounts with this status.",
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "INVITED", "ACTIVE", "SUSPENDED" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only accounts whose name or email holds this text, 1 to 100 characters. Case is ignored; `%` and `_` are ordinary characters (COM-5).",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
             "type" : "string"
           }
         }, {
@@ -911,7 +1064,7 @@
                 }
               }
             },
-            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `role` (`UNKNOWN_VALUE`)."
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `role` or `status` (`UNKNOWN_VALUE`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`)."
           },
           "401" : {
             "content" : {
@@ -935,6 +1088,361 @@
           }
         },
         "summary" : "Accounts",
+        "tags" : [ "Accounts" ]
+      }
+    },
+    "/api/console/accounts/{accountId}" : {
+      "patch" : {
+        "description" : "Also for an account that has not accepted its invitation yet (S1A-AC-30).",
+        "operationId" : "updateAccount",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateAccountRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Account"
+                }
+              }
+            },
+            "description" : "Saved."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `name` empty or over 50, or `null` (`REQUIRED`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such account."
+          }
+        },
+        "summary" : "Change an account's name",
+        "tags" : [ "Accounts" ]
+      }
+    },
+    "/api/console/accounts/{accountId}/password-reset" : {
+      "post" : {
+        "description" : "The current password of an `ACTIVE` account stops working, a sign-in lock is lifted, every session of the account ends, and the reset email is queued (S1A-AC-04, S1A-AC-36). Without SMTP the response carries the link instead, once (S1A-AC-37). The response has `Cache-Control: no-store`.",
+        "operationId" : "resetAccountPassword",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PasswordResetLink"
+                }
+              }
+            },
+            "description" : "Reset."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such account."
+          }
+        },
+        "summary" : "Reset an account's password",
+        "tags" : [ "Accounts" ]
+      }
+    },
+    "/api/console/accounts/{accountId}/reactivate" : {
+      "post" : {
+        "description" : "Makes a `SUSPENDED` account `ACTIVE` (S1A-AC-35).",
+        "operationId" : "reactivateAccount",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Account"
+                }
+              }
+            },
+            "description" : "Active again."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVITATION_NOT_ACCEPTED`: the account never accepted its invitation (a cancelled invitation); send the invitation again instead (S1A-AC-35)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such account."
+          }
+        },
+        "summary" : "Lift an account's suspension",
+        "tags" : [ "Accounts" ]
+      }
+    },
+    "/api/console/accounts/{accountId}/role" : {
+      "put" : {
+        "description" : "Ends every session of the account (S1A-AC-03). An agent's company assignments stay (S1A-AC-31).",
+        "operationId" : "changeAccountRole",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangeRoleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Account"
+                }
+              }
+            },
+            "description" : "Changed."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `role` missing (`REQUIRED`) or unknown (`UNKNOWN_VALUE`). `CUSTOMER_ROLE_FIXED`: `role` is `CUSTOMER`, or the account is a customer (S1A-AC-32). `OWN_ACCOUNT`: the caller's own account (S1A-AC-33). `LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such account."
+          }
+        },
+        "summary" : "Make an agent an admin, or an admin an agent",
+        "tags" : [ "Accounts" ]
+      }
+    },
+    "/api/console/accounts/{accountId}/suspend" : {
+      "post" : {
+        "description" : "Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, S1A-AC-34). A suspended account cannot sign in and gets no email.",
+        "operationId" : "suspendAccount",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Account"
+                }
+              }
+            },
+            "description" : "Suspended."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`OWN_ACCOUNT`: the caller's own account (S1A-AC-33). `LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such account."
+          }
+        },
+        "summary" : "Suspend an account",
         "tags" : [ "Accounts" ]
       }
     },
@@ -1112,6 +1620,82 @@
         },
         "summary" : "One company",
         "tags" : [ "Companies" ]
+      },
+      "patch" : {
+        "description" : "A field left out keeps its value. The code never changes (S1A-AC-43).",
+        "operationId" : "updateCompany",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateCompanyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Company"
+                }
+              }
+            },
+            "description" : "Saved."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `name` or `legalName` empty or over 100, or `null` (`REQUIRED`); `code` sent (`NOT_ALLOWED`). `COMPANY_ARCHIVED`: the company is `ARCHIVED` (S1A-AC-48)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the caller cannot see it."
+          }
+        },
+        "summary" : "Change a company's name or legal name",
+        "tags" : [ "Companies" ]
       }
     },
     "/api/console/companies/{code}/agents" : {
@@ -1203,6 +1787,63 @@
       }
     },
     "/api/console/companies/{code}/agents/{accountId}" : {
+      "delete" : {
+        "description" : "From the next request the agent no longer sees the company's issues, comments, or files (S1A-AC-55). Works for a company of any status, and removing again is 200 too.",
+        "operationId" : "unassignAgent",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Not assigned."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company or account."
+          }
+        },
+        "summary" : "Take an agent off a company",
+        "tags" : [ "Companies" ]
+      },
       "put" : {
         "description" : "The agent, invited ones included, sees the company's issues from the next request. Assigning again is 200 too (S0-AC-31).",
         "operationId" : "assignAgent",
@@ -1366,9 +2007,220 @@
         "tags" : [ "Companies" ]
       }
     },
+    "/api/console/companies/{code}/customers/{accountId}" : {
+      "delete" : {
+        "description" : "From the next request the customer no longer sees the company or colleagues' issues; issues the customer filed stay readable to them but take no new comments or files from them (S1A-AC-52 to S1A-AC-54). Works for a company of any status, and removing again is 200 too.",
+        "operationId" : "removeCompanyCustomer",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Not a member."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company or account."
+          }
+        },
+        "summary" : "Take a customer out of a company",
+        "tags" : [ "Companies" ]
+      },
+      "put" : {
+        "description" : "The customer, invited ones included, sees the company and its public issues from the next request. Adding again is 200 too (S1A-AC-50).",
+        "operationId" : "addCompanyCustomer",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyMember"
+                }
+              }
+            },
+            "description" : "A member."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: the account is not a customer (field `accountId` `UNKNOWN_VALUE`) (S1A-AC-51). `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S1A-AC-48)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company or account."
+          }
+        },
+        "summary" : "Make a customer a member of a company",
+        "tags" : [ "Companies" ]
+      }
+    },
+    "/api/console/companies/{code}/status" : {
+      "put" : {
+        "description" : "`ACTIVE` to `SUSPENDED` and back, or either to `ARCHIVED` (S1A-AC-44). Nothing new can be filed in a company that is not `ACTIVE`; what is there stays readable (S1A-AC-46, S1A-AC-47).",
+        "operationId" : "changeCompanyStatus",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangeCompanyStatusRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Company"
+                }
+              }
+            },
+            "description" : "Changed."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `status` missing (`REQUIRED`) or unknown (`UNKNOWN_VALUE`). `COMPANY_ARCHIVED`: the company is `ARCHIVED`, which is final (S1A-AC-45)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the caller cannot see it."
+          }
+        },
+        "summary" : "Change a company's status",
+        "tags" : [ "Companies" ]
+      }
+    },
     "/api/console/invitations" : {
       "get" : {
-        "description" : "`INVITED` accounts, newest invitation first (S0-AC-40).",
+        "description" : "`INVITED` accounts, newest invitation first (S0-AC-40), and cancelled invitations, marked `cancelled` (S1A-AC-42).",
         "operationId" : "listPendingInvitations",
         "parameters" : [ {
           "description" : "Page number, from 1.",
@@ -1505,6 +2357,68 @@
         "tags" : [ "Invitations" ]
       }
     },
+    "/api/console/invitations/{accountId}/cancel" : {
+      "post" : {
+        "description" : "Makes the account `SUSPENDED` and its link stop working; an invitation email still queued is not sent (S1A-AC-39). The account stays in the list as `cancelled`.",
+        "operationId" : "cancelInvitation",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Cancelled."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVITATION_ALREADY_ACCEPTED`: the account accepted its invitation before (S1A-AC-41)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such account."
+          }
+        },
+        "summary" : "Cancel an invitation",
+        "tags" : [ "Invitations" ]
+      }
+    },
     "/api/console/invitations/{accountId}/link" : {
       "post" : {
         "description" : "Only without SMTP. Makes a new token, so the previous link stops working, and returns the link once (S0-AC-38). The response has `Cache-Control: no-store` (S0-AC-101).",
@@ -1561,6 +2475,75 @@
           }
         },
         "summary" : "Make a new invitation link to copy",
+        "tags" : [ "Invitations" ]
+      }
+    },
+    "/api/console/invitations/{accountId}/resend" : {
+      "post" : {
+        "description" : "Makes a new token, so the previous link stops working, and queues the invitation email; the link works for 7 days from now (S1A-AC-38). A cancelled invitation becomes `INVITED` again (S1A-AC-40). Without SMTP the response carries the link instead, once. The response has `Cache-Control: no-store`.",
+        "operationId" : "resendInvitation",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InvitationResult"
+                }
+              }
+            },
+            "description" : "Sent again."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVITATION_ALREADY_ACCEPTED`: the account accepted its invitation before (S1A-AC-41)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such account."
+          }
+        },
+        "summary" : "Send an invitation again",
         "tags" : [ "Invitations" ]
       }
     },
@@ -2248,6 +3231,244 @@
         },
         "summary" : "The signed-in agent or admin",
         "tags" : [ "Session" ]
+      },
+      "patch" : {
+        "description" : "A field left out keeps its value. Later email to the account uses the new language (S1A-AC-16).",
+        "operationId" : "updateMe",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateMeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Me"
+                }
+              }
+            },
+            "description" : "Saved."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `name` empty or over 50, or `null` (`REQUIRED`); `locale` not `ko` or `en` (`UNKNOWN_VALUE`), or `null` (`REQUIRED`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          }
+        },
+        "summary" : "Change the caller's name or language",
+        "tags" : [ "Session" ]
+      }
+    },
+    "/api/console/me/password" : {
+      "put" : {
+        "description" : "Ends every other session of the account and gives this one a new session ID (S1A-AC-02, S1A-AC-17).",
+        "operationId" : "changeMyPassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "The password is changed. The session cookie is set again."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CURRENT_PASSWORD_WRONG` (S1A-AC-18). `INVALID_INPUT`: the new password breaks AUTH-5 (field `newPassword`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          }
+        },
+        "summary" : "Change the caller's password",
+        "tags" : [ "Session" ]
+      }
+    },
+    "/api/console/me/photo" : {
+      "delete" : {
+        "description" : "Succeeds also when there is no photo (S1A-AC-24).",
+        "operationId" : "deleteMyPhoto",
+        "responses" : {
+          "204" : {
+            "description" : "The account has no photo now."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          }
+        },
+        "summary" : "Delete the caller's profile photo",
+        "tags" : [ "Photos" ]
+      },
+      "post" : {
+        "description" : "Takes a PNG, JPEG, or WebP file of up to 2 MB, judged by its content. The server keeps only a copy scaled to fit 256 px and encoded again, without the original or its metadata (S1A-AC-20, S1A-AC-21). A new photo replaces the old one.",
+        "operationId" : "uploadMyPhoto",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Me"
+                }
+              }
+            },
+            "description" : "Stored."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNSUPPORTED_IMAGE`: not one of the three formats, or it cannot be decoded (S1A-AC-22). `IMAGE_TOO_LARGE`: width times height is over 25 million pixels for PNG and JPEG, 12 million for WebP (S1A-AC-23). `INVALID_INPUT`: no `file` part (`REQUIRED`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "413" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`PAYLOAD_TOO_LARGE`: the file is over 2 MB (S1A-AC-22)."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 10 uploads in 60 seconds (S1A-AC-28)."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`SERVER_BUSY`: 2 photos are being decoded; try again after `Retry-After` (S1A-AC-88)."
+          }
+        },
+        "summary" : "Set the caller's profile photo",
+        "tags" : [ "Photos" ]
       }
     },
     "/api/console/notifications" : {
@@ -2390,6 +3611,56 @@
         },
         "summary" : "Mark an item read",
         "tags" : [ "Notifications" ]
+      }
+    },
+    "/api/console/photos/{accountId}" : {
+      "get" : {
+        "description" : "The photo of any account the caller can see: every account for admins; for agents staff, and customers of the companies they are assigned to (S1A-AC-27). Always PNG, with `X-Content-Type-Options: nosniff` and `Cache-Control: private` (S1A-AC-87).",
+        "operationId" : "getPhoto",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "The photo."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such account, the caller cannot see it, or it has no photo."
+          }
+        },
+        "summary" : "Profile photo of an account",
+        "tags" : [ "Photos" ]
       }
     },
     "/api/console/system/failed-deliveries" : {
@@ -2557,6 +3828,102 @@
         },
         "summary" : "Accept an invitation",
         "tags" : [ "Invitations" ]
+      }
+    },
+    "/api/public/password-reset/confirm" : {
+      "post" : {
+        "description" : "Sets the password, lifts a sign-in lock, and ends every session of the account. It does not sign in (S1A-AC-09, S1A-AC-04). The response has `Cache-Control: no-store` (S1A-AC-14).",
+        "operationId" : "resetPassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "The password is changed."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`PASSWORD_RESET_INVALID`: the token is unknown, over 1 hour old, used, or replaced by a newer one, the account is no longer `ACTIVE`, or the token is sent to the other app's host; one body for all (S1A-AC-10, S1A-AC-84). `INVALID_INPUT`: the password breaks AUTH-5 (field `password`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`); the token stays usable (S1A-AC-11)."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          }
+        },
+        "summary" : "Set a new password with a reset link",
+        "tags" : [ "Session" ]
+      }
+    },
+    "/api/public/password-reset/request" : {
+      "post" : {
+        "description" : "Queues an email with a reset link for an `ACTIVE` account of the app of the host the request came to (S1A-AC-06). The link works for 1 hour and replaces an earlier one; a second request within 15 minutes sends nothing (S1A-AC-12). The answer is the same whether or not an email is sent (S1A-AC-05).",
+        "operationId" : "requestPasswordReset",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RequestPasswordResetRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Taken. The same empty answer whether the email is unknown, the account is invited or suspended, or it belongs to the other app."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `email` is empty (`REQUIRED`)."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 20 requests from one IP address in 60 seconds. `Retry-After` says when to try again (S1A-AC-13)."
+          }
+        },
+        "summary" : "Ask for a password reset email",
+        "tags" : [ "Session" ]
       }
     },
     "/api/public/sign-in" : {

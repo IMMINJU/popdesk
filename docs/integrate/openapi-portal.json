@@ -85,6 +85,19 @@
         "required" : [ "commentId", "contentType", "createdAt", "deleted", "deletedAt", "deletedBy", "fileName", "id", "size", "uploadedBy" ],
         "type" : "object"
       },
+      "ChangePasswordRequest" : {
+        "properties" : {
+          "currentPassword" : {
+            "type" : "string"
+          },
+          "newPassword" : {
+            "description" : "10 to 72 characters, not only whitespace, not the same as the email (AUTH-5).",
+            "type" : "string"
+          }
+        },
+        "required" : [ "currentPassword", "newPassword" ],
+        "type" : "object"
+      },
       "Comment" : {
         "properties" : {
           "author" : {
@@ -265,18 +278,39 @@
       },
       "Me" : {
         "properties" : {
+          "companies" : {
+            "description" : "The companies the customer belongs to, whatever their status, in code order.",
+            "items" : {
+              "$ref" : "#/components/schemas/Company"
+            },
+            "type" : "array"
+          },
           "email" : {
             "type" : "string"
+          },
+          "hasPhoto" : {
+            "description" : "Whether the account has a profile photo (`getPhoto`).",
+            "type" : "boolean"
           },
           "id" : {
             "format" : "int64",
             "type" : "integer"
           },
+          "locale" : {
+            "description" : "Language of the screens and of the account's email.",
+            "enum" : [ "ko", "en" ],
+            "type" : "string"
+          },
           "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "description" : "Always `CUSTOMER` on the portal.",
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
             "type" : "string"
           }
         },
-        "required" : [ "email", "id", "name" ],
+        "required" : [ "companies", "email", "hasPhoto", "id", "locale", "name", "role" ],
         "type" : "object"
       },
       "PagedAttachment" : {
@@ -400,11 +434,15 @@
         "type" : "object"
       },
       "Person" : {
-        "description" : "A customer, or the support team. For `SUPPORT_TEAM` both `accountId` and `name` are null.",
+        "description" : "A customer, or the support team. For `SUPPORT_TEAM` `accountId`, `name`, and `hasPhoto` are all null.",
         "properties" : {
           "accountId" : {
             "format" : "int64",
             "type" : [ "integer", "null" ]
+          },
+          "hasPhoto" : {
+            "description" : "Whether the customer has a profile photo (`getPhoto`). Always null for `SUPPORT_TEAM`: the portal never shows a staff photo (S1A-AC-26).",
+            "type" : [ "boolean", "null" ]
           },
           "kind" : {
             "enum" : [ "CUSTOMER", "SUPPORT_TEAM" ],
@@ -414,7 +452,31 @@
             "type" : [ "string", "null" ]
           }
         },
-        "required" : [ "accountId", "kind", "name" ],
+        "required" : [ "accountId", "hasPhoto", "kind", "name" ],
+        "type" : "object"
+      },
+      "RequestPasswordResetRequest" : {
+        "properties" : {
+          "email" : {
+            "description" : "Leading and trailing whitespace and case are ignored.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "email" ],
+        "type" : "object"
+      },
+      "ResetPasswordRequest" : {
+        "properties" : {
+          "password" : {
+            "description" : "10 to 72 characters, not only whitespace, not the same as the email (AUTH-5).",
+            "type" : "string"
+          },
+          "token" : {
+            "description" : "The token from the reset link's fragment (after `#`). Sent only in the body.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "password", "token" ],
         "type" : "object"
       },
       "SignInRequest" : {
@@ -428,6 +490,20 @@
           }
         },
         "required" : [ "email", "password" ],
+        "type" : "object"
+      },
+      "UpdateMeRequest" : {
+        "properties" : {
+          "locale" : {
+            "description" : "Language of the screens and of the account's email.",
+            "enum" : [ "ko", "en" ],
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "1 to 50 characters.",
+            "type" : "string"
+          }
+        },
         "type" : "object"
       }
     }
@@ -1304,6 +1380,294 @@
         },
         "summary" : "The signed-in customer",
         "tags" : [ "Session" ]
+      },
+      "patch" : {
+        "description" : "A field left out keeps its value. Later email to the account uses the new language (S1A-AC-16).",
+        "operationId" : "updateMe",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateMeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Me"
+                }
+              }
+            },
+            "description" : "Saved."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `name` empty or over 50, or `null` (`REQUIRED`); `locale` not `ko` or `en` (`UNKNOWN_VALUE`), or `null` (`REQUIRED`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          }
+        },
+        "summary" : "Change the caller's name or language",
+        "tags" : [ "Session" ]
+      }
+    },
+    "/api/portal/me/password" : {
+      "put" : {
+        "description" : "Ends every other session of the account and gives this one a new session ID (S1A-AC-02, S1A-AC-17).",
+        "operationId" : "changeMyPassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "The password is changed. The session cookie is set again."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CURRENT_PASSWORD_WRONG` (S1A-AC-18). `INVALID_INPUT`: the new password breaks AUTH-5 (field `newPassword`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          }
+        },
+        "summary" : "Change the caller's password",
+        "tags" : [ "Session" ]
+      }
+    },
+    "/api/portal/me/photo" : {
+      "delete" : {
+        "description" : "Succeeds also when there is no photo (S1A-AC-24).",
+        "operationId" : "deleteMyPhoto",
+        "responses" : {
+          "204" : {
+            "description" : "The account has no photo now."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          }
+        },
+        "summary" : "Delete the caller's profile photo",
+        "tags" : [ "Photos" ]
+      },
+      "post" : {
+        "description" : "Takes a PNG, JPEG, or WebP file of up to 2 MB, judged by its content. The server keeps only a copy scaled to fit 256 px and encoded again, without the original or its metadata (S1A-AC-20, S1A-AC-21). A new photo replaces the old one.",
+        "operationId" : "uploadMyPhoto",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Me"
+                }
+              }
+            },
+            "description" : "Stored."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNSUPPORTED_IMAGE`: not one of the three formats, or it cannot be decoded (S1A-AC-22). `IMAGE_TOO_LARGE`: width times height is over 25 million pixels for PNG and JPEG, 12 million for WebP (S1A-AC-23). `INVALID_INPUT`: no `file` part (`REQUIRED`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "413" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`PAYLOAD_TOO_LARGE`: the file is over 2 MB (S1A-AC-22)."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 10 uploads in 60 seconds (S1A-AC-28)."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`SERVER_BUSY`: 2 photos are being decoded; try again after `Retry-After` (S1A-AC-88)."
+          }
+        },
+        "summary" : "Set the caller's profile photo",
+        "tags" : [ "Photos" ]
+      }
+    },
+    "/api/portal/photos/{accountId}" : {
+      "get" : {
+        "description" : "The caller's own photo, or that of a customer of a company the caller belongs to (S1A-AC-25). Never a staff photo (S1A-AC-26). Always PNG, with `X-Content-Type-Options: nosniff` and `Cache-Control: private` (S1A-AC-87).",
+        "operationId" : "getPhoto",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "The photo."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such account, a customer of another company, an agent or admin, or an account without a photo. One body for all."
+          }
+        },
+        "summary" : "Profile photo of a customer",
+        "tags" : [ "Photos" ]
       }
     },
     "/api/public/csrf" : {
@@ -1360,6 +1724,102 @@
         },
         "summary" : "Accept an invitation",
         "tags" : [ "Invitations" ]
+      }
+    },
+    "/api/public/password-reset/confirm" : {
+      "post" : {
+        "description" : "Sets the password, lifts a sign-in lock, and ends every session of the account. It does not sign in (S1A-AC-09, S1A-AC-04). The response has `Cache-Control: no-store` (S1A-AC-14).",
+        "operationId" : "resetPassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "The password is changed."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`PASSWORD_RESET_INVALID`: the token is unknown, over 1 hour old, used, or replaced by a newer one, the account is no longer `ACTIVE`, or the token is sent to the other app's host; one body for all (S1A-AC-10, S1A-AC-84). `INVALID_INPUT`: the password breaks AUTH-5 (field `password`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`); the token stays usable (S1A-AC-11)."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          }
+        },
+        "summary" : "Set a new password with a reset link",
+        "tags" : [ "Session" ]
+      }
+    },
+    "/api/public/password-reset/request" : {
+      "post" : {
+        "description" : "Queues an email with a reset link for an `ACTIVE` account of the app of the host the request came to (S1A-AC-06). The link works for 1 hour and replaces an earlier one; a second request within 15 minutes sends nothing (S1A-AC-12). The answer is the same whether or not an email is sent (S1A-AC-05).",
+        "operationId" : "requestPasswordReset",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RequestPasswordResetRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Taken. The same empty answer whether the email is unknown, the account is invited or suspended, or it belongs to the other app."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `email` is empty (`REQUIRED`)."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 20 requests from one IP address in 60 seconds. `Retry-After` says when to try again (S1A-AC-13)."
+          }
+        },
+        "summary" : "Ask for a password reset email",
+        "tags" : [ "Session" ]
       }
     },
     "/api/public/sign-in" : {

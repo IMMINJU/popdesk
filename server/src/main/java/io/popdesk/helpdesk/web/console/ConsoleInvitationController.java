@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.web.console;
 
+import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.helpdesk.account.CurrentAccount;
 import io.popdesk.helpdesk.account.InvitationService;
@@ -50,7 +51,8 @@ class ConsoleInvitationController {
     }
 
     @Operation(operationId = "listPendingInvitations", summary = "Accounts that have not accepted yet",
-            description = "`INVITED` accounts, newest invitation first (S0-AC-40).")
+            description = "`INVITED` accounts, newest invitation first (S0-AC-40), and cancelled invitations, marked "
+                    + "`cancelled` (S1A-AC-42).")
     @ApiResponse(responseCode = "200", description = "One page.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
@@ -64,7 +66,38 @@ class ConsoleInvitationController {
                 p.row().name(), p.row().role(),
                 p.companies().stream().map(c -> new CompanyRef(c.code(), c.name())).toList(),
                 p.row().invitedAt().atOffset(ZoneOffset.UTC), p.row().expiresAt().atOffset(ZoneOffset.UTC),
-                p.expired())).toList(), rows.page(), rows.size(), rows.totalElements(), rows.totalPages());
+                p.expired(), false)).toList(), rows.page(), rows.size(), rows.totalElements(), rows.totalPages());
+    }
+
+    @Operation(operationId = "resendInvitation", summary = "Send an invitation again",
+            description = "Makes a new token, so the previous link stops working, and queues the invitation email; "
+                    + "the link works for 7 days from now (S1A-AC-38). A cancelled invitation becomes `INVITED` "
+                    + "again (S1A-AC-40). Without SMTP the response carries the link instead, once. The response "
+                    + "has `Cache-Control: no-store`.")
+    @ApiResponse(responseCode = "200", description = "Sent again.")
+    @ApiResponse(responseCode = "400", description = "`INVITATION_ALREADY_ACCEPTED`: the account accepted its "
+            + "invitation before (S1A-AC-41).")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such account.")
+    @PostMapping("/{accountId}/resend")
+    InvitationResult resendInvitation(@PathVariable long accountId) {
+        throw new NotImplementedException();
+    }
+
+    @Operation(operationId = "cancelInvitation", summary = "Cancel an invitation",
+            description = "Makes the account `SUSPENDED` and its link stop working; an invitation email still "
+                    + "queued is not sent (S1A-AC-39). The account stays in the list as `cancelled`.")
+    @ApiResponse(responseCode = "204", description = "Cancelled.")
+    @ApiResponse(responseCode = "400", description = "`INVITATION_ALREADY_ACCEPTED`: the account accepted its "
+            + "invitation before (S1A-AC-41).")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such account.")
+    @PostMapping("/{accountId}/cancel")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void cancelInvitation(@PathVariable long accountId) {
+        throw new NotImplementedException();
     }
 
     @Operation(operationId = "createInvitationLink", summary = "Make a new invitation link to copy",

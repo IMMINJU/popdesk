@@ -10,11 +10,111 @@ export interface paths {
         };
         /**
          * Accounts
-         * @description Every account, newest first (C-10). `role` narrows it, for example to pick an agent to assign (C-9).
+         * @description Every account, newest first (C-10). `role` narrows it, for example to pick an agent to assign (C-9); `status` and `q` narrow it further (S1A-AC-29).
          */
         get: operations["listAccounts"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/accounts/{accountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change an account's name
+         * @description Also for an account that has not accepted its invitation yet (S1A-AC-30).
+         */
+        patch: operations["updateAccount"];
+        trace?: never;
+    };
+    "/api/console/accounts/{accountId}/password-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset an account's password
+         * @description The current password of an `ACTIVE` account stops working, a sign-in lock is lifted, every session of the account ends, and the reset email is queued (S1A-AC-04, S1A-AC-36). Without SMTP the response carries the link instead, once (S1A-AC-37). The response has `Cache-Control: no-store`.
+         */
+        post: operations["resetAccountPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/accounts/{accountId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lift an account's suspension
+         * @description Makes a `SUSPENDED` account `ACTIVE` (S1A-AC-35).
+         */
+        post: operations["reactivateAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/accounts/{accountId}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Make an agent an admin, or an admin an agent
+         * @description Ends every session of the account (S1A-AC-03). An agent's company assignments stay (S1A-AC-31).
+         */
+        put: operations["changeAccountRole"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/accounts/{accountId}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suspend an account
+         * @description Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, S1A-AC-34). A suspended account cannot sign in and gets no email.
+         */
+        post: operations["suspendAccount"];
         delete?: never;
         options?: never;
         head?: never;
@@ -59,7 +159,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Change a company's name or legal name
+         * @description A field left out keeps its value. The code never changes (S1A-AC-43).
+         */
+        patch: operations["updateCompany"];
         trace?: never;
     };
     "/api/console/companies/{code}/agents": {
@@ -96,7 +200,11 @@ export interface paths {
          */
         put: operations["assignAgent"];
         post?: never;
-        delete?: never;
+        /**
+         * Take an agent off a company
+         * @description From the next request the agent no longer sees the company's issues, comments, or files (S1A-AC-55). Works for a company of any status, and removing again is 200 too.
+         */
+        delete: operations["unassignAgent"];
         options?: never;
         head?: never;
         patch?: never;
@@ -122,6 +230,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/console/companies/{code}/customers/{accountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Make a customer a member of a company
+         * @description The customer, invited ones included, sees the company and its public issues from the next request. Adding again is 200 too (S1A-AC-50).
+         */
+        put: operations["addCompanyCustomer"];
+        post?: never;
+        /**
+         * Take a customer out of a company
+         * @description From the next request the customer no longer sees the company or colleagues' issues; issues the customer filed stay readable to them but take no new comments or files from them (S1A-AC-52 to S1A-AC-54). Works for a company of any status, and removing again is 200 too.
+         */
+        delete: operations["removeCompanyCustomer"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/companies/{code}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change a company's status
+         * @description `ACTIVE` to `SUSPENDED` and back, or either to `ARCHIVED` (S1A-AC-44). Nothing new can be filed in a company that is not `ACTIVE`; what is there stays readable (S1A-AC-46, S1A-AC-47).
+         */
+        put: operations["changeCompanyStatus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/console/invitations": {
         parameters: {
             query?: never;
@@ -131,7 +283,7 @@ export interface paths {
         };
         /**
          * Accounts that have not accepted yet
-         * @description `INVITED` accounts, newest invitation first (S0-AC-40).
+         * @description `INVITED` accounts, newest invitation first (S0-AC-40), and cancelled invitations, marked `cancelled` (S1A-AC-42).
          */
         get: operations["listPendingInvitations"];
         put?: never;
@@ -140,6 +292,26 @@ export interface paths {
          * @description Creates an `INVITED` account and queues the invitation email (S0-AC-33). A customer joins the given companies. Without SMTP the response carries the link instead, once. The response has `Cache-Control: no-store` (S0-AC-101).
          */
         post: operations["invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/invitations/{accountId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel an invitation
+         * @description Makes the account `SUSPENDED` and its link stop working; an invitation email still queued is not sent (S1A-AC-39). The account stays in the list as `cancelled`.
+         */
+        post: operations["cancelInvitation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -160,6 +332,26 @@ export interface paths {
          * @description Only without SMTP. Makes a new token, so the previous link stops working, and returns the link once (S0-AC-38). The response has `Cache-Control: no-store` (S0-AC-101).
          */
         post: operations["createInvitationLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/invitations/{accountId}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send an invitation again
+         * @description Makes a new token, so the previous link stops working, and queues the invitation email; the link works for 7 days from now (S1A-AC-38). A cancelled invitation becomes `INVITED` again (S1A-AC-40). Without SMTP the response carries the link instead, once. The response has `Cache-Control: no-store`.
+         */
+        post: operations["resendInvitation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -296,6 +488,54 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /**
+         * Change the caller's name or language
+         * @description A field left out keeps its value. Later email to the account uses the new language (S1A-AC-16).
+         */
+        patch: operations["updateMe"];
+        trace?: never;
+    };
+    "/api/console/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change the caller's password
+         * @description Ends every other session of the account and gives this one a new session ID (S1A-AC-02, S1A-AC-17).
+         */
+        put: operations["changeMyPassword"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/me/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set the caller's profile photo
+         * @description Takes a PNG, JPEG, or WebP file of up to 2 MB, judged by its content. The server keeps only a copy scaled to fit 256 px and encoded again, without the original or its metadata (S1A-AC-20, S1A-AC-21). A new photo replaces the old one.
+         */
+        post: operations["uploadMyPhoto"];
+        /**
+         * Delete the caller's profile photo
+         * @description Succeeds also when there is no photo (S1A-AC-24).
+         */
+        delete: operations["deleteMyPhoto"];
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -350,6 +590,26 @@ export interface paths {
          * @description Marking a read item again is 204 too.
          */
         post: operations["markNotificationRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/photos/{accountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Profile photo of an account
+         * @description The photo of any account the caller can see: every account for admins; for agents staff, and customers of the companies they are assigned to (S1A-AC-27). Always PNG, with `X-Content-Type-Options: nosniff` and `Cache-Control: private` (S1A-AC-87).
+         */
+        get: operations["getPhoto"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -436,6 +696,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/password-reset/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a new password with a reset link
+         * @description Sets the password, lifts a sign-in lock, and ends every session of the account. It does not sign in (S1A-AC-09, S1A-AC-04). The response has `Cache-Control: no-store` (S1A-AC-14).
+         */
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/password-reset/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask for a password reset email
+         * @description Queues an email with a reset link for an `ACTIVE` account of the app of the host the request came to (S1A-AC-06). The link works for 1 hour and replaces an earlier one; a second request within 15 minutes sends nothing (S1A-AC-12). The answer is the same whether or not an email is sent (S1A-AC-05).
+         */
+        post: operations["requestPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/sign-in": {
         parameters: {
             query?: never;
@@ -490,6 +790,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             email: string;
+            /** @description Whether the account has a profile photo (`getPhoto`). */
+            hasPhoto: boolean;
             /** Format: int64 */
             id: number;
             name: string;
@@ -535,6 +837,22 @@ export interface components {
             size: number;
             uploadedBy: components["schemas"]["Person"];
         };
+        ChangeCompanyStatusRequest: {
+            /** @enum {string} */
+            status: "ACTIVE" | "SUSPENDED" | "ARCHIVED";
+        };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            /** @description 10 to 72 characters, not only whitespace, not the same as the email (AUTH-5). */
+            newPassword: string;
+        };
+        ChangeRoleRequest: {
+            /**
+             * @description `AGENT` or `ADMIN`.
+             * @enum {string}
+             */
+            role: "CUSTOMER" | "AGENT" | "ADMIN";
+        };
         ChannelStatus: {
             /** @description Configured. */
             enabled: boolean;
@@ -577,6 +895,8 @@ export interface components {
             /** Format: int64 */
             accountId: number;
             email: string;
+            /** @description Whether the account has a profile photo (`getPhoto`). */
+            hasPhoto: boolean;
             name: string;
             /** @enum {string} */
             status: "INVITED" | "ACTIVE" | "SUSPENDED";
@@ -687,9 +1007,18 @@ export interface components {
             title: string;
         };
         Me: {
+            /** @description The companies an agent is assigned to, in code order; `[]` for an admin, who sees every company. */
+            companies: components["schemas"]["CompanyRef"][];
             email: string;
+            /** @description Whether the account has a profile photo (`getPhoto`). */
+            hasPhoto: boolean;
             /** Format: int64 */
             id: number;
+            /**
+             * @description Language of the screens and of the account's email.
+             * @enum {string}
+             */
+            locale: "ko" | "en";
             name: string;
             /** @enum {string} */
             role: "CUSTOMER" | "AGENT" | "ADMIN";
@@ -860,9 +1189,15 @@ export interface components {
             /** Format: int32 */
             totalPages: number;
         };
+        PasswordResetLink: {
+            /** @description The reset link, only when SMTP is not configured; shown once, the token is in the fragment after `#`. `null` when the reset email is sent. */
+            resetLink: string | null;
+        };
         PendingInvitation: {
             /** Format: int64 */
             accountId: number;
+            /** @description An admin cancelled the invitation; the link does not work until it is sent again (S1A-AC-42). */
+            cancelled: boolean;
             /** @description The companies a customer was invited to; `[]` for staff. */
             companies: components["schemas"]["CompanyRef"][];
             email: string;
@@ -879,9 +1214,21 @@ export interface components {
         Person: {
             /** Format: int64 */
             accountId: number;
+            /** @description Whether the account has a profile photo (`getPhoto`). */
+            hasPhoto: boolean;
             name: string;
             /** @enum {string} */
             role: "CUSTOMER" | "AGENT" | "ADMIN";
+        };
+        RequestPasswordResetRequest: {
+            /** @description Leading and trailing whitespace and case are ignored. */
+            email: string;
+        };
+        ResetPasswordRequest: {
+            /** @description 10 to 72 characters, not only whitespace, not the same as the email (AUTH-5). */
+            password: string;
+            /** @description The token from the reset link's fragment (after `#`). Sent only in the body. */
+            token: string;
         };
         SignInRequest: {
             /** @description Leading and trailing whitespace and case are ignored. */
@@ -895,6 +1242,25 @@ export interface components {
         UnreadCount: {
             /** Format: int64 */
             count: number;
+        };
+        UpdateAccountRequest: {
+            /** @description 1 to 50 characters. */
+            name?: string;
+        };
+        UpdateCompanyRequest: {
+            /** @description 1 to 100 characters. */
+            legalName?: string;
+            /** @description 1 to 100 characters. */
+            name?: string;
+        };
+        UpdateMeRequest: {
+            /**
+             * @description Language of the screens and of the account's email.
+             * @enum {string}
+             */
+            locale?: "ko" | "en";
+            /** @description 1 to 50 characters. */
+            name?: string;
         };
     };
     responses: never;
@@ -910,6 +1276,10 @@ export interface operations {
             query?: {
                 /** @description Only accounts with this role. */
                 role?: "CUSTOMER" | "AGENT" | "ADMIN";
+                /** @description Only accounts with this status. */
+                status?: "INVITED" | "ACTIVE" | "SUSPENDED";
+                /** @description Only accounts whose name or email holds this text, 1 to 100 characters. Case is ignored; `%` and `_` are ordinary characters (COM-5). */
+                q?: string;
                 /** @description Page number, from 1. */
                 page?: number;
                 /** @description 1 to 100. */
@@ -930,7 +1300,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedAccount"];
                 };
             };
-            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `role` (`UNKNOWN_VALUE`). */
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `role` or `status` (`UNKNOWN_VALUE`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -950,6 +1320,295 @@ export interface operations {
             };
             /** @description `FORBIDDEN`: admins only. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `name` empty or over 50, or `null` (`REQUIRED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resetAccountPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reset. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasswordResetLink"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    reactivateAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active again. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description `INVITATION_NOT_ACCEPTED`: the account never accepted its invitation (a cancelled invitation); send the invitation again instead (S1A-AC-35). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    changeAccountRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description Changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `role` missing (`REQUIRED`) or unknown (`UNKNOWN_VALUE`). `CUSTOMER_ROLE_FIXED`: `role` is `CUSTOMER`, or the account is a customer (S1A-AC-32). `OWN_ACCOUNT`: the caller's own account (S1A-AC-33). `LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    suspendAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Suspended. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description `OWN_ACCOUNT`: the caller's own account (S1A-AC-33). `LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1102,6 +1761,68 @@ export interface operations {
             };
         };
     };
+    updateCompany: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCompanyRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Company"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `name` or `legalName` empty or over 100, or `null` (`REQUIRED`); `code` sent (`NOT_ALLOWED`). `COMPANY_ARCHIVED`: the company is `ARCHIVED` (S1A-AC-48). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the caller cannot see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listCompanyAgents: {
         parameters: {
             query?: {
@@ -1224,6 +1945,54 @@ export interface operations {
             };
         };
     };
+    unassignAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not assigned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company or account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listCompanyCustomers: {
         parameters: {
             query?: {
@@ -1268,6 +2037,175 @@ export interface operations {
                 };
             };
             /** @description `FORBIDDEN`: admins only (S0-AC-30). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the caller cannot see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    addCompanyCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A member. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyMember"];
+                };
+            };
+            /** @description `INVALID_INPUT`: the account is not a customer (field `accountId` `UNKNOWN_VALUE`) (S1A-AC-51). `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S1A-AC-48). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company or account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    removeCompanyCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not a member. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company or account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    changeCompanyStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeCompanyStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Company"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `status` missing (`REQUIRED`) or unknown (`UNKNOWN_VALUE`). `COMPANY_ARCHIVED`: the company is `ARCHIVED`, which is final (S1A-AC-45). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1399,6 +2337,62 @@ export interface operations {
             };
         };
     };
+    cancelInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cancelled. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `INVITATION_ALREADY_ACCEPTED`: the account accepted its invitation before (S1A-AC-41). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     createInvitationLink: {
         parameters: {
             query?: never;
@@ -1438,6 +2432,64 @@ export interface operations {
                 };
             };
             /** @description `NOT_FOUND`: SMTP is configured (S0-AC-39), or no `INVITED` account has this ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resendInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sent again. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationResult"];
+                };
+            };
+            /** @description `INVITATION_ALREADY_ACCEPTED`: the account accepted its invitation before (S1A-AC-41). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1984,6 +3036,223 @@ export interface operations {
             };
         };
     };
+    updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `name` empty or over 50, or `null` (`REQUIRED`); `locale` not `ko` or `en` (`UNKNOWN_VALUE`), or `null` (`REQUIRED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    changeMyPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description The password is changed. The session cookie is set again. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `CURRENT_PASSWORD_WRONG` (S1A-AC-18). `INVALID_INPUT`: the new password breaks AUTH-5 (field `newPassword`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    uploadMyPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Stored. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description `UNSUPPORTED_IMAGE`: not one of the three formats, or it cannot be decoded (S1A-AC-22). `IMAGE_TOO_LARGE`: width times height is over 25 million pixels for PNG and JPEG, 12 million for WebP (S1A-AC-23). `INVALID_INPUT`: no `file` part (`REQUIRED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: the file is over 2 MB (S1A-AC-22). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 10 uploads in 60 seconds (S1A-AC-28). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `SERVER_BUSY`: 2 photos are being decoded; try again after `Retry-After` (S1A-AC-88). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteMyPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account has no photo now. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listNotifications: {
         parameters: {
             query?: {
@@ -2093,6 +3362,46 @@ export interface operations {
                 };
             };
             /** @description `NOT_FOUND`: no such item in the caller's inbox. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The photo. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account, the caller cannot see it, or it has no photo. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2242,6 +3551,95 @@ export interface operations {
             };
             /** @description `CSRF_TOKEN_INVALID`. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description The password is changed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `PASSWORD_RESET_INVALID`: the token is unknown, over 1 hour old, used, or replaced by a newer one, the account is no longer `ACTIVE`, or the token is sent to the other app's host; one body for all (S1A-AC-10, S1A-AC-84). `INVALID_INPUT`: the password breaks AUTH-5 (field `password`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`); the token stays usable (S1A-AC-11). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    requestPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestPasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Taken. The same empty answer whether the email is unknown, the account is invited or suspended, or it belongs to the other app. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `INVALID_INPUT`: `email` is empty (`REQUIRED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 20 requests from one IP address in 60 seconds. `Retry-After` says when to try again (S1A-AC-13). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

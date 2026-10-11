@@ -63,8 +63,8 @@ class PortalIssueController {
 
     /** A customer by name; staff only as the support team, without name or ID (ADR D-49). */
     static Person person(long accountId, String name, Role role) {
-        return role == Role.CUSTOMER ? new Person(PersonKind.CUSTOMER, accountId, name)
-                : new Person(PersonKind.SUPPORT_TEAM, null, null);
+        return role == Role.CUSTOMER ? new Person(PersonKind.CUSTOMER, accountId, name, false)
+                : new Person(PersonKind.SUPPORT_TEAM, null, null, null);
     }
 
     static OffsetDateTime utc(Instant instant) {

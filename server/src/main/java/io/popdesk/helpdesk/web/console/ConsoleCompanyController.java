@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.web.console;
 
+import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.CurrentAccount;
@@ -12,7 +13,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.ZoneOffset;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -39,7 +42,7 @@ class ConsoleCompanyController {
     }
 
     static CompanyMember member(MemberRow row) {
-        return new CompanyMember(row.accountId(), row.name(), row.email(), row.status());
+        return new CompanyMember(row.accountId(), row.name(), row.email(), row.status(), false);
     }
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only (S0-AC-30).";
@@ -127,6 +130,76 @@ class ConsoleCompanyController {
     CompanyMember assignAgent(@PathVariable String code, @PathVariable long accountId) {
         CurrentAccount admin = CurrentAccount.get();
         return member(companies.assignAgent(admin.viewer(), admin.actor(), code, accountId));
+    }
+
+    @Operation(operationId = "updateCompany", summary = "Change a company's name or legal name",
+            description = "A field left out keeps its value. The code never changes (S1A-AC-43).")
+    @ApiResponse(responseCode = "200", description = "Saved.")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `name` or `legalName` empty or over 100, or "
+            + "`null` (`REQUIRED`); `code` sent (`NOT_ALLOWED`). `COMPANY_ARCHIVED`: the company is `ARCHIVED` "
+            + "(S1A-AC-48).")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = NOT_FOUND)
+    @PatchMapping("/{code}")
+    Company updateCompany(@PathVariable String code, @RequestBody UpdateCompanyRequest request) {
+        throw new NotImplementedException();
+    }
+
+    @Operation(operationId = "changeCompanyStatus", summary = "Change a company's status",
+            description = "`ACTIVE` to `SUSPENDED` and back, or either to `ARCHIVED` (S1A-AC-44). Nothing new can "
+                    + "be filed in a company that is not `ACTIVE`; what is there stays readable (S1A-AC-46, "
+                    + "S1A-AC-47).")
+    @ApiResponse(responseCode = "200", description = "Changed.")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `status` missing (`REQUIRED`) or unknown "
+            + "(`UNKNOWN_VALUE`). `COMPANY_ARCHIVED`: the company is `ARCHIVED`, which is final (S1A-AC-45).")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = NOT_FOUND)
+    @PutMapping("/{code}/status")
+    Company changeCompanyStatus(@PathVariable String code, @RequestBody ChangeCompanyStatusRequest request) {
+        throw new NotImplementedException();
+    }
+
+    @Operation(operationId = "addCompanyCustomer", summary = "Make a customer a member of a company",
+            description = "The customer, invited ones included, sees the company and its public issues from the "
+                    + "next request. Adding again is 200 too (S1A-AC-50).")
+    @ApiResponse(responseCode = "200", description = "A member.")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: the account is not a customer (field "
+            + "`accountId` `UNKNOWN_VALUE`) (S1A-AC-51). `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` "
+            + "(S1A-AC-48).")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
+    @PutMapping("/{code}/customers/{accountId}")
+    CompanyMember addCompanyCustomer(@PathVariable String code, @PathVariable long accountId) {
+        throw new NotImplementedException();
+    }
+
+    @Operation(operationId = "removeCompanyCustomer", summary = "Take a customer out of a company",
+            description = "From the next request the customer no longer sees the company or colleagues' issues; "
+                    + "issues the customer filed stay readable to them but take no new comments or files from "
+                    + "them (S1A-AC-52 to S1A-AC-54). Works for a company of any status, and removing again is 200 "
+                    + "too.")
+    @ApiResponse(responseCode = "200", description = "Not a member.")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
+    @DeleteMapping("/{code}/customers/{accountId}")
+    void removeCompanyCustomer(@PathVariable String code, @PathVariable long accountId) {
+        throw new NotImplementedException();
+    }
+
+    @Operation(operationId = "unassignAgent", summary = "Take an agent off a company",
+            description = "From the next request the agent no longer sees the company's issues, comments, or files "
+                    + "(S1A-AC-55). Works for a company of any status, and removing again is 200 too.")
+    @ApiResponse(responseCode = "200", description = "Not assigned.")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
+    @DeleteMapping("/{code}/agents/{accountId}")
+    void unassignAgent(@PathVariable String code, @PathVariable long accountId) {
+        throw new NotImplementedException();
     }
 
     private Paged<CompanyMember> members(String code, Role role, int page, int size) {
