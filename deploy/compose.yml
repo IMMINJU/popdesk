@@ -51,6 +51,8 @@ services:
       AUDIT_FORWARD_URL_FILE:
       AUDIT_FORWARD_TOKEN:
       AUDIT_FORWARD_TOKEN_FILE:
+      POPDESK_SANDBOX:
+      POPDESK_SANDBOX_MAIL_TO:
       # JVM options of the operator's own, for example a larger heap (-Xmx768m).
       JDK_JAVA_OPTIONS:
     volumes:

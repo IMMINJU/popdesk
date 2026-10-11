@@ -12,6 +12,7 @@ Entries older than `POPDESK_AUDIT_RETENTION` (default `P365D`) are deleted once 
 - The shortest period is `P30D`. With a shorter value, or one that is not a duration, popdesk does not serve requests and deletes nothing: the process keeps running, logs the name of the setting, and its health check stays unhealthy.
 - Entries are deleted only from the start of the log, as far as old entries follow one another. An entry gets its time when the action is done and its place in the log when the change is committed, so now and then an entry sits right behind one that is a moment newer. Such an entry stays until the one in front of it is old enough too, at most a day longer. Deleting it out of the middle would break the hash chain.
 - The job is `audit-retention` in the cleanup metrics (`popdesk_cleanup_last_run_seconds`, `popdesk_cleanup_deleted`, label `job`).
+- The first run comes right after the first start on a version that has this job, so an upgrade deletes the entries that are already older than the period at once.
 - A shorter period takes effect on the next daily run after the restart and cannot be undone. Export the entries first if you may need them ([export format](../integrate/conventions.md#audit-log-export)).
 
 ## What the integrity check tells you
@@ -55,4 +56,6 @@ With `AUDIT_FORWARD_URL` set, popdesk posts every audit entry to that address as
 
 A copy of your database started with your real settings would post its own audit entries to your real receiver and mix them with the real ones. Start such an installation with `POPDESK_SANDBOX=true`: the outside copy is then off although `AUDIT_FORWARD_URL` is set. Nothing is queued, copies that were waiting in the copied database are dropped without being sent, and the system status shows the copy as off.
 
-The release Compose file passes only the settings it lists to the app, and `POPDESK_SANDBOX` is not among them yet. Add it to the `app` service's `environment` in your copy of the file for the test installation, and check in the system status that the copy is off before you use it.
+Check in the system status that the copy is off before you use the test installation. In this version `POPDESK_SANDBOX` turns off the outside copy only: email and the webhook are still sent, so also leave `SMTP_HOST` and `NOTIFY_WEBHOOK_URL` empty there ([configuration.md](configuration.md)).
+
+The same happens on any start with the copy off, also on your real installation: when you remove `AUDIT_FORWARD_URL` or turn the sandbox on, the copies that were waiting at that moment are dropped and not sent later. Export the entries of that time if the receiver must have them.
