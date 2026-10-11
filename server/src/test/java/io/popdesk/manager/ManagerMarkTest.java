@@ -3,11 +3,14 @@ package io.popdesk.manager;
 import static io.popdesk.manager.ManagerSteps.assertError;
 import static io.popdesk.manager.ManagerSteps.customer;
 import static io.popdesk.manager.ManagerSteps.invite;
+import static io.popdesk.manager.ManagerSteps.invited;
+import static io.popdesk.manager.ManagerSteps.managerFlag;
 import static io.popdesk.manager.ManagerSteps.managerOf;
 import static io.popdesk.manager.ManagerSteps.mark;
 import static io.popdesk.manager.ManagerSteps.members;
 import static io.popdesk.manager.ManagerSteps.myCompanies;
 import static io.popdesk.manager.ManagerSteps.pages;
+import static io.popdesk.manager.ManagerSteps.requests;
 import static io.popdesk.manager.ManagerSteps.unmark;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -18,6 +21,7 @@ import io.popdesk.support.Fixtures.Invitation;
 import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,17 +34,11 @@ import tools.jackson.databind.JsonNode;
  */
 class ManagerMarkTest extends BareAppTest {
 
-    private static boolean managerFlag(JsonNode entry) {
-        assertThat(entry).as("the entry that carries the manager flag").isNotNull();
-        assertThat(entry.path("manager").isBoolean()).as("manager is a boolean in " + entry).isTrue();
-        return entry.path("manager").booleanValue();
-    }
-
     // S2-AC-01
 
     @Test
-    @DisplayName("S2-AC-01 marking and unmarking a customer applies from their next request with the session they "
-            + "had, and doing either again is 200")
+    @DisplayName("S2-AC-01 marking a customer applies from their next request with the session they had, "
+            + "unmarking takes the mark away, and doing either again is 200")
     void markAppliesFromTheNextRequest() {
         Session admin = fixtures.signInAdmin();
         Company company = fixtures.createCompany(admin);
@@ -62,7 +60,6 @@ class ManagerMarkTest extends BareAppTest {
 
         assertThat(unmarked.jsonLong("accountId")).isEqualTo(customer.accountId());
         assertThat(managerFlag(unmarked.json())).isFalse();
-        assertError(customer.client().get(members(company.code())).send(), 403, "FORBIDDEN");
 
         ApiResponse unmarkedAgain = admin.client().delete(managerOf(company.code(), customer.accountId()))
                 .expect(200);
@@ -74,40 +71,50 @@ class ManagerMarkTest extends BareAppTest {
     // S2-AC-02
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"customer of another company", "agent of the company", "account that does not exist"})
-    @DisplayName("S2-AC-02 marking or unmarking an account that is not a customer of the company is 404 NOT_FOUND "
-            + "and marks nobody")
+    @ValueSource(strings = {"customer of another company", "agent of the company", "account that does not exist",
+            "account with only a pending membership request for the company", "company code that does not exist"})
+    @DisplayName("S2-AC-02 marking or unmarking an account that is not a customer of the company, or in a "
+            + "company that does not exist, is 404 NOT_FOUND and marks nobody")
     void onlyCustomersOfTheCompany(String target) {
         Session admin = fixtures.signInAdmin();
         Company company = fixtures.createCompany(admin);
         Company other = fixtures.createCompany(admin);
         Session member = fixtures.customer(admin, company.code());
+        Session manager = ManagerSteps.manager(fixtures, admin, company.code());
+        String code = target.startsWith("company code") ? "NOSUCH9" : company.code();
         long accountId = switch (target) {
             case "customer of another company" -> fixtures.customer(admin, other.code()).accountId();
             case "agent of the company" -> fixtures.agent(admin, company.code()).accountId();
+            case "account with only a pending membership request for the company" -> {
+                Session asked = fixtures.customer(admin, other.code());
+                invited(manager, company.code(), asked.email(), "Requested");
+                assertThat(requests(admin, company.code())).as("pending requests of the company").hasSize(1);
+                yield asked.accountId();
+            }
+            case "company code that does not exist" -> member.accountId();
             default -> 999_999_999L;
         };
+        List<JsonNode> customersBefore = ManagerSteps.customers(admin, company.code());
+        List<JsonNode> othersBefore = ManagerSteps.customers(admin, other.code());
 
-        ApiResponse put = admin.client().put(managerOf(company.code(), accountId)).send();
-        ApiResponse delete = admin.client().delete(managerOf(company.code(), accountId)).send();
+        ApiResponse put = admin.client().put(managerOf(code, accountId)).send();
+        ApiResponse delete = admin.client().delete(managerOf(code, accountId)).send();
 
         assertError(put, 404, "NOT_FOUND");
         assertError(delete, 404, "NOT_FOUND");
-        assertThat(pages(admin.client(), "/api/console/companies/" + company.code() + "/customers"))
-                .as("customers of the company")
-                .singleElement()
-                .satisfies(c -> {
-                    assertThat(c.path("accountId").asLong(-1)).isEqualTo(member.accountId());
-                    assertThat(managerFlag(c)).isFalse();
-                });
-        if (target.equals("customer of another company")) {
-            assertThat(managerFlag(customer(admin, other.code(), accountId))).isFalse();
-        }
+        assertThat(ManagerSteps.customers(admin, company.code())).as("customers of the company")
+                .isEqualTo(customersBefore);
+        assertThat(customersBefore).extracting(c -> c.path("accountId").asLong(-1))
+                .containsExactlyInAnyOrder(member.accountId(), manager.accountId());
+        assertThat(managerFlag(customer(admin, company.code(), member.accountId()))).isFalse();
+        assertThat(managerFlag(customer(admin, company.code(), manager.accountId()))).isTrue();
+        assertThat(ManagerSteps.customers(admin, other.code())).as("customers of the other company")
+                .isEqualTo(othersBefore).allSatisfy(c -> assertThat(managerFlag(c)).isFalse());
     }
 
     @Test
-    @DisplayName("S2-AC-02 an agent marking or unmarking a manager gets 403 FORBIDDEN and the customer stays as "
-            + "they were")
+    @DisplayName("S2-AC-02 an agent marking a customer, or unmarking one who is no manager, gets 403 FORBIDDEN "
+            + "and the customer stays no manager")
     void agentsCannotMark() {
         Session admin = fixtures.signInAdmin();
         Company company = fixtures.createCompany(admin);
@@ -120,6 +127,21 @@ class ManagerMarkTest extends BareAppTest {
         assertError(put, 403, "FORBIDDEN");
         assertError(delete, 403, "FORBIDDEN");
         assertThat(managerFlag(customer(admin, company.code(), customer.accountId()))).isFalse();
+    }
+
+    @Test
+    @DisplayName("S2-AC-02 an agent unmarking a manager gets 403 FORBIDDEN and the customer stays a manager")
+    void agentsCannotUnmark() {
+        Session admin = fixtures.signInAdmin();
+        Company company = fixtures.createCompany(admin);
+        Session agent = fixtures.agent(admin, company.code());
+        Session marked = ManagerSteps.manager(fixtures, admin, company.code());
+
+        ApiResponse delete = agent.client().delete(managerOf(company.code(), marked.accountId())).send();
+
+        assertError(delete, 403, "FORBIDDEN");
+        assertThat(managerFlag(customer(admin, company.code(), marked.accountId()))).isTrue();
+        marked.client().get(members(company.code())).expect(200);
     }
 
     // S2-AC-03
@@ -146,23 +168,6 @@ class ManagerMarkTest extends BareAppTest {
         assertThat(pages(admin.client(), "/api/console/companies/" + b.code() + "/customers"))
                 .extracting(c -> c.path("accountId").asLong(-1))
                 .containsExactlyInAnyOrder(person.accountId(), ofB.accountId());
-    }
-
-    @Test
-    @DisplayName("S2-AC-03 a company can have several managers")
-    void severalManagers() {
-        Session admin = fixtures.signInAdmin();
-        Company company = fixtures.createCompany(admin);
-        Session first = fixtures.customer(admin, company.code());
-        Session second = fixtures.customer(admin, company.code());
-
-        mark(admin, company.code(), first.accountId());
-        mark(admin, company.code(), second.accountId());
-
-        assertThat(managerFlag(customer(admin, company.code(), first.accountId()))).isTrue();
-        assertThat(managerFlag(customer(admin, company.code(), second.accountId()))).isTrue();
-        first.client().get(members(company.code())).expect(200);
-        second.client().get(members(company.code())).expect(200);
     }
 
     // S2-AC-04
@@ -230,17 +235,23 @@ class ManagerMarkTest extends BareAppTest {
     // S2-AC-07
 
     @Test
-    @DisplayName("S2-AC-07 the console's customer list marks each customer, and the portal's own profile and "
-            + "company list say for each company whether the caller is its manager")
+    @DisplayName("S2-AC-03, S2-AC-07 a company can have several managers; the console's customer list marks "
+            + "each customer, and the portal's own profile and company list say for each company whether the "
+            + "caller is its manager")
     void markIsShown() {
         Session admin = fixtures.signInAdmin();
         Company company = fixtures.createCompany(admin);
         Session manager = ManagerSteps.manager(fixtures, admin, company.code());
+        Session second = ManagerSteps.manager(fixtures, admin, company.code());
         Session plain = fixtures.customer(admin, company.code());
 
         assertThat(managerFlag(customer(admin, company.code(), manager.accountId()))).isTrue();
+        assertThat(managerFlag(customer(admin, company.code(), second.accountId()))).isTrue();
         assertThat(managerFlag(customer(admin, company.code(), plain.accountId()))).isFalse();
+        manager.client().get(members(company.code())).expect(200);
+        second.client().get(members(company.code())).expect(200);
         assertThat(managerFlag(myCompanies(manager).get(company.code()))).isTrue();
+        assertThat(managerFlag(myCompanies(second).get(company.code()))).isTrue();
         assertThat(managerFlag(myCompanies(plain).get(company.code()))).isFalse();
         assertThat(pages(manager.client(), "/api/portal/companies")).singleElement().satisfies(c -> {
             assertThat(c.path("code").asString(null)).isEqualTo(company.code());

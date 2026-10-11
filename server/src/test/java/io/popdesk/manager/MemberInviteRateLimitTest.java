@@ -2,6 +2,8 @@ package io.popdesk.manager;
 
 import static io.popdesk.manager.ManagerSteps.emails;
 import static io.popdesk.manager.ManagerSteps.invite;
+import static io.popdesk.manager.ManagerSteps.invited;
+import static io.popdesk.manager.ManagerSteps.requests;
 import static io.popdesk.manager.ManagerSteps.resend;
 import static io.popdesk.manager.ManagerSteps.rowId;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,7 +47,9 @@ class MemberInviteRateLimitTest extends BareAppTest {
     private static void assertRateLimited(ApiResponse response) {
         assertThat(response.status()).as(response.request() + ": " + response.snippet()).isEqualTo(429);
         assertThat(response.errorCode()).isEqualTo("RATE_LIMITED");
-        assertThat(response.header("Retry-After")).as("Retry-After").isNotBlank();
+        assertThat(response.header("Retry-After")).as("Retry-After").isNotNull().matches("[1-9][0-9]?");
+        assertThat(Integer.parseInt(response.header("Retry-After"))).as("Retry-After, seconds left of the window")
+                .isBetween(1, 60);
     }
 
     @Test
@@ -62,6 +66,28 @@ class MemberInviteRateLimitTest extends BareAppTest {
         assertRateLimited(invitation);
         assertRateLimited(sentAgain);
         assertThat(emails(s.manager(), s.company().code())).hasSize(12).doesNotContain(email);
+    }
+
+    @Test
+    @DisplayName("S2-AC-20, S2-AC-30 sending again on the row of a pending membership request counts like any "
+            + "other: the 21st within 60 seconds is 429 with Retry-After, as it is on a member's row")
+    void sendingAgainOnARequestRowCounts() {
+        Scene s = scene();
+        Company other = fixtures.createCompany(s.admin());
+        Session elsewhere = fixtures.customer(s.admin(), other.code());
+        invited(s.manager(), s.company().code(), elsewhere.email(), "Requested");
+        String requestRow = rowId(s.manager(), s.company().code(), elsewhere.email());
+        // The invitation above is the first of the 20 the limit allows.
+        for (int i = 0; i < 19; i++) {
+            s.manager().client().post(resend(s.company().code(), requestRow)).expect(204);
+        }
+
+        ApiResponse onRequestRow = s.manager().client().post(resend(s.company().code(), requestRow)).send();
+        ApiResponse onMemberRow = s.manager().client().post(resend(s.company().code(), s.pendingRow())).send();
+
+        assertRateLimited(onRequestRow);
+        assertRateLimited(onMemberRow);
+        assertThat(requests(s.admin(), s.company().code())).as("pending requests of the company").hasSize(1);
     }
 
     @Test

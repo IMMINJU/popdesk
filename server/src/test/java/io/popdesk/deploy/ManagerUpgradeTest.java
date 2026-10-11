@@ -39,7 +39,6 @@ class ManagerUpgradeTest {
     private static final String SAMPLE_ADMIN = "admin@sample.popdesk.test";
     private static final String SAMPLE_ADMIN_PASSWORD = "sample-Admin-Password-1";
     private static final String SAMPLE_PASSWORD = "sample-People-Password-1";
-    private static final String SAMPLE_CUSTOMER = "customer@sample.popdesk.test";
     private static final String SAMPLE_SUSPENDED = "suspended@sample.popdesk.test";
 
     private static final Duration SLOW = Duration.ofMinutes(15);
@@ -89,21 +88,14 @@ class ManagerUpgradeTest {
         return out;
     }
 
-    private static boolean isManager(JsonNode customer) {
-        return customer.path("manager").isBoolean() && customer.path("manager").booleanValue();
-    }
-
-    private static boolean isNoManager(JsonNode customer) {
-        return customer.path("manager").isBoolean() && !customer.path("manager").booleanValue();
-    }
-
     // S2-AC-51
 
     @ParameterizedTest(name = "from {0}")
     @ValueSource(strings = {"0.1.0", "0.2.0"})
     @DisplayName("S2-AC-51 on a sample of an older version this image finishes migrating and starts; no customer "
-            + "that was there is a manager, every membership has a row ID of its own once a manager lists the "
-            + "members, and the account suspended in the 0.2.0 sample still cannot sign in")
+            + "that was there is a manager, the memberships of every company together have row IDs that all "
+            + "differ once a manager of each lists the members, and the account suspended in the 0.2.0 sample "
+            + "still cannot sign in")
     void olderSampleGetsRowsWithoutManagers(String version) {
         Path dump = Repo.require("deploy/upgrade/samples/" + version + "/sample.dump",
                 "the sample kept from " + version + ", deploy/upgrade/README.md");
@@ -128,30 +120,41 @@ class ManagerUpgradeTest {
             Map<String, List<JsonNode>> customers = customersByCompany(admin);
             List<JsonNode> all = customers.values().stream().flatMap(List::stream).toList();
             assertThat(all).as("customers of the sample's companies").isNotEmpty();
-            assertThat(all).as("every customer that was there has manager false").allMatch(
-                    ManagerUpgradeTest::isNoManager);
+            assertThat(all).as("every customer that was there has manager false")
+                    .allSatisfy(c -> assertThat(ManagerSteps.managerFlag(c)).as("manager of %s", c).isFalse());
 
-            String code = customers.entrySet().stream()
-                    .filter(e -> e.getValue().stream()
-                            .anyMatch(c -> SAMPLE_CUSTOMER.equals(c.path("email").asString(null))))
-                    .map(Map.Entry::getKey).findFirst()
-                    .orElseThrow(() -> new AssertionError("No company with " + SAMPLE_CUSTOMER + " in " + customers));
-            long accountId = customers.get(code).stream()
-                    .filter(c -> SAMPLE_CUSTOMER.equals(c.path("email").asString(null)))
-                    .findFirst().orElseThrow().path("accountId").asLong(-1);
-            admin.client().put(ManagerSteps.managerOf(code, accountId)).expect(200);
-            ApiClient portal = stack.portal();
-            portal.post("/api/public/sign-in").json(Map.of("email", SAMPLE_CUSTOMER, "password", SAMPLE_PASSWORD))
-                    .expect(204);
+            // One ACTIVE customer of each company is marked and lists its members; a company whose rows
+            // nobody can list (no customer who can sign in) is left out and must not be the only one.
+            List<String> ids = new ArrayList<>();
+            List<String> listed = new ArrayList<>();
+            for (Map.Entry<String, List<JsonNode>> company : customers.entrySet()) {
+                String code = company.getKey();
+                JsonNode active = company.getValue().stream()
+                        .filter(c -> "ACTIVE".equals(c.path("status").asString(null))).findFirst().orElse(null);
+                if (active == null) {
+                    continue;
+                }
+                admin.client().put(ManagerSteps.managerOf(code, active.path("accountId").asLong(-1))).expect(200);
+                ApiClient portal = stack.portal();
+                portal.post("/api/public/sign-in")
+                        .json(Map.of("email", active.path("email").asString(""), "password", SAMPLE_PASSWORD))
+                        .expect(204);
 
-            List<JsonNode> rows = items(portal.get(ManagerSteps.members(code)).query("size", 100).expect(200));
+                List<JsonNode> rows = items(portal.get(ManagerSteps.members(code)).query("size", 100).expect(200));
 
-            assertThat(rows).extracting(r -> r.path("email").asString(null)).as("rows of the member list of %s", code)
-                    .containsExactlyInAnyOrderElementsOf(customers.get(code).stream()
-                            .map(c -> c.path("email").asString(null)).toList());
-            List<String> ids = rows.stream().map(r -> r.path("id").asString("")).toList();
-            assertThat(ids).as("row IDs").allMatch(id -> ManagerSteps.ROW_ID.matcher(id).matches())
+                assertThat(rows).extracting(r -> r.path("email").asString(null))
+                        .as("rows of the member list of %s", code)
+                        .containsExactlyInAnyOrderElementsOf(company.getValue().stream()
+                                .map(c -> c.path("email").asString(null)).toList());
+                rows.forEach(r -> ids.add(r.path("id").asString("")));
+                listed.add(code);
+            }
+            assertThat(listed).as("companies whose members a manager listed").isNotEmpty();
+            assertThat(ids).as("row IDs of the members of %s", listed).hasSizeGreaterThanOrEqualTo(2)
+                    .allMatch(id -> ManagerSteps.ROW_ID.matcher(id).matches())
                     .doesNotHaveDuplicates();
+            assertThat(ids).as("a row ID for every membership of %s", listed).hasSize(listed.stream()
+                    .mapToInt(code -> customers.get(code).size()).sum());
         }
     }
 
@@ -175,7 +178,7 @@ class ManagerUpgradeTest {
             Person admin = new AppSteps(stack).signIn(SAMPLE_ADMIN, SAMPLE_ADMIN_PASSWORD);
 
             List<JsonNode> managers = customersByCompany(admin).values().stream().flatMap(List::stream)
-                    .filter(ManagerUpgradeTest::isManager).toList();
+                    .filter(ManagerSteps::managerFlag).toList();
             assertThat(managers).as("customers marked as a manager in the sample").isNotEmpty();
             ApiResponse requests = admin.client().get("/api/console/membership-requests").query("size", 100)
                     .expect(200);

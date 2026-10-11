@@ -1,11 +1,12 @@
 package io.popdesk.manager;
 
+import static io.popdesk.manager.ManagerSteps.addCustomer;
 import static io.popdesk.manager.ManagerSteps.invited;
 import static io.popdesk.manager.ManagerSteps.mark;
-import static io.popdesk.manager.ManagerSteps.member;
 import static io.popdesk.manager.ManagerSteps.pages;
-import static io.popdesk.manager.ManagerSteps.resend;
-import static io.popdesk.manager.ManagerSteps.rowId;
+import static io.popdesk.manager.ManagerSteps.pendingInvitations;
+import static io.popdesk.manager.ManagerSteps.remove;
+import static io.popdesk.manager.ManagerSteps.resendTo;
 import static io.popdesk.manager.ManagerSteps.unmark;
 import static io.popdesk.manager.RequestSteps.approve;
 import static io.popdesk.manager.RequestSteps.reject;
@@ -13,15 +14,19 @@ import static io.popdesk.manager.RequestSteps.request;
 import static io.popdesk.manager.RequestSteps.withdraw;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.popdesk.manager.ManagerSteps.Scene;
 import io.popdesk.support.AuditChainMath;
 import io.popdesk.support.BareAppTest;
-import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.Invitation;
 import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,153 +38,238 @@ import tools.jackson.databind.JsonNode;
  * The audit log of slice 2: marking managers, what a manager does to the member list, and membership
  * requests. Every test acts as an admin and a manager of its own and narrows the log to one of them,
  * because every test of the context writes to the same log.
+ *
+ * <p>The target and the changes of an entry go into the hash chain, so they are compared whole. The
+ * new kinds have the shapes of the table under section 0 of the slice's design.md. The kinds that were
+ * there before
+ * ({@code INVITATION_CREATED}, {@code INVITATION_RESENT}, {@code INVITATION_CANCELLED},
+ * {@code CUSTOMER_REMOVED}, {@code CUSTOMER_ADDED}) keep the shape an admin's action leaves; only the
+ * person who did it is the manager.
  */
 class ManagerAuditTest extends BareAppTest {
 
     private static final String LOG = "/api/console/audit-log";
 
-    private record Scene(Session admin, Company company, Company other, Session manager) {
-
-        String code() {
-            return company.code();
-        }
-    }
+    /** How an audit entry writes a time in its changes: microseconds, UTC. */
+    private static final DateTimeFormatter CHANGE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'")
+            .withZone(ZoneOffset.UTC);
 
     private Scene scene() {
-        Session admin = fixtures.admin(fixtures.signInAdmin());
-        Company company = fixtures.createCompany(admin);
-        Company other = fixtures.createCompany(admin);
-        return new Scene(admin, company, other, ManagerSteps.manager(fixtures, admin, company.code()));
+        return ManagerSteps.scene(fixtures, fixtures.admin(fixtures.signInAdmin()));
     }
 
-    /** What was done: who did it, and what its entry must and must not hold. */
-    private record Done(Session actor, List<String> mentioned, List<String> secrets) {}
+    /** One entry an action must leave: its kind, and its whole target and changes. */
+    private record Entry(String kind, JsonNode target, JsonNode changes) {}
 
-    /** The kinds of audit entry this slice writes, each with the one action that causes it. */
-    private enum Kind {
-        MANAGER_MARKED(false),
-        MANAGER_UNMARKED(false),
-        INVITATION_CREATED(true),
-        INVITATION_RESENT(true),
-        CUSTOMER_REMOVED(true),
-        INVITATION_CANCELLED(true),
-        MEMBERSHIP_REQUESTED(true),
-        MEMBERSHIP_REQUEST_WITHDRAWN(true),
-        MEMBERSHIP_REQUEST_APPROVED(false),
-        MEMBERSHIP_REQUEST_REJECTED(false);
+    /**
+     * An action about to be done: who does it, the action (it returns the entries it must leave, all of
+     * them), and values no entry may hold.
+     */
+    private record Step(Session actor, Supplier<List<Entry>> action, List<String> secrets) {}
+
+    private static JsonNode companyTarget(String code, long accountId) {
+        return AuditChainMath.parse("{\"type\":\"COMPANY\",\"code\":\"" + code + "\",\"accountId\":" + accountId + "}");
+    }
+
+    private static JsonNode accountTarget(long accountId) {
+        return AuditChainMath.parse("{\"type\":\"ACCOUNT\",\"accountId\":" + accountId + "}");
+    }
+
+    private static JsonNode json(String text) {
+        return AuditChainMath.parse(text);
+    }
+
+    /** What is done in this slice that the audit log records, by the kinds of entry it leaves. */
+    private enum Action {
+        MARKING(false, "MANAGER_MARKED"),
+        UNMARKING(false, "MANAGER_UNMARKED"),
+        INVITING_A_NEW_EMAIL(true, "INVITATION_CREATED"),
+        INVITING_AN_EXISTING_EMAIL(true, "MEMBERSHIP_REQUESTED"),
+        SENDING_AGAIN(true, "INVITATION_RESENT"),
+        REMOVING_AN_ACTIVE_MEMBER(true, "CUSTOMER_REMOVED"),
+        REMOVING_A_PENDING_MEMBER_OF_THIS_COMPANY_ONLY(true, "CUSTOMER_REMOVED", "INVITATION_CANCELLED"),
+        WITHDRAWING_A_REQUEST(true, "MEMBERSHIP_REQUEST_WITHDRAWN"),
+        APPROVING_A_REQUEST(false, "MEMBERSHIP_REQUEST_APPROVED", "CUSTOMER_ADDED"),
+        ADDING_THE_CUSTOMER_OF_A_REQUEST(false, "MEMBERSHIP_REQUEST_APPROVED", "CUSTOMER_ADDED"),
+        REJECTING_A_REQUEST(false, "MEMBERSHIP_REQUEST_REJECTED");
 
         private final boolean byManager;
+        private final List<String> kinds;
 
-        Kind(boolean byManager) {
+        Action(boolean byManager, String... kinds) {
             this.byManager = byManager;
+            this.kinds = List.of(kinds);
         }
     }
 
-    /** Does the one thing that writes an entry of this kind, as a person who did nothing of that kind before. */
-    private Done cause(Kind kind, Scene s) {
-        switch (kind) {
-            case MANAGER_MARKED -> {
-                Session customer = fixtures.customer(s.admin(), s.code());
-                Session admin = fixtures.admin(s.admin());
-                mark(admin, s.code(), customer.accountId());
-                return new Done(admin, List.of(s.code()), List.of());
+    /** Prepares the action; nothing of its kinds is written before {@code action} runs. */
+    private Step prepare(Action action, Scene s) {
+        String code = s.code();
+        switch (action) {
+            case MARKING -> {
+                Session customer = fixtures.customer(s.admin(), code);
+                return new Step(s.admin(), () -> {
+                    mark(s.admin(), code, customer.accountId());
+                    return List.of(new Entry("MANAGER_MARKED", companyTarget(code, customer.accountId()),
+                            json("{\"manager\":true}")));
+                }, List.of());
             }
-            case MANAGER_UNMARKED -> {
-                Session customer = fixtures.customer(s.admin(), s.code());
-                mark(s.admin(), s.code(), customer.accountId());
-                unmark(s.admin(), s.code(), customer.accountId());
-                return new Done(s.admin(), List.of(s.code()), List.of());
+            case UNMARKING -> {
+                Session customer = fixtures.customer(s.admin(), code);
+                mark(s.admin(), code, customer.accountId());
+                return new Step(s.admin(), () -> {
+                    unmark(s.admin(), code, customer.accountId());
+                    return List.of(new Entry("MANAGER_UNMARKED", companyTarget(code, customer.accountId()),
+                            json("{\"manager\":false}")));
+                }, List.of());
             }
-            case INVITATION_CREATED -> {
+            case INVITING_A_NEW_EMAIL -> {
                 String email = Unique.email("invited");
-                invited(s.manager(), s.code(), email, "Invited");
-                return new Done(s.manager(), List.of(), List.of());
+                String name = Unique.text("Invited");
+                return new Step(s.manager(), () -> {
+                    invited(s.manager(), code, email, name);
+                    List<JsonNode> pending = pendingInvitations(s.admin(), email);
+                    assertThat(pending).as("pending invitations of %s", email).hasSize(1);
+                    return List.of(new Entry("INVITATION_CREATED",
+                            accountTarget(pending.getFirst().path("accountId").asLong(-1)),
+                            json("{\"email\":\"" + email + "\",\"name\":\"" + name + "\",\"role\":\"CUSTOMER\","
+                                    + "\"companyCodes\":[\"" + code + "\"]}")));
+                }, List.of());
             }
-            case INVITATION_RESENT -> {
-                Invitation invitation = fixtures.invite(s.admin(), Role.CUSTOMER, s.code());
-                s.manager().client().post(resend(s.code(), rowId(s.manager(), s.code(), invitation.email())))
-                        .expect(204);
-                return new Done(s.manager(), List.of(), List.of(invitation.token()));
-            }
-            case CUSTOMER_REMOVED -> {
-                Session customer = fixtures.customer(s.admin(), s.code());
-                s.manager().client().delete(member(s.code(), rowId(s.manager(), s.code(), customer.email())))
-                        .expect(204);
-                return new Done(s.manager(), List.of(), List.of());
-            }
-            case INVITATION_CANCELLED -> {
-                Invitation invitation = fixtures.invite(s.admin(), Role.CUSTOMER, s.code());
-                s.manager().client().delete(member(s.code(), rowId(s.manager(), s.code(), invitation.email())))
-                        .expect(204);
-                return new Done(s.manager(), List.of(), List.of(invitation.token()));
-            }
-            case MEMBERSHIP_REQUESTED -> {
+            case INVITING_AN_EXISTING_EMAIL -> {
                 Session target = fixtures.customer(s.admin(), s.other().code());
-                request(s.admin(), s.manager(), s.code(), target.email(), "Typed");
-                return new Done(s.manager(), List.of(s.code(), target.email()), List.of());
+                String name = Unique.text("Typed");
+                return new Step(s.manager(), () -> {
+                    invited(s.manager(), code, target.email(), name);
+                    return List.of(new Entry("MEMBERSHIP_REQUESTED", companyTarget(code, target.accountId()),
+                            json("{\"email\":\"" + target.email() + "\",\"name\":\"" + name + "\"}")));
+                }, List.of());
             }
-            case MEMBERSHIP_REQUEST_WITHDRAWN -> {
-                Session target = fixtures.customer(s.admin(), s.other().code());
-                request(s.admin(), s.manager(), s.code(), target.email(), "Typed");
-                withdraw(s.manager(), s.code(), target.email());
-                return new Done(s.manager(), List.of(s.code(), target.email()), List.of());
+            case SENDING_AGAIN -> {
+                Invitation invitation = fixtures.invite(s.admin(), Role.CUSTOMER, code);
+                return new Step(s.manager(), () -> {
+                    resendTo(s.manager(), code, invitation.email()).expectStatus(204);
+                    List<JsonNode> pending = pendingInvitations(s.admin(), invitation.email());
+                    assertThat(pending).as("pending invitations of %s", invitation.email()).hasSize(1);
+                    String expiresAt = CHANGE_TIME.format(OffsetDateTime.parse(
+                            pending.getFirst().path("expiresAt").asString("")));
+                    return List.of(new Entry("INVITATION_RESENT", accountTarget(invitation.accountId()),
+                            json("{\"expiresAt\":\"" + expiresAt + "\"}")));
+                }, List.of(invitation.token()));
             }
-            case MEMBERSHIP_REQUEST_APPROVED -> {
+            case REMOVING_AN_ACTIVE_MEMBER -> {
+                Session customer = fixtures.customer(s.admin(), code);
+                return new Step(s.manager(), () -> {
+                    remove(s.manager(), code, customer.email()).expectStatus(204);
+                    return List.of(new Entry("CUSTOMER_REMOVED", companyTarget(code, customer.accountId()),
+                            json("{\"member\":false}")));
+                }, List.of());
+            }
+            case REMOVING_A_PENDING_MEMBER_OF_THIS_COMPANY_ONLY -> {
+                Invitation invitation = fixtures.invite(s.admin(), Role.CUSTOMER, code);
+                return new Step(s.manager(), () -> {
+                    remove(s.manager(), code, invitation.email()).expectStatus(204);
+                    return List.of(
+                            new Entry("CUSTOMER_REMOVED", companyTarget(code, invitation.accountId()),
+                                    json("{\"member\":false}")),
+                            new Entry("INVITATION_CANCELLED", accountTarget(invitation.accountId()),
+                                    json("{\"status\":{\"from\":\"INVITED\",\"to\":\"SUSPENDED\"}}")));
+                }, List.of(invitation.token()));
+            }
+            case WITHDRAWING_A_REQUEST -> {
                 Session target = fixtures.customer(s.admin(), s.other().code());
-                long id = request(s.admin(), s.manager(), s.code(), target.email(), "Typed");
-                approve(s.admin(), id).expectStatus(200);
-                return new Done(s.admin(), List.of(s.code(), target.email()), List.of());
+                request(s.admin(), s.manager(), code, target.email(), "Typed");
+                return new Step(s.manager(), () -> {
+                    withdraw(s.manager(), code, target.email());
+                    return List.of(new Entry("MEMBERSHIP_REQUEST_WITHDRAWN", companyTarget(code, target.accountId()),
+                            json("{\"email\":\"" + target.email() + "\"}")));
+                }, List.of());
+            }
+            case APPROVING_A_REQUEST, ADDING_THE_CUSTOMER_OF_A_REQUEST -> {
+                Session target = fixtures.customer(s.admin(), s.other().code());
+                long id = request(s.admin(), s.manager(), code, target.email(), "Typed");
+                return new Step(s.admin(), () -> {
+                    if (action == Action.APPROVING_A_REQUEST) {
+                        approve(s.admin(), id).expectStatus(200);
+                    } else {
+                        addCustomer(s.admin(), code, target.accountId());
+                    }
+                    return List.of(
+                            new Entry("MEMBERSHIP_REQUEST_APPROVED", companyTarget(code, target.accountId()),
+                                    json("{\"email\":\"" + target.email() + "\"}")),
+                            new Entry("CUSTOMER_ADDED", companyTarget(code, target.accountId()),
+                                    json("{\"member\":true}")));
+                }, List.of());
             }
             default -> {
                 Session target = fixtures.customer(s.admin(), s.other().code());
-                long id = request(s.admin(), s.manager(), s.code(), target.email(), "Typed");
-                reject(s.admin(), id).expectStatus(200);
-                return new Done(s.admin(), List.of(s.code(), target.email()), List.of());
+                long id = request(s.admin(), s.manager(), code, target.email(), "Typed");
+                return new Step(s.admin(), () -> {
+                    reject(s.admin(), id).expectStatus(200);
+                    return List.of(new Entry("MEMBERSHIP_REQUEST_REJECTED", companyTarget(code, target.accountId()),
+                            json("{\"email\":\"" + target.email() + "\"}")));
+                }, List.of());
             }
         }
     }
 
-    /** The entries of one person, newest first; {@code kinds} narrows them to those kinds. */
-    private static List<JsonNode> entriesBy(Session reader, Session actor, Kind... kinds) {
-        List<Object> query = new ArrayList<>(List.of("actorAccountId", actor.accountId()));
-        for (Kind kind : kinds) {
-            query.add("action");
-            query.add(kind.name());
+    /** The entries of one person, newest first. */
+    private static List<JsonNode> entriesBy(Session reader, Session actor) {
+        return pages(reader.client(), LOG, "actorAccountId", actor.accountId());
+    }
+
+    /** The entries of {@code after} that are not in {@code before}, by ID. */
+    private static List<JsonNode> added(List<JsonNode> before, List<JsonNode> after) {
+        List<Long> known = before.stream().map(e -> e.path("id").asLong(-1)).toList();
+        List<JsonNode> out = new ArrayList<>();
+        for (JsonNode entry : after) {
+            if (!known.contains(entry.path("id").asLong(-1))) {
+                out.add(entry);
+            }
         }
-        return pages(reader.client(), LOG, query.toArray());
+        return out;
     }
 
     // S2-AC-41
 
     @ParameterizedTest(name = "{0}")
-    @EnumSource(Kind.class)
-    @DisplayName("S2-AC-41 marking and unmarking a manager, a manager's invitation, sending again, and removal "
-            + "(with the invitation it cancels), and a membership request made, withdrawn, approved, and "
-            + "rejected each leave one audit entry by the person who did it; a request's entry holds the company "
-            + "code and the typed email; no entry holds a token or a link")
-    void eachActionLeavesAnEntry(Kind kind) {
+    @EnumSource(Action.class)
+    @DisplayName("S2-AC-41 marking and unmarking a manager, a manager's invitation of a new and of an existing "
+            + "email, sending again, removal (with the invitation it cancels), and a membership request "
+            + "withdrawn, approved (also by adding the customer on the console), and rejected leave exactly "
+            + "their audit entries by the person who did it, with the whole target and changes; no entry holds "
+            + "a token or a link")
+    void eachActionLeavesItsEntries(Action action) {
         Scene s = scene();
+        Step step = prepare(action, s);
+        assertThat(step.actor().accountId() == s.manager().accountId()).as("the manager does it")
+                .isEqualTo(action.byManager);
+        List<JsonNode> before = entriesBy(s.admin(), step.actor());
 
-        Done done = cause(kind, s);
+        List<Entry> expected = step.action().get();
 
-        assertThat(done.actor().accountId() == s.manager().accountId()).as("the manager did it")
-                .isEqualTo(kind.byManager);
-        List<JsonNode> found = entriesBy(s.admin(), done.actor(), kind);
-        assertThat(found).as("%s entries by %s", kind, done.actor().email()).hasSize(1);
-        JsonNode entry = found.getFirst();
-        assertThat(entry.path("action").asString(null)).isEqualTo(kind.name());
-        assertThat(entry.path("actor").path("accountId").asLong(-1)).as("who did it in %s", entry)
-                .isEqualTo(done.actor().accountId());
-        assertThat(entry.path("actor").path("email").asString(null)).isEqualTo(done.actor().email());
-        String about = entry.path("target").toString() + entry.path("changes").toString();
-        for (String value : done.mentioned()) {
-            assertThat(about).as("target and changes of the %s entry", kind).contains(value);
+        List<JsonNode> all = entriesBy(s.admin(), step.actor());
+        List<JsonNode> added = added(before, all);
+        assertThat(added).extracting(e -> e.path("action").asString(null))
+                .as("kinds of the entries by %s after %s", step.actor().email(), action)
+                .containsExactlyInAnyOrderElementsOf(action.kinds);
+        assertThat(expected).extracting(Entry::kind).containsExactlyInAnyOrderElementsOf(action.kinds);
+        for (Entry wanted : expected) {
+            JsonNode entry = added.stream().filter(e -> wanted.kind().equals(e.path("action").asString(null)))
+                    .findFirst().orElseThrow();
+            assertThat(entry.path("actor").path("accountId").asLong(-1)).as("who did it in %s", entry)
+                    .isEqualTo(step.actor().accountId());
+            assertThat(entry.path("actor").path("email").asString(null)).isEqualTo(step.actor().email());
+            assertThat(AuditChainMath.canonical(entry.path("target"))).as("target of the %s entry", wanted.kind())
+                    .isEqualTo(AuditChainMath.canonical(wanted.target()));
+            assertThat(AuditChainMath.canonical(entry.path("changes"))).as("changes of the %s entry", wanted.kind())
+                    .isEqualTo(AuditChainMath.canonical(wanted.changes()));
         }
-        for (JsonNode any : entriesBy(s.admin(), done.actor())) {
-            assertThat(any.toString()).as("an entry by %s", done.actor().email())
+        for (JsonNode any : all) {
+            assertThat(any.toString()).as("an entry by %s", step.actor().email())
                     .doesNotContain("token=").doesNotContain("/invite");
-            for (String secret : done.secrets()) {
-                assertThat(any.toString()).as("an entry by %s", done.actor().email()).doesNotContain(secret);
+            for (String secret : step.secrets()) {
+                assertThat(any.toString()).as("an entry by %s", step.actor().email()).doesNotContain(secret);
             }
         }
     }
@@ -188,9 +278,9 @@ class ManagerAuditTest extends BareAppTest {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"sending again on a request row", "marking again", "unmarking again",
-            "approving again"})
+            "approving again", "rejecting again"})
     @DisplayName("S2-AC-42 a request that changes nothing leaves no audit entry: sending again on the row of a "
-            + "membership request, and marking, unmarking, or approving a second time")
+            + "membership request, and marking, unmarking, approving, or rejecting a second time")
     void nothingDoneLeavesNoEntry(String what) {
         Scene s = scene();
         Session target = fixtures.customer(s.admin(), s.other().code());
@@ -198,14 +288,15 @@ class ManagerAuditTest extends BareAppTest {
         long requestId = request(s.admin(), s.manager(), s.code(), target.email(), "Typed");
         Session actor = what.startsWith("sending") ? s.manager() : s.admin();
         Runnable action = switch (what) {
-            case "sending again on a request row" -> () -> s.manager().client()
-                    .post(resend(s.code(), rowId(s.manager(), s.code(), target.email()))).expect(204);
+            case "sending again on a request row" -> () -> resendTo(s.manager(), s.code(), target.email())
+                    .expectStatus(204);
             case "marking again" -> () -> mark(s.admin(), s.code(), customer.accountId());
             case "unmarking again" -> {
                 mark(s.admin(), s.code(), customer.accountId());
                 yield () -> unmark(s.admin(), s.code(), customer.accountId());
             }
-            default -> () -> approve(s.admin(), requestId).expectStatus(200);
+            case "approving again" -> () -> approve(s.admin(), requestId).expectStatus(200);
+            default -> () -> reject(s.admin(), requestId).expectStatus(200);
         };
         if (!what.startsWith("sending")) {
             action.run();
@@ -225,10 +316,14 @@ class ManagerAuditTest extends BareAppTest {
             + "says every entry holds")
     void chainHoldsWithTheNewKinds() {
         Scene s = scene();
-        for (Kind kind : Kind.values()) {
-            Done done = cause(kind, s);
-            assertThat(entriesBy(s.admin(), done.actor(), kind)).as("%s entries by %s", kind, done.actor().email())
-                    .isNotEmpty();
+        for (Action action : Action.values()) {
+            Step step = prepare(action, s);
+            List<JsonNode> before = entriesBy(s.admin(), step.actor());
+            step.action().get();
+            assertThat(added(before, entriesBy(s.admin(), step.actor())))
+                    .extracting(e -> e.path("action").asString(null))
+                    .as("kinds of the entries by %s after %s", step.actor().email(), action)
+                    .containsAll(action.kinds);
         }
 
         AuditChainMath.assertValid(s.admin().client());

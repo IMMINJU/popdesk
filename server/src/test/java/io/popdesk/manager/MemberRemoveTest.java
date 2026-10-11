@@ -4,23 +4,24 @@ import static io.popdesk.manager.ManagerSteps.acceptOnPortal;
 import static io.popdesk.manager.ManagerSteps.assertError;
 import static io.popdesk.manager.ManagerSteps.assertSameResponse;
 import static io.popdesk.manager.ManagerSteps.customer;
+import static io.popdesk.manager.ManagerSteps.customerAccounts;
 import static io.popdesk.manager.ManagerSteps.customerIds;
 import static io.popdesk.manager.ManagerSteps.emails;
 import static io.popdesk.manager.ManagerSteps.invited;
-import static io.popdesk.manager.ManagerSteps.member;
+import static io.popdesk.manager.ManagerSteps.managerFlag;
+import static io.popdesk.manager.ManagerSteps.mark;
 import static io.popdesk.manager.ManagerSteps.myCompanies;
 import static io.popdesk.manager.ManagerSteps.pendingInvitations;
 import static io.popdesk.manager.ManagerSteps.requests;
-import static io.popdesk.manager.ManagerSteps.resend;
+import static io.popdesk.manager.ManagerSteps.resendTo;
 import static io.popdesk.manager.ManagerSteps.row;
-import static io.popdesk.manager.ManagerSteps.rowId;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.manager.ManagerSteps.Existing;
 import io.popdesk.manager.ManagerSteps.ExistingKind;
+import io.popdesk.manager.ManagerSteps.Scene;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
-import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.Invitation;
 import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.Role;
@@ -30,7 +31,9 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.databind.JsonNode;
 
 /**
  * A manager takes rows out of the member list, and what sending an invitation again refuses, without
@@ -38,32 +41,24 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class MemberRemoveTest extends BareAppTest {
 
-    private record Scene(Session admin, Company company, Company other, Session manager) {
-
-        String code() {
-            return company.code();
-        }
-    }
-
     private Scene scene() {
-        Session admin = fixtures.signInAdmin();
-        Company company = fixtures.createCompany(admin);
-        Company other = fixtures.createCompany(admin);
-        return new Scene(admin, company, other, ManagerSteps.manager(fixtures, admin, company.code()));
+        return ManagerSteps.scene(fixtures);
     }
 
     private static ApiResponse remove(Scene s, String email) {
-        return s.manager().client().delete(member(s.code(), rowId(s.manager(), s.code(), email))).send();
+        return ManagerSteps.remove(s.manager(), s.code(), email);
     }
 
     // S2-AC-24
 
     @Test
-    @DisplayName("S2-AC-24 a member a manager takes out loses only that company: the account stays ACTIVE in "
-            + "its other company, still reads the issue it filed there, and can no longer file there")
+    @DisplayName("S2-AC-03, S2-AC-24 a member a manager takes out loses only that company, also one who is a "
+            + "manager of another company: the account stays ACTIVE and a manager in its other company, still "
+            + "reads the issue it filed there, and can no longer file there")
     void removedMemberKeepsTheRest() {
         Scene s = scene();
         Session leaver = fixtures.customer(s.admin(), s.code(), s.other().code());
+        mark(s.admin(), s.other().code(), leaver.accountId());
         Issue own = fixtures.fileIssue(leaver, s.code());
 
         ApiResponse removed = remove(s, leaver.email());
@@ -72,8 +67,9 @@ class MemberRemoveTest extends BareAppTest {
         assertThat(removed.body()).as("body of the 204").isEmpty();
         assertThat(emails(s.manager(), s.code())).doesNotContain(leaver.email());
         assertThat(customerIds(s.admin(), s.code())).doesNotContain(leaver.accountId());
-        assertThat(customer(s.admin(), s.other().code(), leaver.accountId()).path("status").asString(null))
-                .isEqualTo("ACTIVE");
+        JsonNode inTheOther = customer(s.admin(), s.other().code(), leaver.accountId());
+        assertThat(inTheOther.path("status").asString(null)).isEqualTo("ACTIVE");
+        assertThat(managerFlag(inTheOther)).as("still a manager of the other company").isTrue();
         assertThat(myCompanies(leaver).keySet()).containsExactly(s.other().code());
         assertThat(leaver.client().get("/api/portal/issues/" + own.key()).expect(200).jsonText("key"))
                 .isEqualTo(own.key());
@@ -123,12 +119,14 @@ class MemberRemoveTest extends BareAppTest {
 
     // S2-AC-26
 
-    @Test
+    @ParameterizedTest(name = "a request for {0}")
+    @EnumSource(value = ExistingKind.class, names = {"CUSTOMER_OF_ANOTHER_COMPANY", "INVITED_CUSTOMER"})
     @DisplayName("S2-AC-26 taking out the row of a pending membership request withdraws the request: it leaves "
-            + "the admin's list, and the account stays as it was")
-    void removingARequestRowWithdrawsIt() {
+            + "the admin's list, and the account stays as it was, also when the account has not accepted yet "
+            + "(its invitation is not cancelled and its link still works)")
+    void removingARequestRowWithdrawsIt(ExistingKind kind) {
         Scene s = scene();
-        Existing existing = ExistingKind.CUSTOMER_OF_ANOTHER_COMPANY.make(fixtures, s.admin(), s.other().code());
+        Existing existing = kind.make(fixtures, s.admin(), s.other().code());
         invited(s.manager(), s.code(), existing.email(), "Requested");
         assertThat(requests(s.admin(), s.code())).hasSize(1);
         Map<String, Object> accountBefore = db.row("select * from account where id = ?", existing.accountId());
@@ -140,29 +138,40 @@ class MemberRemoveTest extends BareAppTest {
         assertThat(db.row("select * from account where id = ?", existing.accountId())).isEqualTo(accountBefore);
         assertThat(customerIds(s.admin(), s.code())).doesNotContain(existing.accountId());
         assertThat(customerIds(s.admin(), s.other().code())).contains(existing.accountId());
+        if (existing.token() != null) {
+            assertThat(pendingInvitations(s.admin(), existing.email())).singleElement()
+                    .satisfies(p -> assertThat(p.path("cancelled").asBoolean(true)).isFalse());
+            acceptOnPortal(portal(), existing.token()).expectStatus(204);
+        }
     }
 
     // S2-AC-27
 
     @Test
-    @DisplayName("S2-AC-27 taking out a member, a member who has not accepted, and a pending membership request "
-            + "answer the same: status, body, and headers")
+    @DisplayName("S2-AC-24, S2-AC-27 taking out a member, a member who has not accepted (of this company only, "
+            + "and of another company too), and a pending membership request answer the same: status, body, "
+            + "and headers; the member's account stays ACTIVE")
     void sameAnswerForEveryKindOfRow() {
         Scene s = scene();
         Session member = fixtures.customer(s.admin(), s.code());
         Invitation pending = fixtures.invite(s.admin(), Role.CUSTOMER, s.code());
+        Invitation pendingInTwo = fixtures.invite(s.admin(), Role.CUSTOMER, s.code(), s.other().code());
         Existing existing = ExistingKind.CUSTOMER_OF_ANOTHER_COMPANY.make(fixtures, s.admin(), s.other().code());
         invited(s.manager(), s.code(), existing.email(), "Requested");
 
         ApiResponse ofMember = remove(s, member.email());
         ApiResponse ofPending = remove(s, pending.email());
+        ApiResponse ofPendingInTwo = remove(s, pendingInTwo.email());
         ApiResponse ofRequest = remove(s, existing.email());
 
         ofMember.expectStatus(204);
         assertThat(ofMember.body()).as("body of the 204").isEmpty();
         assertSameResponse(ofMember, ofPending);
+        assertSameResponse(ofMember, ofPendingInTwo);
         assertSameResponse(ofMember, ofRequest);
         assertThat(emails(s.manager(), s.code())).containsExactly(s.manager().email());
+        assertThat(customerAccounts(s.admin(), "ACTIVE")).as("ACTIVE customer accounts").contains(member.accountId());
+        fixtures.accept(pendingInTwo);
     }
 
     // S2-AC-28
@@ -180,22 +189,26 @@ class MemberRemoveTest extends BareAppTest {
         assertError(own, 400, "OWN_ACCOUNT");
         assertError(ofColleague, 400, "MEMBER_IS_MANAGER");
         for (Session person : new Session[] {s.manager(), colleague}) {
-            assertThat(row(s.manager(), s.code(), person.email()).path("manager").asBoolean(false))
+            assertThat(managerFlag(row(s.manager(), s.code(), person.email())))
                     .as("manager mark of " + person.email()).isTrue();
-            assertThat(customer(s.admin(), s.code(), person.accountId()).path("manager").asBoolean(false)).isTrue();
+            assertThat(managerFlag(customer(s.admin(), s.code(), person.accountId()))).isTrue();
         }
     }
 
     // S2-AC-31
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"accepted", "suspended", "not accepted and in another company too"})
-    @DisplayName("S2-AC-31 sending again for a member who accepted, is suspended, or belongs to another company "
-            + "too is the same 400 INVITATION_NOT_RESENDABLE whatever the reason, and changes nothing")
+    @ValueSource(strings = {"accepted", "suspended", "not accepted and in another company too",
+            "not accepted, the invitation cancelled by an admin"})
+    @DisplayName("S2-AC-31 sending again for a member who accepted, is suspended (also one whose invitation an "
+            + "admin cancelled, SUSPENDED in the list), or belongs to another company too is the same 400 "
+            + "INVITATION_NOT_RESENDABLE whatever the reason, and changes nothing")
     void notResendable(String state) {
         Scene s = scene();
         Session accepted = fixtures.customer(s.admin(), s.code());
         Invitation inTwo = fixtures.invite(s.admin(), Role.CUSTOMER, s.code(), s.other().code());
+        Invitation cancelled = fixtures.invite(s.admin(), Role.CUSTOMER, s.code());
+        s.admin().client().post("/api/console/invitations/" + cancelled.accountId() + "/cancel").expect(204);
         String email = switch (state) {
             case "accepted" -> fixtures.customer(s.admin(), s.code()).email();
             case "suspended" -> {
@@ -203,19 +216,23 @@ class MemberRemoveTest extends BareAppTest {
                 ManagerSteps.suspend(s.admin(), suspended.accountId());
                 yield suspended.email();
             }
-            default -> inTwo.email();
+            case "not accepted and in another company too" -> inTwo.email();
+            default -> cancelled.email();
         };
-        String statusBefore = row(s.manager(), s.code(), email).path("status").asString(null);
+        JsonNode rowBefore = row(s.manager(), s.code(), email);
+        assertThat(row(s.manager(), s.code(), cancelled.email()).path("status").asString(null))
+                .as("status of the row of a cancelled invitation").isEqualTo("SUSPENDED");
 
-        ApiResponse reference = s.manager().client()
-                .post(resend(s.code(), rowId(s.manager(), s.code(), accepted.email()))).send();
-        ApiResponse response = s.manager().client().post(resend(s.code(), rowId(s.manager(), s.code(), email)))
-                .send();
+        ApiResponse reference = resendTo(s.manager(), s.code(), accepted.email());
+        ApiResponse response = resendTo(s.manager(), s.code(), email);
 
         assertError(reference, 400, "INVITATION_NOT_RESENDABLE");
         assertError(response, 400, "INVITATION_NOT_RESENDABLE");
         assertSameResponse(reference, response);
-        assertThat(row(s.manager(), s.code(), email).path("status").asString(null)).isEqualTo(statusBefore);
+        assertThat(row(s.manager(), s.code(), email)).isEqualTo(rowBefore);
+        assertThat(pendingInvitations(s.admin(), cancelled.email())).singleElement()
+                .satisfies(p -> assertThat(p.path("cancelled").asBoolean(false)).isTrue());
+        assertError(acceptOnPortal(portal(), cancelled.token()), 400, "INVITATION_INVALID");
         fixtures.accept(inTwo);
     }
 }

@@ -6,7 +6,9 @@ import static io.popdesk.manager.ManagerSteps.assertError;
 import static io.popdesk.manager.ManagerSteps.customer;
 import static io.popdesk.manager.ManagerSteps.customerIds;
 import static io.popdesk.manager.ManagerSteps.emails;
+import static io.popdesk.manager.ManagerSteps.fieldErrors;
 import static io.popdesk.manager.ManagerSteps.invited;
+import static io.popdesk.manager.ManagerSteps.managerFlag;
 import static io.popdesk.manager.ManagerSteps.myCompanies;
 import static io.popdesk.manager.ManagerSteps.pages;
 import static io.popdesk.manager.ManagerSteps.pendingInvitations;
@@ -25,9 +27,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.manager.ManagerSteps.Existing;
 import io.popdesk.manager.ManagerSteps.ExistingKind;
+import io.popdesk.manager.ManagerSteps.Scene;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
-import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.Invitation;
 import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
@@ -54,18 +56,8 @@ import tools.jackson.databind.JsonNode;
  */
 class MembershipRequestTest extends BareAppTest {
 
-    private record Scene(Session admin, Company company, Company other, Session manager) {
-
-        String code() {
-            return company.code();
-        }
-    }
-
     private Scene scene() {
-        Session admin = fixtures.signInAdmin();
-        Company company = fixtures.createCompany(admin);
-        Company other = fixtures.createCompany(admin);
-        return new Scene(admin, company, other, ManagerSteps.manager(fixtures, admin, company.code()));
+        return ManagerSteps.scene(fixtures);
     }
 
     /** A request of the scene's manager for a new customer of the other company; the customer is signed in. */
@@ -155,17 +147,26 @@ class MembershipRequestTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S2-AC-33 an agent gets 403 FORBIDDEN for the list of membership requests")
-    void agentCannotList() {
-        Session admin = fixtures.signInAdmin();
-        Company company = fixtures.createCompany(admin);
-        Session agent = fixtures.agent(admin, company.code());
+    @DisplayName("S2-AC-33 narrowing the list by a company code that names no company is 400 INVALID_INPUT with "
+            + "UNKNOWN_VALUE on companyCode; the code of an ARCHIVED company still narrows to its requests")
+    void narrowingByCompanyCode() {
+        Scene s = scene();
+        Session elsewhere = ManagerSteps.manager(fixtures, s.admin(), s.other().code());
+        long ofCompany = ask(s).requestId();
+        long ofOther = request(s.admin(), elsewhere, s.other().code(),
+                fixtures.customer(s.admin(), s.code()).email(), "Elsewhere typed");
+        setCompanyStatus(s.admin(), s.code(), "ARCHIVED");
 
-        ApiResponse all = agent.client().get(REQUESTS).send();
-        ApiResponse ofTheCompany = agent.client().get(REQUESTS).query("companyCode", company.code()).send();
+        ApiResponse unknown = s.admin().client().get(REQUESTS).query("companyCode", "NOSUCH9").send();
+        List<JsonNode> ofArchived = requests(s.admin(), s.code());
 
-        assertError(all, 403, "FORBIDDEN");
-        assertError(ofTheCompany, 403, "FORBIDDEN");
+        assertError(unknown, 400, "INVALID_INPUT");
+        assertThat(fieldErrors(unknown)).as("fields of " + unknown.request())
+                .containsExactly("companyCode:UNKNOWN_VALUE");
+        assertThat(ofArchived).extracting(r -> r.path("id").asLong(-1)).as("requests of the archived %s", s.code())
+                .containsExactly(ofCompany);
+        assertThat(requests(s.admin(), s.other().code())).extracting(r -> r.path("id").asLong(-1))
+                .containsExactly(ofOther);
     }
 
     @Test
@@ -205,8 +206,7 @@ class MembershipRequestTest extends BareAppTest {
                 .isEqualTo(rowBefore.path("id").asString(null)).matches(ManagerSteps.ROW_ID);
         assertThat(rowAfter.path("name").asString(null)).as("the account's own name").isEqualTo(asked.target().name());
         assertThat(rowAfter.path("status").asString(null)).isEqualTo("ACTIVE");
-        assertThat(rowAfter.path("manager").isBoolean() && !rowAfter.path("manager").booleanValue())
-                .as("manager mark of %s", rowAfter).isTrue();
+        assertThat(managerFlag(rowAfter)).as("manager mark of %s", rowAfter).isFalse();
         assertThat(myCompanies(asked.target()).keySet()).containsExactlyInAnyOrder(s.code(), s.other().code());
     }
 

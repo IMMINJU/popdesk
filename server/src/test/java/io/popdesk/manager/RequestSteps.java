@@ -1,9 +1,8 @@
 package io.popdesk.manager;
 
 import static io.popdesk.manager.ManagerSteps.invited;
-import static io.popdesk.manager.ManagerSteps.member;
+import static io.popdesk.manager.ManagerSteps.remove;
 import static io.popdesk.manager.ManagerSteps.requests;
-import static io.popdesk.manager.ManagerSteps.rowId;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.support.ApiResponse;
@@ -67,6 +66,6 @@ final class RequestSteps {
 
     /** The manager takes the row with this email out of the member list; a request row is withdrawn. */
     static void withdraw(Session manager, String code, String email) {
-        manager.client().delete(member(code, rowId(manager, code, email))).expect(204);
+        remove(manager, code, email).expectStatus(204);
     }
 }

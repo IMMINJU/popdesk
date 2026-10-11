@@ -4,6 +4,7 @@ import static io.popdesk.manager.ManagerSteps.assertError;
 import static io.popdesk.manager.ManagerSteps.assertSameResponse;
 import static io.popdesk.manager.ManagerSteps.customerIds;
 import static io.popdesk.manager.ManagerSteps.emails;
+import static io.popdesk.manager.ManagerSteps.fieldErrors;
 import static io.popdesk.manager.ManagerSteps.invite;
 import static io.popdesk.manager.ManagerSteps.invited;
 import static io.popdesk.manager.ManagerSteps.members;
@@ -15,9 +16,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.manager.ManagerSteps.Existing;
 import io.popdesk.manager.ManagerSteps.ExistingKind;
+import io.popdesk.manager.ManagerSteps.Scene;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
 import io.popdesk.support.Fixtures.Company;
+import io.popdesk.support.Fixtures.Invitation;
 import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
@@ -42,13 +45,8 @@ import tools.jackson.databind.JsonNode;
  */
 class MemberInviteTest extends BareAppTest {
 
-    private record Scene(Session admin, Company company, Company other, Session manager) {}
-
     private Scene scene() {
-        Session admin = fixtures.signInAdmin();
-        Company company = fixtures.createCompany(admin);
-        Company other = fixtures.createCompany(admin);
-        return new Scene(admin, company, other, ManagerSteps.manager(fixtures, admin, company.code()));
+        return ManagerSteps.scene(fixtures);
     }
 
     // S2-AC-15
@@ -61,11 +59,12 @@ class MemberInviteTest extends BareAppTest {
         Scene s = scene();
         Existing existing = kind.make(fixtures, s.admin(), s.other().code());
 
-        ApiResponse forNew = invite(s.manager(), s.company().code(), Unique.email("new"), "Same name");
-        ApiResponse forExisting = invite(s.manager(), s.company().code(), existing.email(), "Same name");
+        ApiResponse forNew = invite(s.manager(), s.code(), Unique.email("new"), "Same name");
+        ApiResponse forExisting = invite(s.manager(), s.code(), existing.email(), "Same name");
 
         assertThat(forNew.status()).as(forNew.request() + ": " + forNew.snippet()).isEqualTo(204);
         assertThat(forNew.body()).as("body of the 204").isEmpty();
+        assertThat(forNew.header("Location")).as("Location").isNull();
         assertSameResponse(forNew, forExisting);
     }
 
@@ -74,35 +73,64 @@ class MemberInviteTest extends BareAppTest {
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"a member", "a new account the manager just invited", "a pending membership request"})
     @DisplayName("S2-AC-17 inviting an email that is already a row of the company's member list, in any letter "
-            + "case, is 409 ALREADY_LISTED and changes nothing")
+            + "case and with spaces before and after it, is 409 ALREADY_LISTED and changes nothing")
     void emailAlreadyListed(String listedAs) {
         Scene s = scene();
         String email = switch (listedAs) {
-            case "a member" -> fixtures.customer(s.admin(), s.company().code()).email();
+            case "a member" -> fixtures.customer(s.admin(), s.code()).email();
             case "a new account the manager just invited" -> {
                 String fresh = Unique.email("fresh");
-                invited(s.manager(), s.company().code(), fresh, "Fresh");
+                invited(s.manager(), s.code(), fresh, "Fresh");
                 yield fresh;
             }
             default -> {
                 Existing elsewhere = ExistingKind.CUSTOMER_OF_ANOTHER_COMPANY.make(fixtures, s.admin(),
                         s.other().code());
-                invited(s.manager(), s.company().code(), elsewhere.email(), "Requested");
+                invited(s.manager(), s.code(), elsewhere.email(), "Requested");
                 yield elsewhere.email();
             }
         };
-        List<JsonNode> rowsBefore = rows(s.manager(), s.company().code());
-        List<JsonNode> requestsBefore = requests(s.admin(), s.company().code());
-        List<Long> customersBefore = customerIds(s.admin(), s.company().code());
+        List<JsonNode> rowsBefore = rows(s.manager(), s.code());
+        List<JsonNode> requestsBefore = requests(s.admin(), s.code());
+        List<Long> customersBefore = customerIds(s.admin(), s.code());
 
-        ApiResponse same = invite(s.manager(), s.company().code(), email, "Again");
-        ApiResponse otherCase = invite(s.manager(), s.company().code(), email.toUpperCase(Locale.ROOT), "Again");
+        ApiResponse same = invite(s.manager(), s.code(), email, "Again");
+        ApiResponse otherCase = invite(s.manager(), s.code(), email.toUpperCase(Locale.ROOT), "Again");
+        ApiResponse spacesAround = invite(s.manager(), s.code(), "  " + email + " ", "Again");
 
         assertError(same, 409, "ALREADY_LISTED");
         assertError(otherCase, 409, "ALREADY_LISTED");
-        assertThat(rows(s.manager(), s.company().code())).isEqualTo(rowsBefore);
-        assertThat(requests(s.admin(), s.company().code())).isEqualTo(requestsBefore);
-        assertThat(customerIds(s.admin(), s.company().code())).isEqualTo(customersBefore);
+        assertError(spacesAround, 409, "ALREADY_LISTED");
+        assertThat(rows(s.manager(), s.code())).isEqualTo(rowsBefore);
+        assertThat(requests(s.admin(), s.code())).isEqualTo(requestsBefore);
+        assertThat(customerIds(s.admin(), s.code())).isEqualTo(customersBefore);
+    }
+
+    @Test
+    @DisplayName("S2-AC-15, S2-AC-17 an email another company already asked for is not listed here: the managers "
+            + "of two companies inviting the same existing email both get the answer of a new email, each "
+            + "list has one row, and the admin has two requests")
+    void requestOfAnotherCompanyIsNotInTheWay() {
+        Scene s = scene();
+        Company second = fixtures.createCompany(s.admin());
+        Session managerOfSecond = ManagerSteps.manager(fixtures, s.admin(), second.code());
+        Existing existing = ExistingKind.CUSTOMER_OF_ANOTHER_COMPANY.make(fixtures, s.admin(), s.other().code());
+
+        ApiResponse forNew = invite(s.manager(), s.code(), Unique.email("new"), "Same name");
+        ApiResponse first = invite(managerOfSecond, second.code(), existing.email(), "Same name");
+        ApiResponse then = invite(s.manager(), s.code(), existing.email(), "Same name");
+
+        forNew.expectStatus(204);
+        first.expectStatus(204);
+        assertSameResponse(forNew, then);
+        assertThat(row(s.manager(), s.code(), existing.email()).path("status").asString(null)).isEqualTo("INVITED");
+        assertThat(row(managerOfSecond, second.code(), existing.email()).path("status").asString(null))
+                .isEqualTo("INVITED");
+        for (String code : List.of(s.code(), second.code())) {
+            assertThat(requests(s.admin(), code)).as("pending requests of %s", code).singleElement()
+                    .satisfies(r -> assertThat(r.path("account").path("accountId").asLong(-1))
+                            .isEqualTo(existing.accountId()));
+        }
     }
 
     // S2-AC-18
@@ -113,15 +141,15 @@ class MemberInviteTest extends BareAppTest {
     void archivedCompanyTakesNoInvitation() {
         Scene s = scene();
         Existing existing = ExistingKind.CUSTOMER_OF_ANOTHER_COMPANY.make(fixtures, s.admin(), s.other().code());
-        ManagerSteps.setCompanyStatus(s.admin(), s.company().code(), "ARCHIVED");
+        ManagerSteps.setCompanyStatus(s.admin(), s.code(), "ARCHIVED");
 
-        ApiResponse forNew = invite(s.manager(), s.company().code(), Unique.email("new"), "New");
-        ApiResponse forExisting = invite(s.manager(), s.company().code(), existing.email(), "Existing");
+        ApiResponse forNew = invite(s.manager(), s.code(), Unique.email("new"), "New");
+        ApiResponse forExisting = invite(s.manager(), s.code(), existing.email(), "Existing");
 
         assertError(forNew, 400, "COMPANY_NOT_ACTIVE");
         assertSameResponse(forNew, forExisting);
-        assertThat(emails(s.manager(), s.company().code())).containsExactly(s.manager().email());
-        assertThat(requests(s.admin(), s.company().code())).isEmpty();
+        assertThat(emails(s.manager(), s.code())).containsExactly(s.manager().email());
+        assertThat(requests(s.admin(), s.code())).isEmpty();
     }
 
     @Test
@@ -129,18 +157,26 @@ class MemberInviteTest extends BareAppTest {
     void suspendedCompanyTakesInvitations() {
         Scene s = scene();
         String email = Unique.email("new");
-        ManagerSteps.setCompanyStatus(s.admin(), s.company().code(), "SUSPENDED");
+        ManagerSteps.setCompanyStatus(s.admin(), s.code(), "SUSPENDED");
 
-        ApiResponse response = invite(s.manager(), s.company().code(), email, "New");
+        ApiResponse response = invite(s.manager(), s.code(), email, "New");
 
         response.expectStatus(204);
-        assertThat(row(s.manager(), s.company().code(), email).path("status").asString(null)).isEqualTo("INVITED");
+        assertThat(row(s.manager(), s.code(), email).path("status").asString(null)).isEqualTo("INVITED");
     }
 
-    // S2-AC-19
+    // S2-AC-19, S2-AC-53
+
+    static Stream<Arguments> namesWithControlCharacters() {
+        return Stream.of(
+                Arguments.of("a line feed", "Line\nbreak"),
+                Arguments.of("a carriage return and a line feed", "Line\r\nbreak"),
+                Arguments.of("a carriage return", "Line\rbreak"),
+                Arguments.of("a tab", "Tab\tname"));
+    }
 
     static Stream<Arguments> invalidInput() {
-        return Stream.of(
+        return Stream.concat(Stream.of(
                 Arguments.of("no email", "", "Name", "email", "REQUIRED"),
                 Arguments.of("an email without @", "not-an-email", "Name", "email", "INVALID_FORMAT"),
                 Arguments.of("an email with a space", "two words@example.test", "Name", "email", "INVALID_FORMAT"),
@@ -149,36 +185,53 @@ class MemberInviteTest extends BareAppTest {
                 Arguments.of("no name", null, "", "name", "REQUIRED"),
                 Arguments.of("a name of only spaces", null, "   ", "name", "BLANK"),
                 Arguments.of("a name of 51 characters", null, "n".repeat(51), "name", "TOO_LONG"),
-                Arguments.of("a name with a NUL character", null, "Na\u0000me", "name", "INVALID_FORMAT"));
+                Arguments.of("a name with a NUL character", null, "Na\u0000me", "name", "INVALID_FORMAT")),
+                namesWithControlCharacters().map(a -> Arguments.of("a name with " + a.get()[0], null, a.get()[1],
+                        "name", "INVALID_FORMAT")));
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("invalidInput")
-    @DisplayName("S2-AC-19 an invitation whose email or name breaks the rules of the admin's invitation is 400 "
-            + "INVALID_INPUT naming the field, before the email is looked up: also for the email of a member "
-            + "and of an existing account")
+    @DisplayName("S2-AC-19, S2-AC-53 an invitation whose email or name breaks the rules of the admin's "
+            + "invitation, or whose name holds a line break or a tab, is 400 INVALID_INPUT naming the field, "
+            + "before the email is looked up: also for the email of a member and of an existing account")
     void invalidInputIsRefusedFirst(String what, String email, String name, String field, String fieldCode) {
         Scene s = scene();
-        Session member = fixtures.customer(s.admin(), s.company().code());
+        Session member = fixtures.customer(s.admin(), s.code());
         Existing existing = ExistingKind.CUSTOMER_OF_ANOTHER_COMPANY.make(fixtures, s.admin(), s.other().code());
-        List<String> emails = email != null ? List.of(email) : List.of(member.email(), existing.email());
-        List<JsonNode> rowsBefore = rows(s.manager(), s.company().code());
+        List<String> emails = email != null ? List.of(email)
+                : List.of(Unique.email("new"), member.email(), existing.email());
+        List<JsonNode> rowsBefore = rows(s.manager(), s.code());
 
         List<ApiResponse> responses = new ArrayList<>();
         for (String sent : emails) {
-            responses.add(invite(s.manager(), s.company().code(), sent, name));
+            responses.add(invite(s.manager(), s.code(), sent, name));
         }
 
         for (ApiResponse response : responses) {
             assertError(response, 400, "INVALID_INPUT");
-            List<String> pairs = new ArrayList<>();
-            response.json().path("fields").forEach(f -> pairs.add(f.path("field").asString(null) + ":"
-                    + f.path("code").asString(null)));
-            assertThat(pairs).as("fields of " + response.request()).contains(field + ":" + fieldCode);
+            assertThat(fieldErrors(response)).as("fields of " + response.request()).contains(field + ":" + fieldCode);
+            assertSameResponse(responses.getFirst(), response);
         }
-        assertSameResponse(responses.getFirst(), responses.getLast());
-        assertThat(rows(s.manager(), s.company().code())).isEqualTo(rowsBefore);
-        assertThat(requests(s.admin(), s.company().code())).isEmpty();
+        assertThat(rows(s.manager(), s.code())).isEqualTo(rowsBefore);
+        assertThat(requests(s.admin(), s.code())).isEmpty();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("namesWithControlCharacters")
+    @DisplayName("S2-AC-53 an admin's invitation still takes a name with a line break or a tab: 201, and the "
+            + "name is kept as typed")
+    void adminInvitationStillTakesTheName(String what, String name) {
+        Session admin = fixtures.signInAdmin();
+        Company company = fixtures.createCompany(admin);
+
+        Invitation invitation = fixtures.invite(admin, Role.CUSTOMER, Unique.email("by-admin"), name,
+                List.of(company.code()));
+
+        assertThat(pendingInvitations(admin, invitation.email())).singleElement().satisfies(p -> {
+            assertThat(p.path("accountId").asLong(-1)).isEqualTo(invitation.accountId());
+            assertThat(p.path("name").asString(null)).as("name of the invitation").isEqualTo(name);
+        });
     }
 
     // S2-AC-21
@@ -189,7 +242,7 @@ class MemberInviteTest extends BareAppTest {
             + "goes through")
     void atMostHundredPending() {
         Scene s = scene();
-        String code = s.company().code();
+        String code = s.code();
         Existing first = ExistingKind.CUSTOMER_OF_ANOTHER_COMPANY.make(fixtures, s.admin(), s.other().code());
         Existing second = ExistingKind.CUSTOMER_OF_ANOTHER_COMPANY.make(fixtures, s.admin(), s.other().code());
         for (int i = 0; i < 97; i++) {
@@ -213,11 +266,12 @@ class MemberInviteTest extends BareAppTest {
         assertThat(requests(s.admin(), code)).hasSize(1);
     }
 
-    // S2-AC-22
+    // S2-AC-22, S2-AC-23
 
     @Test
-    @DisplayName("S2-AC-22 a role and companies sent with a manager's invitation are not taken: the account is a "
-            + "customer of the company in the path only")
+    @DisplayName("S2-AC-22, S2-AC-23 without SMTP the manager's invitation is still made, and a role and "
+            + "companies sent with it are not taken: the account is an INVITED customer of the company in the "
+            + "path only and the invitation is not cancelled")
     void noRoleOrCompanyChoice() {
         Scene s = scene();
         String email = Unique.email("no-choice");
@@ -228,35 +282,16 @@ class MemberInviteTest extends BareAppTest {
         body.put("companyCodes", List.of(s.other().code()));
         body.put("companyCode", s.other().code());
 
-        s.manager().client().post(members(s.company().code())).json(body).expect(204);
+        s.manager().client().post(members(s.code())).json(body).expect(204);
 
-        assertThat(pendingInvitations(s.admin(), email)).singleElement().satisfies(p -> {
-            assertThat(p.path("role").asString(null)).isEqualTo("CUSTOMER");
-            assertThat(p.path("companies")).extracting(c -> c.path("code").asString(null))
-                    .containsExactly(s.company().code());
-        });
-        assertThat(ManagerSteps.customers(s.admin(), s.other().code()))
-                .extracting(c -> c.path("email").asString(null)).doesNotContain(email);
-    }
-
-    // S2-AC-23
-
-    @Test
-    @DisplayName("S2-AC-23 without SMTP the manager's invitation is still made and answers 204 with no body: no "
-            + "link, although the admin's invitation carries one")
-    void noLinkWithoutSmtp() {
-        Scene s = scene();
-        String email = Unique.email("no-link");
-
-        ApiResponse response = invite(s.manager(), s.company().code(), email, "No link");
-
-        response.expectStatus(204);
-        assertThat(response.body()).as("body of the 204").isEmpty();
-        assertThat(response.header("Location")).as("Location").isNull();
-        assertThat(row(s.manager(), s.company().code(), email).path("status").asString(null)).isEqualTo("INVITED");
+        assertThat(row(s.manager(), s.code(), email).path("status").asString(null)).isEqualTo("INVITED");
         assertThat(pendingInvitations(s.admin(), email)).singleElement().satisfies(p -> {
             assertThat(p.path("cancelled").asBoolean(true)).isFalse();
             assertThat(p.path("role").asString(null)).isEqualTo("CUSTOMER");
+            assertThat(p.path("companies")).extracting(c -> c.path("code").asString(null))
+                    .containsExactly(s.code());
         });
+        assertThat(ManagerSteps.customers(s.admin(), s.other().code()))
+                .extracting(c -> c.path("email").asString(null)).doesNotContain(email);
     }
 }

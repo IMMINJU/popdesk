@@ -6,23 +6,26 @@ import io.popdesk.support.ApiClient;
 import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.Fixtures;
+import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.Invitation;
 import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
+import io.popdesk.support.MailServer;
 import io.popdesk.support.Unique;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Pattern;
 import tools.jackson.databind.JsonNode;
 
 /**
  * Steps of the customer manager tests of slice 2: making a manager through the console API (an admin
  * invites a customer, the customer accepts, the admin marks them), the paths of the member and
- * membership request endpoints, reading the member list, and comparing two responses that must not
- * tell two cases apart.
+ * membership request endpoints, the scene most tests start from, reading and changing the member list,
+ * and comparing two responses that must not tell two cases apart.
  *
  * <p>Each step that reaches a state expects its one status, so before the slice is built a test fails
  * there, on an assertion. The steps under "Console steps" do what {@code project.PeopleSteps} and
@@ -30,13 +33,19 @@ import tools.jackson.databind.JsonNode;
  */
 public final class ManagerSteps {
 
-    /** A row ID as the member list gives it: a UUID in lower-case hex. */
+    /**
+     * A row ID as the member list gives it: a random UUID (version 4, design 0-2) in lower-case hex. An
+     * ID made from an account ID or a request number (a counter, a version 5 UUID) does not match.
+     */
     public static final Pattern ROW_ID = Pattern.compile(
-            "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+            "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}");
 
-    /** Headers that could tell two cases apart ("the same response", acceptance 4). */
-    private static final List<String> COMPARED_HEADERS = List.of("Location", "Retry-After", "Content-Type",
-            "Content-Length");
+    /**
+     * Headers that differ from one request to the next whatever the case: the time of the answer, and
+     * what the server says about the connection (it closes one after a number of requests, so the
+     * same request is answered with or without {@code Connection: close}).
+     */
+    private static final List<String> HEADERS_NOT_COMPARED = List.of("date", "connection", "keep-alive");
 
     private ManagerSteps() {}
 
@@ -66,6 +75,28 @@ public final class ManagerSteps {
         return "/api/console/companies/" + code + "/customers/" + accountId;
     }
 
+    // Scenes
+
+    /** An admin, a company with a manager, and another company the manager does not belong to. */
+    public record Scene(Session admin, Company company, Company other, Session manager) {
+
+        public String code() {
+            return company.code();
+        }
+    }
+
+    /** A scene the first admin made. */
+    public static Scene scene(Fixtures fixtures) {
+        return scene(fixtures, fixtures.signInAdmin());
+    }
+
+    /** A scene this admin made. */
+    public static Scene scene(Fixtures fixtures, Session admin) {
+        Company company = fixtures.createCompany(admin);
+        Company other = fixtures.createCompany(admin);
+        return new Scene(admin, company, other, manager(fixtures, admin, company.code()));
+    }
+
     // Managers
 
     /** A signed-in customer of {@code code} that an admin marked as its manager. */
@@ -82,6 +113,13 @@ public final class ManagerSteps {
 
     public static ApiResponse unmark(Session admin, String code, long accountId) {
         return admin.client().delete(managerOf(code, accountId)).expect(200);
+    }
+
+    /** The manager mark of a console customer entry, a member row, or a company of the portal. */
+    public static boolean managerFlag(JsonNode entry) {
+        assertThat(entry).as("the entry that carries the manager flag").isNotNull();
+        assertThat(entry.path("manager").isBoolean()).as("manager is a boolean in " + entry).isTrue();
+        return entry.path("manager").booleanValue();
     }
 
     // Members, as a manager
@@ -125,6 +163,28 @@ public final class ManagerSteps {
         return id.stringValue();
     }
 
+    /** Takes the row with this email out of the member list, whatever the answer. */
+    public static ApiResponse remove(Session manager, String code, String email) {
+        return manager.client().delete(member(code, rowId(manager, code, email))).send();
+    }
+
+    /** Sends the invitation of the row with this email again, whatever the answer. */
+    public static ApiResponse resendTo(Session manager, String code, String email) {
+        return manager.client().post(resend(code, rowId(manager, code, email))).send();
+    }
+
+    /**
+     * Has the manager invite a new email and waits for that mail: every mail queued before is out by
+     * then. Returns the answer to that invitation, a 204.
+     */
+    public static ApiResponse awaitALaterMail(Scene s, MailServer mail) {
+        String marker = Unique.email("marker");
+        ApiResponse response = invite(s.manager(), s.code(), marker, "Marker");
+        response.expectStatus(204);
+        mail.awaitMessageTo(marker);
+        return response;
+    }
+
     // Membership requests, as an admin
 
     /** The pending membership requests of one company, oldest first. */
@@ -134,8 +194,11 @@ public final class ManagerSteps {
 
     // Existing accounts a manager may type the email of
 
-    /** An account that already exists when a manager invites its email. */
-    public record Existing(long accountId, String email, String name) {}
+    /**
+     * An account that already exists when a manager invites its email. {@code token} is the token of
+     * its invitation link when it has not accepted yet, otherwise null.
+     */
+    public record Existing(long accountId, String email, String name, String token) {}
 
     /** The kinds of account a manager's invitation must not tell apart from a new email. */
     public enum ExistingKind {
@@ -143,9 +206,11 @@ public final class ManagerSteps {
         AGENT,
         ADMIN,
         SUSPENDED_CUSTOMER,
-        INVITED_CUSTOMER;
+        INVITED_CUSTOMER,
+        CUSTOMER_OF_NO_COMPANY,
+        SUSPENDED_AGENT;
 
-        /** Makes such an account; the customers belong to {@code otherCode} only. */
+        /** Makes such an account; the customers belong to {@code otherCode} only, or to no company. */
         public Existing make(Fixtures fixtures, Session admin, String otherCode) {
             return switch (this) {
                 case CUSTOMER_OF_ANOTHER_COMPANY -> existing(fixtures.customer(admin, otherCode));
@@ -158,13 +223,24 @@ public final class ManagerSteps {
                 }
                 case INVITED_CUSTOMER -> {
                     Invitation invitation = fixtures.invite(admin, Role.CUSTOMER, otherCode);
-                    yield new Existing(invitation.accountId(), invitation.email(), invitation.name());
+                    yield new Existing(invitation.accountId(), invitation.email(), invitation.name(),
+                            invitation.token());
+                }
+                case CUSTOMER_OF_NO_COMPANY -> {
+                    Session customer = fixtures.customer(admin, otherCode);
+                    removeCustomer(admin, otherCode, customer.accountId());
+                    yield existing(customer);
+                }
+                case SUSPENDED_AGENT -> {
+                    Session agent = fixtures.agent(admin);
+                    suspend(admin, agent.accountId());
+                    yield existing(agent);
                 }
             };
         }
 
         private static Existing existing(Session session) {
-            return new Existing(session.accountId(), session.email(), session.name());
+            return new Existing(session.accountId(), session.email(), session.name(), null);
         }
     }
 
@@ -186,19 +262,39 @@ public final class ManagerSteps {
         assertThat(response.errorCode()).as("code of " + response.request()).isEqualTo(code);
     }
 
+    /** The {@code field:code} pairs of the {@code fields} of a 400 {@code INVALID_INPUT}. */
+    public static List<String> fieldErrors(ApiResponse response) {
+        List<String> pairs = new ArrayList<>();
+        response.json().path("fields").forEach(f -> pairs.add(f.path("field").asString(null) + ":"
+                + f.path("code").asString(null)));
+        return pairs;
+    }
+
     /**
-     * "The same response": status, the whole body, and the headers that could tell two cases apart.
-     * Of {@code Set-Cookie} the names and attributes are compared, not the values (a token that is
-     * random in both cases tells nothing). Response time is not compared.
+     * "The same response": status, the whole body, and every header, so one that only one of two cases
+     * carries shows. Left out is only what differs between two requests of the same case: {@code Date},
+     * the headers about the connection, and the values of {@code Set-Cookie}, of which the names and
+     * attributes are compared (a token that is random in both cases tells nothing). Response time is not
+     * compared.
      */
     public static void assertSameResponse(ApiResponse expected, ApiResponse actual) {
         String what = actual.request() + " compared with " + expected.request();
         assertThat(actual.status()).as("status of " + what).isEqualTo(expected.status());
         assertThat(actual.text()).as("body of " + what).isEqualTo(expected.text());
-        for (String header : COMPARED_HEADERS) {
-            assertThat(actual.headers(header)).as(header + " of " + what).isEqualTo(expected.headers(header));
-        }
-        assertThat(cookieShapes(actual)).as("Set-Cookie of " + what).isEqualTo(cookieShapes(expected));
+        assertThat(comparedHeaders(actual)).as("headers of " + what).isEqualTo(comparedHeaders(expected));
+    }
+
+    private static Map<String, List<String>> comparedHeaders(ApiResponse response) {
+        Map<String, List<String>> headers = new TreeMap<>();
+        response.headers().forEach((name, values) -> {
+            String lower = name.toLowerCase(Locale.ROOT);
+            if (lower.equals("set-cookie")) {
+                headers.put(lower, cookieShapes(response));
+            } else if (!HEADERS_NOT_COMPARED.contains(lower) && !lower.startsWith(":")) {
+                headers.put(lower, values);
+            }
+        });
+        return headers;
     }
 
     private static List<String> cookieShapes(ApiResponse response) {
@@ -265,6 +361,12 @@ public final class ManagerSteps {
 
     public static void suspend(Session admin, long accountId) {
         admin.client().post("/api/console/accounts/" + accountId + "/suspend").expect(200);
+    }
+
+    /** The IDs of the customer accounts with this status, as the console's account list gives them. */
+    public static List<Long> customerAccounts(Session admin, String status) {
+        return pages(admin.client(), "/api/console/accounts", "role", "CUSTOMER", "status", status).stream()
+                .map(a -> a.path("id").asLong(-1)).toList();
     }
 
     /** {@code SUSPENDED}, {@code ARCHIVED}, or {@code ACTIVE}. */

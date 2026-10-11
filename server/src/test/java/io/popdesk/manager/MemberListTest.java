@@ -19,6 +19,7 @@ import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
@@ -168,24 +169,30 @@ class MemberListTest extends BareAppTest {
     @ParameterizedTest(name = "{0}")
     @EnumSource(ExistingKind.class)
     @DisplayName("S2-AC-16 a pending membership request is a row with the name and email the manager typed and "
-            + "status INVITED, with the same fields and shape of values as the row of a new account")
+            + "status INVITED, with the same fields in the same order and the same shape of values as the row "
+            + "of a new account; both rows give the email in the letters the manager typed")
     void requestRowLooksLikeANewAccountRow(ExistingKind kind) {
         Session admin = fixtures.signInAdmin();
         Company company = fixtures.createCompany(admin);
         Company other = fixtures.createCompany(admin);
         Session manager = ManagerSteps.manager(fixtures, admin, company.code());
         Existing existing = kind.make(fixtures, admin, other.code());
-        String newEmail = Unique.email("new");
+        String newEmail = "Mixed.Case-" + Unique.email("new");
+        String typedEmail = existing.email().substring(0, 1).toUpperCase(Locale.ROOT) + existing.email().substring(1);
+        assertThat(typedEmail).as("the existing email in other letters").isNotEqualTo(existing.email());
         String typedName = Unique.text("Typed");
         invited(manager, company.code(), newEmail, Unique.text("New"));
-        invited(manager, company.code(), existing.email(), typedName);
+        invited(manager, company.code(), typedEmail, typedName);
 
         ApiResponse list = manager.client().get(members(company.code())).query("size", 100).expect(200);
         JsonNode ofNew = row(manager, company.code(), newEmail);
         JsonNode ofRequest = row(manager, company.code(), existing.email());
 
         assertThat(text(ofRequest, "name")).isEqualTo(typedName);
-        assertThat(text(ofRequest, "email")).isEqualTo(existing.email());
+        assertThat(text(ofRequest, "email")).as("email of the request row, as typed").isEqualTo(typedEmail);
+        assertThat(text(ofNew, "email")).as("email of the new account's row, as typed").isEqualTo(newEmail);
+        assertThat(List.copyOf(ofRequest.propertyNames())).as("fields of the request row, in order")
+                .isEqualTo(List.copyOf(ofNew.propertyNames()));
         assertThat(list.text()).as("the member list").doesNotContain(existing.name());
         for (JsonNode row : List.of(ofNew, ofRequest)) {
             assertThat(new TreeSet<>(row.propertyNames())).as("fields of " + row).isEqualTo(new TreeSet<>(ROW_FIELDS));
@@ -197,7 +204,5 @@ class MemberListTest extends BareAppTest {
             assertThat(row.path("name").isString()).isTrue();
             assertThat(row.path("email").isString()).isTrue();
         }
-        assertThat(text(ofRequest, "id").charAt(14)).as("UUID version of the request row's ID")
-                .isEqualTo(text(ofNew, "id").charAt(14));
     }
 }

@@ -4,9 +4,11 @@ import static io.popdesk.manager.ManagerSteps.assertError;
 import static io.popdesk.manager.ManagerSteps.customerIds;
 import static io.popdesk.manager.ManagerSteps.customers;
 import static io.popdesk.manager.ManagerSteps.emails;
+import static io.popdesk.manager.ManagerSteps.invited;
 import static io.popdesk.manager.ManagerSteps.mark;
 import static io.popdesk.manager.ManagerSteps.member;
 import static io.popdesk.manager.ManagerSteps.members;
+import static io.popdesk.manager.ManagerSteps.requests;
 import static io.popdesk.manager.ManagerSteps.resend;
 import static io.popdesk.manager.ManagerSteps.row;
 import static io.popdesk.manager.ManagerSteps.rowId;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Who may call the four member endpoints (list, invite, remove, send again): only a manager of the
@@ -58,9 +61,10 @@ class MemberAccessTest extends BareAppTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(Endpoint.class)
-    @DisplayName("S2-AC-09, S2-AC-19 a member who is no manager gets 403 FORBIDDEN, and a manager of another "
-            + "company or a caller of an unknown code gets 404 NOT_FOUND, also for an invitation with invalid "
-            + "input; the company's rows stay as they were")
+    @DisplayName("S2-AC-03, S2-AC-09, S2-AC-19 a member who is no manager of the company gets 403 FORBIDDEN, "
+            + "also one who is a manager of another company; a manager of another company who is no member, "
+            + "or a caller of an unknown code, gets 404 NOT_FOUND; so does an invitation with invalid input; "
+            + "the company's rows stay as they were")
     void onlyManagersOfTheCompany(Endpoint endpoint) {
         Session admin = fixtures.signInAdmin();
         Company a = fixtures.createCompany(admin);
@@ -68,15 +72,20 @@ class MemberAccessTest extends BareAppTest {
         Session managerOfA = ManagerSteps.manager(fixtures, admin, a.code());
         Session memberOfA = fixtures.customer(admin, a.code());
         Session managerOfB = ManagerSteps.manager(fixtures, admin, b.code());
+        Session memberOfAManagerOfB = fixtures.customer(admin, a.code(), b.code());
+        mark(admin, b.code(), memberOfAManagerOfB.accountId());
         Invitation target = fixtures.invite(admin, Role.CUSTOMER, a.code());
         String targetRow = rowId(managerOfA, a.code(), target.email());
         List<String> before = emails(managerOfA, a.code());
 
         ApiResponse byMember = endpoint.call(memberOfA, a.code(), targetRow, INVALID_INVITATION);
+        ApiResponse byManagerElsewhere = endpoint.call(memberOfAManagerOfB, a.code(), targetRow,
+                INVALID_INVITATION);
         ApiResponse byOtherManager = endpoint.call(managerOfB, a.code(), targetRow, INVALID_INVITATION);
         ApiResponse unknownCode = endpoint.call(managerOfB, "NOSUCH9", targetRow, INVALID_INVITATION);
 
         assertError(byMember, 403, "FORBIDDEN");
+        assertError(byManagerElsewhere, 403, "FORBIDDEN");
         assertError(byOtherManager, 404, "NOT_FOUND");
         assertError(unknownCode, 404, "NOT_FOUND");
         assertThat(emails(managerOfA, a.code())).isEqualTo(before);
@@ -124,10 +133,12 @@ class MemberAccessTest extends BareAppTest {
     @ParameterizedTest(name = "{0} with {1}")
     @CsvSource({
             "REMOVE, an unknown UUID", "REMOVE, text that is no UUID", "REMOVE, a member's account ID",
-            "REMOVE, a row of another company", "RESEND, an unknown UUID", "RESEND, text that is no UUID",
-            "RESEND, a member's account ID", "RESEND, a row of another company"})
+            "REMOVE, a row of another company", "REMOVE, a request row of another company",
+            "RESEND, an unknown UUID", "RESEND, text that is no UUID", "RESEND, a member's account ID",
+            "RESEND, a row of another company", "RESEND, a request row of another company"})
     @DisplayName("S2-AC-32 removing or sending again with a row ID that is unknown or belongs to another company "
-            + "the caller also manages is 404 NOT_FOUND, and that company's member stays as they were")
+            + "the caller also manages, a member's or a membership request's, is 404 NOT_FOUND, and that "
+            + "company's member and request stay as they were")
     void rowsOfTheCompanyInThePathOnly(Endpoint endpoint, String idKind) {
         Session admin = fixtures.signInAdmin();
         Company a = fixtures.createCompany(admin);
@@ -137,11 +148,17 @@ class MemberAccessTest extends BareAppTest {
         mark(admin, b.code(), manager.accountId());
         Invitation ofA = fixtures.invite(admin, Role.CUSTOMER, a.code());
         Invitation ofB = fixtures.invite(admin, Role.CUSTOMER, b.code());
+        Session elsewhere = fixtures.customer(admin, fixtures.createCompany(admin).code());
+        invited(manager, b.code(), elsewhere.email(), "Requested for B");
         String rowOfB = rowId(manager, b.code(), ofB.email());
+        String requestRowOfB = rowId(manager, b.code(), elsewhere.email());
+        List<JsonNode> requestsOfB = requests(admin, b.code());
+        assertThat(requestsOfB).as("pending requests of B").hasSize(1);
         String id = switch (idKind) {
             case "an unknown UUID" -> UUID.randomUUID().toString();
             case "text that is no UUID" -> "not-a-uuid";
             case "a member's account ID" -> Long.toString(ofA.accountId());
+            case "a request row of another company" -> requestRowOfB;
             default -> rowOfB;
         };
 
@@ -149,6 +166,8 @@ class MemberAccessTest extends BareAppTest {
 
         assertError(response, 404, "NOT_FOUND");
         assertThat(rowId(manager, b.code(), ofB.email())).isEqualTo(rowOfB);
+        assertThat(rowId(manager, b.code(), elsewhere.email())).isEqualTo(requestRowOfB);
+        assertThat(requests(admin, b.code())).as("pending requests of B").isEqualTo(requestsOfB);
         assertThat(customerIds(admin, a.code())).contains(ofA.accountId());
         assertThat(customerIds(admin, b.code())).contains(ofB.accountId());
         fixtures.accept(ofA);

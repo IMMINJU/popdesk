@@ -239,7 +239,7 @@ final class BoundaryList {
             none("DELETE", "/api/console/companies/{code}/customers/{accountId}/manager",
                     "admins only (checked by manager.ManagerMarkTest#agentsCannotMark), and an admin sees every customer company; no customer company narrows what an admin may unmark"),
             none("GET", "/api/console/membership-requests",
-                    "admins only (checked by manager.MembershipRequestTest#agentCannotList), and an admin sees every customer company; the list is not narrowed by a customer company"),
+                    "admins only (checked by ops.CheckOrderTest#roleBeforeTargetAndInput), and an admin sees every customer company; the list is not narrowed by a customer company"),
             none("POST", "/api/console/membership-requests/{id}/approve",
                     "admins only (checked by ops.CheckOrderTest#roleBeforeTargetAndInput), and an admin sees every customer company; no customer company narrows which request an admin may approve"),
             none("POST", "/api/console/membership-requests/{id}/reject",

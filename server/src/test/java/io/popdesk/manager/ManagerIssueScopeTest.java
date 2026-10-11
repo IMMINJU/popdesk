@@ -14,6 +14,7 @@ import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.NewIssue;
 import io.popdesk.support.Fixtures.Session;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,7 @@ class ManagerIssueScopeTest extends BareAppTest {
 
     @Test
     @DisplayName("S2-AC-44 a manager sees the same issues as before being marked: a colleague's private issue "
-            + "is not listed, and its detail, comments, and files are 404 NOT_FOUND")
+            + "is not listed, its detail, comments, and files are 404 NOT_FOUND, and so is commenting on it")
     void managerSeesNoMoreIssues() {
         Session admin = fixtures.signInAdmin();
         Company company = fixtures.createCompany(admin);
@@ -53,6 +54,10 @@ class ManagerIssueScopeTest extends BareAppTest {
         assertError(person.client().get(path + "/comments").send(), 404, "NOT_FOUND");
         assertError(person.client().get(path + "/attachments").send(), 404, "NOT_FOUND");
         assertError(person.client().get(path + "/attachments/" + secretFile.id()).send(), 404, "NOT_FOUND");
+        assertError(person.client().post(path + "/comments").json(Map.of("content", "A manager's comment")).send(),
+                404, "NOT_FOUND");
+        assertThat(colleague.client().get(path + "/comments").expect(200).json().path("totalElements").asLong(-1))
+                .as("comments of the private issue").isEqualTo(1);
         assertError(person.client().get("/api/portal/issues/" + ofOutsider.key()).send(), 404, "NOT_FOUND");
     }
 }

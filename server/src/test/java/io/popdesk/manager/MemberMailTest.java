@@ -3,29 +3,28 @@ package io.popdesk.manager;
 import static io.popdesk.manager.ManagerSteps.acceptOnPortal;
 import static io.popdesk.manager.ManagerSteps.assertError;
 import static io.popdesk.manager.ManagerSteps.assertSameResponse;
+import static io.popdesk.manager.ManagerSteps.awaitALaterMail;
 import static io.popdesk.manager.ManagerSteps.customer;
 import static io.popdesk.manager.ManagerSteps.customerIds;
 import static io.popdesk.manager.ManagerSteps.invite;
 import static io.popdesk.manager.ManagerSteps.invited;
-import static io.popdesk.manager.ManagerSteps.myCompanies;
 import static io.popdesk.manager.ManagerSteps.pages;
 import static io.popdesk.manager.ManagerSteps.pendingInvitations;
 import static io.popdesk.manager.ManagerSteps.requests;
-import static io.popdesk.manager.ManagerSteps.resend;
+import static io.popdesk.manager.ManagerSteps.resendTo;
 import static io.popdesk.manager.ManagerSteps.row;
 import static io.popdesk.manager.ManagerSteps.rowId;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.manager.ManagerSteps.Existing;
 import io.popdesk.manager.ManagerSteps.ExistingKind;
+import io.popdesk.manager.ManagerSteps.Scene;
 import io.popdesk.support.ApiClient;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.ConnectedAppTest;
 import io.popdesk.support.Fixtures;
-import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.Invitation;
 import io.popdesk.support.Fixtures.Role;
-import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.ReceivedMail;
 import io.popdesk.support.Unique;
 import io.popdesk.support.Wait;
@@ -47,18 +46,8 @@ import tools.jackson.databind.JsonNode;
  */
 class MemberMailTest extends ConnectedAppTest {
 
-    private record Scene(Session admin, Company company, Company other, Session manager) {
-
-        String code() {
-            return company.code();
-        }
-    }
-
     private Scene scene() {
-        Session admin = fixtures.signInAdmin();
-        Company company = fixtures.createCompany(admin);
-        Company other = fixtures.createCompany(admin);
-        return new Scene(admin, company, other, ManagerSteps.manager(fixtures, admin, company.code()));
+        return ManagerSteps.scene(fixtures);
     }
 
     /** The mail text with the invitation link taken out. */
@@ -66,11 +55,17 @@ class MemberMailTest extends ConnectedAppTest {
         return mail.text().replace(Fixtures.linkIn(mail.text()), "LINK");
     }
 
-    /** Has the manager invite a new email and waits for that mail: every mail queued before is out by then. */
-    private void awaitALaterMail(Scene s) {
-        String marker = Unique.email("marker");
-        invited(s.manager(), s.code(), marker, "Marker");
-        mail().awaitMessageTo(marker);
+    /**
+     * An existing account that has not accepted yet still accepts with the link it had: nothing sent
+     * it a new one or ended the old one.
+     */
+    private void assertTheOldLinkStillWorks(Scene s, Existing existing) {
+        if (existing.token() == null) {
+            return;
+        }
+        assertThat(pendingInvitations(s.admin(), existing.email())).as("the invitation of " + existing.email())
+                .singleElement().satisfies(p -> assertThat(p.path("cancelled").asBoolean(true)).isFalse());
+        acceptOnPortal(portal(), existing.token()).expectStatus(204);
     }
 
     // S2-AC-13
@@ -119,13 +114,14 @@ class MemberMailTest extends ConnectedAppTest {
         assertThat(row(s.manager(), s.code(), email).path("status").asString(null)).isEqualTo("ACTIVE");
     }
 
-    // S2-AC-14
+    // S2-AC-14, S2-AC-15
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(ExistingKind.class)
-    @DisplayName("S2-AC-14 inviting the email of an existing account, whatever its role and status, leaves the "
-            + "account as it was, sends it no mail, and leaves one membership request with the name and email "
-            + "the manager typed")
+    @DisplayName("S2-AC-14, S2-AC-15 inviting the email of an existing account, whatever its role and status, "
+            + "leaves the account as it was (an invitation it has still works), sends it no mail, and leaves "
+            + "one membership request with the name and email the manager typed; with SMTP too the answer is "
+            + "that of a new email")
     void existingEmailBecomesARequest(ExistingKind kind) {
         Scene s = scene();
         Existing existing = kind.make(fixtures, s.admin(), s.other().code());
@@ -134,8 +130,9 @@ class MemberMailTest extends ConnectedAppTest {
         List<Long> otherBefore = customerIds(s.admin(), s.other().code());
         int mailBefore = mail().messagesTo(existing.email()).size();
 
-        invite(s.manager(), s.code(), existing.email(), typedName).expectStatus(204);
+        ApiResponse forExisting = invite(s.manager(), s.code(), existing.email(), typedName);
 
+        forExisting.expectStatus(204);
         assertThat(requests(s.admin(), s.code())).singleElement().satisfies(r -> {
             assertThat(r.path("name").asString(null)).isEqualTo(typedName);
             assertThat(r.path("email").asString(null)).isEqualTo(existing.email());
@@ -147,8 +144,10 @@ class MemberMailTest extends ConnectedAppTest {
         assertThat(db.row("select * from account where id = ?", existing.accountId())).isEqualTo(accountBefore);
         assertThat(customerIds(s.admin(), s.code())).doesNotContain(existing.accountId());
         assertThat(customerIds(s.admin(), s.other().code())).isEqualTo(otherBefore);
-        awaitALaterMail(s);
+        ApiResponse forNew = awaitALaterMail(s, mail());
+        assertSameResponse(forNew, forExisting);
         assertThat(mail().messagesTo(existing.email())).as("mail to " + existing.email()).hasSize(mailBefore);
+        assertTheOldLinkStillWorks(s, existing);
     }
 
     // S2-AC-29
@@ -161,8 +160,9 @@ class MemberMailTest extends ConnectedAppTest {
         Invitation invitation = fixtures.invite(s.admin(), Role.CUSTOMER, s.code());
         String rowId = rowId(s.manager(), s.code(), invitation.email());
 
-        ApiResponse response = s.manager().client().post(resend(s.code(), rowId)).expect(204);
+        ApiResponse response = resendTo(s.manager(), s.code(), invitation.email());
 
+        response.expectStatus(204);
         assertThat(response.body()).as("body of the 204").isEmpty();
         List<ReceivedMail> mails = Wait.until("a second invitation mail to " + invitation.email(), () -> {
             List<ReceivedMail> to = mail().messagesTo(invitation.email());
@@ -179,29 +179,31 @@ class MemberMailTest extends ConnectedAppTest {
 
     // S2-AC-30
 
-    @Test
+    @ParameterizedTest(name = "a request for {0}")
+    @EnumSource(value = ExistingKind.class, names = {"CUSTOMER_OF_ANOTHER_COMPANY", "INVITED_CUSTOMER"})
     @DisplayName("S2-AC-30 sending again on the row of a pending membership request answers as for a member who "
-            + "has not accepted and does nothing: no mail, the account and the request as they were")
-    void sendingAgainOnARequestRowDoesNothing() {
+            + "has not accepted and does nothing: no mail, the account and the request as they were, also "
+            + "when the account itself has not accepted yet (its own link still works)")
+    void sendingAgainOnARequestRowDoesNothing(ExistingKind kind) {
         Scene s = scene();
-        Existing existing = ExistingKind.CUSTOMER_OF_ANOTHER_COMPANY.make(fixtures, s.admin(), s.other().code());
+        Existing existing = kind.make(fixtures, s.admin(), s.other().code());
         Invitation pending = fixtures.invite(s.admin(), Role.CUSTOMER, s.code());
         invited(s.manager(), s.code(), existing.email(), "Requested");
         String requestRow = rowId(s.manager(), s.code(), existing.email());
-        String pendingRow = rowId(s.manager(), s.code(), pending.email());
         List<JsonNode> requestsBefore = requests(s.admin(), s.code());
         Map<String, Object> accountBefore = db.row("select * from account where id = ?", existing.accountId());
         int mailBefore = mail().messagesTo(existing.email()).size();
 
-        ApiResponse onRequest = s.manager().client().post(resend(s.code(), requestRow)).send();
-        ApiResponse onPending = s.manager().client().post(resend(s.code(), pendingRow)).send();
+        ApiResponse onRequest = resendTo(s.manager(), s.code(), existing.email());
+        ApiResponse onPending = resendTo(s.manager(), s.code(), pending.email());
 
         onPending.expectStatus(204);
         assertSameResponse(onPending, onRequest);
         assertThat(requests(s.admin(), s.code())).isEqualTo(requestsBefore);
         assertThat(db.row("select * from account where id = ?", existing.accountId())).isEqualTo(accountBefore);
         assertThat(rowId(s.manager(), s.code(), existing.email())).isEqualTo(requestRow);
-        awaitALaterMail(s);
+        awaitALaterMail(s, mail());
         assertThat(mail().messagesTo(existing.email())).as("mail to " + existing.email()).hasSize(mailBefore);
+        assertTheOldLinkStillWorks(s, existing);
     }
 }
