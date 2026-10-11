@@ -55,8 +55,10 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 | Table | Owned by | What it holds |
 |---|---|---|
 | `tenant` | `helpdesk` | The team. One row, `id` 1, made on the first start |
-| `account` | `helpdesk` | Accounts: email, name, role, status, Argon2id hash, language, sign-in lockout |
-| `invitation` | `helpdesk` | The invitation of an account: SHA-256 of the token, when it was sent and expires. The row stays after acceptance; a token works only while the account is `INVITED` |
+| `account` | `helpdesk` | Accounts: email, name, role, status, Argon2id hash, language, sign-in lockout, and when the password last changed (V5): a session of a sign-in from before that time lets nobody in |
+| `invitation` | `helpdesk` | The invitation of an account: SHA-256 of the token, when it was sent and expires, and when it was cancelled (V5). The row stays after acceptance; a token works only while the account is `INVITED` |
+| `password_reset` | `helpdesk` | The password reset link of an account (V5): SHA-256 of the token, when it was made, expires, and was used. One row per account; a new link replaces it. The cleanup `password-reset-cleanup` deletes used and expired rows |
+| `account_photo` | `helpdesk` | The profile photo of an account (V5): a PNG of at most 256 px a side, its size, and when it changed |
 | `audit_log` | `helpdesk` | Audit rows: action, person (`{accountId, name, email}`), target, changes, time |
 | `company` | `helpdesk` | Customer companies, and the number of each company's last issue |
 | `company_member` | `helpdesk` | Which customers belong to which company |
@@ -66,13 +68,13 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 | `attachment` | `helpdesk` | Attachment metadata and state, and where the file is stored (`storage`, `storage_location`). `pending` (row committed, file being written; no issue yet for a file sent with a new issue), `stored`, `purging` (delete committed, file not removed yet), `purged`. Only `stored` needs an issue (V4): the cleanup ends a failed filing's files without one. Rows stay after a delete as traces; a row the cleanup ended has no `deleted_by` and is not listed |
 | `attachment_content` | `helpdesk` | File contents when `POPDESK_STORAGE=db` |
 | `spring_session`, `spring_session_attributes` | `helpdesk` | Sign-in sessions (Spring Session JDBC) |
-| `outbox` | `notification` | Emails and webhooks waiting to be sent, and the ones that failed. `kind` is `INVITATION` or `STAFF_COMMENT` for `MAIL`, `ISSUE_CREATED` or `CUSTOMER_COMMENT` for `WEBHOOK` (`MailKind`, `WebhookKind`) |
+| `outbox` | `notification` | Emails and webhooks waiting to be sent, and the ones that failed. `kind` is `INVITATION`, `PASSWORD_RESET`, or `STAFF_COMMENT` for `MAIL`, `ISSUE_CREATED` or `CUSTOMER_COMMENT` for `WEBHOOK` (`MailKind`, `WebhookKind`) |
 | `delivery_status` | `notification` | Last successful send per channel; both rows are made at startup |
 | `ops_alert` | `notification` | Operations alerts that are raised, one row per kind (`OpsAlerts.Kind`) until resolved |
 | `notification` | `notification` | Inbox items of staff accounts. `kind` is `DELIVERY_FAILED` or `ATTACHMENT_QUOTA_WARNING` |
 | `cleanup_run` | `notification` | One row per cleanup job: when it last ran and how many rows it deleted. `helpdesk`'s jobs are `CleanupJob` beans that `notification` runs and records |
 
-`notification` reads accounts and issues only through interfaces it declares and `helpdesk` implements (`Recipients`, `IssueFacts`, `IssueAccess`, `InvitationLinks`), so it does not depend on `helpdesk`.
+`notification` reads accounts and issues only through interfaces it declares and `helpdesk` implements (`Recipients`, `IssueFacts`, `IssueAccess`, `InvitationLinks`, `PasswordResetLinks`), so it does not depend on `helpdesk`.
 
 Migrations live in `src/main/resources/db/migration/` and only move forward (ADR D-24). A file is `V<n>__<what_it_does>.sql`, with `n` the next whole number. Versions 999 and up belong to test fixtures; the app's own stay below.
 

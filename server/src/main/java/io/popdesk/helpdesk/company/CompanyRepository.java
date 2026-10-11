@@ -86,6 +86,20 @@ public class CompanyRepository {
                 .query(CompanyRepository::company).list();
     }
 
+    /**
+     * The companies the viewer is tied to, whatever their status, in code order: the ones a customer
+     * belongs to or an agent is assigned to. None for an admin, who is tied to no company.
+     */
+    public List<CompanyRow> listOwn(Viewer viewer) {
+        String role = viewer.role().name();
+        return jdbc.sql("select " + COLUMNS + " from company c where exists (select 1 from company_agent ca where "
+                        + "ca.company_id = c.id and ca.account_id = ? and 'AGENT' = ?) or exists (select 1 from "
+                        + "company_member cm where cm.company_id = c.id and cm.account_id = ? and 'CUSTOMER' = ?) "
+                        + "order by c.code")
+                .params(viewer.accountId(), role, viewer.accountId(), role)
+                .query(CompanyRepository::company).list();
+    }
+
     public long count(Viewer viewer) {
         return jdbc.sql("select count(*) from company c where " + SCOPE)
                 .params(scope(viewer)).query(Long.class).single();

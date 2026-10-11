@@ -6,16 +6,15 @@ import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
-import java.util.OptionalLong;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.stereotype.Component;
 
 /**
- * At most 20 sign-in attempts per client IP in 60 seconds (COM-8, S0-AC-24). Counted in memory only,
- * never stored (PII-1); popdesk runs one instance (D-23). The window is measured on the app's clock.
+ * At most 20 requests per client IP in 60 seconds (COM-8): sign-in attempts (S0-AC-24) and password
+ * reset requests (S1A-AC-13) each count in a limit of their own. Counted in memory only, never stored
+ * (PII-1); popdesk runs one instance (D-23). The window is measured on the app's clock.
  */
-@Component
-class SignInRateLimit {
+final class IpRateLimit {
 
     static final int LIMIT = 20;
     static final Duration WINDOW = Duration.ofSeconds(60);
@@ -26,15 +25,15 @@ class SignInRateLimit {
     private final Map<String, Deque<Instant>> attempts = new ConcurrentHashMap<>();
     private final Clock clock;
 
-    SignInRateLimit(Clock clock) {
+    IpRateLimit(Clock clock) {
         this.clock = clock;
     }
 
     /**
-     * Counts an attempt from {@code ip}. Empty when it may go on; else the seconds until it may try
-     * again, and the attempt is not counted.
+     * Counts an attempt from {@code ip}. Empty when it may go on; else the time until the oldest attempt
+     * in the window leaves it, and the attempt is not counted.
      */
-    OptionalLong attempt(String ip) {
+    Optional<Duration> attempt(String ip) {
         Instant now = clock.instant();
         Instant start = now.minus(WINDOW);
         if (attempts.size() > SWEEP_ABOVE) {
@@ -50,11 +49,10 @@ class SignInRateLimit {
                 window.pollFirst();
             }
             if (window.size() >= LIMIT) {
-                long wait = Duration.between(now, window.peekFirst().plus(WINDOW)).toSeconds() + 1;
-                return OptionalLong.of(Math.max(1, Math.min(WINDOW.toSeconds(), wait)));
+                return Optional.of(Duration.between(now, window.peekFirst().plus(WINDOW)));
             }
             window.addLast(now);
-            return OptionalLong.empty();
+            return Optional.empty();
         }
     }
 }

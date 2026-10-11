@@ -1,9 +1,10 @@
 package io.popdesk.helpdesk.web.publicapi;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.helpdesk.account.SignInFlow;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,6 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/public/password-reset")
 class PublicPasswordResetController {
+
+    private final SignInFlow flow;
+
+    PublicPasswordResetController(SignInFlow flow) {
+        this.flow = flow;
+    }
 
     @Operation(operationId = "requestPasswordReset", summary = "Ask for a password reset email",
             description = "Queues an email with a reset link for an `ACTIVE` account of the app of the host the "
@@ -29,8 +36,8 @@ class PublicPasswordResetController {
             + "60 seconds. `Retry-After` says when to try again (S1A-AC-13).")
     @PostMapping("/request")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    void requestPasswordReset(@RequestBody RequestPasswordResetRequest request) {
-        throw new NotImplementedException();
+    void requestPasswordReset(@RequestBody RequestPasswordResetRequest request, HttpServletRequest http) {
+        flow.requestPasswordReset(request.email(), http);
     }
 
     @Operation(operationId = "resetPassword", summary = "Set a new password with a reset link",
@@ -45,7 +52,7 @@ class PublicPasswordResetController {
     @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
     @PostMapping("/confirm")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void resetPassword(@RequestBody ResetPasswordRequest request) {
-        throw new NotImplementedException();
+    void resetPassword(@RequestBody ResetPasswordRequest request, HttpServletRequest http) {
+        flow.resetPassword(request.token(), request.password(), http);
     }
 }

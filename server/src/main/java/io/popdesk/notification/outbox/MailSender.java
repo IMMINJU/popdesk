@@ -7,6 +7,7 @@ import io.popdesk.notification.IssueAccess;
 import io.popdesk.notification.IssueFacts;
 import io.popdesk.notification.IssueFacts.Issue;
 import io.popdesk.notification.MailKind;
+import io.popdesk.notification.PasswordResetLinks;
 import io.popdesk.notification.Recipients;
 import io.popdesk.notification.Recipients.Recipient;
 import io.popdesk.notification.Recipients.Status;
@@ -15,6 +16,7 @@ import io.popdesk.notification.outbox.OutboxRepository.OutboxRow;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.LongFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -25,9 +27,9 @@ import org.springframework.stereotype.Component;
  * for an invitation) or may no longer see the issue (S0-AC-69). Without SMTP it writes one log line, the
  * address masked, in place of the email (S0-AC-73).
  *
- * <p>An invitation email gets a new token when it is first tried, since the database keeps only the
- * token's hash; retries of that row send the same link. The link is kept in memory only; after a
- * restart the next attempt makes a new one.
+ * <p>An invitation or password reset email gets a new token when it is first tried, since the database
+ * keeps only the token's hash; retries of that row send the same link. The link is kept in memory only
+ * and never logged; after a restart the next attempt makes a new one.
  */
 @Component
 class MailSender implements Sender {
@@ -38,16 +40,18 @@ class MailSender implements Sender {
     private final IssueFacts issues;
     private final IssueAccess access;
     private final InvitationLinks invitations;
+    private final PasswordResetLinks passwordResets;
     private final PublicAddress address;
     private final SmtpMail smtp;
-    private final Map<Long, String> invitationLinks = new ConcurrentHashMap<>();
+    private final Map<Long, String> links = new ConcurrentHashMap<>();
 
     MailSender(Recipients recipients, IssueFacts issues, IssueAccess access, InvitationLinks invitations,
-            PublicAddress address, SmtpMail smtp) {
+            PasswordResetLinks passwordResets, PublicAddress address, SmtpMail smtp) {
         this.recipients = recipients;
         this.issues = issues;
         this.access = access;
         this.invitations = invitations;
+        this.passwordResets = passwordResets;
         this.address = address;
         this.smtp = smtp;
     }
@@ -78,8 +82,10 @@ class MailSender implements Sender {
             return Attempt.dropped();
         }
         Optional<Message> message = switch (kind) {
-            case INVITATION -> invitationLink(row).map(link -> MailText.invitation(recipient.locale(),
+            case INVITATION -> link(row, invitations::renew).map(link -> MailText.invitation(recipient.locale(),
                     recipient.name(), link));
+            case PASSWORD_RESET -> link(row, passwordResets::renew).map(link -> MailText.passwordReset(
+                    recipient.locale(), recipient.name(), link));
             case STAFF_COMMENT -> Optional.of(MailText.staffComment(recipient.locale(), issue,
                     address.origin(App.PORTAL) + "/issues/" + issue.key()));
         };
@@ -91,17 +97,20 @@ class MailSender implements Sender {
 
     @Override
     public void forget(long rowId) {
-        invitationLinks.remove(rowId);
+        links.remove(rowId);
     }
 
-    /** The link of an earlier attempt of this row, or a new one; empty when the invitation is gone. */
-    private Optional<String> invitationLink(OutboxRow row) {
-        String kept = invitationLinks.get(row.id());
+    /**
+     * The link of an earlier attempt of this row, or a new one from {@code renew}, which takes the
+     * account ID; empty when the invitation or the reset link is gone.
+     */
+    private Optional<String> link(OutboxRow row, LongFunction<Optional<String>> renew) {
+        String kept = links.get(row.id());
         if (kept != null) {
             return Optional.of(kept);
         }
-        Optional<String> link = invitations.renew(row.recipientAccountId());
-        link.ifPresent(l -> invitationLinks.put(row.id(), l));
+        Optional<String> link = renew.apply(row.recipientAccountId());
+        link.ifPresent(l -> links.put(row.id(), l));
         return link;
     }
 

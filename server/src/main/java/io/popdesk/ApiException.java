@@ -1,5 +1,6 @@
 package io.popdesk;
 
+import java.time.Duration;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 
@@ -64,11 +65,15 @@ public class ApiException extends RuntimeException {
         return invalid(List.of(new ApiError.FieldError(field, fieldCode)));
     }
 
-    /** 429 {@code RATE_LIMITED} with {@code Retry-After} (COM-8). */
-    public static ApiException rateLimited(long retryAfterSeconds) {
+    /**
+     * 429 {@code RATE_LIMITED} (COM-8). {@code Retry-After} is the time left until the caller may try
+     * again, in whole seconds rounded up and at least 1, so a request sent after it is not refused
+     * (S1A-AC-71).
+     */
+    public static ApiException rateLimited(Duration left) {
         ApiException e = new ApiException(HttpStatus.TOO_MANY_REQUESTS, ApiErrors.RATE_LIMITED,
                 ApiErrors.RATE_LIMITED_MESSAGE);
-        e.retryAfterSeconds = retryAfterSeconds;
+        e.retryAfterSeconds = Math.max(1, left.plusNanos(999_999_999).toSeconds());
         return e;
     }
 

@@ -88,6 +88,11 @@ public class PublicAddress {
         return origin(app) + "/invite#token=" + token;
     }
 
+    /** A password reset link: like an invitation link, the token only in the fragment. */
+    public String passwordResetLink(App app, String token) {
+        return origin(app) + "/reset-password#token=" + token;
+    }
+
     /** 443 for https, 80 for anything else. */
     public static int defaultPort(String scheme) {
         return "https".equalsIgnoreCase(scheme) ? 443 : 80;

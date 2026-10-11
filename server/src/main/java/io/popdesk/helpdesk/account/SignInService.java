@@ -16,7 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -41,17 +40,17 @@ class SignInService {
 
     private final AccountRepository accounts;
     private final PasswordEncoder passwords;
-    private final SignInRateLimit rateLimit;
+    private final IpRateLimit rateLimit;
     private final AuditLog audit;
     private final Transactions transactions;
     private final Clock clock;
     private final String unusedHash;
 
-    SignInService(AccountRepository accounts, PasswordEncoder passwords, SignInRateLimit rateLimit, AuditLog audit,
-            Transactions transactions, Clock clock) {
+    SignInService(AccountRepository accounts, PasswordEncoder passwords, AuditLog audit, Transactions transactions,
+            Clock clock) {
         this.accounts = accounts;
         this.passwords = passwords;
-        this.rateLimit = rateLimit;
+        this.rateLimit = new IpRateLimit(clock);
         this.audit = audit;
         this.transactions = transactions;
         this.clock = clock;
@@ -61,10 +60,9 @@ class SignInService {
 
     /** Checks the attempt; returns the account ID that signed in, or throws 400, 401, or 429. */
     long signIn(String email, String password, App app, String clientIp) {
-        OptionalLong wait = rateLimit.attempt(clientIp);
-        if (wait.isPresent()) {
-            throw ApiException.rateLimited(wait.getAsLong());
-        }
+        rateLimit.attempt(clientIp).ifPresent(left -> {
+            throw ApiException.rateLimited(left);
+        });
         List<ApiError.FieldError> errors = new ArrayList<>();
         if (email == null || email.isBlank()) {
             errors.add(new ApiError.FieldError("email", "REQUIRED"));
@@ -112,10 +110,22 @@ class SignInService {
                     nowLocked ? "; the account is locked for 15 minutes" : "");
             throw failed();
         }
-        transactions.run(() -> {
+        boolean signedIn = transactions.run(() -> {
+            // The password may have changed since the row was read. Under the row's lock, either the hash
+            // that matched is still the account's, or the change is committed and this sign-in fails
+            // (S1A-AC-91).
+            AccountRow current = accounts.lockById(account.id()).orElse(null);
+            if (current == null || !account.passwordHash().equals(current.passwordHash())) {
+                return false;
+            }
             accounts.updateClearFailures(account.id(), now());
             audit.record(actor(account), "SIGN_IN_SUCCEEDED", target(account), null);
+            return true;
         });
+        if (!signedIn) {
+            log.info("Sign-in failed for account {}: the password changed meanwhile.", account.id());
+            throw failed();
+        }
         log.info("Account {} signed in to the {}.", account.id(), app == App.PORTAL ? "portal" : "console");
         return account.id();
     }

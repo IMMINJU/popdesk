@@ -18,16 +18,19 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class AccountRepository {
 
-    /** One account row. {@code passwordHash} is null until an invitation is accepted. */
+    /**
+     * One account row. {@code passwordHash} is null until an invitation is accepted;
+     * {@code passwordChangedAt} is null for a password that never changed.
+     */
     public record AccountRow(long id, String email, String name, Role role, AccountStatus status, String passwordHash,
-            String locale, int failedSignIns, Instant lockedUntil, Instant createdAt) {}
+            String locale, int failedSignIns, Instant lockedUntil, Instant passwordChangedAt, Instant createdAt) {}
 
     /** An {@code INVITED} account with its open invitation. */
     public record PendingRow(long accountId, String email, String name, Role role, Instant invitedAt,
             Instant expiresAt) {}
 
     private static final String ACCOUNT_COLUMNS = "a.id, a.email, a.name, a.role, a.status, a.password_hash, a.locale, "
-            + "a.failed_sign_ins, a.locked_until, a.created_at";
+            + "a.failed_sign_ins, a.locked_until, a.password_changed_at, a.created_at";
 
     private final JdbcClient jdbc;
 
@@ -45,8 +48,11 @@ public class AccountRepository {
                 .param(email).query(AccountRepository::account).optional();
     }
 
-    /** The account row, locked until the end of the transaction. */
-    Optional<AccountRow> lockById(long id) {
+    /**
+     * The account row, locked until the end of the transaction. A change that depends on what the row
+     * says (its password, its status) takes this lock before it reads anything else.
+     */
+    public Optional<AccountRow> lockById(long id) {
         return jdbc.sql("select " + ACCOUNT_COLUMNS + " from account a where a.id = ? for no key update")
                 .param(id).query(AccountRepository::account).optional();
     }
@@ -85,6 +91,23 @@ public class AccountRepository {
         jdbc.sql("update account set password_hash = ?, status = ?, failed_sign_ins = 0, locked_until = null, "
                         + "updated_at = ? where id = ?")
                 .params(passwordHash, AccountStatus.ACTIVE.name(), Timestamp.from(now), id).update();
+    }
+
+    /**
+     * A new password, set by the account or with a reset link: no wrong passwords, no lock, and the time
+     * of the change, which ends the sessions of earlier sign-ins ({@link SessionFilter}).
+     */
+    void updatePassword(long id, String passwordHash, Instant now) {
+        jdbc.sql("update account set password_hash = ?, failed_sign_ins = 0, locked_until = null, "
+                        + "password_changed_at = ?, updated_at = ? where id = ?")
+                .params(passwordHash, Timestamp.from(now), Timestamp.from(now), id).update();
+    }
+
+    /** The account's own name and language; a null value keeps what the row has. */
+    void updateProfile(long id, String name, String locale, Instant now) {
+        jdbc.sql("update account set name = coalesce(?, name), locale = coalesce(?, locale), updated_at = ? "
+                        + "where id = ?")
+                .params(name, locale, Timestamp.from(now), id).update();
     }
 
     List<AccountRow> list(Role role, long offset, int limit) {
@@ -147,7 +170,8 @@ public class AccountRepository {
         return new AccountRow(rs.getLong("id"), rs.getString("email"), rs.getString("name"),
                 Role.valueOf(rs.getString("role")), AccountStatus.valueOf(rs.getString("status")),
                 rs.getString("password_hash"), rs.getString("locale"), rs.getInt("failed_sign_ins"),
-                instant(rs.getTimestamp("locked_until")), instant(rs.getTimestamp("created_at")));
+                instant(rs.getTimestamp("locked_until")), instant(rs.getTimestamp("password_changed_at")),
+                instant(rs.getTimestamp("created_at")));
     }
 
     private static PendingRow pending(ResultSet rs, int row) throws SQLException {

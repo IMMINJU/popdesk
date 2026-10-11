@@ -50,7 +50,7 @@ public class AccountRateLimit {
     }
 
     /**
-     * Counts one request of {@code action} by the account. Over the limit, throws 429 with the seconds
+     * Counts one request of {@code action} by the account. Over the limit, throws 429 with the time
      * until the oldest request in the window leaves it, and does not count the request.
      */
     public void count(Action action, long accountId) {
@@ -69,8 +69,7 @@ public class AccountRateLimit {
                 window.pollFirst();
             }
             if (window.size() >= action.limit) {
-                long wait = Duration.between(now, window.peekFirst().plus(WINDOW)).toSeconds() + 1;
-                throw ApiException.rateLimited(Math.max(1, Math.min(WINDOW.toSeconds(), wait)));
+                throw ApiException.rateLimited(Duration.between(now, window.peekFirst().plus(WINDOW)));
             }
             window.addLast(now);
         }

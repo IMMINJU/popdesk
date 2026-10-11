@@ -22,8 +22,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Reads the session of each request and, when it holds a sign-in that still counts, makes the account
  * the request's principal with its role read from the database now (S0-AC-26). A sign-in does not
- * count when it is past its 8 hours (S0-AC-25), was made on the other app's host, or its account is no
- * longer {@code ACTIVE}; the request then goes on without a principal and gets 401 where one is needed.
+ * count when it is past its 8 hours (S0-AC-25), was made on the other app's host, its account is no
+ * longer {@code ACTIVE}, or the account's password changed after it (S1A-AC-91): ending the account's
+ * sessions cannot catch a sign-in with the old password that was still running, because its session is
+ * stored only when it ends. The request then goes on without a principal and gets 401 where one is
+ * needed.
  *
  * <p>Not a bean: the security filter chain runs it before the anonymous filter.
  */
@@ -61,6 +64,8 @@ class SessionFilter extends OncePerRequestFilter {
         return accounts.findById(signedIn.accountId())
                 .filter(a -> a.status() == AccountStatus.ACTIVE)
                 .filter(a -> appOf(a.role()) == app)
+                .filter(a -> a.passwordChangedAt() == null
+                        || !signedIn.signedInAt().isBefore(a.passwordChangedAt()))
                 .map(SessionFilter::current);
     }
 

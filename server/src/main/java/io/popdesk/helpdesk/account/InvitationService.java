@@ -20,16 +20,11 @@ import io.popdesk.helpdesk.company.CompanyRepository.MembershipRow;
 import io.popdesk.notification.InvitationLinks;
 import io.popdesk.notification.MailKind;
 import io.popdesk.notification.MailQueue;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -77,7 +72,6 @@ public class InvitationService implements InvitationLinks {
     private final Transactions transactions;
     private final Clock clock;
     private final String locale;
-    private final SecureRandom random = new SecureRandom();
 
     InvitationService(AccountRepository accounts, CompanyRepository companies, MailQueue mail, AuditLog audit,
             PasswordEncoder passwords, PublicAddress address, Transactions transactions, Clock clock,
@@ -114,7 +108,7 @@ public class InvitationService implements InvitationLinks {
             throw ApiException.invalid(errors);
         }
         Set<String> wanted = new LinkedHashSet<>(codes);
-        String token = newToken();
+        String token = Tokens.create();
         Invited invited = transactions.run(() -> {
             Viewer viewer = admin.viewer();
             List<CompanyRow> found = companies.findByCodes(viewer, wanted);
@@ -124,7 +118,7 @@ public class InvitationService implements InvitationLinks {
             Instant now = now();
             long accountId = accounts.insertInvited(cleanEmail, cleanName, role, locale, now).orElseThrow(() ->
                     ApiException.conflict("EMAIL_TAKEN", "An account has this email."));
-            accounts.insertInvitation(accountId, tokenHash(token), now, now.plus(VALIDITY));
+            accounts.insertInvitation(accountId, Tokens.hash(token), now, now.plus(VALIDITY));
             for (CompanyRow company : found) {
                 companies.insertMember(company.id(), accountId, now);
             }
@@ -146,7 +140,7 @@ public class InvitationService implements InvitationLinks {
      * 400 (S0-AC-37). A password that breaks AUTH-5 is 400 and leaves the token as it was.
      */
     long accept(String token, String password, App app) {
-        String hash = tokenHash(token);
+        String hash = Tokens.hash(token);
         long accountId = transactions.run(() -> {
             PendingRow pending = hash == null ? null : accounts.lockInvitationByTokenHash(hash).orElse(null);
             Instant now = now();
@@ -173,11 +167,11 @@ public class InvitationService implements InvitationLinks {
         if (mail.enabled()) {
             throw ApiException.notFound();
         }
-        String token = newToken();
+        String token = Tokens.create();
         String link = transactions.run(() -> {
             PendingRow pending = accounts.lockInvitation(accountId).orElseThrow(ApiException::notFound);
             Instant expiresAt = now().plus(VALIDITY);
-            accounts.updateInvitationToken(accountId, tokenHash(token), expiresAt);
+            accounts.updateInvitationToken(accountId, Tokens.hash(token), expiresAt);
             Map<String, Object> changes = new LinkedHashMap<>();
             changes.put("expiresAt", expiresAt);
             audit.record(admin.actor(), "INVITATION_LINK_CREATED", accountTarget(accountId), changes);
@@ -194,9 +188,9 @@ public class InvitationService implements InvitationLinks {
      */
     @Override
     public Optional<String> renew(long accountId) {
-        String token = newToken();
+        String token = Tokens.create();
         return transactions.run(() -> accounts.lockInvitation(accountId).map(pending -> {
-            accounts.updateInvitationToken(accountId, tokenHash(token), pending.expiresAt());
+            accounts.updateInvitationToken(accountId, Tokens.hash(token), pending.expiresAt());
             return address.invitationLink(appOf(pending.role()), token);
         }));
     }
@@ -245,29 +239,6 @@ public class InvitationService implements InvitationLinks {
     private static ApiException invalidInvitation() {
         return new ApiException(HttpStatus.BAD_REQUEST, "INVITATION_INVALID",
                 "This invitation link does not work. Ask for a new one.");
-    }
-
-    /** 32 random bytes, base64url without padding (43 characters). */
-    private String newToken() {
-        byte[] bytes = new byte[32];
-        random.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    /** The SHA-256 of a token's 32 bytes as lower-case hex, or null when the text is not a token. */
-    private static String tokenHash(String token) {
-        if (token == null || !token.matches("[A-Za-z0-9_-]{43}=?")) {
-            return null;
-        }
-        return sha256(Base64.getUrlDecoder().decode(token));
-    }
-
-    private static String sha256(byte[] bytes) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is missing from the JVM", e);
-        }
     }
 
     private Instant now() {

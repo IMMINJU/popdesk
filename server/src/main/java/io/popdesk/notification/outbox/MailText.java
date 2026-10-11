@@ -31,6 +31,23 @@ final class MailText {
                         + "If you did not expect this invitation, you can delete this email.\n");
     }
 
+    /** A link to set a new password (S1A-AC-06). It names no other account and says nothing of the old password. */
+    static Message passwordReset(String locale, String name, String link) {
+        if (korean(locale)) {
+            return new Message("popdesk 비밀번호 재설정",
+                    name + "님, popdesk 계정의 비밀번호 재설정 요청을 받았습니다.\n\n"
+                            + "아래 링크에서 새 비밀번호를 정할 수 있습니다. 링크는 1시간 동안 쓸 수 있습니다.\n\n"
+                            + link + "\n\n"
+                            + "요청한 적이 없다면 이 메일을 지워도 됩니다.\n");
+        }
+        return new Message("Reset your popdesk password",
+                "Hello " + name + ",\n\n"
+                        + "A password reset was asked for your popdesk account. Set a new password at the link below. "
+                        + "The link works for one hour.\n\n"
+                        + link + "\n\n"
+                        + "If you did not ask for this, you can delete this email.\n");
+    }
+
     /** A public answer by staff, to the customer who filed the issue (S0-AC-70). */
     static Message staffComment(String locale, Issue issue, String link) {
         String title = oneLine(issue.title());
