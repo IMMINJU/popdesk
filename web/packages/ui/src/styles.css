@@ -1367,6 +1367,12 @@ textarea {
   font-size: var(--text-sm);
 }
 
+.pd-attachment-uploader {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 /* Markdown -------------------------------------------------------------- */
 
 .pd-markdown {

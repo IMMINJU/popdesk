@@ -1,6 +1,7 @@
 import { useId, type MouseEvent } from 'react';
 import { formatBytes } from '../format';
 import { FileIcon } from '../icons';
+import { Avatar } from './Avatar';
 import { Badge } from './Badge';
 import { Button } from './Button';
 import { RelativeTime } from './RelativeTime';
@@ -14,6 +15,11 @@ export interface AttachmentItem {
   href?: string;
   /** 올린 사람, already "지원팀" or "나" where the screen needs it (D-49). */
   uploaderLabel: string;
+  /**
+   * Shows the uploader's avatar before the label: a photo or initials for a
+   * person, the 지원팀 mark for `support` (ACCT-8, D-49). Absent: the label alone.
+   */
+  uploaderAvatar?: { kind: 'person'; photoUrl: string | null } | { kind: 'support' };
   /** ISO 8601. */
   createdAt: string;
   /** 내부 표시: attachment of an internal comment (C-4). */
@@ -95,7 +101,18 @@ export function AttachmentList(props: AttachmentListProps) {
                   <span className="pd-attachment-meta">
                     {item.internal && <Badge tone="internal">{props.internalLabel ?? 'Internal'}</Badge>}
                     <span>{formatBytes(item.size)}</span>
-                    <span>{item.uploaderLabel}</span>
+                    {item.uploaderAvatar ? (
+                      <span className="pd-attachment-uploader">
+                        {item.uploaderAvatar.kind === 'support' ? (
+                          <Avatar name={item.uploaderLabel} kind="support" size="sm" decorative />
+                        ) : (
+                          <Avatar name={item.uploaderLabel} photoUrl={item.uploaderAvatar.photoUrl} size="sm" decorative />
+                        )}
+                        <span>{item.uploaderLabel}</span>
+                      </span>
+                    ) : (
+                      <span>{item.uploaderLabel}</span>
+                    )}
                     <RelativeTime dateTime={item.createdAt} focusable={false} />
                   </span>
                 </span>

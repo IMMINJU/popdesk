@@ -64,6 +64,17 @@ export function ChevronDownIcon(props: IconProps) {
   );
 }
 
+/** Three dots: a row's menu of actions. */
+export function MoreIcon(props: IconProps) {
+  return (
+    <Svg {...props} fill>
+      <circle cx="3" cy="8" r="1.25" />
+      <circle cx="8" cy="8" r="1.25" />
+      <circle cx="13" cy="8" r="1.25" />
+    </Svg>
+  );
+}
+
 export function CloseIcon(props: IconProps) {
   return (
     <Svg {...props}>

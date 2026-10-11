@@ -8,7 +8,15 @@ import { RelativeTime } from './RelativeTime';
  * Who wrote it. The portal API gives no name for agents (ANON-1, D-49), so
  * the portal passes `support` and shows "지원팀".
  */
-export type CommentAuthor = { kind: 'person'; name: string; isMe?: boolean } | { kind: 'support' };
+export type CommentAuthor =
+  | {
+      kind: 'person';
+      name: string;
+      isMe?: boolean;
+      /** Photo of the author (ACCT-8). Absent or `null` shows the initials. */
+      photoUrl?: string | null;
+    }
+  | { kind: 'support' };
 
 export interface CommentItemProps {
   /** Element id, so the screen can scroll and focus a new comment. */
@@ -52,7 +60,11 @@ export function CommentItem({ ref, ...props }: CommentItemProps) {
       data-deleted={props.deleted ? 'true' : undefined}
     >
       <header className="pd-comment-head">
-        <Avatar name={authorText} kind={props.author.kind === 'support' ? 'support' : 'person'} size="sm" decorative />
+        {props.author.kind === 'support' ? (
+          <Avatar name={authorText} kind="support" size="sm" decorative />
+        ) : (
+          <Avatar name={authorText} photoUrl={props.author.photoUrl ?? null} size="sm" decorative />
+        )}
         <span className="pd-comment-author">{authorText}</span>
         {props.visibility === 'internal' && (
           <span className="pd-comment-internal">
