@@ -21,6 +21,7 @@
   - Stryker vitest 러너 10.0.0이 vitest 5의 테스트 이름 형식과 맞지 않아 모든 변이가 테스트 0개로 Survived가 됐다. `pnpm patch`로 고쳤다(`web/patches/`, 업스트림이 고치면 지운다).
   - ui 전체 48.37% → 81.25%. C-4 껍데기 때문에 처음부터 통과를 허용한 컴포넌트를 모두 포함한다. 파일별 점수는 탭 보고에 있다.
   - console 56.90% → 96.90%, portal 57.26% → 96.71%. 판단이 걸린 `src/app` 여섯 파일만(sessionContext, result, messages, attachments, paging, navigate). 화면 파일은 한 패키지에 12시간 넘게 걸려 미뤘다.
+  - console·portal의 화면 파일(`src/screens/**`)과 나머지 `src/app` 파일은 돌리지 않고 끝냈다(2026-10-11 사람이 정함). `src/app`만 8시간쯤, 화면까지는 두 앱 합쳐 15시간쯤 걸린다. 1a 묶음부터 그 묶음이 바꾼 파일만 C-10에서 돈다. 설정의 `STRYKER_SCOPE=app`·`screens`는 그대로 있다.
   - 운영 코드는 맞고 테스트가 빠졌던 곳: 마크다운 링크 허용 목록·`<주소>`·맨 주소 정규식의 `^`, `safeNext`의 제어 문자 검사와 `/login`·`/invite`로 되돌아가기 막기. 지금은 테스트가 잡는다.
 - 서버 PIT: 14절에 적었다.
 
