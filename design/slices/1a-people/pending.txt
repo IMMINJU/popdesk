@@ -21,6 +21,7 @@ server io/popdesk/deploy/PhotoLoadTest.java
 server io/popdesk/deploy/ScreenFilesCacheTest.java
 server io/popdesk/deploy/UpgradeFrom010Test.java
 server io/popdesk/ops/PeopleAuditTest.java
+server io/popdesk/ops/SignInAuditTargetTest.java
 server io/popdesk/ops/TextInputTest.java
 server io/popdesk/photo/PhotoAccessTest.java
 server io/popdesk/photo/PhotoResponseTest.java

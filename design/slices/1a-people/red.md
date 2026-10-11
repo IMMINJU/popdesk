@@ -1,15 +1,13 @@
 # 실패 확인
 
 > 실패한 테스트는 이름만 적었다. 실패 메시지는 넣지 않았다(첫 묶음 red.md가 24만 자였다).
-- 단언 실패 364, 통과 0, 허용한 통과 61, 오류 0, 건너뜀 0
+- 단언 실패 365, 통과 0, 허용한 통과 61, 오류 0, 건너뜀 0
 - 판정: 통과
 
 ## 처음부터 통과해도 된다고 허용한 테스트 (점검에서 이유를 본다)
 
 - `io.popdesk.attachment.FilingFileCountTest.twentyFiles`: S1A-AC-65 상한 바로 안쪽. 지금은 파일 수 상한이 없어 20개를 받는다. 구현이 20개까지 막지 않게 두는 테스트다
-- `io.popdesk.attachment.FilingManyFilesTest.tenFiles`: 첫 묶음의 잠긴 테스트. 30개 테스트를 20개로 고친 파일이라 함께 돌렸다. 이미 구현된 동작이다
-- `io.popdesk.attachment.FilingManyFilesTest.twentyFiles`: 첫 묶음의 잠긴 테스트. 30개 테스트를 20개로 고친 파일이라 함께 돌렸다. 이미 구현된 동작이다
-- `io.popdesk.attachment.FilingManyFilesTest.twoHundredFiles`: 첫 묶음의 잠긴 테스트. 30개 테스트를 20개로 고친 파일이라 함께 돌렸다. 이미 구현된 동작이다
+- `io.popdesk.attachment.FilingManyFilesTest.tenFiles`: 첫 묶음의 잠긴 테스트. 겹치는 둘을 지운 파일이라 함께 돌렸다. 이미 구현된 동작이다
 - `io.popdesk.auth.CsrfAfterSignInTest.tokenFromBeforeSignInIsRefused`: S1A-AC-69 첫 묶음 앱이 로그인 때 이미 CSRF 토큰을 새로 낸다. 테스트가 없던 동작이다(서버 PIT). C-10 변이 테스트로 본다
 - `io.popdesk.auth.TrustedProxyPrefixTest.addressInsideTheRangeIsTrusted`: S1A-AC-73 첫 묶음 앱이 8비트 단위가 아닌 대역을 이미 맞게 가른다. 테스트가 없던 줄이다(서버 PIT). C-10 변이 테스트로 본다
 - `io.popdesk.auth.TrustedProxyPrefixTest.addressOutsideTheRangeIsNotTrusted`: S1A-AC-73 첫 묶음 앱이 8비트 단위가 아닌 대역을 이미 맞게 가른다. 테스트가 없던 줄이다(서버 PIT). C-10 변이 테스트로 본다
@@ -27,6 +25,7 @@
 - `io.popdesk.ops.AlertResolvedTest.resolvedQuotaAlertStopsRepeating`: S1A-AC-68 첫 묶음 앱이 실패 행이 없거나 첨부가 80% 아래면 경보를 이미 푼다. 기준과 테스트가 없던 동작이다(서버 PIT)
 - `io.popdesk.ops.AlertResolvedTest.failedAlertIsRaisedAgainAfterResolved`: S1A-AC-68 첫 묶음 앱이 실패 행이 없거나 첨부가 80% 아래면 경보를 이미 푼다. 기준과 테스트가 없던 동작이다(서버 PIT)
 - `io.popdesk.ops.AlertResolvedTest.resolvedFailedAlertStopsRepeating`: S1A-AC-68 첫 묶음 앱이 실패 행이 없거나 첨부가 80% 아래면 경보를 이미 푼다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.PeopleAuditTest.unknownEmailSignInLeavesNoRow`: S1A-AC-64 첫 묶음 앱이 없는 이메일의 로그인 실패에 감사 행을 남기지 않는다. 구현이 행을 남기게 바꾸지 않도록 두는 테스트다
 - `io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[1]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
 - `io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[2]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
 - `io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[3]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
@@ -49,6 +48,7 @@
 - `io.popdesk.project.MembershipTest.agentsCannotChangeMembers(String)[2]`: S1A-AC-56 첫 묶음의 보안 설정이 소속·배정 경로를 상담원에게 이미 403으로 막는다
 - `io.popdesk.project.MembershipTest.agentsCannotChangeMembers(String)[3]`: S1A-AC-56 첫 묶음의 보안 설정이 소속·배정 경로를 상담원에게 이미 403으로 막는다
 - `io.popdesk.start.SetupRequiredContentTypeTest.setupRequiredSaysJson`: S1A-AC-70 첫 묶음 앱의 503에 이미 Content-Type이 붙는다. 테스트가 없던 동작이다(서버 PIT)
+- `src/app/csrfRetry.1a.test.tsx.403 CSRF_TOKEN_INVALID (1a) > S1A-AC-57 C-4 댓글: CSRF가 아닌 403은 다시 보내지 않고 "이 작업을 할 권한이 없습니다."를 보인다`: S1A-AC-57 CSRF가 아닌 403은 지금도 다시 보내지 않고 권한 문구를 보인다. 구현이 모든 403을 다시 보내지 않게 두는 테스트다
 - `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 데이터 있음: 줄에서 C-9 고객사 상세로 가는 링크`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
 - `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 빈 목록: "첫 고객사를 만드세요. 고객사를 만들어야 고객을 초대할 수 있습니다."와 "고객사 만들기"`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
 - `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 처음 불러옴: 300ms가 넘으면 aria-hidden 표 뼈대, main은 aria-busy`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
@@ -64,9 +64,9 @@
 - `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 403 만들기: "이 작업을 할 권한이 없습니다." 띠, 입력은 그대로`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
 - `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 접근성: 처음 포커스는 h1(tabindex=-1), 화면 제목을 document.title에`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
 - `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 axe: 목록과 열린 만들기 대화상자에 접근성 위반이 없다`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/app/csrfRetry.1a.test.tsx.403 CSRF_TOKEN_INVALID (1a) > S1A-AC-57 P-5 댓글: CSRF가 아닌 403은 다시 보내지 않고 "이 작업을 할 권한이 없습니다."를 보인다`: S1A-AC-57 CSRF가 아닌 403은 지금도 다시 보내지 않고 권한 문구를 보인다. 구현이 모든 403을 다시 보내지 않게 두는 테스트다
 - `src/screens/P4IssueCreate.1a.test.tsx.P-4 문의 등록 (1a) > S1A-AC-65 P-4 앞단의 413(JSON이 아닌 본문): "20개까지"가 아니라 "파일이 서버 앞단의 크기 상한에 걸렸습니다"를 보인다`: S1A-AC-65 본문이 JSON이 아닌 413은 지금처럼 앞단 상한 문구다. 구현이 이 가름을 깨지 않게 두는 테스트다
 - `src/components/Avatar.photo.test.tsx.Avatar 사진 > S1A-AC-60 Avatar 사진 있음: 그 주소의 그림을 그리고 머리글자는 없다. 이름이 대체 글자다`: S1A-AC-60 첫 묶음 C-9가 사진 주소를 받으면 그림을 그리게 해 두었고, C-4 껍데기가 null을 받게 넓혔다
-- `src/components/Avatar.photo.test.tsx.Avatar 사진 > S1A-AC-60 Avatar 사진 없음: 사진 주소가 null이면 그림을 청하지 않고 머리글자를 그린다`: S1A-AC-60 첫 묶음 C-9가 사진 주소를 받으면 그림을 그리게 해 두었고, C-4 껍데기가 null을 받게 넓혔다
 
 ## 단언에서 실패한 테스트
 
@@ -80,6 +80,7 @@
 - `io.popdesk.auth.OwnPasswordTest.passwordIsChanged(App)[1]`
 - `io.popdesk.auth.OwnPasswordTest.passwordIsChanged(App)[2]`
 - `io.popdesk.auth.OwnPasswordTest.fiveWrongCurrentPasswordsBlockForFifteenMinutes`
+- `io.popdesk.auth.OwnPasswordTest.aChangeThatWorksStartsTheCountAgain`
 - `io.popdesk.auth.OwnProfileTest.nameIsSaved(App)[1]`
 - `io.popdesk.auth.OwnProfileTest.nameIsSaved(App)[2]`
 - `io.popdesk.auth.OwnProfileTest.customerSeesOwnDetailsAndCompanies`
@@ -101,6 +102,8 @@
 - `io.popdesk.auth.PasswordResetConfirmTest.tokenThatDoesNotCountIsRefusedAlike(Invalid)[7]`
 - `io.popdesk.auth.PasswordResetConfirmTest.resetEndsEverySession(Reset)[1]`
 - `io.popdesk.auth.PasswordResetConfirmTest.resetEndsEverySession(Reset)[2]`
+- `io.popdesk.auth.PasswordResetConfirmTest.missingOrEmptyTokenIsInvalidInput(boolean)[1]`
+- `io.popdesk.auth.PasswordResetConfirmTest.missingOrEmptyTokenIsInvalidInput(boolean)[2]`
 - `io.popdesk.auth.PasswordResetConfirmTest.refusedPasswordKeepsTheToken(Refused)[1]`
 - `io.popdesk.auth.PasswordResetConfirmTest.refusedPasswordKeepsTheToken(Refused)[2]`
 - `io.popdesk.auth.PasswordResetConfirmTest.refusedPasswordKeepsTheToken(Refused)[3]`
@@ -123,8 +126,8 @@
 - `io.popdesk.auth.PasswordResetRequestTest.noMailUnlessActiveAccountOfThatApp(Silent)[4]`
 - `io.popdesk.auth.PasswordResetRequestTest.noMailUnlessActiveAccountOfThatApp(Silent)[5]`
 - `io.popdesk.auth.PasswordResetTokenTest.noStoreAndNothingInTheLog`
+- `io.popdesk.auth.PasswordResetTokenTest.tokenIs32BytesAndDiffersPerRequest`
 - `io.popdesk.auth.PasswordResetTokenTest.databaseKeepsOnlyTheHash`
-- `io.popdesk.auth.PasswordResetTokenTest.tokenIs32BytesInTheFragment`
 - `io.popdesk.auth.RetryAfterTest.retryAfterIsTheRestOfTheWindow(Limited)[1]`
 - `io.popdesk.auth.RetryAfterTest.retryAfterIsTheRestOfTheWindow(Limited)[2]`
 - `io.popdesk.auth.SessionEndingTest.suspensionEndsEverySession(Role)[1]`
@@ -164,6 +167,8 @@
 - `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[12]`
 - `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[13]`
 - `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[14]`
+- `io.popdesk.ops.SignInAuditTargetTest.targetOfAPasswordRowIsTheAccount(String)[1]`
+- `io.popdesk.ops.SignInAuditTargetTest.targetOfAPasswordRowIsTheAccount(String)[2]`
 - `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[1]`
 - `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[2]`
 - `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[3]`
@@ -220,7 +225,6 @@
 - `io.popdesk.photo.PhotoUploadTest.storesAScaledPng(Supplier, String, String, int, int, App)[4]`
 - `io.popdesk.photo.PhotoUploadTest.storesAScaledPng(Supplier, String, String, int, int, App)[5]`
 - `io.popdesk.photo.PhotoUploadTest.eleventhUploadInAMinuteIsLimited`
-- `io.popdesk.project.AccountAdminTest.resetLinkInResponseWithoutSmtp`
 - `io.popdesk.project.AccountAdminTest.suspends(Role)[1]`
 - `io.popdesk.project.AccountAdminTest.suspends(Role)[2]`
 - `io.popdesk.project.AccountAdminTest.suspends(Role)[3]`
@@ -231,6 +235,7 @@
 - `io.popdesk.project.AccountAdminTest.cannotReactivateBeforeAcceptance(String)[2]`
 - `io.popdesk.project.AccountAdminTest.notOnOwnAccount(String)[1]`
 - `io.popdesk.project.AccountAdminTest.notOnOwnAccount(String)[2]`
+- `io.popdesk.project.AccountAdminTest.resetAgainReplacesTheLink`
 - `io.popdesk.project.AccountAdminTest.resetLiftsTheLock`
 - `io.popdesk.project.AccountAdminTest.cannotSuspendBeforeAcceptance(String)[1]`
 - `io.popdesk.project.AccountAdminTest.cannotSuspendBeforeAcceptance(String)[2]`
@@ -327,11 +332,11 @@
 - `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-33 C-10 줄 메뉴 나 자신(역할 바꾸기와 정지는 없다)`
 - `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-30 C-10 이름 고치기: 대화상자에 지금 이름, 저장하면 PATCH로 보내고 줄의 이름이 바뀐다. 수락 전 계정도 된다`
 - `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-34 C-10 정지: 확인 대화상자의 문구, 확인하면 줄의 배지가 "정지"로 바뀐다`
-- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-35 C-10 정지 풀기: 누르면 풀고 줄의 배지가 "사용 중"으로 바뀐다`
 - `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-31 C-10 역할 바꾸기: 확인 대화상자에 바뀔 역할과 "다시 로그인해야 합니다", 확인하면 그 역할을 보내고 줄이 바뀐다`
 - `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-36 C-10 비밀번호 초기화(SMTP 있음): 확인 대화상자의 문구, 확인하면 토스트 "재설정 메일을 보냈습니다."`
-- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-37 C-10 비밀번호 초기화(SMTP 없음): 재설정 링크를 대화상자에 한 번 보이고 닫으면 다시 볼 수 없다고 적는다. 닫으면 화면에 남지 않는다`
 - `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-39 C-10 초대 취소: 확인 대화상자의 문구, 확인하면 줄의 배지가 "초대 취소됨"으로 바뀐다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-35 C-10 정지 풀기: 누르면 풀고 줄의 배지가 "사용 중"으로 바뀐다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-37 C-10 비밀번호 초기화(SMTP 없음): 재설정 링크를 대화상자에 한 번 보이고 닫으면 다시 볼 수 없다고 적는다. 닫으면 화면에 남지 않는다`
 - `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-38 S1A-AC-40 C-10 초대 다시 보내기(SMTP 없음): 취소된 초대를 다시 보내면 새 링크를 한 번 보이고 줄은 "수락 전"으로 돌아간다`
 - `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > C-10 정지 400: 대화상자를 닫지 않고 오류 띠를 보이며 줄의 배지는 그대로다`
 - `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-58 C-10 닫힌 뒤 온 답(이름 고치기): A의 요청 중에 취소한 뒤 온 실패는 버린다. B로 열면 오류 없이 처음부터 묻는다`
@@ -343,7 +348,6 @@
 - `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > C-10 axe (1a): 필터, 줄 메뉴가 있는 목록, 열린 정지 확인 대화상자에 접근성 위반이 없다`
 - `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > C-16 처음: 이메일 칸 하나, "재설정 메일 받기" 버튼, 로그인으로 돌아가는 링크. 서버를 부르지 않는다`
 - `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > S1A-AC-59 C-16 보낸 뒤(202) 계정이 있는 주소: 칸을 지우고 같은 안내와 로그인 링크를 보인다`
-- `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > S1A-AC-59 C-16 보낸 뒤(202) 계정이 없는 주소: 칸을 지우고 같은 안내와 로그인 링크를 보인다`
 - `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > C-16 이메일 꼴이 아님: 칸 아래 오류를 보이고 보내지 않는다`
 - `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > C-16 429: "요청이 많습니다. N초 뒤 다시 하세요." 띠와 버튼 막힘, 쓴 주소는 남는다`
 - `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > S1A-AC-58 C-16 떠난 뒤 온 답: 보내는 중에 로그인으로 돌아가면, 뒤에 온 202의 안내를 로그인 화면에 보이지 않는다`
@@ -352,7 +356,6 @@
 - `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > S1A-AC-09 C-17 성공: 토큰을 본문으로만 보내고, 로그인시키지 않고 로그인 화면으로 가며 토스트를 보인다`
 - `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > C-17 두 칸이 다름: 서버에 보내지 않고 둘째 칸에 오류를 보인다`
 - `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > S1A-AC-11 C-17 400 INVALID_INPUT(TOO_SHORT): 규칙 오류를 칸 아래에 보이고, 같은 토큰으로 다시 낼 수 있다`
-- `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > S1A-AC-11 C-17 400 INVALID_INPUT(SAME_AS_EMAIL): 규칙 오류를 칸 아래에 보이고, 같은 토큰으로 다시 낼 수 있다`
 - `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > S1A-AC-10 C-17 400 링크 무효: 화면 전체를 "링크가 만료됐거나 이미 썼습니다." 안내로 바꾸고 "다시 요청하기"는 비밀번호 찾기로 간다`
 - `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > S1A-AC-10 C-17 토큰 없이 옴: 서버에 묻지 않고 링크 무효와 같은 안내를 보인다`
 - `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > S1A-AC-58 C-17 떠난 뒤 온 답: 화면을 떠난 뒤 온 성공은 주소를 /login으로 바꾸지 않는다`
@@ -389,16 +392,15 @@
 - `src/app/csrfRetry.1a.test.tsx.403 CSRF_TOKEN_INVALID (1a) > S1A-AC-57 P-5 댓글: 다시 보낸 것도 403이면 더 보내지 않고 새로고침 안내를 보인다. 쓰던 글은 남는다`
 - `src/app/header.1a.test.tsx.포털 화면 머리 (1a) > S1A-AC-60 화면 머리 사진 있음: 이름 앞에 내 사진, 이름을 누르면 P-6 내 정보로 간다`
 - `src/app/header.1a.test.tsx.포털 화면 머리 (1a) > S1A-AC-60 화면 머리 사진 없음: 사진을 청하지 않고 머리글자를 그린다`
-- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 찾기 → /issues`
-- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 찾기와 쿼리 → /issues`
-- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 재설정 → /issues`
-- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 재설정과 토큰 조각 → /issues`
-- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 재설정 아래 → /issues`
+- `src/app/safeNext.1a.test.ts.P-1 safeNext (1a) > P-1 safeNext 막음: 비밀번호 찾기 → /issues`
+- `src/app/safeNext.1a.test.ts.P-1 safeNext (1a) > P-1 safeNext 막음: 비밀번호 찾기와 쿼리 → /issues`
+- `src/app/safeNext.1a.test.ts.P-1 safeNext (1a) > P-1 safeNext 막음: 비밀번호 재설정 → /issues`
+- `src/app/safeNext.1a.test.ts.P-1 safeNext (1a) > P-1 safeNext 막음: 비밀번호 재설정과 토큰 조각 → /issues`
+- `src/app/safeNext.1a.test.ts.P-1 safeNext (1a) > P-1 safeNext 막음: 비밀번호 재설정 아래 → /issues`
 - `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > P-10 처음: 새 비밀번호 칸과 한 번 더 칸, 규칙 안내(10~72자), "비밀번호 바꾸기". 주소창에서 #token을 지우고 토큰을 미리 확인하지 않는다`
 - `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > S1A-AC-09 P-10 성공: 토큰을 본문으로만 보내고, 로그인시키지 않고 로그인 화면으로 가며 토스트를 보인다`
 - `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > P-10 두 칸이 다름: 서버에 보내지 않고 둘째 칸에 오류를 보인다`
 - `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > S1A-AC-11 P-10 400 INVALID_INPUT(TOO_SHORT): 규칙 오류를 칸 아래에 보이고, 같은 토큰으로 다시 낼 수 있다`
-- `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > S1A-AC-11 P-10 400 INVALID_INPUT(SAME_AS_EMAIL): 규칙 오류를 칸 아래에 보이고, 같은 토큰으로 다시 낼 수 있다`
 - `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > S1A-AC-10 P-10 400 링크 무효: 화면 전체를 "링크가 만료됐거나 이미 썼습니다." 안내로 바꾸고 "다시 요청하기"는 비밀번호 찾기로 간다`
 - `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > S1A-AC-10 P-10 토큰 없이 옴: 서버에 묻지 않고 링크 무효와 같은 안내를 보인다`
 - `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > S1A-AC-58 P-10 떠난 뒤 온 답: 화면을 떠난 뒤 온 성공은 주소를 /login으로 바꾸지 않는다`
@@ -423,7 +425,6 @@
 - `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > P-6 axe: 사진이 있는 내 정보 화면에 접근성 위반이 없다`
 - `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > P-9 처음: 이메일 칸 하나, "재설정 메일 받기" 버튼, 로그인으로 돌아가는 링크. 서버를 부르지 않는다`
 - `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > S1A-AC-59 P-9 보낸 뒤(202) 계정이 있는 주소: 칸을 지우고 같은 안내와 로그인 링크를 보인다`
-- `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > S1A-AC-59 P-9 보낸 뒤(202) 계정이 없는 주소: 칸을 지우고 같은 안내와 로그인 링크를 보인다`
 - `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > P-9 이메일 꼴이 아님: 칸 아래 오류를 보이고 보내지 않는다`
 - `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > P-9 429: "요청이 많습니다. N초 뒤 다시 하세요." 띠와 버튼 막힘, 쓴 주소는 남는다`
 - `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > S1A-AC-58 P-9 떠난 뒤 온 답: 보내는 중에 로그인으로 돌아가면, 뒤에 온 202의 안내를 로그인 화면에 보이지 않는다`

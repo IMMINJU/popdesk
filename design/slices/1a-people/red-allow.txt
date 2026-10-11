@@ -1,9 +1,7 @@
 # C-6 처음부터 통과해도 되는 테스트. 형식: <이름> | <이유> (scripts/ci/check-red.py --allow)
 
 io.popdesk.attachment.FilingFileCountTest.twentyFiles | S1A-AC-65 상한 바로 안쪽. 지금은 파일 수 상한이 없어 20개를 받는다. 구현이 20개까지 막지 않게 두는 테스트다
-io.popdesk.attachment.FilingManyFilesTest.tenFiles | 첫 묶음의 잠긴 테스트. 30개 테스트를 20개로 고친 파일이라 함께 돌렸다. 이미 구현된 동작이다
-io.popdesk.attachment.FilingManyFilesTest.twentyFiles | 첫 묶음의 잠긴 테스트. 30개 테스트를 20개로 고친 파일이라 함께 돌렸다. 이미 구현된 동작이다
-io.popdesk.attachment.FilingManyFilesTest.twoHundredFiles | 첫 묶음의 잠긴 테스트. 30개 테스트를 20개로 고친 파일이라 함께 돌렸다. 이미 구현된 동작이다
+io.popdesk.attachment.FilingManyFilesTest.tenFiles | 첫 묶음의 잠긴 테스트. 겹치는 둘을 지운 파일이라 함께 돌렸다. 이미 구현된 동작이다
 io.popdesk.auth.CsrfAfterSignInTest.tokenFromBeforeSignInIsRefused | S1A-AC-69 첫 묶음 앱이 로그인 때 이미 CSRF 토큰을 새로 낸다. 테스트가 없던 동작이다(서버 PIT). C-10 변이 테스트로 본다
 io.popdesk.auth.TrustedProxyPrefixTest.addressInsideTheRangeIsTrusted | S1A-AC-73 첫 묶음 앱이 8비트 단위가 아닌 대역을 이미 맞게 가른다. 테스트가 없던 줄이다(서버 PIT). C-10 변이 테스트로 본다
 io.popdesk.auth.TrustedProxyPrefixTest.addressOutsideTheRangeIsNotTrusted | S1A-AC-73 첫 묶음 앱이 8비트 단위가 아닌 대역을 이미 맞게 가른다. 테스트가 없던 줄이다(서버 PIT). C-10 변이 테스트로 본다
@@ -21,6 +19,7 @@ io.popdesk.boundary.BoundaryListTest.everyContractOperationIsListed | S1A-AC-77 
 io.popdesk.ops.AlertResolvedTest.resolvedQuotaAlertStopsRepeating | S1A-AC-68 첫 묶음 앱이 실패 행이 없거나 첨부가 80% 아래면 경보를 이미 푼다. 기준과 테스트가 없던 동작이다(서버 PIT)
 io.popdesk.ops.AlertResolvedTest.failedAlertIsRaisedAgainAfterResolved | S1A-AC-68 첫 묶음 앱이 실패 행이 없거나 첨부가 80% 아래면 경보를 이미 푼다. 기준과 테스트가 없던 동작이다(서버 PIT)
 io.popdesk.ops.AlertResolvedTest.resolvedFailedAlertStopsRepeating | S1A-AC-68 첫 묶음 앱이 실패 행이 없거나 첨부가 80% 아래면 경보를 이미 푼다. 기준과 테스트가 없던 동작이다(서버 PIT)
+io.popdesk.ops.PeopleAuditTest.unknownEmailSignInLeavesNoRow | S1A-AC-64 첫 묶음 앱이 없는 이메일의 로그인 실패에 감사 행을 남기지 않는다. 구현이 행을 남기게 바꾸지 않도록 두는 테스트다
 io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[1] | S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
 io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[2] | S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
 io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[3] | S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
@@ -43,6 +42,7 @@ io.popdesk.project.MembershipTest.agentsCannotChangeMembers(String)[1] | S1A-AC-
 io.popdesk.project.MembershipTest.agentsCannotChangeMembers(String)[2] | S1A-AC-56 첫 묶음의 보안 설정이 소속·배정 경로를 상담원에게 이미 403으로 막는다
 io.popdesk.project.MembershipTest.agentsCannotChangeMembers(String)[3] | S1A-AC-56 첫 묶음의 보안 설정이 소속·배정 경로를 상담원에게 이미 403으로 막는다
 io.popdesk.start.SetupRequiredContentTypeTest.setupRequiredSaysJson | S1A-AC-70 첫 묶음 앱의 503에 이미 Content-Type이 붙는다. 테스트가 없던 동작이다(서버 PIT)
+src/app/csrfRetry.1a.test.tsx.403 CSRF_TOKEN_INVALID (1a) > S1A-AC-57 C-4 댓글: CSRF가 아닌 403은 다시 보내지 않고 "이 작업을 할 권한이 없습니다."를 보인다 | S1A-AC-57 CSRF가 아닌 403은 지금도 다시 보내지 않고 권한 문구를 보인다. 구현이 모든 403을 다시 보내지 않게 두는 테스트다
 src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 데이터 있음: 줄에서 C-9 고객사 상세로 가는 링크 | 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
 src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 빈 목록: "첫 고객사를 만드세요. 고객사를 만들어야 고객을 초대할 수 있습니다."와 "고객사 만들기" | 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
 src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 처음 불러옴: 300ms가 넘으면 aria-hidden 표 뼈대, main은 aria-busy | 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
@@ -58,6 +58,6 @@ src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 쪽 넘기기: 1�
 src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 403 만들기: "이 작업을 할 권한이 없습니다." 띠, 입력은 그대로 | 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
 src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 접근성: 처음 포커스는 h1(tabindex=-1), 화면 제목을 document.title에 | 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
 src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 axe: 목록과 열린 만들기 대화상자에 접근성 위반이 없다 | 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+src/app/csrfRetry.1a.test.tsx.403 CSRF_TOKEN_INVALID (1a) > S1A-AC-57 P-5 댓글: CSRF가 아닌 403은 다시 보내지 않고 "이 작업을 할 권한이 없습니다."를 보인다 | S1A-AC-57 CSRF가 아닌 403은 지금도 다시 보내지 않고 권한 문구를 보인다. 구현이 모든 403을 다시 보내지 않게 두는 테스트다
 src/screens/P4IssueCreate.1a.test.tsx.P-4 문의 등록 (1a) > S1A-AC-65 P-4 앞단의 413(JSON이 아닌 본문): "20개까지"가 아니라 "파일이 서버 앞단의 크기 상한에 걸렸습니다"를 보인다 | S1A-AC-65 본문이 JSON이 아닌 413은 지금처럼 앞단 상한 문구다. 구현이 이 가름을 깨지 않게 두는 테스트다
 src/components/Avatar.photo.test.tsx.Avatar 사진 > S1A-AC-60 Avatar 사진 있음: 그 주소의 그림을 그리고 머리글자는 없다. 이름이 대체 글자다 | S1A-AC-60 첫 묶음 C-9가 사진 주소를 받으면 그림을 그리게 해 두었고, C-4 껍데기가 null을 받게 넓혔다
-src/components/Avatar.photo.test.tsx.Avatar 사진 > S1A-AC-60 Avatar 사진 없음: 사진 주소가 null이면 그림을 청하지 않고 머리글자를 그린다 | S1A-AC-60 첫 묶음 C-9가 사진 주소를 받으면 그림을 그리게 해 두었고, C-4 껍데기가 null을 받게 넓혔다
