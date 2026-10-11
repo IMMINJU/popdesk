@@ -1,6 +1,6 @@
 // P-6 내 정보 (1a screens.md 1절). Three parts, each with its own
 // request: 프로필, 사진, 비밀번호. The account comes from the session the frame loaded.
-import { Button, PasswordField, PhotoField, Select, TextField } from '@popdesk/ui';
+import { Badge, Button, PasswordField, PhotoField, Select, TextField } from '@popdesk/ui';
 import { useLayoutEffect, useRef, useState, type SubmitEvent } from 'react';
 import { api } from '../api';
 import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
@@ -110,6 +110,12 @@ function Profile(props: { me: Me }) {
                 {me.companies.map((c) => (
                   <li key={c.code}>
                     {c.name} <span className="pd-key">{c.code}</span>
+                    {c.manager && (
+                      <>
+                        {' '}
+                        <Badge tone="accent">담당자</Badge>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>

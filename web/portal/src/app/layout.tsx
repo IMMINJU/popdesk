@@ -1,8 +1,8 @@
 // The signed-in frame: checks the session, draws the top bar (AppShell), and
 // lets screens mark `main` busy while they load (screens.md 2절, 1절 화면 머리).
-import { Alert, AppShell, Button, EmptyState, SearchOffIcon } from '@popdesk/ui';
-import { useEffect, useRef, useState, type RefObject } from 'react';
-import { Link, Outlet } from 'react-router';
+import { Alert, AppShell, Button, EmptyState, LockIcon, NavItemLabel, SearchOffIcon, type NavItem } from '@popdesk/ui';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { Link, Outlet, useLocation } from 'react-router';
 import { api } from '../api';
 import { BusyContext } from './busy';
 import { useDocumentTitle, useFocusWhenReady } from './hooks';
@@ -11,12 +11,29 @@ import { TEXT } from './messages';
 import { useLiveNavigate } from './navigate';
 import { photoUrl } from './photos';
 import { call } from './result';
-import { useSession, useToLogin } from './sessionContext';
+import { useSession, useToLogin, type Me } from './sessionContext';
+
+/**
+ * 문의 and 우리 회사 사람 for a manager of at least one company. Anyone else would
+ * have 문의 alone, so there is no menu (2-manager screens.md P-8, S2-AC-45).
+ */
+function menu(me: Me): Omit<NavItem, 'current'>[] {
+  if (!me.companies.some((c) => c.manager)) return [];
+  return [
+    { href: '/issues', label: '문의' },
+    { href: '/members', label: t('companyPeople.title') },
+  ];
+}
+
+function isCurrent(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function PortalLayout() {
   const { me, setMe } = useSession();
   const toLogin = useToLogin();
   const navigate = useLiveNavigate();
+  const location = useLocation();
   const [problem, setProblem] = useState(false);
   const [busy, setBusy] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -74,12 +91,19 @@ export function PortalLayout() {
   }
   if (!me) return null;
 
+  const nav: NavItem[] = menu(me).map((item) => ({ ...item, current: isCurrent(location.pathname, item.href) }));
   return (
     <BusyContext value={setBusy}>
       <AppShell
         app="portal"
         displayName={TEXT.displayName}
-        nav={[]}
+        nav={nav}
+        navLabel={TEXT.menu}
+        renderLink={(item) => (
+          <Link to={item.href} aria-current={item.current ? 'page' : undefined}>
+            <NavItemLabel item={item} />
+          </Link>
+        )}
         userName={me.name}
         userPhotoUrl={photoUrl(me.id, me.photoUpdatedAt)}
         renderUserLink={(children) => (
@@ -122,21 +146,29 @@ export function PageTitle(props: { children: string; titleRef?: RefObject<HTMLHe
   );
 }
 
-/** 404: the whole screen, with an `h1` that takes focus. Does not tell missing from hidden (COM-1). */
-export function NotFound(props: { listHref: string; listLabel: string }) {
+/** Whole-screen state with an `h1` that takes focus: 404, 권한 없음. */
+function ScreenState(props: { title: string; description: string; icon: ReactNode; action: ReactNode }) {
   const heading = useRef<HTMLHeadingElement>(null);
-  useDocumentTitle(TEXT.notFound);
+  useDocumentTitle(props.title);
   useFocusWhenReady(heading, true);
+  return <EmptyState headingLevel={1} headingRef={heading} icon={props.icon} title={props.title} description={props.description} action={props.action} />;
+}
+
+/** 404: does not tell missing from hidden (COM-1). Links back to the list. */
+export function NotFound(props: { listHref: string; listLabel: string }) {
   return (
-    <EmptyState
-      headingLevel={1}
-      headingRef={heading}
-      icon={<SearchOffIcon size={20} />}
+    <ScreenState
       title={TEXT.notFound}
       description={TEXT.notFoundHelp}
+      icon={<SearchOffIcon size={20} />}
       action={<Link to={props.listHref}>{props.listLabel}</Link>}
     />
   );
+}
+
+/** 403 on 우리 회사 사람 (S2-AC-45): the whole screen, nothing of the company on it. */
+export function NoPermission() {
+  return <ScreenState title={TEXT.noPermission} description={TEXT.noPermissionHelp} icon={<LockIcon size={20} />} action={<Link to="/issues">문의 목록으로</Link>} />;
 }
 
 /** 5xx or no connection while loading: band with 다시 불러오기. */

@@ -64,6 +64,32 @@
   min-height: var(--button-height);
 }
 
+/* P-8: the company's name beside the title; the company choice and 초대 on one row. */
+.pd-members-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.pd-members-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.pd-members-bar > .pd-field {
+  flex: 1 1 12rem;
+  max-width: 20rem;
+}
+
+/* 초대 alone, without the company choice, stays at the end of the row. */
+.pd-members-bar > .pd-button:only-child {
+  margin-left: auto;
+}
+
 .pd-page-title {
   font-size: var(--text-xl);
   line-height: var(--text-xl-line);
