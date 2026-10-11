@@ -1,11 +1,14 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.company.MembershipRequestService;
+import io.popdesk.helpdesk.company.MembershipRequestService.Pending;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.ZoneOffset;
 import org.jspecify.annotations.Nullable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +21,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/console/membership-requests")
 class ConsoleMembershipRequestController {
+
+    private final MembershipRequestService requests;
+
+    ConsoleMembershipRequestController(MembershipRequestService requests) {
+        this.requests = requests;
+    }
+
+    private static PendingMembership pending(Pending p) {
+        return new PendingMembership(p.id(), new CompanyRef(p.companyCode(), p.companyName()),
+                new MembershipRequester(p.requesterId(), p.requesterName(), p.requesterEmail()), p.name(), p.email(),
+                new MembershipRequestAccount(p.accountId(), p.accountName(), p.accountRole(), p.accountStatus(),
+                        p.invitationCancelled()),
+                p.requestedAt().atOffset(ZoneOffset.UTC));
+    }
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only.";
     static final String NO_REQUEST = "`NOT_FOUND`: no such request.";
@@ -37,7 +54,8 @@ class ConsoleMembershipRequestController {
                     String companyCode,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return requests.list(CurrentAccount.get().viewer(), companyCode, page, size)
+                .map(ConsoleMembershipRequestController::pending);
     }
 
     @Operation(operationId = "approveMembershipRequest", summary = "Approve a membership request",
@@ -52,7 +70,8 @@ class ConsoleMembershipRequestController {
     @ApiResponse(responseCode = "409", description = CLOSED)
     @PostMapping("/{id}/approve")
     void approveMembershipRequest(@PathVariable long id) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        requests.approve(admin.viewer(), admin.actor(), id);
     }
 
     @Operation(operationId = "rejectMembershipRequest", summary = "Reject a membership request",
@@ -66,6 +85,6 @@ class ConsoleMembershipRequestController {
     @ApiResponse(responseCode = "409", description = CLOSED)
     @PostMapping("/{id}/reject")
     void rejectMembershipRequest(@PathVariable long id) {
-        throw new NotImplementedException();
+        requests.reject(CurrentAccount.get().actor(), id);
     }
 }

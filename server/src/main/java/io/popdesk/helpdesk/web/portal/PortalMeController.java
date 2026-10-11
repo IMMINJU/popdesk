@@ -76,6 +76,8 @@ class PortalMeController {
         AccountRow account = own.account();
         return new Me(account.id(), account.email(), account.name(), account.role(), account.locale(),
                 account.photoUpdatedAt() == null ? null : account.photoUpdatedAt().atOffset(ZoneOffset.UTC),
-                own.companies().stream().map(c -> new Company(c.code(), c.name(), c.status(), false)).toList());
+                own.companies().stream()
+                        .map(c -> new Company(c.code(), c.name(), c.status(), own.managed().contains(c.code())))
+                        .toList());
     }
 }

@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Set;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,7 +33,7 @@ class PortalCompanyController {
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
         Paged<CompanyRow> rows = companies.list(CurrentAccount.get().viewer(), page, size);
-        return new Paged<>(rows.items().stream().map(c -> new Company(c.code(), c.name(), c.status(), false)).toList(),
-                rows.page(), rows.size(), rows.totalElements(), rows.totalPages());
+        Set<String> managed = companies.managedCodes(CurrentAccount.get().viewer());
+        return rows.map(c -> new Company(c.code(), c.name(), c.status(), managed.contains(c.code())));
     }
 }

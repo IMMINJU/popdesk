@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -28,9 +29,18 @@ public class CompanyRepository {
     public record CompanyRow(long id, String code, String name, String legalName, CompanyStatus status,
             Instant createdAt) {}
 
-    /** A customer or agent of a company; {@code photoUpdatedAt} is null without a profile photo. */
+    /**
+     * A customer or agent of a company; {@code photoUpdatedAt} is null without a profile photo.
+     * {@code manager}: the customer is a manager of this company; always false for an agent.
+     */
     public record MemberRow(long companyId, long accountId, String name, String email, AccountStatus status,
-            Instant photoUpdatedAt) {}
+            Instant photoUpdatedAt, boolean manager) {}
+
+    /** A company the caller belongs to as a customer, and whether they are a manager of it. */
+    record OwnMembership(CompanyRow company, boolean manager) {}
+
+    /** A membership as a row of the member list names it. */
+    record MemberRef(long accountId, boolean manager) {}
 
     /** A company someone belongs to, by account. */
     public record MembershipRow(long accountId, String code, String name) {}
@@ -119,7 +129,8 @@ public class CompanyRepository {
 
     /** One page of a company's customers or agents, in name order, if the viewer may see the company. */
     public List<MemberRow> listMembers(Viewer viewer, long companyId, Role role, long offset, int limit) {
-        return jdbc.sql("select m.company_id, a.id, a.name, a.email, a.status, p.updated_at from "
+        return jdbc.sql("select m.company_id, a.id, a.name, a.email, a.status, p.updated_at, "
+                        + (role == Role.CUSTOMER ? "m.manager" : "false") + " from "
                         + memberTable(role) + " m join account a on a.id = m.account_id "
                         + "join company c on c.id = m.company_id left join account_photo p on p.account_id = a.id "
                         + "where m.company_id = ? and " + SCOPE + " order by a.name, a.id offset ? limit ?")
@@ -142,6 +153,46 @@ public class CompanyRepository {
                         + "where m.account_id = any(?) and " + SCOPE + " order by c.code")
                 .params(with(new Object[] {accountIds.toArray(Long[]::new)}, scope(viewer)))
                 .query((rs, n) -> new MembershipRow(rs.getLong(1), rs.getString(2), rs.getString(3))).list();
+    }
+
+    /** The codes of the companies where the viewer, a customer, is a manager (S2-AC-07). */
+    public List<String> listManagedCodes(Viewer viewer) {
+        return jdbc.sql("select c.code from company_member cm join company c on c.id = cm.company_id "
+                        + "where cm.account_id = ? and cm.manager and 'CUSTOMER' = ? order by c.code")
+                .params(viewer.accountId(), viewer.role().name()).query(String.class).list();
+    }
+
+    /**
+     * The company with this code and the viewer's own membership of it, in one statement; empty when
+     * the viewer is no customer who belongs to it. With {@code lock}, the membership row is locked
+     * {@code FOR SHARE} until the end of the transaction: a change of the mark or the end of the
+     * membership waits for the transaction, or the transaction reads what that change left (S2-AC-11).
+     */
+    Optional<OwnMembership> findOwnMembership(Viewer viewer, String code, boolean lock) {
+        return jdbc.sql("select " + COLUMNS + ", cm.manager from company c join company_member cm "
+                        + "on cm.company_id = c.id where c.code = ? and cm.account_id = ? and 'CUSTOMER' = ?"
+                        + (lock ? " for share of cm" : ""))
+                .params(code, viewer.accountId(), viewer.role().name())
+                .query((rs, n) -> new OwnMembership(company(rs, n), rs.getBoolean("manager"))).optional();
+    }
+
+    /** The membership of this company that the member list names with this row ID. */
+    Optional<MemberRef> findMemberByRowId(long companyId, UUID rowId) {
+        return jdbc.sql("select account_id, manager from company_member where company_id = ? and row_id = ?")
+                .params(companyId, rowId)
+                .query((rs, n) -> new MemberRef(rs.getLong("account_id"), rs.getBoolean("manager"))).optional();
+    }
+
+    /** Whether the account belongs to the company as a customer. */
+    boolean isMember(long companyId, long accountId) {
+        return jdbc.sql("select exists (select 1 from company_member where company_id = ? and account_id = ?)")
+                .params(companyId, accountId).query(Boolean.class).single();
+    }
+
+    /** How many companies the account belongs to as a customer. */
+    long countMemberships(long accountId) {
+        return jdbc.sql("select count(*) from company_member where account_id = ?").param(accountId)
+                .query(Long.class).single();
     }
 
     // Writes
@@ -167,6 +218,37 @@ public class CompanyRepository {
         return jdbc.sql("insert into company_member (company_id, account_id, tenant_id, created_at) values (?, ?, 1, ?) "
                         + "on conflict do nothing")
                 .params(companyId, accountId, Timestamp.from(now)).update() == 1;
+    }
+
+    /**
+     * Makes a customer belong to a company with the row ID of the membership request that asked for it
+     * (S2-AC-34); false when the customer belonged to it already.
+     */
+    boolean insertMember(long companyId, long accountId, UUID rowId, Instant now) {
+        return jdbc.sql("insert into company_member (company_id, account_id, tenant_id, created_at, row_id) "
+                        + "values (?, ?, 1, ?, ?) on conflict (company_id, account_id) do nothing")
+                .params(companyId, accountId, Timestamp.from(now), rowId).update() == 1;
+    }
+
+    /** The manager mark of a membership, locked until the end of the transaction; empty for no member. */
+    Optional<Boolean> lockManager(long companyId, long accountId) {
+        return jdbc.sql("select manager from company_member where company_id = ? and account_id = ? "
+                        + "for no key update")
+                .params(companyId, accountId).query(Boolean.class).optional();
+    }
+
+    void updateManager(long companyId, long accountId, boolean manager) {
+        jdbc.sql("update company_member set manager = ? where company_id = ? and account_id = ?")
+                .params(manager, companyId, accountId).update();
+    }
+
+    /**
+     * Takes a customer who is no manager out of a company; false when the customer did not belong to it
+     * or is a manager now.
+     */
+    boolean deleteMemberUnlessManager(long companyId, long accountId) {
+        return jdbc.sql("delete from company_member where company_id = ? and account_id = ? and not manager")
+                .params(companyId, accountId).update() == 1;
     }
 
     /** Takes a customer out of a company; false when the customer did not belong to it. */
@@ -215,6 +297,7 @@ public class CompanyRepository {
     private static MemberRow member(ResultSet rs, int row) throws SQLException {
         Timestamp photo = rs.getTimestamp(6);
         return new MemberRow(rs.getLong(1), rs.getLong(2), rs.getString(3), rs.getString(4),
-                AccountStatus.valueOf(rs.getString(5)), photo == null ? null : photo.toInstant());
+                AccountStatus.valueOf(rs.getString(5)), photo == null ? null : photo.toInstant(),
+                rs.getBoolean(7));
     }
 }

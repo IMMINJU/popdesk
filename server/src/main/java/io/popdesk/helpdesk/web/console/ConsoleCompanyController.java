@@ -1,6 +1,5 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.Role;
@@ -13,6 +12,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,14 +38,20 @@ class ConsoleCompanyController {
         this.companies = companies;
     }
 
-    static Company company(CompanyRow row) {
+    static Company company(CompanyRow row, int pendingMembershipRequests) {
         return new Company(row.code(), row.name(), row.legalName(), row.status(),
-                row.createdAt().atOffset(ZoneOffset.UTC), 0);
+                row.createdAt().atOffset(ZoneOffset.UTC), pendingMembershipRequests);
+    }
+
+    /** The company with the membership requests that wait for the caller, an admin; 0 for an agent. */
+    private Company company(CompanyRow row) {
+        return company(row, companies.pendingRequests(CurrentAccount.get().viewer(), List.of(row))
+                .getOrDefault(row.code(), 0));
     }
 
     static CompanyMember member(MemberRow row) {
         return new CompanyMember(row.accountId(), row.name(), row.email(), row.status(),
-                row.photoUpdatedAt() == null ? null : row.photoUpdatedAt().atOffset(ZoneOffset.UTC), false);
+                row.photoUpdatedAt() == null ? null : row.photoUpdatedAt().atOffset(ZoneOffset.UTC), row.manager());
     }
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only (S0-AC-30).";
@@ -63,8 +70,8 @@ class ConsoleCompanyController {
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
         Paged<CompanyRow> rows = companies.list(CurrentAccount.get().viewer(), page, size);
-        return new Paged<>(rows.items().stream().map(ConsoleCompanyController::company).toList(), rows.page(),
-                rows.size(), rows.totalElements(), rows.totalPages());
+        Map<String, Integer> pending = companies.pendingRequests(CurrentAccount.get().viewer(), rows.items());
+        return rows.map(row -> company(row, pending.getOrDefault(row.code(), 0)));
     }
 
     @Operation(operationId = "createCompany", summary = "Create a company",
@@ -211,7 +218,8 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = NOT_A_MEMBER)
     @PutMapping("/{code}/customers/{accountId}/manager")
     CompanyMember markCompanyManager(@PathVariable String code, @PathVariable long accountId) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        return member(companies.markManager(admin.viewer(), admin.actor(), code, accountId));
     }
 
     @Operation(operationId = "unmarkCompanyManager", summary = "Make a customer no longer a manager of a company",
@@ -223,7 +231,8 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = NOT_A_MEMBER)
     @DeleteMapping("/{code}/customers/{accountId}/manager")
     CompanyMember unmarkCompanyManager(@PathVariable String code, @PathVariable long accountId) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        return member(companies.unmarkManager(admin.viewer(), admin.actor(), code, accountId));
     }
 
     @Operation(operationId = "unassignAgent", summary = "Take an agent off a company",

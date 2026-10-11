@@ -1,7 +1,8 @@
 package io.popdesk.helpdesk.web.portal;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.company.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -22,6 +23,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/portal/companies/{code}/members")
 class PortalMemberController {
+
+    private final MemberService members;
+
+    PortalMemberController(MemberService members) {
+        this.members = members;
+    }
 
     static final String NOT_MANAGER = "`FORBIDDEN`: the caller belongs to the company but is not its manager "
             + "(S2-AC-09).";
@@ -44,7 +51,8 @@ class PortalMemberController {
             @PathVariable String code,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return members.list(CurrentAccount.get().viewer(), code, page, size)
+                .map(r -> new Member(r.id(), r.name(), r.email(), r.status(), r.manager()));
     }
 
     @Operation(operationId = "inviteCompanyMember", summary = "Invite a customer to the company",
@@ -62,7 +70,8 @@ class PortalMemberController {
     @PostMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void inviteCompanyMember(@PathVariable String code, @RequestBody InviteMemberRequest request) {
-        throw new NotImplementedException();
+        CurrentAccount manager = CurrentAccount.get();
+        members.invite(manager.viewer(), manager.actor(), code, request.email(), request.name());
     }
 
     @Operation(operationId = "removeCompanyMember", summary = "Take a member out of the company",
@@ -78,7 +87,8 @@ class PortalMemberController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void removeCompanyMember(@PathVariable String code, @Parameter(description = ROW_ID) @PathVariable String id) {
-        throw new NotImplementedException();
+        CurrentAccount manager = CurrentAccount.get();
+        members.remove(manager.viewer(), manager.actor(), code, id);
     }
 
     @Operation(operationId = "resendMemberInvitation", summary = "Send the invitation of a member again",
@@ -95,6 +105,7 @@ class PortalMemberController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void resendMemberInvitation(@PathVariable String code,
             @Parameter(description = ROW_ID) @PathVariable String id) {
-        throw new NotImplementedException();
+        CurrentAccount manager = CurrentAccount.get();
+        members.resend(manager.viewer(), manager.actor(), code, id);
     }
 }

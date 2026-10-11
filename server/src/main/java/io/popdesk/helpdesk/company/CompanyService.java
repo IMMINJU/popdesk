@@ -16,6 +16,8 @@ import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
 import io.popdesk.helpdesk.company.CompanyRepository.MemberRow;
+import io.popdesk.helpdesk.company.MembershipRequestRepository.RequestRow;
+import io.popdesk.helpdesk.company.MembershipRequestRepository.State;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -23,6 +25,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -46,14 +49,16 @@ public class CompanyService {
     static final int NAME_MAX = 100;
 
     private final CompanyRepository companies;
+    private final MembershipRequestRepository requests;
     private final AccountRepository accounts;
     private final AuditLog audit;
     private final Transactions transactions;
     private final Clock clock;
 
-    CompanyService(CompanyRepository companies, AccountRepository accounts, AuditLog audit, Transactions transactions,
-            Clock clock) {
+    CompanyService(CompanyRepository companies, MembershipRequestRepository requests, AccountRepository accounts,
+            AuditLog audit, Transactions transactions, Clock clock) {
         this.companies = companies;
+        this.requests = requests;
         this.accounts = accounts;
         this.audit = audit;
         this.transactions = transactions;
@@ -103,6 +108,33 @@ public class CompanyService {
     public Paged<CompanyRow> list(Viewer viewer, int page, int size) {
         PageRequest request = PageRequest.of(page, size);
         return request.of(companies.list(viewer, request.offset(), request.size()), companies.count(viewer));
+    }
+
+    /**
+     * How many membership requests wait for an admin, by company code, for these companies (S2-AC-48);
+     * a company without one is not in the map. Empty for an agent, who cannot list the requests
+     * (S2-AC-33).
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Integer> pendingRequests(Viewer viewer, List<CompanyRow> rows) {
+        if (!viewer.admin()) {
+            return Map.of();
+        }
+        Map<Long, Integer> byId = requests.countPendingByCompany(rows.stream().map(CompanyRow::id).toList());
+        Map<String, Integer> byCode = new LinkedHashMap<>();
+        for (CompanyRow row : rows) {
+            Integer count = byId.get(row.id());
+            if (count != null) {
+                byCode.put(row.code(), count);
+            }
+        }
+        return byCode;
+    }
+
+    /** The codes of the companies where the caller, a customer, is a manager (S2-AC-07). */
+    @Transactional(readOnly = true)
+    public Set<String> managedCodes(Viewer viewer) {
+        return Set.copyOf(companies.listManagedCodes(viewer));
     }
 
     /** Customers or agents of a company: the company first (404), then the page (400). */
@@ -181,7 +213,8 @@ public class CompanyService {
 
     /**
      * Makes a customer, invited or active, a member of a company (S1A-AC-50). Adding again changes
-     * nothing and is not audited again.
+     * nothing and is not audited again. A membership request that waits for this account in this company
+     * is closed as approved (S2-AC-38).
      */
     public MemberRow addCustomer(Viewer viewer, AuditLog.Actor admin, String code, long accountId) {
         return transactions.run(() -> {
@@ -193,12 +226,69 @@ public class CompanyService {
             if (company.status() == CompanyStatus.ARCHIVED) {
                 throw notActive();
             }
-            if (companies.insertMember(company.id(), customer.id(), now())) {
-                audit.record(admin, AuditAction.CUSTOMER_ADDED, target(company.code(), customer.id()), Map.of("member", true));
-            }
-            return new MemberRow(company.id(), customer.id(), customer.name(), customer.email(), customer.status(),
-                    customer.photoUpdatedAt());
+            admit(admin, company, customer.id());
+            return member(company, customer, companies.lockManager(company.id(), customer.id()).orElse(false));
         });
+    }
+
+    /**
+     * The membership, in the caller's transaction, for a company and a customer already checked. An open
+     * membership request for the account is locked first, before any insert, and closed as approved; the
+     * membership takes its row ID, so the manager's row stays the same row (S2-AC-34). Leaves
+     * {@code MEMBERSHIP_REQUEST_APPROVED} for the request and {@code CUSTOMER_ADDED} for the membership.
+     */
+    void admit(AuditLog.Actor admin, CompanyRow company, long accountId) {
+        Instant now = now();
+        RequestRow request = requests.lockPending(company.id(), accountId).orElse(null);
+        boolean added = request == null ? companies.insertMember(company.id(), accountId, now)
+                : companies.insertMember(company.id(), accountId, request.rowId(), now);
+        if (request != null) {
+            requests.updateClosed(request.id(), State.APPROVED, admin.accountId(), now);
+            audit.record(admin, AuditAction.MEMBERSHIP_REQUEST_APPROVED, target(company.code(), accountId),
+                    Map.of("email", request.email()));
+        }
+        if (added) {
+            audit.record(admin, AuditAction.CUSTOMER_ADDED, target(company.code(), accountId), Map.of("member", true));
+        }
+    }
+
+    /**
+     * Marks a customer of a company, invited or active, as its manager (S2-AC-01, S2-AC-05). An account
+     * that is no customer of the company is 404 (S2-AC-02). Marking again changes nothing and is not
+     * audited again. An {@code ARCHIVED} company takes no new manager (S2-AC-06).
+     */
+    public MemberRow markManager(Viewer viewer, AuditLog.Actor admin, String code, long accountId) {
+        return changeManager(viewer, admin, code, accountId, true);
+    }
+
+    /** Takes the manager mark away, in a company of any status; the customer stays a member (S2-AC-01). */
+    public MemberRow unmarkManager(Viewer viewer, AuditLog.Actor admin, String code, long accountId) {
+        return changeManager(viewer, admin, code, accountId, false);
+    }
+
+    private MemberRow changeManager(Viewer viewer, AuditLog.Actor admin, String code, long accountId,
+            boolean manager) {
+        return transactions.run(() -> {
+            CompanyRow company = companies.findByCode(viewer, code).orElseThrow(ApiException::notFound);
+            // The membership row is locked before the mark is read: a manager's write that holds it shared
+            // ends first, and the next one reads this change (S2-AC-11).
+            boolean marked = companies.lockManager(company.id(), accountId).orElseThrow(ApiException::notFound);
+            AccountRow customer = accounts.findById(accountId).orElseThrow(ApiException::notFound);
+            if (manager && company.status() == CompanyStatus.ARCHIVED) {
+                throw notActive();
+            }
+            if (marked != manager) {
+                companies.updateManager(company.id(), accountId, manager);
+                audit.record(admin, manager ? AuditAction.MANAGER_MARKED : AuditAction.MANAGER_UNMARKED,
+                        target(company.code(), accountId), Map.of("manager", manager));
+            }
+            return member(company, customer, manager);
+        });
+    }
+
+    private static MemberRow member(CompanyRow company, AccountRow account, boolean manager) {
+        return new MemberRow(company.id(), account.id(), account.name(), account.email(), account.status(),
+                account.photoUpdatedAt(), manager);
     }
 
     /**
@@ -251,8 +341,7 @@ public class CompanyService {
                 changes.put("assigned", true);
                 audit.record(admin, AuditAction.AGENT_ASSIGNED, target(company.code(), agent.id()), changes);
             }
-            return new MemberRow(company.id(), agent.id(), agent.name(), agent.email(), agent.status(),
-                    agent.photoUpdatedAt());
+            return member(company, agent, false);
         });
     }
 
@@ -264,7 +353,7 @@ public class CompanyService {
     }
 
     /** The target of a membership or an assignment: the company and the account, by ID. */
-    private static Map<String, Object> target(String code, long accountId) {
+    static Map<String, Object> target(String code, long accountId) {
         Map<String, Object> target = target(code);
         target.put("accountId", accountId);
         return target;
@@ -282,7 +371,7 @@ public class CompanyService {
         return new ApiException(HttpStatus.BAD_REQUEST, "COMPANY_ARCHIVED", "The company is archived.");
     }
 
-    private static ApiException notActive() {
+    static ApiException notActive() {
         return new ApiException(HttpStatus.BAD_REQUEST, "COMPANY_NOT_ACTIVE", "The company is not active.");
     }
 

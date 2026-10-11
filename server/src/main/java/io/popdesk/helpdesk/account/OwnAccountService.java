@@ -43,9 +43,10 @@ public class OwnAccountService {
 
     /**
      * An account as it sees itself: with the companies a customer belongs to or an agent is assigned to,
-     * in code order; none for an admin.
+     * in code order; none for an admin. {@code managed}: the codes of the companies where a customer is a
+     * manager (S2-AC-07).
      */
-    public record Own(AccountRow account, List<CompanyRow> companies) {}
+    public record Own(AccountRow account, List<CompanyRow> companies, Set<String> managed) {}
 
     private final AccountRepository accounts;
     private final CompanyRepository companies;
@@ -69,7 +70,8 @@ public class OwnAccountService {
     /** The caller's own details (S1A-AC-19). */
     @Transactional(readOnly = true)
     public Own get(CurrentAccount me) {
-        return new Own(row(me), me.role() == Role.ADMIN ? List.of() : companies.listOwn(me.viewer()));
+        return new Own(row(me), me.role() == Role.ADMIN ? List.of() : companies.listOwn(me.viewer()),
+                me.role() == Role.CUSTOMER ? Set.copyOf(companies.listManagedCodes(me.viewer())) : Set.of());
     }
 
     /**
