@@ -91,7 +91,7 @@
 | S1A-AC-30 | When 관리자가 계정의 이름을 고치면, the system shall 저장한다. 수락 전 계정도 된다. (ACCT-3, INVITE-5) |
 | S1A-AC-31 | When 관리자가 `AGENT`를 `ADMIN`으로, `ADMIN`을 `AGENT`로 바꾸면, the system shall 역할을 바꾼다. 상담원 배정은 지우지 않고 둔다. (ACCT-3, 5절 3) |
 | S1A-AC-32 | If 고객 역할로 바꾸거나 고객의 역할을 바꾸려 하면, then the system shall 400으로 답한다. (ACCT-3) |
-| S1A-AC-33 | If 관리자가 자기 자신을 정지하거나 자기 역할을 바꾸려 하면, then the system shall 400으로 답한다. (ACCT-3) |
+| S1A-AC-33 | If 관리자가 자기 자신을 정지하거나 자기 역할을 바꾸려 하면, then the system shall 400 `OWN_ACCOUNT`로 답한다. 그 사람이 하나뿐인 관리자여도 `LAST_ADMIN`이 아니라 `OWN_ACCOUNT`다(자기 자신인지를 먼저 본다). (ACCT-3) |
 | S1A-AC-34 | When 관리자가 `ACTIVE` 계정을 정지하면, the system shall 상태를 `SUSPENDED`로 바꾼다. 정지된 계정은 로그인할 수 없고 메일을 받지 않는다. 이미 정지된 계정을 다시 정지하면 200이다. If 수락 전이거나 초대가 취소된 계정을 정지하려 하면, then 400 `ACCOUNT_NOT_ACTIVE`다(초대 취소를 쓴다). (ACCT-3, S0-AC-22, S0-AC-69, C-4에서 정함) |
 | S1A-AC-35 | When 관리자가 정지를 풀면, the system shall 상태를 `ACTIVE`로 바꾼다. 이미 `ACTIVE`면 200이다. If 그 계정이 초대를 수락한 적이 없으면, then 400이다(다시 보내기를 쓴다). (ACCT-3, INVITE-3, 5절 4) |
 | S1A-AC-36 | When 관리자가 `ACTIVE` 계정의 비밀번호를 초기화하면, the system shall 지금 비밀번호를 못 쓰게 하고, 잠금을 풀고, 비밀번호 찾기와 같은 재설정 메일을 넣는다. If 계정이 `ACTIVE`가 아니면, then 400 `ACCOUNT_NOT_ACTIVE`다. (ACCT-3, AUTH-3, AUTH-7, 5절 5, C-4에서 정함) |
@@ -102,7 +102,7 @@
 | ID | 기준 |
 |---|---|
 | S1A-AC-38 | When 관리자가 수락 전 계정에 초대를 다시 보내면, the system shall 새 토큰을 만들어 이전 링크를 무효로 하고 초대 메일을 넣는다. 만료는 그때부터 7일이다. SMTP 설정이 없으면 초대할 때처럼 링크를 응답에 한 번 준다. (INVITE-3, INVITE-2, INVITE-6, C-4에서 정함) |
-| S1A-AC-39 | When 관리자가 수락 전 계정의 초대를 취소하면, the system shall 계정을 `SUSPENDED`로 바꾸고 링크를 무효로 한다. 대기에 남은 초대 메일은 나가지 않는다. (INVITE-3, S0-AC-69) |
+| S1A-AC-39 | When 관리자가 수락 전 계정의 초대를 취소하면, the system shall 계정을 `SUSPENDED`로 바꾸고 링크를 무효로 한다. 대기에 남은 초대 메일은 나가지 않는다. 소속과 배정은 그대로 둔다. (INVITE-3, S0-AC-69) |
 | S1A-AC-40 | When 취소된 초대를 다시 보내면, the system shall 계정을 `INVITED`로 되돌리고 새 초대 메일을 넣는다. (INVITE-3) |
 | S1A-AC-41 | If 수락한 적이 있는 계정에 다시 보내기나 취소를 하려 하면, then the system shall 400으로 답한다. (INVITE-3) |
 | S1A-AC-42 | The system shall 수락 전 계정 목록(S0-AC-40)에 취소된 초대도 취소됨 표시와 함께 준다. (INVITE-3, screens C-10) |
