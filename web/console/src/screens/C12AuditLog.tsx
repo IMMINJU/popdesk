@@ -173,6 +173,13 @@ function minuteText(iso: string): string {
   return `${String(at.getFullYear())}년 ${String(at.getMonth() + 1)}월 ${String(at.getDate())}일 ${pad(at.getHours())}:${pad(at.getMinutes())}`;
 }
 
+/** The exact time of an entry, to the second, in the browser's time zone. */
+function secondText(iso: string): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return iso;
+  return new Intl.DateTimeFormat(document.documentElement.lang || 'ko', { dateStyle: 'long', timeStyle: 'medium' }).format(at);
+}
+
 const ACTOR_FORM_ID = 'audit-actor';
 const SYSTEM_CHOICE: Option[] = [{ value: String(SYSTEM_ID), label: SYSTEM }];
 
@@ -382,7 +389,8 @@ export function C12AuditLog() {
   };
 
   const columns: DataTableColumn<AuditEntry>[] = [
-    { key: 'at', header: '시각', cell: (e) => <RelativeTime dateTime={e.occurredAt} />, width: '8rem' },
+    // One Tab stop less in every row: the exact time is in the opened row.
+    { key: 'at', header: '시각', cell: (e) => <RelativeTime dateTime={e.occurredAt} focusable={false} />, width: '8rem' },
     {
       key: 'actor',
       header: '한 사람',
@@ -443,7 +451,7 @@ export function C12AuditLog() {
   );
 
   return (
-    <div className="pd-screen">
+    <div className="pd-screen pd-audit">
       <div className="pd-screen-head">
         <PageTitle titleRef={heading}>{t('auditLog.title')}</PageTitle>
       </div>
@@ -589,6 +597,12 @@ export function C12AuditLog() {
                 <dt>항목 ID</dt>
                 <dd>
                   <code className="pd-code">{e.id}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>시각</dt>
+                <dd>
+                  <time dateTime={e.occurredAt}>{secondText(e.occurredAt)}</time>
                 </dd>
               </div>
               <div>

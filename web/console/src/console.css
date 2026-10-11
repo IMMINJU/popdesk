@@ -205,6 +205,22 @@
 
 /* C-12 audit log: wider filters, the two actions with their help, cells of two lines */
 
+/* Korean breaks between any two letters: 시각, 한 사람, 일, and 대상 break between
+   words only, and 바뀐 값 takes the rest. Too narrow for that, the table scrolls sideways. */
+.pd-audit .pd-table td {
+  word-break: keep-all;
+}
+
+.pd-audit .pd-table .pd-time,
+.pd-audit .pd-table .pd-code {
+  white-space: nowrap;
+}
+
+.pd-audit .pd-table .pd-audit-changes {
+  min-width: 14rem;
+  overflow-wrap: anywhere;
+}
+
 .pd-audit-filters > .pd-field[data-pd='Select'] {
   width: 14rem;
 }
@@ -255,7 +271,8 @@
   line-height: var(--text-xs-line);
 }
 
-.pd-table-expanded .pd-code {
+.pd-audit .pd-table .pd-table-expanded .pd-code {
+  white-space: normal;
   word-break: break-all;
 }
 
