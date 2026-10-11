@@ -220,5 +220,16 @@ final class BoundaryList {
                     "project.MembershipTest#removedCustomerLosesTheCompany"),
             tested("DELETE", "/api/console/companies/{code}/agents/{accountId}",
                     "project.MembershipTest#agentsCannotChangeMembers",
-                    "project.MembershipTest#unassignedAgentLosesTheCompany"));
+                    "project.MembershipTest#unassignedAgentLosesTheCompany"),
+
+            // Slice 1b (S1B-AC-39): the 4 operations it adds. Only admins read the audit log, and an admin
+            // sees every customer company, so no answer is narrowed by a customer company.
+            none("GET", "/api/console/audit-log",
+                    "admins only (checked by audit.AuditLogAccessTest#agentForbidden), and an admin sees every customer company; the log is not narrowed by a customer company"),
+            none("GET", "/api/console/audit-log/export",
+                    "admins only (checked by audit.AuditLogAccessTest#agentForbidden), and an admin sees every customer company; the file holds what the log holds"),
+            none("HEAD", "/api/console/audit-log/export",
+                    "admins only (checked by audit.AuditLogAccessTest#agentForbidden); answers with headers only, no audit entry and no customer data"),
+            none("POST", "/api/console/audit-log/verify",
+                    "admins only; checks the whole hash chain and answers with one result, which no customer company narrows"));
 }
