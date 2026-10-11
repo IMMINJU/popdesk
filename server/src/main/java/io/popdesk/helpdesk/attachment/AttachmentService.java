@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.attachment;
 
 import io.popdesk.ApiError;
+import io.popdesk.ApiErrors;
 import io.popdesk.ApiException;
 import io.popdesk.PageRequest;
 import io.popdesk.Paged;
@@ -60,6 +61,9 @@ public class AttachmentService {
 
     /** The largest sum of the public attachments of one issue (ATT-2): 50 MB. */
     static final long MAX_PUBLIC_PER_ISSUE = DataSize.ofMegabytes(50).toBytes();
+
+    /** The most files one filing carries (S1A-AC-65). */
+    static final int MAX_FILES_PER_FILING = 20;
 
     static final int NAME_MAX = 255;
     static final int CONTENT_TYPE_MAX = 255;
@@ -158,6 +162,19 @@ public class AttachmentService {
         }
         reviewQuota();
         return stored;
+    }
+
+    /**
+     * The first check of a filing with files, before the issue is looked at and before any file is
+     * written: more than {@value #MAX_FILES_PER_FILING} files is 413 (S1A-AC-65), and every file counts
+     * toward the account's upload limit, all of them or none (S1A-AC-66). A refused filing counts nothing.
+     */
+    public void countFiling(Viewer viewer, List<MultipartFile> files) {
+        if (files.size() > MAX_FILES_PER_FILING) {
+            throw new ApiException(HttpStatus.PAYLOAD_TOO_LARGE, ApiErrors.PAYLOAD_TOO_LARGE,
+                    ApiErrors.PAYLOAD_TOO_LARGE_MESSAGE);
+        }
+        rateLimit.count(AccountRateLimit.Action.ATTACHMENT, viewer.accountId(), files.size());
     }
 
     /**

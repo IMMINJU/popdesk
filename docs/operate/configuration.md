@@ -200,6 +200,7 @@ Emails and webhook messages wait in a queue in the database and are sent by the 
 - A deleted attachment keeps its row as a trace without the file name. Its file is removed at once; if that fails, the delete still succeeds and the daily attachment cleanup removes the file.
 - The daily cleanup (`attachment-cleanup`) also ends uploads that never finished: a file still pending after an hour is removed. It works from the database rows only and never lists the storage.
 - The metric `popdesk_attachments_bytes` is the total that `POPDESK_ATTACHMENT_QUOTA` limits.
+- A new issue carries at most 20 files; with more the request gets 413. Each file of a new issue counts toward the account's 30 uploads in 60 seconds.
 
 ## Commands
 

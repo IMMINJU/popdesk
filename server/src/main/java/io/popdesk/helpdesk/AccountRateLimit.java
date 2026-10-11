@@ -30,7 +30,7 @@ public class AccountRateLimit {
         ISSUE(10),
         /** Adding a comment (S0-AC-55). */
         COMMENT(30),
-        /** Uploading an attachment (S0-AC-65). */
+        /** Uploading an attachment (S0-AC-65), also one filed with a new issue (S1A-AC-66). */
         ATTACHMENT(30);
 
         final int limit;
@@ -54,6 +54,15 @@ public class AccountRateLimit {
      * until the oldest request in the window leaves it, and does not count the request.
      */
     public void count(Action action, long accountId) {
+        count(action, accountId, 1);
+    }
+
+    /**
+     * Counts {@code times} requests of {@code action} at once, all or none: when they do not all fit,
+     * throws 429 with the time until enough of the window's requests have left it, and counts nothing.
+     * More than the limit never fits; the caller refuses that before it counts.
+     */
+    public void count(Action action, long accountId, int times) {
         Instant now = clock.instant();
         Instant start = now.minus(WINDOW);
         if (requests.size() > SWEEP_ABOVE) {
@@ -68,10 +77,16 @@ public class AccountRateLimit {
             while (!window.isEmpty() && !window.peekFirst().isAfter(start)) {
                 window.pollFirst();
             }
-            if (window.size() >= action.limit) {
-                throw ApiException.rateLimited(Duration.between(now, window.peekFirst().plus(WINDOW)));
+            int over = window.size() + times - action.limit;
+            if (over > 0) {
+                // The request that has to leave the window last for these to fit; the newest when they never do.
+                Instant last = window.stream().skip(Math.max(0, Math.min(over, window.size()) - 1L)).findFirst()
+                        .orElse(now);
+                throw ApiException.rateLimited(Duration.between(now, last.plus(WINDOW)));
             }
-            window.addLast(now);
+            for (int i = 0; i < times; i++) {
+                window.addLast(now);
+            }
         }
     }
 }
