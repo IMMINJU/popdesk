@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode, type Ref } from 'react';
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type Ref } from 'react';
 import { SidebarIcon } from '../icons';
 import { Avatar } from './Avatar';
 import { Button } from './Button';
@@ -27,7 +27,7 @@ export interface AppShellProps {
   /** "본문으로 건너뛰기". */
   skipLinkLabel: string;
   children: ReactNode;
-  /** Console side menu 펼침·접힘. */
+  /** Console side menu 펼침·접힘. Under `bp-narrow` the shell folds it by itself and opens it over the content. */
   sidebarCollapsed?: boolean;
   onSidebarToggle?: (collapsed: boolean) => void;
   /** Name of the side menu toggle, e.g. "옆 메뉴". Default "Menu". */
@@ -47,13 +47,52 @@ export interface AppShellProps {
   mainRef?: Ref<HTMLElement>;
 }
 
+/** `bp-narrow` (tokens.md 6절): the console's side menu is folded. */
+const NARROW = '(max-width: 1023.98px)';
+
+function watchNarrow(onChange: () => void): () => void {
+  if (typeof window.matchMedia !== 'function') return () => undefined;
+  const query = window.matchMedia(NARROW);
+  query.addEventListener('change', onChange);
+  return () => {
+    query.removeEventListener('change', onChange);
+  };
+}
+
+function isNarrow(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia(NARROW).matches;
+}
+
 /**
  * Skip link, head (display name, menu, user, log out), and `main#main`.
  * The console has no top bar: the side menu holds the name, the menu, and the
  * user with log out at the bottom (tokens.md 9절). The portal has a top bar.
+ *
+ * A folded side menu shows no menu, only the button that opens it. In a narrow
+ * window the menu is folded whatever `sidebarCollapsed` says, and the button
+ * opens it over the content until a link, Escape, or a click beside it closes it.
  */
 export function AppShell({ mainRef, ...props }: AppShellProps) {
-  const collapsed = props.sidebarCollapsed ?? false;
+  const head = useRef<HTMLElement>(null);
+  const narrowWindow = useSyncExternalStore(watchNarrow, isNarrow, () => false);
+  // Without the button a folded menu could not be opened again.
+  const narrow = narrowWindow && props.app === 'console' && props.onSidebarToggle !== undefined;
+  const [over, setOver] = useState(false);
+  const opened = narrow && over;
+  const collapsed = narrow ? !over : (props.sidebarCollapsed ?? false);
+  useEffect(() => {
+    if (!opened) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOver(false);
+      // The menu goes away with whatever had focus in it.
+      head.current?.querySelector<HTMLElement>('button[aria-expanded]')?.focus();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [opened]);
   const brand = (
     <span className="pd-shell-brand">
       <span className="pd-shell-logo" aria-hidden="true" />
@@ -102,11 +141,24 @@ export function AppShell({ mainRef, ...props }: AppShellProps) {
         )
       : brand;
   return (
-    <div className="pd-shell" data-pd="AppShell" data-app={props.app} data-sidebar-collapsed={collapsed ? 'true' : undefined}>
+    <div
+      className="pd-shell"
+      data-pd="AppShell"
+      data-app={props.app}
+      data-sidebar-collapsed={collapsed ? 'true' : undefined}
+      data-sidebar-over={opened ? 'true' : undefined}
+    >
       <a className="pd-skip-link" href="#main">
         {props.skipLinkLabel}
       </a>
-      <header className="pd-shell-head">
+      <header
+        ref={head}
+        className="pd-shell-head"
+        onClick={(e) => {
+          // A link of the opened menu leads to a screen: the menu gets out of its way.
+          if (opened && e.target instanceof Element && e.target.closest('a')) setOver(false);
+        }}
+      >
         <div className="pd-shell-top">
           {home}
           {props.onSidebarToggle && (
@@ -117,13 +169,25 @@ export function AppShell({ mainRef, ...props }: AppShellProps) {
               tooltip={false}
               expanded={!collapsed}
               {...(props.nav.length > 0 ? { controls: 'pd-shell-menu' } : {})}
-              onClick={() => props.onSidebarToggle?.(!collapsed)}
+              onClick={() => {
+                if (narrow) setOver(!over);
+                else props.onSidebarToggle?.(!collapsed);
+              }}
             />
           )}
         </div>
         {nav}
         {user}
       </header>
+      {opened && (
+        <div
+          className="pd-shell-scrim"
+          aria-hidden="true"
+          onClick={() => {
+            setOver(false);
+          }}
+        />
+      )}
       <main ref={mainRef} id="main" className="pd-shell-main" tabIndex={-1} aria-busy={props.busy ? true : undefined}>
         {props.children}
       </main>

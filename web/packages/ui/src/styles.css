@@ -2036,13 +2036,16 @@ textarea {
 }
 
 .pd-shell[data-app='console'] .pd-shell-main {
+  grid-column: 2;
   padding: var(--space-6) var(--page-gutter) var(--space-12);
 }
 
+/* Folded: no menu, only the button that opens it. Five menu names do not fit 64px. */
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] {
   grid-template-columns: 64px minmax(0, 1fr);
 }
 
+.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-nav ul,
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-name,
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-user-name {
   display: none;
@@ -2053,27 +2056,30 @@ textarea {
   padding-left: 0;
 }
 
-.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-nav a {
-  justify-content: center;
-  padding: 0;
-  font-size: var(--text-xs);
-}
-
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-user {
   flex-direction: column;
   padding-left: 0;
   padding-right: 0;
 }
 
-@media (max-width: 1023.98px) {
-  .pd-shell[data-app='console'] {
-    grid-template-columns: 64px minmax(0, 1fr);
-  }
+/* Under bp-narrow the shell folds the menu and opens it over the content. */
+.pd-shell[data-app='console'][data-sidebar-over='true'] {
+  grid-template-columns: 64px minmax(0, 1fr);
+}
 
-  .pd-shell[data-app='console']:not([data-sidebar-collapsed='false']) .pd-shell-name,
-  .pd-shell[data-app='console']:not([data-sidebar-collapsed='false']) .pd-shell-user-name {
-    display: none;
-  }
+.pd-shell[data-app='console'][data-sidebar-over='true'] .pd-shell-head {
+  position: fixed;
+  left: 0;
+  z-index: calc(var(--z-dropdown) + 1);
+  width: 224px;
+  box-shadow: var(--shadow-md);
+}
+
+.pd-shell-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dropdown);
+  background: var(--overlay);
 }
 
 /* Portal: top bar */
