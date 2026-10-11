@@ -37,6 +37,7 @@ import { useMainBusy } from '../app/busy';
 import { useCooldown, useFieldErrors, useLeaveGuard, useLoad } from '../app/hooks';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
 import { failureText, TEXT } from '../app/messages';
+import { photoUrl } from '../app/photos';
 import { call, type Failure, type Result } from '../app/result';
 import { useSession, useToLogin } from '../app/sessionContext';
 import { useToast } from '../app/toastContext';
@@ -284,6 +285,7 @@ export function C4IssueDetail() {
     name: a.fileName ?? '',
     size: a.size,
     uploaderLabel: a.uploadedBy.name,
+    uploaderAvatar: { kind: 'person', photoUrl: photoUrl(a.uploadedBy.accountId, a.uploadedBy.photoUpdatedAt) },
     createdAt: a.createdAt,
     internal: a.internal,
     deleted: a.deleted,
@@ -405,7 +407,7 @@ export function C4IssueDetail() {
               <CommentItem
                 key={c.id}
                 id={`comment-${String(c.id)}`}
-                author={{ kind: 'person', name: c.author.name }}
+                author={{ kind: 'person', name: c.author.name, photoUrl: photoUrl(c.author.accountId, c.author.photoUpdatedAt) }}
                 visibility={c.internal ? 'internal' : 'public'}
                 createdAt={c.createdAt}
                 body={c.content}

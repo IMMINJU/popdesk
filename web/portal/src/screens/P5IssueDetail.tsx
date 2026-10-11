@@ -38,6 +38,7 @@ import { useMainBusy } from '../app/busy';
 import { useCooldown, useFieldErrors, useLeaveGuard, useLoad } from '../app/hooks';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
 import { failureText, personLabel, TEXT } from '../app/messages';
+import { photoUrl } from '../app/photos';
 import { call, type Failure, type Result } from '../app/result';
 import { useSession, useToLogin } from '../app/sessionContext';
 import { useToast } from '../app/toastContext';
@@ -304,6 +305,11 @@ export function P5IssueDetail() {
     name: a.fileName ?? '',
     size: a.size,
     uploaderLabel: personLabel(a.uploadedBy, meId),
+    // The support side has no photo in the portal (D-49).
+    uploaderAvatar:
+      a.uploadedBy.kind === 'SUPPORT_TEAM'
+        ? { kind: 'support' }
+        : { kind: 'person', photoUrl: photoUrl(a.uploadedBy.accountId, a.uploadedBy.photoUpdatedAt) },
     createdAt: a.createdAt,
     deleted: a.deleted,
     canDelete: canWrite && !a.deleted && a.uploadedBy.kind === 'CUSTOMER' && a.uploadedBy.accountId === meId,
@@ -470,7 +476,16 @@ export function P5IssueDetail() {
               <CommentItem
                 key={c.id}
                 id={`comment-${String(c.id)}`}
-                author={c.author.kind === 'SUPPORT_TEAM' ? { kind: 'support' } : { kind: 'person', name: c.author.name ?? '', isMe: c.author.accountId === meId }}
+                author={
+                  c.author.kind === 'SUPPORT_TEAM'
+                    ? { kind: 'support' }
+                    : {
+                        kind: 'person',
+                        name: c.author.name ?? '',
+                        isMe: c.author.accountId === meId,
+                        photoUrl: photoUrl(c.author.accountId, c.author.photoUpdatedAt),
+                      }
+                }
                 visibility="public"
                 createdAt={c.createdAt}
                 body={c.content}
