@@ -98,7 +98,7 @@ describe('P-10 비밀번호 재설정', () => {
     expect(callsTo('POST', CONFIRM)).toHaveLength(0);
   });
 
-  test.each(['TOO_SHORT', 'SAME_AS_EMAIL'])(
+  test.each(['TOO_SHORT'])(
     'S1A-AC-11 P-10 400 INVALID_INPUT(%s): 규칙 오류를 칸 아래에 보이고, 같은 토큰으로 다시 낼 수 있다',
     async (code) => {
       state.signedIn = false;

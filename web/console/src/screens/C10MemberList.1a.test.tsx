@@ -32,6 +32,8 @@ import {
   PHOTO_AT,
   RESET_LINK,
   answered,
+  closed,
+  confirmButton,
   leftOnPage,
   openRowAction,
   photoOf,
@@ -96,22 +98,7 @@ async function expectCell(name: string, header: string, word: string) {
 
 const expectStatus = (name: string, word: string) => expectCell(name, '상태', word);
 
-/** The button that goes on: not 취소, not 닫기. */
-function confirmButton(box: HTMLElement): HTMLElement {
-  const go = within(box)
-    .queryAllByRole('button')
-    .find((b) => !/^(취소|닫기)$/.test(b.getAttribute('aria-label') ?? text(b)));
-  expect(go ?? null, '대화상자의 확인 버튼').not.toBeNull();
-  return go as HTMLElement;
-}
-
 const closeButton = (box: HTMLElement) => found(() => within(box).queryAllByRole('button', { name: '닫기' })[0], '"닫기" 버튼');
-
-async function closed() {
-  await eventually(() => {
-    expect(openDialog(), '대화상자가 닫힘').toBeNull();
-  });
-}
 
 describe('C-10 구성원 목록 (1a)', () => {
   test('S1A-AC-29 C-10 필터: 역할과 상태를 고르면 그 값으로 목록을 다시 받는다', async () => {
@@ -220,16 +207,66 @@ describe('C-10 구성원 목록 (1a)', () => {
     await closed();
   });
 
-  test('S1A-AC-34 C-10 정지: 확인 대화상자의 문구, 확인하면 줄의 배지가 "정지"로 바뀐다', async () => {
+  test.each([
+    [
+      'S1A-AC-34 C-10 정지: 확인 대화상자의 문구, 확인하면 줄의 배지가 "정지"로 바뀐다',
+      {
+        who: LEE,
+        action: '정지',
+        says: ['이상담 님을 정지합니다. 로그인이 끊기고 다시 로그인할 수 없습니다.'],
+        method: 'POST',
+        path: `${ACCOUNTS}/${String(LEE.id)}/suspend`,
+        body: undefined,
+        after: () => expectStatus(LEE.name, '정지'),
+      },
+    ],
+    [
+      'S1A-AC-31 C-10 역할 바꾸기: 확인 대화상자에 바뀔 역할과 "다시 로그인해야 합니다", 확인하면 그 역할을 보내고 줄이 바뀐다',
+      {
+        who: LEE,
+        action: '역할 바꾸기',
+        says: ['관리자', '이상담 님은 다시 로그인해야 합니다.'],
+        method: 'PUT',
+        path: `${ACCOUNTS}/${String(LEE.id)}/role`,
+        body: { role: 'ADMIN' },
+        after: () => expectCell(LEE.name, '역할', '관리자'),
+      },
+    ],
+    [
+      'S1A-AC-36 C-10 비밀번호 초기화(SMTP 있음): 확인 대화상자의 문구, 확인하면 토스트 "재설정 메일을 보냈습니다."',
+      {
+        who: LEE,
+        action: '비밀번호 초기화',
+        says: ['지금 비밀번호를 못 쓰게 하고 재설정 메일을 보냅니다.'],
+        method: 'POST',
+        path: `${ACCOUNTS}/${String(LEE.id)}/password-reset`,
+        body: undefined,
+        after: () => statusWith('재설정 메일을 보냈습니다.'),
+      },
+    ],
+    [
+      'S1A-AC-39 C-10 초대 취소: 확인 대화상자의 문구, 확인하면 줄의 배지가 "초대 취소됨"으로 바뀐다',
+      {
+        who: PARK,
+        action: '초대 취소',
+        says: ['보낸 초대 링크를 못 쓰게 합니다.'],
+        method: 'POST',
+        path: `/api/console/invitations/${String(PARK.id)}/cancel`,
+        body: undefined,
+        after: () => expectStatus(PARK.name, '초대 취소됨'),
+      },
+    ],
+  ])('%s', async (_, { who, action, says, method, path, body, after }) => {
     seed();
     const { user } = renderAt('/members');
-    const box = await openRowAction(user, LEE.name, '정지');
-    expect(text(box)).toContain('이상담 님을 정지합니다. 로그인이 끊기고 다시 로그인할 수 없습니다.');
-    expect(callsTo('POST', `${ACCOUNTS}/${String(LEE.id)}/suspend`), '확인 전').toHaveLength(0);
+    const box = await openRowAction(user, who.name, action);
+    for (const sentence of says) expect(text(box)).toContain(sentence);
+    expect(callsTo(method, path), '확인 전').toHaveLength(0);
     await user.click(confirmButton(box));
 
-    await sent('POST', `${ACCOUNTS}/${String(LEE.id)}/suspend`);
-    await expectStatus(LEE.name, '정지');
+    const [call] = await sent(method, path);
+    if (body) expect(await call?.body).toEqual(body);
+    await after();
     await closed();
   });
 
@@ -240,32 +277,6 @@ describe('C-10 구성원 목록 (1a)', () => {
 
     await sent('POST', `${ACCOUNTS}/${String(HAN.id)}/reactivate`);
     await expectStatus(HAN.name, '사용 중');
-  });
-
-  test('S1A-AC-31 C-10 역할 바꾸기: 확인 대화상자에 바뀔 역할과 "다시 로그인해야 합니다", 확인하면 그 역할을 보내고 줄이 바뀐다', async () => {
-    seed();
-    const { user } = renderAt('/members');
-    const box = await openRowAction(user, LEE.name, '역할 바꾸기');
-    expect(text(box)).toContain('관리자');
-    expect(text(box)).toContain('이상담 님은 다시 로그인해야 합니다.');
-    await user.click(confirmButton(box));
-
-    const [put] = await sent('PUT', `${ACCOUNTS}/${String(LEE.id)}/role`);
-    expect(await put?.body).toEqual({ role: 'ADMIN' });
-    await expectCell(LEE.name, '역할', '관리자');
-    await closed();
-  });
-
-  test('S1A-AC-36 C-10 비밀번호 초기화(SMTP 있음): 확인 대화상자의 문구, 확인하면 토스트 "재설정 메일을 보냈습니다."', async () => {
-    seed();
-    const { user } = renderAt('/members');
-    const box = await openRowAction(user, LEE.name, '비밀번호 초기화');
-    expect(text(box)).toContain('지금 비밀번호를 못 쓰게 하고 재설정 메일을 보냅니다.');
-    await user.click(confirmButton(box));
-
-    await sent('POST', `${ACCOUNTS}/${String(LEE.id)}/password-reset`);
-    await statusWith('재설정 메일을 보냈습니다.');
-    await closed();
   });
 
   test('S1A-AC-37 C-10 비밀번호 초기화(SMTP 없음): 재설정 링크를 대화상자에 한 번 보이고 닫으면 다시 볼 수 없다고 적는다. 닫으면 화면에 남지 않는다', async () => {
@@ -286,18 +297,6 @@ describe('C-10 구성원 목록 (1a)', () => {
     expect(leftOnPage('rst-'), '닫은 뒤 화면에 남은 링크').toBe(false);
     expect(window.location.href).not.toContain('rst-');
     expect(callsTo('POST', `${ACCOUNTS}/${String(LEE.id)}/password-reset`)).toHaveLength(1);
-  });
-
-  test('S1A-AC-39 C-10 초대 취소: 확인 대화상자의 문구, 확인하면 줄의 배지가 "초대 취소됨"으로 바뀐다', async () => {
-    seed();
-    const { user } = renderAt('/members');
-    const box = await openRowAction(user, PARK.name, '초대 취소');
-    expect(text(box)).toContain('보낸 초대 링크를 못 쓰게 합니다.');
-    await user.click(confirmButton(box));
-
-    await sent('POST', `/api/console/invitations/${String(PARK.id)}/cancel`);
-    await expectStatus(PARK.name, '초대 취소됨');
-    await closed();
   });
 
   test('S1A-AC-38 S1A-AC-40 C-10 초대 다시 보내기(SMTP 없음): 취소된 초대를 다시 보내면 새 링크를 한 번 보이고 줄은 "수락 전"으로 돌아간다', async () => {

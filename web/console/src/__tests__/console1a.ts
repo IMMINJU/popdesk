@@ -10,8 +10,10 @@ import {
   account,
   apiError,
   errors,
+  eventually,
   found,
   member,
+  openDialog,
   paged,
   readParts,
   screen,
@@ -313,4 +315,20 @@ export async function rowAction(user: User, row: HTMLElement, name: string): Pro
 export async function openRowAction(user: User, rowName: string, action: string): Promise<HTMLElement> {
   await user.click(await rowAction(user, await rowOf(rowName), action));
   return found(() => screen.queryByRole('dialog') ?? screen.queryByRole('alertdialog'), `"${action}" 대화상자`);
+}
+
+/** The button of a dialog that goes on: not 취소, not 닫기. */
+export function confirmButton(box: HTMLElement): HTMLElement {
+  const go = within(box)
+    .queryAllByRole('button')
+    .find((b) => !/^(취소|닫기)$/.test(b.getAttribute('aria-label') ?? text(b)));
+  expect(go ?? null, '대화상자의 확인 버튼').not.toBeNull();
+  return go as HTMLElement;
+}
+
+/** Waits until no dialog is open. */
+export async function closed() {
+  await eventually(() => {
+    expect(openDialog(), '대화상자가 닫힘').toBeNull();
+  });
 }

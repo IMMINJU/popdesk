@@ -157,13 +157,14 @@ class PasswordResetRequestTest extends ConnectedAppTest {
     }
 
     @Test
-    @DisplayName("S1A-AC-12 a second request after 15 minutes sends a mail with another link, which works")
+    @DisplayName("S1A-AC-12 a second request exactly 15 minutes after the first mail sends a mail with another "
+            + "link, which works")
     void secondRequestAfterFifteenMinutesSendsANewLink() {
         Session admin = fixtures.signInAdmin();
         Session customer = fixtures.customer(admin, fixtures.createCompany(admin).code());
         String first = PasswordSteps.requestToken(portal(), mail(), customer.email());
 
-        clock.advance(Duration.ofMinutes(16));
+        clock.advance(Duration.ofMinutes(15));
         PasswordSteps.request(portal(), customer.email()).expectStatus(202);
 
         List<ReceivedMail> mails = PasswordSteps.awaitMails(mail(), customer.email(), 2);

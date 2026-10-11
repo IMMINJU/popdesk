@@ -6,6 +6,7 @@ import static io.popdesk.project.ProjectChecks.assertError;
 import static io.popdesk.project.ProjectChecks.assertNoStore;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.popdesk.auth.PasswordSteps;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.ConnectedAppTest;
 import io.popdesk.support.Fixtures;
@@ -29,14 +30,11 @@ class PeopleMailTest extends ConnectedAppTest {
     private static final String INVITE_LINK = "/invite#token=";
 
     private List<ReceivedMail> mailsWith(String email, String text) {
-        return mail().messagesTo(email).stream().filter(m -> m.text().contains(text)).toList();
+        return PasswordSteps.mailsWith(mail(), email, text);
     }
 
     private List<ReceivedMail> awaitMailsWith(String email, String text, int n) {
-        return Wait.until(n + " mail(s) to " + email + " holding " + text, () -> {
-            List<ReceivedMail> found = mailsWith(email, text);
-            return found.size() >= n ? found : null;
-        });
+        return PasswordSteps.awaitMailsWith(mail(), email, text, n);
     }
 
     @Test

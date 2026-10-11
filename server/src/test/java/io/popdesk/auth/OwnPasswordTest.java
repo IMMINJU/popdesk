@@ -91,6 +91,25 @@ class OwnPasswordTest extends BareAppTest {
                 .expectStatus(204);
     }
 
+    @Test
+    @DisplayName("S1A-AC-18 only wrong current passwords in a row count: four wrong ones, a change that works, "
+            + "and four wrong ones again are all 400, and the request is not blocked")
+    void aChangeThatWorksStartsTheCountAgain() {
+        Session me = person(App.PORTAL);
+        for (int attempt = 1; attempt <= 4; attempt++) {
+            assertError(change(me, "wrong-Password-" + attempt, PasswordSteps.NEW_PASSWORD),
+                    400, "CURRENT_PASSWORD_WRONG");
+        }
+        change(me, me.password(), PasswordSteps.NEW_PASSWORD).expectStatus(204);
+
+        for (int attempt = 5; attempt <= 8; attempt++) {
+            assertError(change(me, "wrong-Password-" + attempt, me.password()), 400, "CURRENT_PASSWORD_WRONG");
+        }
+
+        change(me, PasswordSteps.NEW_PASSWORD, me.password()).expectStatus(204);
+        AuthChecks.signIn(portal(), me.email(), me.password(), AuthChecks.freshIp()).expectStatus(204);
+    }
+
     private static ApiResponse change(Session me, String currentPassword, String newPassword) {
         return me.client().put(me.api("/me/password"))
                 .json(Map.of("currentPassword", currentPassword, "newPassword", newPassword))

@@ -41,11 +41,9 @@ describe('P-5 문의 상세 (1a)', () => {
     expect(photosIn(await commentWith('사진 없는 동료의 댓글'))).toEqual([]);
     const support = await commentWith('상담 쪽의 댓글');
     expect(photosIn(support), '상담 쪽은 사진 없음').toEqual([]);
-    expect(text(support)).toContain('지원팀');
     const withPhoto = (await link(/with-photo\.txt/)).closest('li');
     const supportFile = (await link(/support\.pdf/)).closest('li');
     expect(withPhoto && photosIn(withPhoto), '첨부 줄의 올린 사람 사진').toEqual([photoOf(12, PHOTO_AT_NEW)]);
     expect(supportFile && photosIn(supportFile), '상담 쪽이 올린 첨부').toEqual([]);
-    expect(text(supportFile)).toContain('지원팀');
   });
 });

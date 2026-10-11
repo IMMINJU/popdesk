@@ -2,7 +2,7 @@
 // 또 실패하면 "권한이 없습니다"가 아니라 새로고침 안내를 보이고 입력은 지우지 않는다(S1A-AC-57).
 // 이미 있는 화면(C-4 댓글 쓰기)으로 본다. 서버가 쿠키를 새로 주는 것은 가짜 서버가 document.cookie로 흉내 낸다.
 import { describe, expect, test } from 'vitest';
-import { alertWith, button, callsTo, comment, draftKept, eventually, found, on, pageText, renderAt, screen, sent, state, text } from '../__tests__/console';
+import { alertWith, button, callsTo, comment, draftKept, errors, eventually, found, on, pageText, renderAt, screen, sent, state, text } from '../__tests__/console';
 import { answered, csrfInvalid, setCsrfCookie } from '../__tests__/console1a';
 
 const COMMENTS = '/api/console/issues/ACME-7/comments';
@@ -57,8 +57,23 @@ describe('403 CSRF_TOKEN_INVALID (1a)', () => {
     await alertWith(STALE_TEXT);
     await second;
     expect(pageText()).not.toContain('권한이 없습니다');
-    expect(pageText()).not.toContain('이 작업을 할 권한이 없습니다.');
     expect(draftKept('남아야 하는 답변')).toBe(true);
     expect(callsTo('POST', COMMENTS), '한 번만 다시 보낸다').toHaveLength(2);
+  });
+
+  test('S1A-AC-57 C-4 댓글: CSRF가 아닌 403은 다시 보내지 않고 "이 작업을 할 권한이 없습니다."를 보인다', async () => {
+    setCsrfCookie('good-token');
+    freshTokenOnAsk();
+    on('post', COMMENTS, () => errors.forbidden());
+    const { user } = renderAt('/issues/ACME-7');
+    await user.type(await editor(), '보내지 못한 답변');
+    const first = answered('POST', COMMENTS);
+    await user.click(await button('고객에게 답변 보내기'));
+
+    await alertWith('이 작업을 할 권한이 없습니다.');
+    await first;
+    expect(pageText()).not.toContain(STALE_TEXT);
+    expect(callsTo('POST', COMMENTS), '다시 보내지 않는다').toHaveLength(1);
+    expect(callsTo('POST', COMMENTS)[0]?.headers.get(HEADER)).toBe('good-token');
   });
 });

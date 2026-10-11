@@ -7,35 +7,32 @@ import io.popdesk.support.AppLog;
 import io.popdesk.support.ConnectedAppTest;
 import io.popdesk.support.Fixtures;
 import io.popdesk.support.Fixtures.Session;
-import java.net.URI;
 import java.util.List;
 import java.util.Locale;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** The reset token: where it sits in the link, what the database keeps, and where it must never show. */
+/**
+ * The reset token: what it is, what the database keeps, and where it must never show. Where it sits
+ * in the link is checked by {@code PasswordResetRequestTest}, which compares the whole link.
+ */
 class PasswordResetTokenTest extends ConnectedAppTest {
 
     @Test
-    @DisplayName("S1A-AC-08 the token stands for 32 random bytes, differs per request, and is only in the link's fragment")
-    void tokenIs32BytesInTheFragment() {
+    @DisplayName("S1A-AC-08 the token stands for 32 random bytes and differs per request")
+    void tokenIs32BytesAndDiffersPerRequest() {
         Session admin = fixtures.signInAdmin();
         Session customer = fixtures.customer(admin, fixtures.createCompany(admin).code());
         Session agent = fixtures.agent(admin);
 
-        URI toCustomer = URI.create(PasswordSteps.requestLink(portal(), mail(), customer.email()));
-        URI toAgent = URI.create(PasswordSteps.requestLink(console(), mail(), agent.email()));
+        String ofCustomer = PasswordSteps.requestToken(portal(), mail(), customer.email());
+        String ofAgent = PasswordSteps.requestToken(console(), mail(), agent.email());
 
-        for (URI link : List.of(toCustomer, toAgent)) {
-            assertThat(link.getRawPath()).as("path of %s", link).isEqualTo("/reset-password");
-            assertThat(link.getRawQuery()).as("query of %s", link).isNull();
-            assertThat(link.getRawFragment()).as("fragment of %s", link).startsWith("token=");
-            String token = Fixtures.tokenOf(link.toString());
-            assertThat(link.getRawFragment()).isEqualTo("token=" + token);
+        for (String token : List.of(ofCustomer, ofAgent)) {
             assertThat(PasswordSteps.tokenBytes(token)).as("token %s as base64url or hex", token)
                     .hasValueSatisfying(bytes -> assertThat(bytes).hasSize(32));
         }
-        assertThat(Fixtures.tokenOf(toCustomer.toString())).isNotEqualTo(Fixtures.tokenOf(toAgent.toString()));
+        assertThat(ofCustomer).isNotEqualTo(ofAgent);
     }
 
     @Test

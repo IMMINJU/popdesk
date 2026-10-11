@@ -2,28 +2,31 @@ package io.popdesk.project;
 
 import static io.popdesk.project.PeopleSteps.account;
 import static io.popdesk.project.PeopleSteps.accounts;
+import static io.popdesk.project.ProjectChecks.assertError;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
+import io.popdesk.support.DbInspector.Column;
 import io.popdesk.support.Fixtures.App;
 import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
+import io.popdesk.support.HeldWrite;
+import io.popdesk.support.Wait;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -32,56 +35,61 @@ import tools.jackson.databind.JsonNode;
  *
  * <p>This class has a context of its own ({@link OwnContext}): in a shared one, the admins other
  * test classes made would stay, and both requests could rightly succeed. Each test first makes every
- * admin but the first one an agent, so it does not depend on what the other invocation left.
+ * admin but the first one an agent, and brings the account that was taken down back at its end, so it
+ * does not depend on what the other invocation left.
  *
- * <p>The request that loses is 400 {@code LAST_ADMIN} when both were let in before either finished.
- * When the winner finished first, the loser's session is already gone and the answer is 401; that is
- * a right answer too, so each round takes either, and the test asks that {@code LAST_ADMIN} was seen
- * in at least one of the rounds.
+ * <p>The two requests are made to overlap in the database ({@link HeldWrite}): the first request is
+ * kept waiting at its UPDATE of the other admin's account row, the second is sent, and the first is
+ * let go once the second has finished or waits for a lock. Both are then past the check that the
+ * caller is an admin, so the one that loses is 400 {@code LAST_ADMIN}, never 401. This rests on the
+ * role and the status being columns of the account row (the one table with a text column equal to
+ * the account's email) that a take-down changes with an UPDATE.
  */
 @Import(LastAdminTest.OwnContext.class)
 class LastAdminTest extends BareAppTest {
 
-    private static final int ROUNDS = 12;
+    /** How long the first request is held when the second neither finishes nor shows in the database. */
+    private static final Duration HELD_AT_MOST = Duration.ofSeconds(2);
 
     /** Nothing in it; importing it gives this class a test context no other class shares. */
     @TestConfiguration(proxyBeanMethods = false)
     static class OwnContext {}
 
-    private static List<ApiResponse> together(Supplier<ApiResponse> first, Supplier<ApiResponse> second) {
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-        CountDownLatch ready = new CountDownLatch(2);
-        CountDownLatch go = new CountDownLatch(1);
+    @Autowired
+    PostgreSQLContainer postgres;
+
+    /** The table, sessions left out, with a text column equal to the email. */
+    private String accountTable(String email) {
+        List<String> found = new ArrayList<>();
+        for (String table : db.tables()) {
+            if (table.startsWith("spring_session")) {
+                continue;
+            }
+            for (Column column : db.columns(table)) {
+                if (db.count("select count(*) from \"" + table + "\" where \"" + column.name() + "\"::text = ?",
+                        email) > 0) {
+                    found.add(table);
+                    break;
+                }
+            }
+        }
+        assertThat(found).as("tables with a column equal to %s", email).hasSize(1);
+        return found.getFirst();
+    }
+
+    private static ApiResponse finish(CompletableFuture<ApiResponse> running, String what) {
         try {
-            List<Future<ApiResponse>> futures = new ArrayList<>();
-            for (Supplier<ApiResponse> call : List.of(first, second)) {
-                futures.add(pool.submit(() -> {
-                    ready.countDown();
-                    go.await();
-                    return call.get();
-                }));
-            }
-            if (!ready.await(30, TimeUnit.SECONDS)) {
-                throw new AssertionError("The two requests did not get ready in 30 seconds");
-            }
-            go.countDown();
-            List<ApiResponse> out = new ArrayList<>();
-            for (Future<ApiResponse> future : futures) {
-                out.add(future.get(60, TimeUnit.SECONDS));
-            }
-            return out;
+            return running.get(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("Interrupted while " + what + " finished", e);
         } catch (ExecutionException e) {
             if (e.getCause() instanceof AssertionError failed) {
                 throw failed;
             }
-            throw new AssertionError("A concurrent request failed", e.getCause());
+            throw new AssertionError(what + " failed: " + e.getCause(), e.getCause());
         } catch (TimeoutException e) {
-            throw new AssertionError("The two requests did not finish in 60 seconds", e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("Interrupted while waiting for the two requests", e);
-        } finally {
-            pool.shutdownNow();
+            throw new AssertionError(what + " did not finish within 30 seconds of the release", e);
         }
     }
 
@@ -106,8 +114,8 @@ class LastAdminTest extends BareAppTest {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"role", "suspend"})
-    @DisplayName("S1A-AC-81 when the only two active admins demote or suspend each other at the same time, one "
-            + "request succeeds, the other changes nothing, and an active admin is left every time")
+    @DisplayName("S1A-AC-81 when the only two active admins demote or suspend each other in overlapping requests, "
+            + "one succeeds, the other is 400 LAST_ADMIN and changes nothing, and an active admin is left")
     void twoAdminsTakeEachOtherDown(String action) {
         Session first = fixtures.signInAdmin();
         for (JsonNode other : activeAdmins(first)) {
@@ -116,41 +124,42 @@ class LastAdminTest extends BareAppTest {
             }
         }
         Session second = fixtures.admin(first);
-        assertThat(activeAdmins(first)).as("active admins before the rounds")
+        assertThat(activeAdmins(first)).as("active admins before the two requests")
                 .extracting(n -> n.path("id").asLong(-1))
                 .containsExactlyInAnyOrder(first.accountId(), second.accountId());
-        int lastAdminAnswers = 0;
+        ApiResponse ofFirst;
+        ApiResponse ofSecond;
 
-        for (int round = 1; round <= ROUNDS; round++) {
-            Session a = fixtures.signIn(App.CONSOLE, first.email(), first.password());
-            Session b = fixtures.signIn(App.CONSOLE, second.email(), second.password());
-
-            List<ApiResponse> responses = together(() -> takeDown(action, a, b), () -> takeDown(action, b, a));
-
-            assertThat(responses).as("round %s: requests that succeeded, of %s and %s", round, responses.get(0),
-                    responses.get(1)).filteredOn(r -> r.status() == 200).hasSize(1);
-            boolean firstWon = responses.get(0).status() == 200;
-            ApiResponse lost = responses.get(firstWon ? 1 : 0);
-            Session winner = firstWon ? a : b;
-            Session loser = firstWon ? b : a;
-            assertThat(lost.status()).as("round %s: status of the request that lost: %s", round, lost.snippet())
-                    .isIn(400, 401);
-            if (lost.status() == 400) {
-                assertThat(lost.errorCode()).as("round %s: code of the request that lost", round)
-                        .isEqualTo("LAST_ADMIN");
-                lastAdminAnswers++;
-            }
-            List<JsonNode> left = activeAdmins(winner);
-            assertThat(left).as("round %s: active admins left", round).extracting(n -> n.path("id").asLong(-1))
-                    .containsExactly(winner.accountId());
-            JsonNode taken = ProjectChecks.account(winner, loser.accountId());
-            assertThat(taken.path("role").asString(null) + " " + taken.path("status").asString(null))
-                    .as("round %s: the account that was taken down", round)
-                    .isEqualTo(action.equals("role") ? "AGENT ACTIVE" : "ADMIN SUSPENDED");
-
-            bringBack(action, winner, loser);
+        try (HeldWrite hold = new HeldWrite(db, postgres, accountTable(second.email()), "update", second.email())) {
+            CompletableFuture<ApiResponse> firstTakesDown = CompletableFuture.supplyAsync(
+                    () -> takeDown(action, first, second));
+            hold.awaitHeld("the first request's UPDATE of the second admin's account");
+            CompletableFuture<ApiResponse> secondTakesDown = CompletableFuture.supplyAsync(
+                    () -> takeDown(action, second, first));
+            long heldUntil = System.nanoTime() + HELD_AT_MOST.toNanos();
+            Wait.until("the second request finished, waits for a lock, or had " + HELD_AT_MOST,
+                    () -> secondTakesDown.isDone() || hold.waitingForALock() > 0 || System.nanoTime() > heldUntil
+                            ? Boolean.TRUE : null);
+            hold.release();
+            ofFirst = finish(firstTakesDown, "the first request");
+            ofSecond = finish(secondTakesDown, "the second request");
         }
 
-        assertThat(lastAdminAnswers).as("rounds of %s that ended in 400 LAST_ADMIN", ROUNDS).isPositive();
+        assertThat(List.of(ofFirst.status(), ofSecond.status())).as("statuses of %s and %s", ofFirst.snippet(),
+                ofSecond.snippet()).containsExactlyInAnyOrder(200, 400);
+        boolean firstWon = ofFirst.status() == 200;
+        assertError(firstWon ? ofSecond : ofFirst, 400, "LAST_ADMIN");
+        Session winner = firstWon ? first : second;
+        Session loser = firstWon ? second : first;
+        Session after = fixtures.signIn(App.CONSOLE, winner.email(), winner.password());
+        assertThat(activeAdmins(after)).as("active admins left").extracting(n -> n.path("id").asLong(-1))
+                .containsExactly(winner.accountId());
+        JsonNode taken = ProjectChecks.account(after, loser.accountId());
+        assertThat(taken.path("role").asString(null) + " " + taken.path("status").asString(null))
+                .as("the account that was taken down")
+                .isEqualTo(action.equals("role") ? "AGENT ACTIVE" : "ADMIN SUSPENDED");
+
+        // The first admin is the one every test signs in as; the next invocation needs it as it was.
+        bringBack(action, after, loser);
     }
 }

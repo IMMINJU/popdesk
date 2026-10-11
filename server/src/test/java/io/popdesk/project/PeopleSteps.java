@@ -1,5 +1,6 @@
 package io.popdesk.project;
 
+import io.popdesk.auth.PasswordSteps;
 import io.popdesk.support.ApiClient;
 import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
@@ -15,9 +16,9 @@ import tools.jackson.databind.JsonNode;
  * Steps of the people and company tests of slice 1a, through the admin API: the paths, and the calls
  * a test makes only to reach a state (a suspended account, a cancelled invitation, an archived
  * company). Each step expects its one status, so before the slice is built a test fails there, on an
- * assertion.
+ * assertion. Public for the one step another package shares (the admin's password reset).
  */
-final class PeopleSteps {
+public final class PeopleSteps {
 
     private PeopleSteps() {}
 
@@ -58,18 +59,17 @@ final class PeopleSteps {
     }
 
     /** Resets the password of an account; the response holds {@code resetLink}. */
-    static ApiResponse resetPassword(Session admin, long accountId) {
+    public static ApiResponse resetPassword(Session admin, long accountId) {
         return admin.client().post(account(accountId) + "/password-reset").expect(200);
     }
 
-    /** Sets a new password with the token of a reset link, on the host of the account's app. */
-    static ApiRequest confirmReset(ApiClient browser, String resetLink, String newPassword) {
-        return browser.post("/api/public/password-reset/confirm")
-                .json(Map.of("token", Fixtures.tokenOf(resetLink), "password", newPassword));
+    /** Sets a new password with the token of a reset link, on the browser's host, whatever the answer. */
+    static ApiResponse confirmReset(ApiClient browser, String resetLink, String newPassword) {
+        return PasswordSteps.confirm(browser, Fixtures.tokenOf(resetLink), newPassword);
     }
 
     static ApiResponse signInAttempt(ApiClient browser, String email, String password) {
-        return browser.post("/api/public/sign-in").json(Map.of("email", email, "password", password)).send();
+        return PasswordSteps.signIn(browser, email, password);
     }
 
     /** Every account of the list narrowed by {@code query} (name, value, name, value, ...). */

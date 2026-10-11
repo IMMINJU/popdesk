@@ -286,7 +286,8 @@ class AccountAdminTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S1A-AC-36 resetting the password lifts a sign-in lock: the new password signs in at once")
+    @DisplayName("S1A-AC-36, S1A-AC-37 resetting the password lifts a sign-in lock: without SMTP the response "
+            + "carries the link, with Cache-Control no-store, and the new password signs in at once")
     void resetLiftsTheLock() {
         Session admin = fixtures.signInAdmin();
         Session agent = fixtures.agent(admin);
@@ -296,9 +297,10 @@ class AccountAdminTest extends BareAppTest {
         }
         assertCannotSignIn(agent, agent.password());
 
-        String link = PeopleSteps.resetPassword(admin, agent.accountId()).jsonText("resetLink");
-        PeopleSteps.confirmReset(console(), link, NEW_PASSWORD).expect(204);
+        ApiResponse reset = PeopleSteps.resetPassword(admin, agent.accountId());
+        PeopleSteps.confirmReset(console(), reset.jsonText("resetLink"), NEW_PASSWORD).expectStatus(204);
 
+        assertNoStore(reset);
         assertSignsIn(agent, NEW_PASSWORD);
         assertCannotSignIn(agent, agent.password());
     }
@@ -329,17 +331,20 @@ class AccountAdminTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S1A-AC-37 without SMTP the reset response carries the link, with Cache-Control no-store, and the "
-            + "link sets a new password")
-    void resetLinkInResponseWithoutSmtp() {
+    @DisplayName("S1A-AC-37 resetting again gives another link at once, also within 15 minutes of the account's "
+            + "own request for one, and the earlier link stops working")
+    void resetAgainReplacesTheLink() {
         Session admin = fixtures.signInAdmin();
         Session agent = fixtures.agent(admin);
+        console().post("/api/public/password-reset/request").json(Map.of("email", agent.email())).expect(202);
 
-        ApiResponse reset = admin.client().post(account(agent.accountId()) + "/password-reset").expect(200);
+        String first = PeopleSteps.resetPassword(admin, agent.accountId()).jsonText("resetLink");
+        String second = PeopleSteps.resetPassword(admin, agent.accountId()).jsonText("resetLink");
 
-        assertNoStore(reset);
-        String link = reset.jsonText("resetLink");
-        PeopleSteps.confirmReset(console(), link, NEW_PASSWORD).expect(204);
+        assertThat(Fixtures.tokenOf(second)).as("token of the second reset link").isNotEqualTo(Fixtures.tokenOf(first));
+        assertError(PeopleSteps.confirmReset(console(), first, NEW_PASSWORD), 400, "PASSWORD_RESET_INVALID");
+        assertCannotSignIn(agent, NEW_PASSWORD);
+        PeopleSteps.confirmReset(console(), second, NEW_PASSWORD).expectStatus(204);
         assertSignsIn(agent, NEW_PASSWORD);
     }
 }

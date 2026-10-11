@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.ops.AuditTrail.Mark;
 import io.popdesk.ops.AuditTrail.Row;
+import io.popdesk.auth.PasswordSteps;
+import io.popdesk.project.PeopleSteps;
 import io.popdesk.support.ApiClient;
 import io.popdesk.support.BareAppTest;
+import io.popdesk.support.Fixtures;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
 import java.util.LinkedHashSet;
@@ -21,9 +24,10 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The target of the sign-in audit rows. {@link AuditLogTest} checks the person of these rows; the
- * person and the target are the same account, so a check that the row mentions the account says
- * nothing about the target.
+ * The target of the audit rows of what a person does to their own account: the sign-in rows, and the
+ * rows of a password changed by its owner or set with a reset link. {@link AuditLogTest} and
+ * {@link PeopleAuditTest} check the person of these rows; the person and the target are the same
+ * account, so a check that the row mentions the account says nothing about the target.
  *
  * <p>The audit table's columns are not fixed, so the target is found by what it does: the columns of
  * a row, other than the one holding the person, whose value names the account. The same action is
@@ -34,6 +38,7 @@ class SignInAuditTargetTest extends BareAppTest {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final Set<String> PERSON_FIELDS = Set.of("accountId", "email", "name");
+    private static final String NEW_PASSWORD = "audited-Password-2";
 
     private AuditTrail audit;
 
@@ -104,6 +109,13 @@ class SignInAuditTargetTest extends BareAppTest {
         switch (kind) {
             case "SIGN_IN_SUCCEEDED" -> fixtures.signInAgain(who);
             case "SIGN_IN_FAILED" -> failSignIn(console(), who.email(), "wrong-" + Unique.number() + "-Password");
+            case "PASSWORD_CHANGED" -> who.client().put("/api/console/me/password")
+                    .json(Map.of("currentPassword", who.password(), "newPassword", NEW_PASSWORD)).expect(204);
+            case "PASSWORD_RESET_COMPLETED" -> {
+                String link = PeopleSteps.resetPassword(fixtures.signInAdmin(), who.accountId())
+                        .jsonText("resetLink");
+                PasswordSteps.confirm(console(), Fixtures.tokenOf(link), NEW_PASSWORD).expectStatus(204);
+            }
             default -> {
                 ApiClient browser = console();
                 String wrong = "wrong-" + Unique.number() + "-Password";
@@ -138,6 +150,14 @@ class SignInAuditTargetTest extends BareAppTest {
     @DisplayName("S1A-AC-64 the audit row of a sign-in, a failed sign-in, and a lock names that account as its "
             + "target, besides the person")
     void targetIsTheAccount(String kind) {
+        assertThat(targetColumns(kind)).isNotEmpty();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED"})
+    @DisplayName("S1A-AC-62 the audit row of a password changed by its owner, or set with a reset link, names "
+            + "that account as its target, besides the person")
+    void targetOfAPasswordRowIsTheAccount(String kind) {
         assertThat(targetColumns(kind)).isNotEmpty();
     }
 }

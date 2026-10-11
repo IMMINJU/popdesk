@@ -28,7 +28,7 @@ import {
   text,
   within,
 } from '../__tests__/console';
-import { answered, region, rejected, route, rowOf, settle } from '../__tests__/console1a';
+import { answered, closed, confirmButton, region, rejected, route, rowOf, settle } from '../__tests__/console1a';
 
 const URL_ACME = '/companies/ACME';
 const COMPANY = '/api/console/companies/ACME';
@@ -50,21 +50,6 @@ const input = (label: RegExp) => found(() => screen.queryAllByLabelText<HTMLInpu
 function seedMembers() {
   state.customers = [KIM, CHOI];
   state.agents = [LEE, JUNG];
-}
-
-/** The button that goes on: not 취소, not 닫기. */
-function confirmButton(box: HTMLElement): HTMLElement {
-  const go = within(box)
-    .queryAllByRole('button')
-    .find((b) => !/^(취소|닫기)$/.test(b.getAttribute('aria-label') ?? text(b)));
-  expect(go ?? null, '대화상자의 확인 버튼').not.toBeNull();
-  return go as HTMLElement;
-}
-
-async function closed() {
-  await eventually(() => {
-    expect(openDialog(), '대화상자가 닫힘').toBeNull();
-  });
 }
 
 async function openEdit(user: User) {
@@ -101,32 +86,24 @@ describe('C-9 고객사 상세 (1a)', () => {
     await title('에이크미 코리아');
   });
 
-  test('S1A-AC-44 C-9 상태 ACTIVE: "멈춤"·"보관" 버튼. 멈추면 띠 "멈춘 고객사입니다. 새 문의를 받지 않습니다."와 "다시 사용"·"보관"', async () => {
+  test.each([
+    ['ACTIVE: "멈춤"·"보관" 버튼. 멈추면 띠 "멈춘 고객사입니다. 새 문의를 받지 않습니다."와 "다시 사용"·"보관"', 'ACTIVE', '멈춤', 'SUSPENDED', '다시 사용'],
+    ['SUSPENDED: "다시 사용"을 누르면 ACTIVE로 바꾸고 띠가 사라진다', 'SUSPENDED', '다시 사용', 'ACTIVE', '멈춤'],
+  ] as const)('S1A-AC-44 C-9 상태 %s', async (_, from, press, to, then) => {
+    state.companies = [company({ status: from })];
     const { user } = renderAt(URL_ACME);
     await title(ACME.name);
     await button('보관');
-    expect(pageText()).not.toContain(SUSPENDED_BAND);
-    await user.click(await button('멈춤'));
+    await user.click(await button(press));
 
     const [put] = await sent('PUT', `${COMPANY}/status`);
-    expect(await put?.body).toEqual({ status: 'SUSPENDED' });
-    await eventually(() => {
-      expect(pageText()).toContain(SUSPENDED_BAND);
-    });
-    await button('다시 사용');
+    expect(await put?.body).toEqual({ status: to });
+    await button(then);
     await button('보관');
-    expect(screen.queryByRole('button', { name: '멈춤' })).toBeNull();
-  });
-
-  test('S1A-AC-44 C-9 상태 SUSPENDED: "다시 사용"을 누르면 ACTIVE로 바꾸고 띠가 사라진다', async () => {
-    state.companies = [company({ status: 'SUSPENDED' })];
-    const { user } = renderAt(URL_ACME);
-    await user.click(await button('다시 사용'));
-
-    const [put] = await sent('PUT', `${COMPANY}/status`);
-    expect(await put?.body).toEqual({ status: 'ACTIVE' });
-    await button('멈춤');
-    expect(pageText()).not.toContain(SUSPENDED_BAND);
+    await eventually(() => {
+      expect(pageText().includes(SUSPENDED_BAND), '멈춤 띠').toBe(to === 'SUSPENDED');
+    });
+    expect(screen.queryByRole('button', { name: press })).toBeNull();
   });
 
   test('S1A-AC-48 C-9 상태 ARCHIVED: 띠 "보관된 고객사입니다. 되돌릴 수 없습니다." 고치기와 소속·배정 더하기는 없고 빼기는 남는다', async () => {

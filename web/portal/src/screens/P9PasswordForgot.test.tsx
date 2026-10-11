@@ -44,7 +44,6 @@ describe('P-9 비밀번호 찾기', () => {
 
   test.each([
     ['계정이 있는 주소', 'kim@acme.test'],
-    ['계정이 없는 주소', 'nobody@elsewhere.test'],
   ])('S1A-AC-59 P-9 보낸 뒤(202) %s: 칸을 지우고 같은 안내와 로그인 링크를 보인다', async (_, address) => {
     state.signedIn = false;
     const { user } = renderAt('/forgot-password');

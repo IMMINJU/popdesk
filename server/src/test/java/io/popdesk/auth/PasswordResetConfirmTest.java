@@ -18,6 +18,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Setting a new password with the token of a reset link (AUTH-7): what a good token does, and that
@@ -46,9 +47,15 @@ class PasswordResetConfirmTest extends ConnectedAppTest {
 
     /**
      * One try with a token that does not count: where it is sent, whose account it is about (null for
-     * nobody's), and the password that account must still sign in with (null when it cannot sign in).
+     * nobody's), the password that account must still sign in with (null when it cannot sign in), and
+     * what must still work after the refusal.
      */
-    private record Attempt(App host, String token, String email, App app, String keptPassword) {}
+    private record Attempt(App host, String token, String email, App app, String keptPassword, Runnable stillWorks) {
+
+        Attempt(App host, String token, String email, App app, String keptPassword) {
+            this(host, token, email, app, keptPassword, () -> {});
+        }
+    }
 
     @Test
     @DisplayName("S1A-AC-09 a new password set with the link's token replaces the old one and lifts the sign-in lock, "
@@ -56,7 +63,8 @@ class PasswordResetConfirmTest extends ConnectedAppTest {
     void tokenSetsThePasswordAndLiftsTheLock() {
         Session customer = newCustomer();
         String token = PasswordSteps.requestToken(portal(), mail(), customer.email());
-        clock.advance(Duration.ofMinutes(50));
+        // S1A-AC-10: the token counts for an hour, so it still does one minute before.
+        clock.advance(Duration.ofMinutes(59));
         for (int attempt = 1; attempt <= 5; attempt++) {
             assertError(AuthChecks.signIn(portal(), customer.email(), "wrong-Password-" + attempt,
                     AuthChecks.freshIp()), 401, "SIGN_IN_FAILED");
@@ -119,6 +127,26 @@ class PasswordResetConfirmTest extends ConnectedAppTest {
             AuthChecks.signIn(client(attempt.app()), attempt.email(), attempt.keptPassword(), AuthChecks.freshIp())
                     .expectStatus(204);
         }
+        attempt.stillWorks().run();
+    }
+
+    @ParameterizedTest(name = "token field present: {0}")
+    @ValueSource(booleans = {false, true})
+    @DisplayName("S1A-AC-10 a request without a token field, or with an empty one, gets 400 INVALID_INPUT with "
+            + "token REQUIRED, not the answer for a token that does not count, and no password changes")
+    void missingOrEmptyTokenIsInvalidInput(boolean fieldPresent) {
+        Session customer = newCustomer();
+        Map<String, String> body = fieldPresent
+                ? Map.of("token", "", "password", ATTEMPTED)
+                : Map.of("password", ATTEMPTED);
+
+        ApiResponse refused = portal().post(PasswordSteps.CONFIRM).json(body).send();
+
+        assertError(refused, 400, "INVALID_INPUT");
+        assertThat(AuthChecks.fieldErrors(refused)).contains("token:REQUIRED");
+        assertError(AuthChecks.signIn(portal(), customer.email(), ATTEMPTED, AuthChecks.freshIp()),
+                401, "SIGN_IN_FAILED");
+        AuthChecks.signIn(portal(), customer.email(), customer.password(), AuthChecks.freshIp()).expectStatus(204);
     }
 
     @Test
@@ -174,7 +202,8 @@ class PasswordResetConfirmTest extends ConnectedAppTest {
         }
         if (which == Invalid.INVITATION_TOKEN) {
             Invitation invitation = fixtures.invite(admin, Role.CUSTOMER, code);
-            return new Attempt(App.PORTAL, invitation.token(), invitation.email(), App.PORTAL, null);
+            return new Attempt(App.PORTAL, invitation.token(), invitation.email(), App.PORTAL, null,
+                    () -> accept(invitation.token()).expectStatus(204));
         }
         Session customer = fixtures.customer(admin, code);
         String email = customer.email();
@@ -194,10 +223,17 @@ class PasswordResetConfirmTest extends ConnectedAppTest {
                 PasswordSteps.awaitMails(mail(), email, 2);
                 yield new Attempt(App.PORTAL, token, email, App.PORTAL, Fixtures.PASSWORD);
             }
-            case ON_THE_OTHER_APPS_HOST -> new Attempt(App.CONSOLE, token, email, App.PORTAL, Fixtures.PASSWORD);
+            case ON_THE_OTHER_APPS_HOST -> new Attempt(App.CONSOLE, token, email, App.PORTAL, Fixtures.PASSWORD,
+                    () -> PasswordSteps.confirm(portal(), token, PasswordSteps.NEW_PASSWORD).expectStatus(204));
             case ACCOUNT_SUSPENDED_SINCE -> {
                 admin.client().post("/api/console/accounts/" + customer.accountId() + "/suspend").expect(200);
-                yield new Attempt(App.PORTAL, token, email, App.PORTAL, null);
+                yield new Attempt(App.PORTAL, token, email, App.PORTAL, null, () -> {
+                    admin.client().post("/api/console/accounts/" + customer.accountId() + "/reactivate")
+                            .expect(200);
+                    assertError(AuthChecks.signIn(portal(), email, ATTEMPTED, AuthChecks.freshIp()),
+                            401, "SIGN_IN_FAILED");
+                    AuthChecks.signIn(portal(), email, Fixtures.PASSWORD, AuthChecks.freshIp()).expectStatus(204);
+                });
             }
             case NEVER_ISSUED, INVITATION_TOKEN -> throw new IllegalStateException(which.name());
         };

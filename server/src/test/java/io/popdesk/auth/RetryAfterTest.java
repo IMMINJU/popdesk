@@ -14,9 +14,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
- * The limits per IP of 20 requests in 60 seconds (COM-8) and what {@code Retry-After} says. The
- * requests name an email no account has, so each one gets the answer of its endpoint for "nothing
- * happened": 401 for sign-in, 202 for a password reset request.
+ * The limits per IP of 20 requests in 60 seconds (COM-8) and what {@code Retry-After} says. Each
+ * request names another email no account has, so it gets the answer of its endpoint for "nothing
+ * happened" (401 for sign-in, 202 for a password reset request) and a limit counted per email would
+ * never be reached.
  */
 class RetryAfterTest extends BareAppTest {
 
@@ -48,26 +49,29 @@ class RetryAfterTest extends BareAppTest {
     @ParameterizedTest
     @EnumSource(Limited.class)
     @DisplayName("S1A-AC-13, S1A-AC-71 the 21st request from one IP within 60 seconds gets 429 with Retry-After as "
-            + "the seconds left of the window, and a request after those seconds is not limited")
+            + "the seconds left of the window while another IP is not limited, and a request after those seconds "
+            + "is not limited")
     void retryAfterIsTheRestOfTheWindow(Limited request) {
         String ip = AuthChecks.freshIp();
-        String email = Unique.email("nobody");
         ApiClient browser = portal();
         for (int n = 1; n <= 20; n++) {
-            ApiResponse response = request.send(browser, email, ip);
+            ApiResponse response = request.send(browser, Unique.email("nobody"), ip);
             assertThat(response.status()).as("request %d: %s", n, response.snippet()).isEqualTo(request.usualStatus);
         }
         clock.advance(Duration.ofSeconds(25));
 
-        ApiResponse limited = request.send(browser, email, ip);
+        ApiResponse limited = request.send(browser, Unique.email("nobody"), ip);
+        ApiResponse fromAnotherIp = request.send(browser, Unique.email("nobody"), AuthChecks.freshIp());
 
         assertError(limited, 429, "RATE_LIMITED");
+        assertThat(fromAnotherIp.status()).as("from another IP meanwhile: %s", fromAnotherIp.snippet())
+                .isEqualTo(request.usualStatus);
         String retryAfter = limited.header("Retry-After");
         assertThat(retryAfter).as("Retry-After of %s", limited).isNotNull().matches("\\d+");
         long seconds = Long.parseLong(retryAfter);
         assertThat(seconds).as("seconds left of a 60-second window that began 25 seconds ago").isBetween(1L, 35L);
         clock.advance(Duration.ofSeconds(seconds));
-        ApiResponse after = request.send(browser, email, ip);
+        ApiResponse after = request.send(browser, Unique.email("nobody"), ip);
         assertThat(after.status()).as("after Retry-After passed: %s", after.snippet()).isEqualTo(request.usualStatus);
     }
 }

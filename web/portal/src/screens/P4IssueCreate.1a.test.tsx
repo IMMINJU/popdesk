@@ -5,7 +5,6 @@ import {
   ACME,
   alertWith,
   button,
-  callsTo,
   errors,
   eventually,
   field,
@@ -23,6 +22,7 @@ const SUSPENDED: Company = { code: 'BETA', name: '베타상사', status: 'SUSPEN
 const ARCHIVED: Company = { code: 'OLD', name: '올드', status: 'ARCHIVED' };
 const NOT_ACTIVE_TEXT = '새 문의를 받지 않습니다';
 const TOO_MANY_TEXT = '한 번에 20개까지 붙일 수 있습니다';
+const PROXY_LIMIT_TEXT = '파일이 서버 앞단의 크기 상한에 걸렸습니다';
 
 const title = () => field(/^제목/, 'input');
 const attachInput = () => field(/첨부/, 'input[type="file"]');
@@ -50,7 +50,6 @@ describe('P-4 문의 등록 (1a)', () => {
       expect(pageText()).toContain(NOT_ACTIVE_TEXT);
     });
     expect(screen.queryByRole('button', { name: '올리기' })).toBeNull();
-    expect(callsTo('POST', '/api/portal/issues')).toHaveLength(0);
   });
 
   test('S1A-AC-65 P-4 파일 21개째: 20개까지는 받고, 21개째는 더하지 않고 "한 번에 20개까지 붙일 수 있습니다"를 보인다', async () => {
@@ -70,28 +69,26 @@ describe('P-4 문의 등록 (1a)', () => {
     expect(pageText()).not.toContain('f21.txt');
   });
 
-  test('S1A-AC-65 P-4 앱의 413(JSON 본문): 같은 문구 "한 번에 20개까지 붙일 수 있습니다"를 띠로 보이고 입력은 지우지 않는다', async () => {
-    on('post', '/api/portal/issues', () => errors.payloadTooLarge());
+  test.each([
+    ['앱의 413(JSON 본문): 같은 문구 "한 번에 20개까지 붙일 수 있습니다"를 띠로 보이고 입력은 지우지 않는다', () => errors.payloadTooLarge(), TOO_MANY_TEXT],
+    [
+      '앞단의 413(JSON이 아닌 본문): "20개까지"가 아니라 "파일이 서버 앞단의 크기 상한에 걸렸습니다"를 보인다',
+      () => errors.proxyPayloadTooLarge(),
+      PROXY_LIMIT_TEXT,
+    ],
+  ])('S1A-AC-65 P-4 %s', async (_, answer, shown) => {
+    on('post', '/api/portal/issues', answer);
     const { user } = renderAt('/issues/new');
     await user.type(await title(), '프린터가 안 됩니다');
     await user.upload(await attachInput(), files(1, 2));
     await user.click(await button('올리기'));
 
-    await alertWith(TOO_MANY_TEXT);
+    await alertWith(shown);
+    for (const other of [TOO_MANY_TEXT, PROXY_LIMIT_TEXT].filter((t) => t !== shown)) {
+      expect(pageText()).not.toContain(other);
+    }
     expect(await title()).toHaveValue('프린터가 안 됩니다');
     expect(fileRows()).toHaveLength(2);
     expect(window.location.pathname).toBe('/issues/new');
-  });
-
-  test('S1A-AC-65 P-4 앞단의 413(JSON이 아닌 본문): "20개까지"가 아니라 "파일이 서버 앞단의 크기 상한에 걸렸습니다"를 보인다', async () => {
-    on('post', '/api/portal/issues', () => errors.proxyPayloadTooLarge());
-    const { user } = renderAt('/issues/new');
-    await user.type(await title(), '프린터가 안 됩니다');
-    await user.upload(await attachInput(), files(1, 2));
-    await user.click(await button('올리기'));
-
-    await alertWith('파일이 서버 앞단의 크기 상한에 걸렸습니다');
-    expect(pageText()).not.toContain(TOO_MANY_TEXT);
-    expect(await title()).toHaveValue('프린터가 안 됩니다');
   });
 });

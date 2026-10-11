@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.ops.AuditTrail.Mark;
 import io.popdesk.ops.AuditTrail.Row;
+import io.popdesk.project.PeopleSteps;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
 import io.popdesk.support.Fixtures;
@@ -80,7 +81,7 @@ class PeopleAuditTest extends BareAppTest {
     }
 
     private String resetLink(Session admin, long accountId) {
-        return admin.client().post(accountPath(accountId) + "/password-reset").expect(200).jsonText("resetLink");
+        return PeopleSteps.resetPassword(admin, accountId).jsonText("resetLink");
     }
 
     /** Sets the scene, marks, and does the action as a person of this call's own. */
@@ -258,23 +259,42 @@ class PeopleAuditTest extends BareAppTest {
         assertThat(done.secrets()).as("secrets in %s", row).noneMatch(row::contains);
     }
 
-    @Test
-    @DisplayName("S1A-AC-62 asking for a password reset link leaves no audit row")
-    void resetRequestLeavesNoRow() {
-        Session creator = fixtures.admin(fixtures.signInAdmin());
+    /** The audit table, quoted: the table that gains the one row of a new company. */
+    private String auditTable(Session creator) {
         Mark tableMark = audit.mark(creator.email());
         fixtures.createCompany(creator);
         List<Row> created = audit.newRows(tableMark);
         assertThat(created).as("the audit row of a new company").hasSize(1);
-        String auditTable = created.getFirst().table();
+        return "\"" + created.getFirst().table().replace("\"", "\"\"") + "\"";
+    }
+
+    @Test
+    @DisplayName("S1A-AC-62 asking for a password reset link leaves no audit row")
+    void resetRequestLeavesNoRow() {
+        Session creator = fixtures.admin(fixtures.signInAdmin());
+        String auditTable = auditTable(creator);
         Session agent = fixtures.agent(creator);
-        long rowsBefore = db.count("select count(*) from \"" + auditTable.replace("\"", "\"\"") + "\"");
+        long rowsBefore = db.count("select count(*) from " + auditTable);
 
         ApiResponse response = console().post("/api/public/password-reset/request")
                 .json(Map.of("email", agent.email())).expect(202);
 
         assertThat(response.body()).as("body of the 202").isEmpty();
-        assertThat(db.count("select count(*) from \"" + auditTable.replace("\"", "\"\"") + "\""))
+        assertThat(db.count("select count(*) from " + auditTable))
                 .as("rows of %s after the request", auditTable).isEqualTo(rowsBefore);
+    }
+
+    @Test
+    @DisplayName("S1A-AC-64 a failed sign-in with an email no account has leaves no audit row at all, with or "
+            + "without the email")
+    void unknownEmailSignInLeavesNoRow() {
+        String auditTable = auditTable(fixtures.admin(fixtures.signInAdmin()));
+        long rowsBefore = db.count("select count(*) from " + auditTable);
+
+        console().post("/api/public/sign-in")
+                .json(Map.of("email", Unique.email("nobody"), "password", "wrong-Password-1")).expect(401);
+
+        assertThat(db.count("select count(*) from " + auditTable))
+                .as("rows of %s after the failed sign-in", auditTable).isEqualTo(rowsBefore);
     }
 }

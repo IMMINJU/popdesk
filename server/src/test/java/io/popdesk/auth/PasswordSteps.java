@@ -23,11 +23,12 @@ import java.util.regex.Pattern;
 /**
  * Steps of the password tests of slice 1a: asking for a reset, reading the reset mail, setting the
  * new password, and the forms a token or its hash could take in the database. Only HTTP and the
- * mail the app sent.
+ * mail the app sent. Public for the steps other packages share (finding mail, setting a password
+ * with a token, one sign-in attempt), so they keep no copy of their own.
  *
  * <p>A reset link is {@code <address of the app>/reset-password#token=...} (design.md 5-1).
  */
-final class PasswordSteps {
+public final class PasswordSteps {
 
     static final String REQUEST = "/api/public/password-reset/request";
     static final String CONFIRM = "/api/public/password-reset/confirm";
@@ -68,21 +69,36 @@ final class PasswordSteps {
     }
 
     /** Sets a new password with a token on the client's host, whatever the answer. */
-    static ApiResponse confirm(ApiClient client, String token, String password) {
+    public static ApiResponse confirm(ApiClient client, String token, String password) {
         return client.post(CONFIRM).json(Map.of("token", token, "password", password)).send();
+    }
+
+    /** One sign-in attempt from an IP no other request uses, whatever the answer. */
+    public static ApiResponse signIn(ApiClient client, String email, String password) {
+        return AuthChecks.signIn(client, email, password, AuthChecks.freshIp());
+    }
+
+    /** The mails to an address so far whose text holds {@code text}, oldest first. */
+    public static List<ReceivedMail> mailsWith(MailServer mail, String email, String text) {
+        return mail.messagesTo(email).stream().filter(m -> m.text().contains(text)).toList();
+    }
+
+    /** Waits until {@code n} mails holding {@code text} went to the address, and returns them. */
+    public static List<ReceivedMail> awaitMailsWith(MailServer mail, String email, String text, int n) {
+        return Wait.until(n + " mail(s) to " + email + " holding " + text, () -> {
+            List<ReceivedMail> found = mailsWith(mail, email, text);
+            return found.size() >= n ? found : null;
+        });
     }
 
     /** The reset mails to an address so far, oldest first. */
     static List<ReceivedMail> mails(MailServer mail, String email) {
-        return mail.messagesTo(email).stream().filter(m -> m.text().contains(LINK_MARK)).toList();
+        return mailsWith(mail, email, LINK_MARK);
     }
 
     /** Waits until {@code n} reset mails went to the address, and returns them. */
     static List<ReceivedMail> awaitMails(MailServer mail, String email, int n) {
-        return Wait.until(n + " reset mail(s) to " + email, () -> {
-            List<ReceivedMail> found = mails(mail, email);
-            return found.size() >= n ? found : null;
-        });
+        return awaitMailsWith(mail, email, LINK_MARK, n);
     }
 
     /** Asks for a reset (202) for an address without an earlier reset mail, and returns the link from the mail. */
