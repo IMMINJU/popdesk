@@ -111,7 +111,7 @@ class UpgradeAuditChainTest {
         assertThat(recorded.json().path("items")).as("AUDIT_EXPORTED entries of the sample's admin in %s",
                 recorded.snippet()).hasSize(1);
         return new Exported(admin, chain,
-                AuditFile.number(recorded.json().path("items").path(0).path("changes"), "count"));
+                AuditChainMath.number(recorded.json().path("items").path(0).path("changes"), "count"));
     }
 
     private static long migrations(Db db) {
@@ -127,7 +127,7 @@ class UpgradeAuditChainTest {
 
         assertThat(rowsBefore.size()).as("audit rows before the upgrade").isGreaterThan(BULK);
         assertThat(chain.firstSeq()).as("seq of the first line of the export").isEqualTo(1);
-        assertThat(chain.firstPrevHash()).as("prevHash of the first line of the export").isEqualTo(AuditFile.ZERO_HASH);
+        assertThat(chain.firstPrevHash()).as("prevHash of the first line of the export").isEqualTo(AuditChainMath.ZERO_HASH);
         assertThat(chain.ids().size()).as("lines of the export").isGreaterThanOrEqualTo(rowsBefore.size());
         for (int i = 0; i < rowsBefore.size(); i++) {
             if (!rowsBefore.get(i).equals(chain.ids().get(i))) {
@@ -144,7 +144,7 @@ class UpgradeAuditChainTest {
         Upgraded upgraded = UPGRADED.get();
         Exported exported = EXPORTED.get();
         Db db = upgraded.stack().db();
-        JsonNode expected = AuditFile.parse(Files.readString(sample("sample.expected.json"), StandardCharsets.UTF_8))
+        JsonNode expected = AuditChainMath.parse(Files.readString(sample("sample.expected.json"), StandardCharsets.UTF_8))
                 .path("audit");
 
         assertThat(migrations(db)).as("successful migrations after the app started")
@@ -153,24 +153,24 @@ class UpgradeAuditChainTest {
                 + ".flyway_schema_history where not success")).as("failed migrations").isZero();
         assertThat(expected).as("audit rows in sample.expected.json").isNotEmpty();
         for (JsonNode row : expected) {
-            JsonNode stored = AuditFile.parse(AuditFile.text(row, "row"));
-            long id = AuditFile.number(row, "id");
+            JsonNode stored = AuditChainMath.parse(AuditChainMath.text(row, "row"));
+            long id = AuditChainMath.number(row, "id");
             List<JsonNode> lines = exported.chain().kept().stream()
-                    .filter(line -> AuditFile.number(line, "id") == id).toList();
+                    .filter(line -> AuditChainMath.number(line, "id") == id).toList();
             assertThat(lines).as("lines of the export with the sample's audit row %d", id).hasSize(1);
             JsonNode line = lines.getFirst();
-            assertThat(AuditFile.text(line, "action")).as("action of row %d", id)
-                    .isEqualTo(AuditFile.text(stored, "action"));
+            assertThat(AuditChainMath.text(line, "action")).as("action of row %d", id)
+                    .isEqualTo(AuditChainMath.text(stored, "action"));
             for (String column : List.of("actor", "target", "changes")) {
                 assertThat(AuditChainMath.canonical(line.path(column))).as("%s of row %d", column, id)
                         .isEqualTo(AuditChainMath.canonical(stored.path(column)));
             }
-            assertThat(AuditFile.time(AuditFile.text(line, "occurredAt"))).as("occurredAt of row %d", id)
-                    .isEqualTo(AuditFile.time(AuditFile.text(stored, "occurred_at")));
-            assertThat(AuditFile.text(line, "hash")).as("hash of row %d", id).matches(AuditFile.HASH_PATTERN);
+            assertThat(AuditFile.time(AuditChainMath.text(line, "occurredAt"))).as("occurredAt of row %d", id)
+                    .isEqualTo(AuditFile.time(AuditChainMath.text(stored, "occurred_at")));
+            assertThat(AuditChainMath.text(line, "hash")).as("hash of row %d", id).matches(AuditChainMath.HASH_PATTERN);
         }
-        JsonNode answer = AuditFile.assertValid(exported.admin());
-        assertThat(AuditFile.number(answer, "checkedCount")).as("checkedCount in %s", answer)
+        JsonNode answer = AuditChainMath.assertValid(exported.admin().client());
+        assertThat(AuditChainMath.number(answer, "checkedCount")).as("checkedCount in %s", answer)
                 .isGreaterThan(upgraded.rowsBefore().size());
     }
 
@@ -210,10 +210,10 @@ class UpgradeAuditChainTest {
                 .filter(line -> "DATABASE_RESTORED".equals(line.path("action").asString(null))).toList();
 
         assertThat(restored).as("DATABASE_RESTORED lines of the export").hasSize(1);
-        assertThat(AuditFile.number(restored.getFirst().path("actor"), "accountId")).as("the person of %s",
+        assertThat(AuditChainMath.number(restored.getFirst().path("actor"), "accountId")).as("the person of %s",
                 restored.getFirst()).isZero();
         assertThat(upgraded.rowsBefore()).as("IDs of the audit rows before the app started")
-                .contains(AuditFile.number(restored.getFirst(), "id"));
-        AuditFile.assertValid(exported.admin());
+                .contains(AuditChainMath.number(restored.getFirst(), "id"));
+        AuditChainMath.assertValid(exported.admin().client());
     }
 }

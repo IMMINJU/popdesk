@@ -1,5 +1,8 @@
 package io.popdesk.audit;
 
+import static io.popdesk.support.AuditChainMath.ZERO_HASH;
+import static io.popdesk.support.AuditChainMath.number;
+import static io.popdesk.support.AuditChainMath.text;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.support.ApiRequest;
@@ -11,6 +14,10 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -24,7 +31,8 @@ import tools.jackson.databind.json.JsonMapper;
  * "COMPANY_CREATED")}. Query values come in pairs, name then value; a name may repeat.
  *
  * <p>The chain is computed without any class of the app, by {@code support.AuditChainMath}; the
- * methods here pass on to it. {@link #hash} is
+ * methods here pass on to it, and the fields of an entry are read with its {@code text} and
+ * {@code number}. {@link #hash} is
  * {@code SHA-256(prevHash as 64 lowercase hex characters ‖ canonical JSON)}, and {@link #chainJson} is
  * the RFC 8785 form of {@code {action, actor{accountId, email, name}, changes, occurredAt, target}}
  * with null values kept and the time in UTC with six fraction digits. Audit values hold no
@@ -37,11 +45,6 @@ final class AuditSteps {
     static final String LOG = "/api/console/audit-log";
 
     static final String EXPORT = LOG + "/export";
-
-    /** The {@code prevHash} of the first entry of a chain. */
-    static final String ZERO_HASH = "0".repeat(64);
-
-    static final String HASH_PATTERN = "^[0-9a-f]{64}$";
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -99,24 +102,6 @@ final class AuditSteps {
         return found.getFirst();
     }
 
-    /** A text field of an entry, or of an object inside it. Fails when it is missing or not text. */
-    static String text(JsonNode node, String field) {
-        JsonNode value = node.path(field);
-        if (!value.isString()) {
-            throw new AssertionError("No text field '" + field + "' in " + node);
-        }
-        return value.stringValue();
-    }
-
-    /** A whole-number field. Fails when it is missing or not a whole number. */
-    static long number(JsonNode node, String field) {
-        JsonNode value = node.path(field);
-        if (!value.isIntegralNumber()) {
-            throw new AssertionError("No whole-number field '" + field + "' in " + node);
-        }
-        return value.asLong();
-    }
-
     /** {@code occurredAt} of an entry as an instant. */
     static Instant time(JsonNode entry) {
         return instant(text(entry, "occurredAt"));
@@ -128,6 +113,21 @@ final class AuditSteps {
             return OffsetDateTime.parse(written).toInstant();
         } catch (DateTimeParseException e) {
             throw new AssertionError("Not a time: '" + written + "'", e);
+        }
+    }
+
+    /**
+     * The response of a request sent on another thread while the test held it in the database; waits
+     * at most 30 seconds for it.
+     */
+    static ApiResponse ended(Future<ApiResponse> request) {
+        try {
+            return request.get(30, TimeUnit.SECONDS);
+        } catch (ExecutionException | TimeoutException e) {
+            throw new AssertionError("A held request did not end with a response: " + e, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("Interrupted while waiting for a held request", e);
         }
     }
 
@@ -226,15 +226,6 @@ final class AuditSteps {
         return JSON.valueToTree(value);
     }
 
-    /** JSON text as JSON. */
-    static JsonNode parse(String text) {
-        try {
-            return JSON.readTree(text);
-        } catch (JacksonException e) {
-            throw new AssertionError("Not JSON: " + text, e);
-        }
-    }
-
     /**
      * The RFC 8785 text of a JSON value: keys sorted by UTF-16 code units, no whitespace, strings
      * escaped as {@code JSON.stringify} does. Two values are the same JSON when this text is the same,
@@ -258,7 +249,7 @@ final class AuditSteps {
      * Checks entries given in chain order (an export without a filter, or any run of entries with
      * no gap): each {@code hash} is the hash computed again, each {@code prevHash} is the {@code hash}
      * of the entry before, {@code seq} goes up by one, and the entry with {@code seq} 1 starts from
-     * {@link #ZERO_HASH}.
+     * {@code ZERO_HASH}.
      */
     static void assertChain(List<JsonNode> inChainOrder) {
         assertThat(inChainOrder).as("entries of the chain").isNotEmpty();

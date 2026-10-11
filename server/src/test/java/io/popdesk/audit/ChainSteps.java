@@ -2,11 +2,13 @@ package io.popdesk.audit;
 
 import static io.popdesk.audit.AuditSteps.export;
 import static io.popdesk.audit.AuditSteps.jsonLines;
-import static io.popdesk.audit.AuditSteps.number;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.DbInspector;
+import io.popdesk.support.FailedWrite;
+import io.popdesk.support.Fixtures;
+import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Wait;
 import java.sql.Connection;
@@ -18,6 +20,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -25,7 +28,8 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * Steps of the hash chain tests of slice 1b that {@link AuditSteps} does not have: the integrity
- * check, the retention job, and changes to audit rows made in the database behind the app's back.
+ * check, the retention job, a request whose commit fails, and changes to audit rows made in the
+ * database behind the app's back.
  *
  * <p>Every failure is an {@link AssertionError}.
  */
@@ -41,17 +45,6 @@ final class ChainSteps {
     /** {@code POST /api/console/audit-log/verify}. Sent, any status. */
     static ApiResponse verify(Session admin) {
         return admin.client().post(VERIFY).send();
-    }
-
-    /** Runs the integrity check and expects "all entries match": 200, valid, a count, no reason, no entry. */
-    static JsonNode assertValid(Session admin) {
-        JsonNode answer = verify(admin).expectStatus(200).json();
-        assertThat(answer.path("valid").isBoolean() && answer.path("valid").booleanValue())
-                .as("valid in the integrity check's answer %s", answer).isTrue();
-        assertThat(number(answer, "checkedCount")).as("checkedCount in %s", answer).isPositive();
-        assertThat(answer.path("reason").isNull()).as("reason is null in %s", answer).isTrue();
-        assertThat(answer.path("brokenEntry").isNull()).as("brokenEntry is null in %s", answer).isTrue();
-        return answer;
     }
 
     /** Runs the integrity check and expects 200 with {@code valid: false} and this reason. */
@@ -81,6 +74,42 @@ final class ChainSteps {
             }
             return lastRun(rows.getFirst()).isBefore(due) ? null : rows.getFirst();
         });
+    }
+
+    /** Tables, besides the audit tables, that hold a row with this value in a column. */
+    private static List<String> tablesHolding(DbInspector db, String value) {
+        return db.tables().stream()
+                .filter(table -> !table.startsWith("audit") && !table.startsWith("spring_session")
+                        && !table.equals("flyway_schema_history"))
+                .filter(table -> db.count("select count(*) from \"" + table.replace("\"", "\"\"")
+                        + "\" t where exists (select 1 from jsonb_each_text(to_jsonb(t)) e where e.value = ?)",
+                        value) > 0)
+                .toList();
+    }
+
+    /**
+     * Asks for a company with this code and legal name while the commit of a row that holds the legal
+     * name fails: everything the request writes is written, its audit entry too, and then the commit
+     * itself fails (a deferred constraint trigger). Sent, any status.
+     *
+     * <p>The tables are found by a company made first, so no table name is fixed here.
+     */
+    static ApiResponse createCompanyFailingAtCommit(DbInspector db, Fixtures fixtures, Session admin, String code,
+            String legalName) {
+        Company probe = fixtures.createCompany(admin);
+        List<String> companyTables = tablesHolding(db, probe.legalName());
+        assertThat(companyTables).as("tables holding the company %s besides the audit tables", probe.code())
+                .isNotEmpty();
+        List<FailedWrite> failures = new ArrayList<>();
+        try {
+            for (String table : companyTables) {
+                failures.add(FailedWrite.commit(db, table, legalName));
+            }
+            return admin.client().post("/api/console/companies")
+                    .json(Map.of("code", code, "name", "Rolled back " + code, "legalName", legalName)).send();
+        } finally {
+            failures.forEach(FailedWrite::close);
+        }
     }
 
     /** {@code last_run_at} of a cleanup record row. */

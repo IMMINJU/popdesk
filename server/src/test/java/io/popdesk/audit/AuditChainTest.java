@@ -1,20 +1,21 @@
 package io.popdesk.audit;
 
-import static io.popdesk.audit.AuditSteps.HASH_PATTERN;
 import static io.popdesk.audit.AuditSteps.assertChain;
 import static io.popdesk.audit.AuditSteps.entries;
 import static io.popdesk.audit.AuditSteps.export;
 import static io.popdesk.audit.AuditSteps.hash;
-import static io.popdesk.audit.AuditSteps.number;
 import static io.popdesk.audit.AuditSteps.onlyEntry;
-import static io.popdesk.audit.AuditSteps.text;
-import static io.popdesk.audit.ChainSteps.assertValid;
 import static io.popdesk.audit.ChainSteps.chain;
+import static io.popdesk.support.AuditChainMath.HASH_PATTERN;
+import static io.popdesk.support.AuditChainMath.assertValid;
+import static io.popdesk.support.AuditChainMath.number;
+import static io.popdesk.support.AuditChainMath.text;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.project.PeopleSteps;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
+import io.popdesk.support.FailedWrite;
 import io.popdesk.support.Fixtures;
 import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.Invitation;
@@ -35,6 +36,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -65,18 +67,14 @@ class AuditChainTest extends BareAppTest {
 
     /** Where a change fails after its audit entry was recorded. */
     enum Failure {
-        /** The statement that writes the change fails. */
-        WHILE_WRITING("create trigger %s before insert on %s for each row execute function %s()"),
-        /** Everything was written and the commit itself fails (a deferred constraint). */
-        AT_COMMIT("create constraint trigger %s after insert on %s deferrable initially deferred for each row "
-                + "execute function %s()");
-
-        private final String createTrigger;
-
-        Failure(String createTrigger) {
-            this.createTrigger = createTrigger;
-        }
+        /** A statement after the one that records the entry fails: a suspension, ending the account's sessions. */
+        WHILE_WRITING,
+        /** Everything was written and the commit itself fails (a deferred constraint): creating a company. */
+        AT_COMMIT
     }
+
+    /** A change that failed: the query that would find its entry in the log, and its line in an export. */
+    private record RolledBack(Object[] query, Predicate<JsonNode> isItsLine) {}
 
     private static String accountPath(long accountId) {
         return "/api/console/accounts/" + accountId;
@@ -84,10 +82,6 @@ class AuditChainTest extends BareAppTest {
 
     private static String companyPath(String code) {
         return "/api/console/companies/" + code;
-    }
-
-    private static String quote(String identifier) {
-        return '"' + identifier.replace("\"", "\"\"") + '"';
     }
 
     @Test
@@ -159,63 +153,67 @@ class AuditChainTest extends BareAppTest {
         assertChain(chain);
         assertThat(chain.stream().map(line -> text(line, "prevHash")).toList()).as("previous hashes of the chain")
                 .doesNotHaveDuplicates();
-        assertValid(admin);
+        assertValid(admin.client());
     }
 
-    /** Tables, besides the audit tables, that hold a row with this text. */
-    private List<String> tablesHolding(String value) {
-        return db.tables().stream()
-                .filter(table -> !table.startsWith("audit") && !table.startsWith("spring_session")
-                        && !table.equals("flyway_schema_history"))
-                .filter(table -> db.count("select count(*) from " + quote(table)
-                        + " t where position(? in row_to_json(t)::text) > 0", value) > 0)
-                .toList();
+    private static void assertInternalError(ApiResponse failed) {
+        assertThat(failed.status()).as("%s: %s", failed, failed.snippet()).isEqualTo(500);
+        assertThat(failed.errorCode()).isEqualTo("INTERNAL_ERROR");
+    }
+
+    /**
+     * Suspends an agent while the statement that ends the agent's sessions fails. The suspension
+     * records its entry before that statement, so the entry was recorded when the transaction broke.
+     */
+    private RolledBack suspensionFailsEndingTheSessions(Session admin) {
+        Session agent = fixtures.agent(admin);
+        ApiResponse failed;
+        try (FailedWrite failure = FailedWrite.statement(db, "spring_session", "delete",
+                Long.toString(agent.accountId()))) {
+            failed = admin.client().post(accountPath(agent.accountId()) + "/suspend").send();
+        }
+        assertInternalError(failed);
+        assertThat(agent.client().get("/api/console/me").expect(200).jsonLong("id"))
+                .as("the agent is still signed in: the suspension was rolled back").isEqualTo(agent.accountId());
+        return new RolledBack(new Object[] {"targetAccountId", agent.accountId(), "action", "ACCOUNT_SUSPENDED"},
+                line -> "ACCOUNT_SUSPENDED".equals(line.path("action").asString(null))
+                        && line.path("target").path("accountId").asLong(-1) == agent.accountId());
+    }
+
+    /** Creates a company whose rows are all written and whose commit then fails. */
+    private RolledBack companyFailsAtCommit(Session admin) {
+        String code = Unique.companyCode();
+        String legalName = Unique.text("Rolled back Ltd.");
+
+        ApiResponse failed = ChainSteps.createCompanyFailingAtCommit(db, fixtures, admin, code, legalName);
+
+        assertInternalError(failed);
+        admin.client().get(companyPath(code)).expect(404);
+        return new RolledBack(new Object[] {"targetCode", code}, line -> line.toString().contains(legalName));
     }
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(Failure.class)
-    @DisplayName("S1B-AC-11 a change that fails and is rolled back leaves no entry and takes no place in the "
-            + "chain: the next entry follows without a gap and the integrity check says valid")
+    @DisplayName("S1B-AC-11 a change that fails after its entry was recorded and is rolled back leaves no entry "
+            + "and takes no place in the chain: the next entry follows without a gap and the integrity check says "
+            + "valid")
     void rolledBackChangeLeavesNoEntryAndNoGap(Failure failure) {
         Session admin = fixtures.admin(fixtures.signInAdmin());
-        Company probe = fixtures.createCompany(admin);
-        List<String> companyTables = tablesHolding(probe.legalName());
-        assertThat(companyTables).as("tables holding the company %s besides the audit tables", probe.code())
-                .isNotEmpty();
-        String code = Unique.companyCode();
-        String legalName = Unique.text("Rolled back Ltd.");
-        String function = quote(db.schema()) + ".test_chain_fail_" + Unique.number();
-        List<String> drops = new ArrayList<>();
-        db.schemaFixture("create function " + function + "() returns trigger language plpgsql as $$ begin "
-                + "if position('" + legalName.replace("'", "''") + "' in row_to_json(NEW)::text) > 0 then "
-                + "raise exception 'test_ trigger: injected failure'; end if; return NEW; end $$");
-        ApiResponse failed;
-        try {
-            for (String table : companyTables) {
-                String trigger = "test_chain_fail_" + Unique.number();
-                db.schemaFixture(failure.createTrigger.formatted(trigger, quote(table), function));
-                drops.add("drop trigger if exists " + trigger + " on " + quote(table));
-            }
-            failed = admin.client().post("/api/console/companies")
-                    .json(Map.of("code", code, "name", Unique.text("Rolled back"), "legalName", legalName)).send();
-        } finally {
-            drops.forEach(db::schemaFixture);
-            db.schemaFixture("drop function if exists " + function + "()");
-        }
-        assertThat(failed.status()).as("%s: %s", failed, failed.snippet()).isEqualTo(500);
-        assertThat(failed.errorCode()).isEqualTo("INTERNAL_ERROR");
-        admin.client().get(companyPath(code)).expect(404);
+        RolledBack rolledBack = switch (failure) {
+            case WHILE_WRITING -> suspensionFailsEndingTheSessions(admin);
+            case AT_COMMIT -> companyFailsAtCommit(admin);
+        };
 
         Company next = fixtures.createCompany(admin);
 
         List<JsonNode> chain = chain(admin);
-        assertThat(entries(admin, "targetCode", code)).as("entries of the company that was not created").isEmpty();
-        assertThat(chain.stream().filter(line -> line.toString().contains(legalName)).toList())
-                .as("lines of the export that hold %s", legalName).isEmpty();
+        assertThat(entries(admin, rolledBack.query())).as("entries of the change that was rolled back").isEmpty();
+        assertThat(chain.stream().filter(rolledBack.isItsLine()).toList())
+                .as("lines of the export from the change that was rolled back").isEmpty();
         assertThat(chain.stream().filter(line -> next.code().equals(line.path("target").path("code").asString(null)))
                 .toList()).as("lines of the company created after the failure").hasSize(1);
         assertChain(chain);
-        assertValid(admin);
+        assertValid(admin.client());
     }
 
     @Test
@@ -259,7 +257,7 @@ class AuditChainTest extends BareAppTest {
         Set<Long> accounts = Set.of(admin.accountId(), customer.accountId(), invited.accountId(), agent.accountId(),
                 member.accountId(), locked.accountId());
 
-        JsonNode answer = assertValid(admin);
+        JsonNode answer = assertValid(admin.client());
 
         List<JsonNode> mine = chain(admin).stream()
                 .filter(line -> accounts.contains(line.path("actor").path("accountId").asLong(-1))

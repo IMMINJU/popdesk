@@ -5,7 +5,7 @@ import static io.popdesk.audit.AuditSteps.export;
 import static io.popdesk.audit.AuditSteps.json;
 import static io.popdesk.audit.AuditSteps.onlyEntry;
 import static io.popdesk.audit.AuditSteps.pages;
-import static io.popdesk.audit.AuditSteps.text;
+import static io.popdesk.support.AuditChainMath.text;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.project.PeopleSteps;
@@ -33,6 +33,10 @@ import tools.jackson.databind.JsonNode;
 class AuditChangesTest extends BareAppTest {
 
     private static final String NEW_PASSWORD = "audited-Password-3";
+
+    private static final String OWN_PASSWORD = "audited-Password-4-own";
+
+    private static final String WRONG_PASSWORD = "audited-Password-5-wrong";
 
     /** A change of a value. */
     enum Change {
@@ -134,8 +138,9 @@ class AuditChangesTest extends BareAppTest {
 
     @Test
     @DisplayName("S1B-AC-07 after an invitation, a copied invitation link, a password reset by an admin, a new "
-            + "password set with the reset link, and a request for a reset link, the account's entries hold no "
-            + "password, token, or link, in the log and in both export formats")
+            + "password set with the reset link, a request for a reset link, a sign-in with a wrong password, and "
+            + "a password the person changed, the account's entries hold no password, token, or link, in the log "
+            + "and in both export formats")
     void noEntryHoldsAPasswordTokenOrLink() {
         Session admin = fixtures.admin(fixtures.signInAdmin());
         Invitation invited = fixtures.invite(admin, Role.AGENT);
@@ -147,8 +152,12 @@ class AuditChangesTest extends BareAppTest {
         console().post("/api/public/password-reset/confirm")
                 .json(Map.of("token", Fixtures.tokenOf(resetLink), "password", NEW_PASSWORD)).expect(204);
         console().post("/api/public/password-reset/request").json(Map.of("email", invited.email())).expect(202);
+        console().post("/api/public/sign-in").json(Map.of("email", invited.email(), "password", WRONG_PASSWORD))
+                .expect(401);
+        fixtures.signIn(Fixtures.App.CONSOLE, invited.email(), NEW_PASSWORD).client().put("/api/console/me/password")
+                .json(Map.of("currentPassword", NEW_PASSWORD, "newPassword", OWN_PASSWORD)).expect(204);
         List<String> secrets = List.of(invited.link(), invited.token(), copied, Fixtures.tokenOf(copied), resetLink,
-                Fixtures.tokenOf(resetLink), NEW_PASSWORD, Fixtures.PASSWORD);
+                Fixtures.tokenOf(resetLink), NEW_PASSWORD, Fixtures.PASSWORD, WRONG_PASSWORD, OWN_PASSWORD);
 
         List<ApiResponse> log = pages(admin, "targetAccountId", invited.accountId());
         ApiResponse jsonLines = export(admin, "JSONL", "targetAccountId", invited.accountId()).expectStatus(200);
@@ -157,7 +166,8 @@ class AuditChangesTest extends BareAppTest {
         List<String> actions = new ArrayList<>();
         log.forEach(page -> page.json().path("items").forEach(e -> actions.add(text(e, "action"))));
         assertThat(actions).as("kinds of the account's entries").contains("INVITATION_CREATED",
-                "INVITATION_LINK_CREATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_RESET_COMPLETED");
+                "INVITATION_LINK_CREATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_RESET_COMPLETED", "SIGN_IN_FAILED",
+                "PASSWORD_CHANGED");
         assertThat(log).as("pages of the log").allSatisfy(page -> assertThat(page.text()).as(page.request())
                 .doesNotContain(secrets));
         assertThat(jsonLines.text()).as("the JSON Lines export").contains("INVITATION_LINK_CREATED")

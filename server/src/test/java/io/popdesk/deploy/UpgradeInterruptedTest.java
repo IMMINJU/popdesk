@@ -3,6 +3,7 @@ package io.popdesk.deploy;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.deploy.AppSteps.Person;
+import io.popdesk.support.AuditChainMath;
 import io.popdesk.support.Wait;
 import java.io.IOException;
 import java.net.URI;
@@ -116,13 +117,13 @@ class UpgradeInterruptedTest {
             Person admin = new AppSteps(stack).signIn(SAMPLE_ADMIN, SAMPLE_ADMIN_PASSWORD);
             AuditFile.Chain chain = AuditFile.export(admin, line -> false);
             assertThat(chain.firstSeq()).as("seq of the first line of the export").isEqualTo(1);
-            assertThat(chain.firstPrevHash()).as("prevHash of the first line").isEqualTo(AuditFile.ZERO_HASH);
+            assertThat(chain.firstPrevHash()).as("prevHash of the first line").isEqualTo(AuditChainMath.ZERO_HASH);
             assertThat(chain.ids().size()).as("lines of the export").isGreaterThanOrEqualTo(rowsBefore.size());
             assertThat(chain.ids().subList(0, rowsBefore.size()))
                     .as("the first lines of the export: the rows from before the upgrade, by time and then ID")
                     .containsExactlyElementsOf(rowsBefore);
-            JsonNode answer = AuditFile.assertValid(admin);
-            assertThat(AuditFile.number(answer, "checkedCount")).as("checkedCount in %s", answer)
+            JsonNode answer = AuditChainMath.assertValid(admin.client());
+            assertThat(AuditChainMath.number(answer, "checkedCount")).as("checkedCount in %s", answer)
                     .isGreaterThanOrEqualTo(rowsBefore.size());
         }
     }

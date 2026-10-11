@@ -18,29 +18,20 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The audit log of an app that runs in a container, through the admin API: a JSON Lines export
- * without a filter, checked as a hash chain while it is read, and the integrity check.
+ * without a filter, checked as a hash chain while it is read.
  *
- * <p>The chain is computed by {@code support.AuditChainMath}. A file of 100,000 lines is read line
- * by line; only the lines a test asks for are kept.
+ * <p>The chain is computed by {@code support.AuditChainMath}, which also has the integrity check. A
+ * file of 100,000 lines is read line by line; only the lines a test asks for are kept.
  *
  * <p>Every failure is an {@link AssertionError}.
  */
 final class AuditFile {
 
     static final String LOG = "/api/console/audit-log";
-
-    /** The {@code prevHash} of the first entry of a chain. */
-    static final String ZERO_HASH = "0".repeat(64);
-
-    static final String HASH_PATTERN = "^[0-9a-f]{64}$";
-
-    private static final JsonMapper JSON = JsonMapper.builder().build();
 
     /**
      * An export that was a whole chain: the IDs of its lines in file order, the {@code seq} and
@@ -69,10 +60,10 @@ final class AuditFile {
                 if (text.isBlank()) {
                     continue;
                 }
-                JsonNode line = parse(text);
-                long seq = number(line, "seq");
-                String prevHash = text(line, "prevHash");
-                String hash = text(line, "hash");
+                JsonNode line = AuditChainMath.parse(text);
+                long seq = AuditChainMath.number(line, "seq");
+                String prevHash = AuditChainMath.text(line, "prevHash");
+                String hash = AuditChainMath.text(line, "hash");
                 if (!hash.equals(AuditChainMath.hash(prevHash, line))) {
                     throw new AssertionError("The hash of seq " + seq + " is not SHA-256 of its prevHash and "
                             + AuditChainMath.chainJson(line) + ": " + text);
@@ -86,7 +77,7 @@ final class AuditFile {
                 }
                 seqBefore = seq;
                 hashBefore = hash;
-                ids.add(number(line, "id"));
+                ids.add(AuditChainMath.number(line, "id"));
                 if (keep.test(line)) {
                     kept.add(line);
                 }
@@ -96,41 +87,6 @@ final class AuditFile {
         }
         assertThat(ids).as("lines of the export").isNotEmpty();
         return new Chain(ids, firstSeq, firstPrevHash, kept);
-    }
-
-    /** Runs the integrity check and expects "all entries match": 200, valid, a count, no reason, no entry. */
-    static JsonNode assertValid(Person admin) {
-        JsonNode answer = admin.client().post(LOG + "/verify").send().expectStatus(200).json();
-        assertThat(answer.path("valid").isBoolean() && answer.path("valid").booleanValue())
-                .as("valid in the integrity check's answer %s", answer).isTrue();
-        assertThat(number(answer, "checkedCount")).as("checkedCount in %s", answer).isPositive();
-        assertThat(answer.path("reason").isNull()).as("reason is null in %s", answer).isTrue();
-        assertThat(answer.path("brokenEntry").isNull()).as("brokenEntry is null in %s", answer).isTrue();
-        return answer;
-    }
-
-    static JsonNode parse(String text) {
-        try {
-            return JSON.readTree(text);
-        } catch (JacksonException e) {
-            throw new AssertionError("Not JSON: " + text, e);
-        }
-    }
-
-    static String text(JsonNode node, String field) {
-        JsonNode value = node.path(field);
-        if (!value.isString()) {
-            throw new AssertionError("No text field '" + field + "' in " + node);
-        }
-        return value.stringValue();
-    }
-
-    static long number(JsonNode node, String field) {
-        JsonNode value = node.path(field);
-        if (!value.isIntegralNumber()) {
-            throw new AssertionError("No whole-number field '" + field + "' in " + node);
-        }
-        return value.asLong();
     }
 
     /** A time the API or the database wrote, as an instant at microsecond precision. */

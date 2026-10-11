@@ -1,5 +1,7 @@
 package io.popdesk.support;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -11,11 +13,14 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The hash chain of the audit log, computed without any class of the app, from what the API gives
- * (an entry of the log, or a line of a JSON Lines export).
+ * (an entry of the log, or a line of a JSON Lines export), and what the steps of every package need
+ * to read it: fields of an entry, and the integrity check's "all entries match".
  *
  * <p>{@link #hash} is {@code SHA-256(prevHash as 64 lowercase hex characters ‖ canonical JSON)}, and
  * {@link #chainJson} is the RFC 8785 text of {@code {action, actor{accountId, email, name}, changes,
@@ -29,7 +34,57 @@ public final class AuditChainMath {
     private static final DateTimeFormatter MICROS =
             DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSS'Z'").withZone(ZoneOffset.UTC);
 
+    /** The {@code prevHash} of the first entry of a chain. */
+    public static final String ZERO_HASH = "0".repeat(64);
+
+    public static final String HASH_PATTERN = "^[0-9a-f]{64}$";
+
+    private static final String VERIFY = "/api/console/audit-log/verify";
+
+    private static final JsonMapper JSON = JsonMapper.builder().build();
+
     private AuditChainMath() {}
+
+    /** JSON text as JSON. */
+    public static JsonNode parse(String text) {
+        try {
+            return JSON.readTree(text);
+        } catch (JacksonException e) {
+            throw new AssertionError("Not JSON: " + text, e);
+        }
+    }
+
+    /** A text field of an entry, or of an object inside it. Fails when it is missing or not text. */
+    public static String text(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        if (!value.isString()) {
+            throw new AssertionError("No text field '" + field + "' in " + node);
+        }
+        return value.stringValue();
+    }
+
+    /** A whole-number field. Fails when it is missing or not a whole number. */
+    public static long number(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        if (!value.isIntegralNumber()) {
+            throw new AssertionError("No whole-number field '" + field + "' in " + node);
+        }
+        return value.asLong();
+    }
+
+    /**
+     * Runs the integrity check as this signed-in admin and expects "all entries match": 200, valid, a
+     * count, no reason, no entry.
+     */
+    public static JsonNode assertValid(ApiClient admin) {
+        JsonNode answer = admin.post(VERIFY).send().expectStatus(200).json();
+        assertThat(answer.path("valid").isBoolean() && answer.path("valid").booleanValue())
+                .as("valid in the integrity check's answer %s", answer).isTrue();
+        assertThat(number(answer, "checkedCount")).as("checkedCount in %s", answer).isPositive();
+        assertThat(answer.path("reason").isNull()).as("reason is null in %s", answer).isTrue();
+        assertThat(answer.path("brokenEntry").isNull()).as("brokenEntry is null in %s", answer).isTrue();
+        return answer;
+    }
 
     /**
      * The RFC 8785 text of a JSON value: keys sorted by UTF-16 code units, no whitespace, strings

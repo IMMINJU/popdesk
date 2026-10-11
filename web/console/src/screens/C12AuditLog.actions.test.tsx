@@ -4,6 +4,7 @@
 import { HttpResponse } from 'msw/http';
 import { describe, expect, test } from 'vitest';
 import {
+  action,
   alertWith,
   atPath,
   button,
@@ -30,10 +31,13 @@ import {
   SUSPENDED,
   VALID,
   audit,
+  chosenKind,
   column,
+  entry,
   entryRows,
   exportBusy,
   kindSelect,
+  lastList,
   listedKinds,
   type AuditVerification,
 } from '../__tests__/console1b';
@@ -165,6 +169,55 @@ describe('C-12 감사 로그: 무결성 확인', () => {
     expect(text(band)).toMatch(localMinute(BROKEN_AT));
     expect(queryAction('이 항목 보기'), '"이 항목 보기"').not.toBeNull();
     expect(pageText()).not.toContain('모두 맞습니다');
+  });
+
+  test('S1B-AC-37 C-12 "이 항목 보기": 다른 필터를 지우고 기간을 그 항목의 날 하루로 걸어(부터 그 날 0시, 까지 다음 날 0시) 1쪽을 받는다', async () => {
+    const at = new Date(BROKEN_AT);
+    const brokenEntry = entry({ id: 7600, occurredAt: BROKEN_AT });
+    // 25 suspensions: 24 on another day, and the broken one last, on the second page.
+    audit.entries = [...Array.from({ length: 24 }, (_, i) => entry({ id: 7900 - i })), brokenEntry];
+    audit.verification = {
+      valid: false,
+      checkedCount: 41,
+      reason: 'ENTRY_MISMATCH',
+      brokenEntry: { id: brokenEntry.id, occurredAt: BROKEN_AT, action: 'ACCOUNT_SUSPENDED' },
+    };
+    const first = renderAt(URL_LOG);
+    await entryRows(20);
+    await first.user.selectOptions(await kindSelect(), '계정 정지');
+    await listedKinds(['ACCOUNT_SUSPENDED']);
+    await eventually(() => {
+      expect(window.location.search, '필터가 주소의 쿼리에').not.toBe('');
+    });
+    const filtered = `${window.location.pathname}${window.location.search}`;
+    first.unmount();
+    const { user } = renderAt(`${filtered}&page=2`);
+    await entryRows(5);
+    expect(lastList().get('page')).toBe('2');
+    expect(lastList().getAll('action')).toEqual(['ACCOUNT_SUSPENDED']);
+    await user.click(await button('무결성 확인'));
+    await alertWith("'계정 정지' 항목부터 맞지 않습니다. 이 항목이나 그 앞 항목이 고쳐지거나 지워졌습니다.");
+
+    await user.click(await action('이 항목 보기'));
+
+    await eventually(() => {
+      expect(lastList().has('from')).toBe(true);
+    });
+    const query = lastList();
+    expect(new Date(query.get('from') ?? '').getTime(), '부터: 그 항목의 날 0시').toBe(
+      new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime(),
+    );
+    expect(new Date(query.get('to') ?? '').getTime(), '까지: 다음 날 0시').toBe(
+      new Date(at.getFullYear(), at.getMonth(), at.getDate() + 1).getTime(),
+    );
+    expect(
+      ['action', 'actorAccountId', 'targetType', 'targetAccountId', 'targetCode'].filter((name) => query.has(name)),
+      '기간 말고 남은 필터',
+    ).toEqual([]);
+    expect(query.get('page') ?? '1').toBe('1');
+    const rows = await entryRows(1);
+    expect(new Date(rows[0]?.querySelector('time')?.getAttribute('datetime') ?? '').getTime()).toBe(at.getTime());
+    expect(chosenKind(await kindSelect())).toBe('전체');
   });
 
   test('S1B-AC-42 C-12 무결성 확인 맨 끝이 없어짐: 오류 띠 "마지막 항목 뒤가 맞지 않습니다. 가장 최근 항목이 지워졌습니다."', async () => {

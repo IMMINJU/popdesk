@@ -21,9 +21,11 @@ import {
   BACKED_UP,
   COLUMNS,
   COMPANY_MADE,
+  EXPORTED,
   KIND_GROUPS,
   SIGNED_IN,
   SUSPENDED,
+  SYSTEM_ACTOR,
   audit,
   cellOf,
   chosenKind,
@@ -40,6 +42,18 @@ const FILTERS = ['action', 'actorAccountId', 'targetType', 'targetAccountId', 't
 
 /** A kind the screen has no word for, with a field and a value it has no word for, and no target. */
 const UNKNOWN = entry({ id: 7700, action: 'LEGACY_THING', target: null, changes: { flavor: 'mint' } });
+
+/** A customer of ACME and an agent assigned to it: the target holds the company and the account. */
+const MEMBER_OF_ACME = { type: 'COMPANY', code: 'ACME', accountId: 12 } as const;
+const CUSTOMER_ADDED = entry({ id: 7712, action: 'CUSTOMER_ADDED', target: MEMBER_OF_ACME, changes: { member: true } });
+const AGENT_ASSIGNED = entry({ id: 7711, action: 'AGENT_ASSIGNED', target: MEMBER_OF_ACME, changes: { assigned: true } });
+const RESTORED = entry({
+  id: 7710,
+  action: 'DATABASE_RESTORED',
+  actor: SYSTEM_ACTOR,
+  target: { type: 'DATABASE' },
+  changes: { file: 'popdesk-20261007.dump' },
+});
 
 /** The button that opens a row: the one with `aria-expanded`. The target cell's button has none. */
 function expander(row: HTMLElement | undefined): Promise<HTMLElement> {
@@ -77,6 +91,40 @@ describe('C-12 감사 로그: 표와 상태', () => {
 
     await entryRows(audit.entries.length);
     expect(column('일')).toEqual(Object.values(kinds));
+  });
+
+  test.each([
+    ['소속', CUSTOMER_ADDED, '고객사 ACME · 계정 12'],
+    ['배정', AGENT_ASSIGNED, '고객사 ACME · 계정 12'],
+    ['백업', BACKED_UP, '데이터베이스'],
+    ['복원', RESTORED, '데이터베이스'],
+    ['내보내기', EXPORTED, '감사 로그'],
+  ])('S1B-AC-36 C-12 대상 칸(%s): 대상의 종류에 맞는 글자로 보인다', async (_, shown, wanted) => {
+    audit.entries = [shown];
+    renderAt(URL_LOG);
+
+    const [row] = await entryRows(1);
+    expect(text(cellOf(row, '대상'))).toBe(wanted);
+  });
+
+  test('S1B-AC-36 C-12 소속·배정의 대상을 누르면 고객사와 계정이 함께 걸린다(targetCode와 targetAccountId)', async () => {
+    audit.entries = [CUSTOMER_ADDED, COMPANY_MADE, SUSPENDED];
+    const { user } = renderAt(URL_LOG);
+    const rows = await entryRows(3);
+    const cell = cellOf(rows[0], '대상') as HTMLElement | null;
+    const label = '고객사 ACME · 계정 12';
+    await user.click(
+      await found(() => (cell ? (within(cell).queryByRole('button', { name: label }) ?? within(cell).queryByRole('link', { name: label })) : null), `대상 "${label}"`),
+    );
+
+    await eventually(() => {
+      expect({ targetCode: lastList().get('targetCode'), targetAccountId: lastList().get('targetAccountId') }).toEqual({
+        targetCode: 'ACME',
+        targetAccountId: '12',
+      });
+    });
+    await entryRows(1);
+    expect(column('일')).toEqual(['소속 더하기']);
   });
 
   test('S1B-AC-36 C-12 모르는 종류: 이름을 그대로 code 글꼴로 보이고, 모르는 칸과 값도 그대로 보인다. 대상이 없으면 빈칸', async () => {

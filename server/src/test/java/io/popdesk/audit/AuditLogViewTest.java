@@ -5,10 +5,11 @@ import static io.popdesk.audit.AuditSteps.canonical;
 import static io.popdesk.audit.AuditSteps.entries;
 import static io.popdesk.audit.AuditSteps.json;
 import static io.popdesk.audit.AuditSteps.log;
-import static io.popdesk.audit.AuditSteps.number;
 import static io.popdesk.audit.AuditSteps.onlyEntry;
-import static io.popdesk.audit.AuditSteps.text;
 import static io.popdesk.audit.AuditSteps.time;
+import static io.popdesk.support.AuditChainMath.HASH_PATTERN;
+import static io.popdesk.support.AuditChainMath.number;
+import static io.popdesk.support.AuditChainMath.text;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.support.ApiResponse;
@@ -81,8 +82,8 @@ class AuditLogViewTest extends BareAppTest {
                 .isEqualTo(canonical(json(Map.of("code", company.code(), "name", company.name(), "legalName",
                         company.legalName(), "status", "ACTIVE"))));
         assertThat(time(entry)).as("occurredAt").isEqualTo(at);
-        assertThat(text(entry, "hash")).as("hash").matches(AuditSteps.HASH_PATTERN);
-        assertThat(text(entry, "prevHash")).as("prevHash").matches(AuditSteps.HASH_PATTERN)
+        assertThat(text(entry, "hash")).as("hash").matches(HASH_PATTERN);
+        assertThat(text(entry, "prevHash")).as("prevHash").matches(HASH_PATTERN)
                 .isNotEqualTo(text(entry, "hash"));
     }
 

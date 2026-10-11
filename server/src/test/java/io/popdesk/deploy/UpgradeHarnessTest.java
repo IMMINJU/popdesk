@@ -108,7 +108,7 @@ class UpgradeHarnessTest {
 
     @Test
     @Order(2)
-    @DisplayName("S0-AC-95 the sample fills every business table of this slice")
+    @DisplayName("S0-AC-95, S1B-AC-41 the sample fills every business table of this slice")
     void sampleFillsEveryTable() {
         Path sample = SAMPLE.get();
 

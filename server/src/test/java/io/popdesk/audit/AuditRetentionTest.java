@@ -2,13 +2,14 @@ package io.popdesk.audit;
 
 import static io.popdesk.audit.AuditSteps.assertChain;
 import static io.popdesk.audit.AuditSteps.canonical;
+import static io.popdesk.audit.AuditSteps.ended;
 import static io.popdesk.audit.AuditSteps.entries;
-import static io.popdesk.audit.AuditSteps.number;
 import static io.popdesk.audit.AuditSteps.onlyEntry;
-import static io.popdesk.audit.AuditSteps.text;
-import static io.popdesk.audit.ChainSteps.assertValid;
 import static io.popdesk.audit.ChainSteps.awaitRetentionRun;
 import static io.popdesk.audit.ChainSteps.chain;
+import static io.popdesk.support.AuditChainMath.assertValid;
+import static io.popdesk.support.AuditChainMath.number;
+import static io.popdesk.support.AuditChainMath.text;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.support.ApiResponse;
@@ -21,12 +22,9 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,7 +46,7 @@ import tools.jackson.databind.JsonNode;
 class AuditRetentionTest extends BareAppTest {
 
     /** The default of {@code POPDESK_AUDIT_RETENTION}. */
-    private static final Duration PERIOD = Duration.ofDays(365);
+    static final Duration PERIOD = Duration.ofDays(365);
 
     /**
      * What a run of the job left: an entry 1 second over the period is {@code old}, one 1 second
@@ -122,7 +120,7 @@ class AuditRetentionTest extends BareAppTest {
         assertThat(text(chain.getFirst(), "prevHash")).as("prevHash of the first line of the export")
                 .isEqualTo(text(aged.old(), "hash"));
         assertChain(chain);
-        assertValid(aged.admin());
+        assertValid(aged.admin().client());
     }
 
     @Test
@@ -137,7 +135,7 @@ class AuditRetentionTest extends BareAppTest {
         Session admin = fixtures.signInAdmin();
         Company company = fixtures.createCompany(admin);
 
-        JsonNode answer = assertValid(admin);
+        JsonNode answer = assertValid(admin.client());
 
         List<JsonNode> chain = chain(admin);
         assertThat(number(chain.getFirst(), "seq")).as("seq of the first entry after every entry was deleted")
@@ -148,17 +146,6 @@ class AuditRetentionTest extends BareAppTest {
         assertThat(chain.stream().filter(line -> company.code().equals(line.path("target").path("code")
                 .asString(null))).toList()).as("lines of the company created after the job ran").hasSize(1);
         assertThat(number(answer, "checkedCount")).as("checkedCount in %s", answer).isEqualTo(chain.size());
-    }
-
-    private static ApiResponse ended(Future<ApiResponse> request) {
-        try {
-            return request.get(30, TimeUnit.SECONDS);
-        } catch (ExecutionException | TimeoutException e) {
-            throw new AssertionError("A held request did not end with a response: " + e, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("Interrupted while waiting for a held request", e);
-        }
     }
 
     @Test
@@ -196,7 +183,7 @@ class AuditRetentionTest extends BareAppTest {
         awaitRetentionRun(db, clock.advance(PERIOD.minusSeconds(1)));
         Session after = fixtures.signInAdmin();
 
-        assertValid(after);
+        assertValid(after.client());
         assertThat(chain(after).stream().limit(2).map(line -> number(line, "id")).toList())
                 .as("the first two entries left: the company inside the period, then the suspension behind it")
                 .containsExactly(number(created, "id"), number(suspended, "id"));
@@ -204,7 +191,7 @@ class AuditRetentionTest extends BareAppTest {
         awaitRetentionRun(db, clock.advance(Duration.ofDays(1)));
         Session nextDay = fixtures.signInAdmin();
 
-        assertValid(nextDay);
+        assertValid(nextDay.client());
         assertThat(entries(nextDay, "targetCode", company.code())).as("entries of the company, a day later").isEmpty();
         assertThat(entries(nextDay, "targetAccountId", agent.accountId(), "action", "ACCOUNT_SUSPENDED"))
                 .as("the suspension, a day later").isEmpty();

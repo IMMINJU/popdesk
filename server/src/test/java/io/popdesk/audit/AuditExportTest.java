@@ -9,18 +9,22 @@ import static io.popdesk.audit.AuditSteps.exportHead;
 import static io.popdesk.audit.AuditSteps.instant;
 import static io.popdesk.audit.AuditSteps.json;
 import static io.popdesk.audit.AuditSteps.jsonLines;
-import static io.popdesk.audit.AuditSteps.number;
 import static io.popdesk.audit.AuditSteps.onlyEntry;
-import static io.popdesk.audit.AuditSteps.parse;
-import static io.popdesk.audit.AuditSteps.text;
+import static io.popdesk.support.AuditChainMath.number;
+import static io.popdesk.support.AuditChainMath.parse;
+import static io.popdesk.support.AuditChainMath.text;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
 import io.popdesk.support.Fixtures.Company;
+import io.popdesk.support.Fixtures.Invitation;
+import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -37,9 +41,10 @@ import tools.jackson.databind.JsonNode;
  * computed again from it, values a spreadsheet would read as a formula, and the entry the export
  * itself leaves.
  *
- * <p>The CSV is read by its header row. The column names this test relies on are the JSON Lines
- * names {@code id}, {@code seq}, {@code prevHash}, {@code hash}, {@code action}, {@code target},
- * {@code changes}, {@code occurredAt}; the names of the three actor columns are not fixed here.
+ * <p>The CSV is read by its header row. Its column names are the JSON Lines names {@code id},
+ * {@code seq}, {@code prevHash}, {@code hash}, {@code action}, {@code target}, {@code changes},
+ * {@code occurredAt}, and for the person {@code actorAccountId}, {@code actorName}, {@code actorEmail}
+ * (design section 3).
  */
 class AuditExportTest extends BareAppTest {
 
@@ -59,14 +64,99 @@ class AuditExportTest extends BareAppTest {
         }
     }
 
+    /**
+     * What an admin did, for the filters of {@link Narrowed}: company {@code first} at {@code start},
+     * 2 seconds later a second company, the first one suspended, an agent invited and assigned to the
+     * second, and 2 seconds later a third company. Six entries of four kinds, all by this admin.
+     */
+    private record Done(Session admin, Company first, Invitation agent, Instant start) {
+
+        private static final List<String> KINDS = List.of("COMPANY_CREATED", "COMPANY_STATUS_CHANGED",
+                "INVITATION_CREATED", "AGENT_ASSIGNED");
+
+        /** The filter every case starts from: this admin and the four kinds. */
+        List<Object> base() {
+            List<Object> query = new ArrayList<>(List.of("actorAccountId", admin.accountId()));
+            KINDS.forEach(kind -> query.addAll(List.of("action", kind)));
+            return query;
+        }
+    }
+
+    /** A filter on top of {@link Done#base}, with the number of the six entries it leaves. */
+    enum Narrowed {
+        PERSON_AND_KINDS(6) {
+            @Override
+            List<Object> more(Done done) {
+                return List.of();
+            }
+        },
+        FROM(5) {
+            @Override
+            List<Object> more(Done done) {
+                return List.of("from", done.start().plusSeconds(1));
+            }
+        },
+        TO(5) {
+            @Override
+            List<Object> more(Done done) {
+                return List.of("to", done.start().plusSeconds(3));
+            }
+        },
+        FROM_AND_TO(4) {
+            @Override
+            List<Object> more(Done done) {
+                return List.of("from", done.start().plusSeconds(1), "to", done.start().plusSeconds(3));
+            }
+        },
+        TARGET_TYPE_COMPANY(5) {
+            @Override
+            List<Object> more(Done done) {
+                return List.of("targetType", "COMPANY");
+            }
+        },
+        TARGET_TYPE_ACCOUNT(1) {
+            @Override
+            List<Object> more(Done done) {
+                return List.of("targetType", "ACCOUNT");
+            }
+        },
+        TARGET_CODE(2) {
+            @Override
+            List<Object> more(Done done) {
+                return List.of("targetCode", done.first().code());
+            }
+        },
+        TARGET_ACCOUNT(2) {
+            @Override
+            List<Object> more(Done done) {
+                return List.of("targetAccountId", done.agent().accountId());
+            }
+        };
+
+        private final int left;
+
+        Narrowed(int left) {
+            this.left = left;
+        }
+
+        abstract List<Object> more(Done done);
+
+        Object[] query(Done done) {
+            List<Object> query = done.base();
+            query.addAll(more(done));
+            return query.toArray();
+        }
+    }
+
     /** One entry as both the log and a file give it; JSON values in canonical text. */
-    private record Line(long id, long seq, String prevHash, String hash, String action, String target,
-            String changes, Instant occurredAt) {
+    private record Line(long id, long seq, String prevHash, String hash, String action, long actorAccountId,
+            String actorName, String actorEmail, String target, String changes, Instant occurredAt) {
 
         static Line of(JsonNode entry) {
+            JsonNode actor = entry.path("actor");
             return new Line(number(entry, "id"), number(entry, "seq"), text(entry, "prevHash"), text(entry, "hash"),
-                    text(entry, "action"), canonical(entry.path("target")), canonical(entry.path("changes")),
-                    AuditSteps.time(entry));
+                    text(entry, "action"), number(actor, "accountId"), text(actor, "name"), text(actor, "email"),
+                    canonical(entry.path("target")), canonical(entry.path("changes")), AuditSteps.time(entry));
         }
     }
 
@@ -103,7 +193,8 @@ class AuditExportTest extends BareAppTest {
             assertThat(row).as("a CSV row under the header %s", header).hasSameSizeAs(header);
             return new Line(whole(cell(header, row, "id"), "id"), whole(cell(header, row, "seq"), "seq"),
                     cell(header, row, "prevHash"), cell(header, row, "hash"), cell(header, row, "action"),
-                    canonical(parse(cell(header, row, "target"))), canonical(parse(cell(header, row, "changes"))),
+                    whole(cell(header, row, "actorAccountId"), "actorAccountId"), cell(header, row, "actorName"),
+                    cell(header, row, "actorEmail"), canonical(parse(cell(header, row, "target"))), canonical(parse(cell(header, row, "changes"))),
                     instant(cell(header, row, "occurredAt")));
         }).toList();
     }
@@ -112,34 +203,47 @@ class AuditExportTest extends BareAppTest {
         return format == Format.CSV ? csvLines(file) : jsonLines(file).stream().map(Line::of).toList();
     }
 
-    @ParameterizedTest(name = "{0}")
-    @EnumSource(Format.class)
-    @DisplayName("S1B-AC-23 an export has every entry the same filter finds in the log, in chain order (seq, "
-            + "lowest first), each with its ID, seq, hash, and previous hash; the response is a file that is not "
-            + "stored")
-    void exportHasEveryEntryOfTheFilterInChainOrder(Format format) {
+    private Done whatAnAdminDid() {
         Session admin = newAdmin();
+        Instant start = clock.instant();
         Company first = fixtures.createCompany(admin);
-        fixtures.createCompany(admin);
+        clock.advance(Duration.ofSeconds(2));
+        Company second = fixtures.createCompany(admin);
         admin.client().put("/api/console/companies/" + first.code() + "/status")
                 .json(Map.of("status", "SUSPENDED")).expect(200);
+        Invitation agent = fixtures.invite(admin, Role.AGENT);
+        fixtures.assignAgent(admin, second.code(), agent.accountId());
+        clock.advance(Duration.ofSeconds(2));
         fixtures.createCompany(admin);
-        Object[] filter = {"actorAccountId", admin.accountId(), "action", "COMPANY_CREATED", "action",
-                "COMPANY_STATUS_CHANGED"};
-        List<Line> inLog = entries(admin, filter).stream().map(Line::of).toList();
+        return new Done(admin, first, agent, start);
+    }
 
-        ApiResponse file = export(admin, format.name(), filter).expectStatus(200);
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(Narrowed.class)
+    @DisplayName("S1B-AC-23 an export in either format has every entry the same filter finds in the log (person, "
+            + "kinds, from, to, kind of target, target company, target account), in chain order (seq, lowest "
+            + "first), each with its ID, seq, hash, previous hash, and person; the response is a file that is not "
+            + "stored")
+    void exportHasEveryEntryOfTheFilterInChainOrder(Narrowed narrowed) {
+        Done done = whatAnAdminDid();
+        Object[] filter = narrowed.query(done);
+        List<Line> inLog = entries(done.admin(), filter).stream().map(Line::of)
+                .sorted(Comparator.comparingLong(Line::seq)).toList();
 
-        assertThat(inLog).as("entries the filter finds in the log").hasSize(4);
-        assertThat(lines(format, file)).as("lines of the %s file", format)
-                .containsExactlyElementsOf(inLog.stream().sorted(Comparator.comparingLong(Line::seq)).toList());
-        assertThat(file.header("Content-Type")).as("Content-Type").isNotNull();
-        assertThat(file.header("Content-Type").replace(" ", "").toLowerCase(Locale.ROOT)).as("Content-Type")
-                .isEqualTo(format.contentType);
-        assertThat(file.header("Content-Disposition")).as("Content-Disposition").isNotNull()
-                .startsWith("attachment").containsPattern("filename[^;]*" + format.extension.replace(".", "\\.")
-                        + "\"?\\s*(;|$)");
-        assertThat(file.header("Cache-Control")).as("Cache-Control").isNotNull().contains("no-store");
+        for (Format format : Format.values()) {
+            ApiResponse file = export(done.admin(), format.name(), filter).expectStatus(200);
+
+            assertThat(lines(format, file)).as("lines of the %s file", format).containsExactlyElementsOf(inLog);
+            assertThat(file.header("Content-Type")).as("Content-Type of the %s file", format).isNotNull();
+            assertThat(file.header("Content-Type").replace(" ", "").toLowerCase(Locale.ROOT))
+                    .as("Content-Type of the %s file", format).isEqualTo(format.contentType);
+            assertThat(file.header("Content-Disposition")).as("Content-Disposition of the %s file", format)
+                    .isNotNull().startsWith("attachment")
+                    .containsPattern("filename[^;]*" + format.extension.replace(".", "\\.") + "\"?\\s*(;|$)");
+            assertThat(file.header("Cache-Control")).as("Cache-Control of the %s file", format).isNotNull()
+                    .contains("no-store");
+        }
+        assertThat(inLog).as("entries the filter finds in the log").hasSize(narrowed.left);
     }
 
     @Test

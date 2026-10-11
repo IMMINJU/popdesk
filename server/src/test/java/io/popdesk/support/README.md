@@ -106,7 +106,9 @@ Use `Wait.until`, `Wait.untilAsserted`, and `Wait.holds` (or the `await...` meth
 
 ### Audit hash chain
 
-`AuditChainMath` computes the audit log's hash chain from what the API gives, without any class of the app: `chainJson(entry)` (the canonical JSON the chain hashes), `hash(prevHash, entry)`, and `canonical(node)` (RFC 8785 text, for comparing JSON values). The steps of a package (`audit.AuditSteps`, `deploy.AuditFile`) build on it.
+`AuditChainMath` computes the audit log's hash chain from what the API gives, without any class of the app: `chainJson(entry)` (the canonical JSON the chain hashes), `hash(prevHash, entry)`, and `canonical(node)` (RFC 8785 text, for comparing JSON values). The steps of a package (`audit.AuditSteps`, `deploy.AuditFile`) build on it. It also holds what both read an entry with (`text`, `number`, `parse`, `ZERO_HASH`, `HASH_PATTERN`) and `assertValid(client)`, the integrity check that says all entries match.
+
+`FailedWrite` makes a write of the app fail in the database, next to `HeldWrite`, which makes one wait: `FailedWrite.statement(db, table, events, marker)` fails the statement that writes a row holding the marker, and `FailedWrite.commit(db, table, marker)` lets the insert through and fails the commit (a deferred constraint trigger). Close it to drop the trigger.
 
 ### Log
 

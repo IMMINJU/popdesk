@@ -1,9 +1,12 @@
 package io.popdesk.audit;
 
 import static io.popdesk.audit.AuditSteps.canonical;
-import static io.popdesk.audit.AuditSteps.number;
+import static io.popdesk.audit.AuditSteps.entries;
+import static io.popdesk.audit.AuditSteps.export;
 import static io.popdesk.audit.AuditSteps.onlyEntry;
-import static io.popdesk.audit.AuditSteps.text;
+import static io.popdesk.support.AuditChainMath.HASH_PATTERN;
+import static io.popdesk.support.AuditChainMath.number;
+import static io.popdesk.support.AuditChainMath.text;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.support.ApiClient;
@@ -26,6 +29,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,13 +62,15 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>The body of a copy is read with the field names of an entry of the log and of an export line:
  * {@code id}, {@code seq}, {@code prevHash}, {@code hash}, {@code action}, {@code actor},
  * {@code target}, {@code changes}, {@code occurredAt}.
+ *
+ * <p>{@link AuditForwardSandboxTest} runs with the same keys and {@code POPDESK_SANDBOX=true}.
  */
 @TestPropertySource(properties = "AUDIT_FORWARD_TOKEN=" + AuditForwardTest.TOKEN)
 class AuditForwardTest extends BareAppTest {
 
     static final String TOKEN = "copy-Token-4c9e17a2b8d35f60";
 
-    private static final String COPY_PATH = "/audit-copy";
+    static final String COPY_PATH = "/audit-copy";
 
     private static final String MOVED_PATH = "/audit-copy-moved";
 
@@ -83,7 +90,7 @@ class AuditForwardTest extends BareAppTest {
         registry.add("AUDIT_FORWARD_URL", AuditForwardTest::copyUrl);
     }
 
-    private static String copyUrl() {
+    static String copyUrl() {
         return "http://127.0.0.1:" + WebhookReceiver.shared().port() + COPY_PATH;
     }
 
@@ -191,8 +198,9 @@ class AuditForwardTest extends BareAppTest {
     // S1B-AC-29
 
     @Test
-    @DisplayName("S1B-AC-29 an audit entry is posted once as JSON, with its ID, seq, hash, prevHash, and the "
-            + "fields the hash is made of, each as the log gives it")
+    @DisplayName("S1B-AC-29, S1B-AC-32 an audit entry is posted once as JSON, with its ID, seq, hash, prevHash, "
+            + "and the fields the hash is made of, each as the log gives it; with AUDIT_FORWARD_TOKEN the request "
+            + "carries Authorization: Bearer and the token")
     void entryIsPostedAsJson() {
         Session admin = fixtures.signInAdmin();
         Company company = fixtures.createCompany(admin);
@@ -201,6 +209,7 @@ class AuditForwardTest extends BareAppTest {
         Wait.holds("one copy of the entry", Duration.ofSeconds(2), () -> copiesOf(company.code()).size() == 1);
 
         assertThat(copy.method()).as("method").isEqualTo("POST");
+        assertThat(copy.header("Authorization")).as("Authorization").isEqualTo("Bearer " + TOKEN);
         assertThat(copy.header("Content-Type")).as("Content-Type").isNotNull();
         assertThat(copy.header("Content-Type").toLowerCase(Locale.ROOT).replace(" ", "")).as("Content-Type")
                 .matches("application/json(;charset=utf-8)?");
@@ -217,11 +226,58 @@ class AuditForwardTest extends BareAppTest {
         }
         assertThat(AuditSteps.time(body)).as("occurredAt").isEqualTo(AuditSteps.time(entry));
         assertThat(text(body, "hash")).as("hash computed again from the body, %s", AuditSteps.chainJson(body))
-                .matches(AuditSteps.HASH_PATTERN)
+                .matches(HASH_PATTERN)
                 .isEqualTo(AuditSteps.hash(text(body, "prevHash"), body));
     }
 
+    /** The IDs of the entries posted to the copy address so far. */
+    private Set<Long> copiedEntryIds() {
+        Set<Long> ids = new TreeSet<>();
+        for (Received request : webhook().requests(r -> r.path().equals(COPY_PATH))) {
+            ids.add(number(request.json(), "id"));
+        }
+        return ids;
+    }
+
+    @Test
+    @DisplayName("S1B-AC-29 every entry is posted, whatever writes it: after a failed sign-in, a sign-in, and an "
+            + "export by a new admin, a copy came for each entry of that account")
+    void everyEntryOfAnAccountIsPosted() {
+        Session person = fixtures.admin(fixtures.signInAdmin());
+        console().post("/api/public/sign-in").json(Map.of("email", person.email(), "password", "wrong-Password-9"))
+                .expect(401);
+        Session again = fixtures.signInAgain(person);
+        export(again, "JSONL", "actorAccountId", person.accountId()).expectStatus(200);
+
+        List<JsonNode> ofAccount = new ArrayList<>(entries(again, "actorAccountId", person.accountId()));
+        ofAccount.addAll(entries(again, "targetAccountId", person.accountId()));
+        Set<Long> ids = new TreeSet<>(ofAccount.stream().map(entry -> number(entry, "id")).toList());
+
+        assertThat(ofAccount.stream().map(entry -> text(entry, "action")).distinct().toList())
+                .as("kinds of the entries by or about the new admin")
+                .contains("SIGN_IN_FAILED", "SIGN_IN_SUCCEEDED", "AUDIT_EXPORTED");
+        Wait.untilAsserted("a copy of each entry by or about the new admin",
+                () -> assertThat(copiedEntryIds()).as("IDs of the entries posted").containsAll(ids));
+    }
+
     // S1B-AC-30, S1B-AC-34
+
+    @Test
+    @DisplayName("S1B-AC-30 the copy is queued in the transaction of its entry: a request that wrote everything "
+            + "and failed at the commit leaves no copy at the receiver, while the entry after it is posted")
+    void entryOfARequestThatFailedAtCommitIsNotPosted() {
+        Session admin = fixtures.signInAdmin();
+        String code = Unique.companyCode();
+
+        ApiResponse failed = ChainSteps.createCompanyFailingAtCommit(db, fixtures, admin, code,
+                "Rolled back " + code + " Ltd.");
+        Company next = fixtures.createCompany(admin);
+
+        assertThat(failed.status()).as("%s: %s", failed, failed.snippet()).isEqualTo(500);
+        awaitCopies(next.code(), 1);
+        Wait.holds("no copy of the entry of the request that failed at the commit", Duration.ofSeconds(2),
+                () -> copiesOf(code).isEmpty());
+    }
 
     @Test
     @DisplayName("S1B-AC-30, S1B-AC-34 a copy the receiver answered with 500 is sent again when its wait is over, "
@@ -283,17 +339,6 @@ class AuditForwardTest extends BareAppTest {
     }
 
     // S1B-AC-32
-
-    @Test
-    @DisplayName("S1B-AC-32 with AUDIT_FORWARD_TOKEN the copy carries Authorization: Bearer and the token")
-    void tokenIsSentAsBearer() {
-        Session admin = fixtures.signInAdmin();
-        Company company = fixtures.createCompany(admin);
-
-        Received copy = awaitCopies(company.code(), 1).getFirst();
-
-        assertThat(copy.header("Authorization")).as("Authorization").isEqualTo("Bearer " + TOKEN);
-    }
 
     @Test
     @DisplayName("S1B-AC-32 after a copy failed for good, the log, the system status, the failed list, and the "
