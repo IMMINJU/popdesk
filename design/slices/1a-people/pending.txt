@@ -4,22 +4,10 @@
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
 # 서버 줄은 구현 탭마다 묶는다. 탭이 병합되면 그 묶음을 지운다.
 # 1a 묶음의 새 테스트(C-5). 구현 탭이 합쳐질 때마다 그 탭의 줄을 지운다.
-web src/app/csrfRetry.1a.test.tsx
-web src/app/header.1a.test.tsx
-web src/app/safeNext.1a.test.ts
-web src/components/PhotoField.test.tsx
 web src/components/StatusBadge.cancelled.test.tsx
 web src/screens/C10MemberList.1a.test.tsx
-web src/screens/C16PasswordForgot.test.tsx
-web src/screens/C17PasswordReset.test.tsx
-web src/screens/C1Login.1a.test.tsx
 web src/screens/C4IssueDetail.1a.test.tsx
-web src/screens/C6MyInfo.test.tsx
 web src/screens/C8CompanyList.test.tsx
 web src/screens/C9CompanyDetail.1a.test.tsx
-web src/screens/P10PasswordReset.test.tsx
-web src/screens/P1Login.1a.test.tsx
 web src/screens/P4IssueCreate.1a.test.tsx
 web src/screens/P5IssueDetail.1a.test.tsx
-web src/screens/P6MyInfo.test.tsx
-web src/screens/P9PasswordForgot.test.tsx
