@@ -35,7 +35,7 @@ export function uploadFailureText(failure: Failure): string {
     return known[failure.code] ?? failure.message;
   }
   if (failure.kind === 'invalid') return failure.message;
-  if (failure.kind === 'forbidden') return TEXT.forbidden;
+  if (failure.kind === 'forbidden') return failure.code === 'CSRF_TOKEN_INVALID' ? TEXT.stale : TEXT.forbidden;
   if (failure.kind === 'unauthenticated') return TEXT.saveSessionEnded;
   if (failure.kind === 'notFound') return TEXT.notFound;
   return TEXT.server;

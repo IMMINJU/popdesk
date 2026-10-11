@@ -20,6 +20,7 @@ export const TEXT = {
   saveSessionEnded: '로그인이 끝났습니다. 다른 탭에서 다시 로그인한 뒤 다시 보내세요.',
   openLogin: '새 탭에서 로그인',
   forbidden: '이 작업을 할 권한이 없습니다.',
+  stale: '화면이 오래됐습니다. 새로고침한 뒤 다시 하세요.',
   server: '서버에 연결하지 못했습니다. 잠시 뒤 다시 하세요.',
   tooLarge: '파일이 서버 앞단의 크기 상한에 걸렸습니다',
   canRetry: '이제 다시 보낼 수 있습니다.',
@@ -84,7 +85,8 @@ export function failureText(failure: Failure, known: Record<string, string> = {}
     case 'unauthenticated':
       return TEXT.saveSessionEnded;
     case 'forbidden':
-      return TEXT.forbidden;
+      // The request was already sent again with a new token (S1A-AC-57).
+      return failure.code === 'CSRF_TOKEN_INVALID' ? TEXT.stale : TEXT.forbidden;
     case 'notFound':
       return known.NOT_FOUND ?? TEXT.notFound;
     case 'rateLimited':
