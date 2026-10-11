@@ -104,6 +104,10 @@ Use `Wait.until`, `Wait.untilAsserted`, and `Wait.holds` (or the `await...` meth
 
 `StartTlsAppTest` points the app at a server that offers STARTTLS and refuses mail until the client switched. Its certificate (`src/test/resources/support/mail-server.p12`, self-signed for `localhost` and `127.0.0.1`) is trusted by the JVM's default SSL context, which the support code replaces once. `mail().startTlsConnections()` and `mail().plainTextRefusals()` show what happened. GreenMail's plain port offers no STARTTLS at all, so a context that points `SMTP_PORT` at `mail().plainPort()` without `SMTP_ALLOW_PLAINTEXT` checks that the app refuses to send.
 
+### Audit hash chain
+
+`AuditChainMath` computes the audit log's hash chain from what the API gives, without any class of the app: `chainJson(entry)` (the canonical JSON the chain hashes), `hash(prevHash, entry)`, and `canonical(node)` (RFC 8785 text, for comparing JSON values). The steps of a package (`audit.AuditSteps`, `deploy.AuditFile`) build on it.
+
 ### Log
 
 `log.all()` holds everything since the context started, including the startup log. Take `AppLog.Mark m = log.mark()` before the request and read `log.since(m)` or `log.jsonLines(m)`. Other contexts' background work can write between, so search for your own values.

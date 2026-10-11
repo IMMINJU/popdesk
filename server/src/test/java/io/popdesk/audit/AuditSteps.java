@@ -4,18 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
+import io.popdesk.support.AuditChainMath;
 import io.popdesk.support.Fixtures.Session;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.List;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -29,7 +23,8 @@ import tools.jackson.databind.json.JsonMapper;
  * filter (an actor or a target it made itself): {@code entries(admin, "actorAccountId", id, "action",
  * "COMPANY_CREATED")}. Query values come in pairs, name then value; a name may repeat.
  *
- * <p>The chain is computed here without any class of the app. {@link #hash} is
+ * <p>The chain is computed without any class of the app, by {@code support.AuditChainMath}; the
+ * methods here pass on to it. {@link #hash} is
  * {@code SHA-256(prevHash as 64 lowercase hex characters ‖ canonical JSON)}, and {@link #chainJson} is
  * the RFC 8785 form of {@code {action, actor{accountId, email, name}, changes, occurredAt, target}}
  * with null values kept and the time in UTC with six fraction digits. Audit values hold no
@@ -49,9 +44,6 @@ final class AuditSteps {
     static final String HASH_PATTERN = "^[0-9a-f]{64}$";
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
-
-    private static final DateTimeFormatter MICROS =
-            DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSS'Z'").withZone(ZoneOffset.UTC);
 
     private static final int MAX_PAGES = 1000;
 
@@ -249,41 +241,17 @@ final class AuditSteps {
      * whatever the order of their keys. A number with a fraction fails.
      */
     static String canonical(JsonNode value) {
-        StringBuilder out = new StringBuilder();
-        write(out, value);
-        return out.toString();
+        return AuditChainMath.canonical(value);
     }
 
     /** The text the chain hashes for an entry (a log entry or an export line). */
     static String chainJson(JsonNode entry) {
-        JsonNode actor = present(entry, "actor");
-        StringBuilder out = new StringBuilder();
-        out.append("{\"action\":");
-        write(out, present(entry, "action"));
-        out.append(",\"actor\":{\"accountId\":");
-        write(out, present(actor, "accountId"));
-        out.append(",\"email\":");
-        write(out, present(actor, "email"));
-        out.append(",\"name\":");
-        write(out, present(actor, "name"));
-        out.append("},\"changes\":");
-        write(out, present(entry, "changes"));
-        out.append(",\"occurredAt\":");
-        string(out, MICROS.format(time(entry).truncatedTo(ChronoUnit.MICROS)));
-        out.append(",\"target\":");
-        write(out, present(entry, "target"));
-        out.append('}');
-        return out.toString();
+        return AuditChainMath.chainJson(entry);
     }
 
     /** {@code SHA-256(prevHash ‖ chainJson(entry))} as 64 lowercase hex characters. */
     static String hash(String prevHash, JsonNode entry) {
-        try {
-            byte[] input = (prevHash + chainJson(entry)).getBytes(StandardCharsets.UTF_8);
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(input));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
+        return AuditChainMath.hash(prevHash, entry);
     }
 
     /**
@@ -309,81 +277,5 @@ final class AuditSteps {
             }
             before = entry;
         }
-    }
-
-    private static JsonNode present(JsonNode node, String field) {
-        JsonNode value = node.get(field);
-        if (value == null) {
-            throw new AssertionError("No field '" + field + "' in " + node);
-        }
-        return value;
-    }
-
-    private static void write(StringBuilder out, JsonNode value) {
-        if (value == null || value.isMissingNode()) {
-            throw new AssertionError("A missing value has no canonical form");
-        } else if (value.isNull()) {
-            out.append("null");
-        } else if (value.isString()) {
-            string(out, value.stringValue());
-        } else if (value.isBoolean()) {
-            out.append(value.booleanValue());
-        } else if (value.isIntegralNumber()) {
-            out.append(value.bigIntegerValue());
-        } else if (value.isArray()) {
-            out.append('[');
-            boolean first = true;
-            for (JsonNode item : value) {
-                if (!first) {
-                    out.append(',');
-                }
-                first = false;
-                write(out, item);
-            }
-            out.append(']');
-        } else if (value.isObject()) {
-            List<String> keys = new ArrayList<>(value.propertyNames());
-            // String.compareTo compares UTF-16 code units, the order RFC 8785 asks for.
-            keys.sort(String::compareTo);
-            out.append('{');
-            boolean first = true;
-            for (String key : keys) {
-                if (!first) {
-                    out.append(',');
-                }
-                first = false;
-                string(out, key);
-                out.append(':');
-                write(out, value.get(key));
-            }
-            out.append('}');
-        } else {
-            throw new AssertionError("An audit value that is not text, a whole number, true, false, null, a list, "
-                    + "or an object: " + value);
-        }
-    }
-
-    private static void string(StringBuilder out, String s) {
-        out.append('"');
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            switch (c) {
-                case '"' -> out.append("\\\"");
-                case '\\' -> out.append("\\\\");
-                case '\b' -> out.append("\\b");
-                case '\f' -> out.append("\\f");
-                case '\n' -> out.append("\\n");
-                case '\r' -> out.append("\\r");
-                case '\t' -> out.append("\\t");
-                default -> {
-                    if (c < 0x20) {
-                        out.append(String.format("\\u%04x", (int) c));
-                    } else {
-                        out.append(c);
-                    }
-                }
-            }
-        }
-        out.append('"');
     }
 }

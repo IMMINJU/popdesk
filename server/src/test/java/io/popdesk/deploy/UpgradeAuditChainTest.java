@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.popdesk.deploy.AppSteps.Person;
 import io.popdesk.deploy.Metrics.Sample;
 import io.popdesk.support.ApiResponse;
+import io.popdesk.support.AuditChainMath;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -161,11 +162,11 @@ class UpgradeAuditChainTest {
             assertThat(AuditFile.text(line, "action")).as("action of row %d", id)
                     .isEqualTo(AuditFile.text(stored, "action"));
             for (String column : List.of("actor", "target", "changes")) {
-                assertThat(AuditFile.canonical(line.path(column))).as("%s of row %d", column, id)
-                        .isEqualTo(AuditFile.canonical(stored.path(column)));
+                assertThat(AuditChainMath.canonical(line.path(column))).as("%s of row %d", column, id)
+                        .isEqualTo(AuditChainMath.canonical(stored.path(column)));
             }
-            assertThat(AuditFile.micros(AuditFile.text(line, "occurredAt"))).as("occurredAt of row %d", id)
-                    .isEqualTo(AuditFile.micros(AuditFile.text(stored, "occurred_at")));
+            assertThat(AuditFile.time(AuditFile.text(line, "occurredAt"))).as("occurredAt of row %d", id)
+                    .isEqualTo(AuditFile.time(AuditFile.text(stored, "occurred_at")));
             assertThat(AuditFile.text(line, "hash")).as("hash of row %d", id).matches(AuditFile.HASH_PATTERN);
         }
         JsonNode answer = AuditFile.assertValid(exported.admin());
