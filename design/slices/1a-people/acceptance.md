@@ -193,6 +193,7 @@
 | S1A-AC-88 | When 2MB 사진 여럿을 같은 때 올려도, the system shall 운영과 같은 힙(`-Xmx384m`)에서 죽지 않고 모두 201이나 503(`Retry-After`)으로 답한다. (S1A 부검 4, S0-AC-64와 같게) |
 | S1A-AC-89 | The system shall 계정 검색어의 `%`와 `_`를 글자 그대로 찾는다. (S1A 부검 5) |
 | S1A-AC-90 | When v0.1.0에서 올라온 설치에서, the system shall 이미 있던 `ACTIVE`·`SUSPENDED` 계정을 수락한 계정으로, `INVITED` 계정을 수락 전으로 다룬다. (S1A 부검 6, S1A-AC-35) |
+| S1A-AC-91 | If 비밀번호가 바뀌기 전에 시작한 로그인이 바뀐 뒤에 끝나 세션이 남아도, then the system shall 그 세션의 요청을 401로 답한다. (S1A 부검 3, 계약 앞 실험) |
 
 ## 4. 테스트를 쓸 때 지킬 것
 
