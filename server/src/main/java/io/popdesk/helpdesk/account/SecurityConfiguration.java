@@ -120,11 +120,12 @@ class SecurityConfiguration {
 
     /**
      * Endpoints for admins only (docs/use/permissions.md, S0-AC-30, S0-AC-33, S0-AC-40, S1A-AC-43,
-     * S1A-AC-44).
+     * S1A-AC-44, S1B-AC-02).
      */
     private static RequestMatcher adminOnly() {
         return new OrRequestMatcher(
                 PATHS.matcher("/api/console/accounts/**"),
+                PATHS.matcher("/api/console/audit-log/**"),
                 PATHS.matcher(HttpMethod.POST, "/api/console/companies"),
                 PATHS.matcher(HttpMethod.PATCH, "/api/console/companies/*"),
                 PATHS.matcher(HttpMethod.PUT, "/api/console/companies/*/status"),

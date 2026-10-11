@@ -27,14 +27,17 @@ class ConsoleSystemController {
     }
 
     @Operation(operationId = "getSystemStatus", summary = "Outgoing channels",
-            description = "For mail and webhook: configured or not, last success, queued and failed rows (S0-AC-81). "
+            description = "For mail, webhook, and the outside copy of the audit log (`auditForward`): configured or "
+                    + "not, last success, queued and failed rows (S0-AC-81, S1B-AC-33). "
                     + "The console also reads `mail.enabled` to decide whether to offer invitation links (C-10).")
     @ApiResponse(responseCode = "200", description = "The status.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: admins only.")
     @GetMapping("/status")
     SystemStatus getSystemStatus() {
-        return new SystemStatus(channel(status.mail()), channel(status.webhook()));
+        // Contract shell (S1B-AC-33): the outside copy of the audit log is off until slice 1b builds it.
+        return new SystemStatus(channel(status.mail()), channel(status.webhook()),
+                new ChannelStatus(false, null, 0, 0));
     }
 
     @Operation(operationId = "listFailedDeliveries", summary = "Outbox rows that stopped retrying",
@@ -56,7 +59,7 @@ class ConsoleSystemController {
 
     private static FailedDelivery failedDelivery(FailedRow row) {
         return new FailedDelivery(row.id(), DeliveryChannel.valueOf(row.channel()), utc(row.createdAt()),
-                row.lastErrorKind(), row.recipientAccountId());
+                row.lastErrorKind(), row.recipientAccountId(), null);
     }
 
     private static OffsetDateTime utc(Instant at) {

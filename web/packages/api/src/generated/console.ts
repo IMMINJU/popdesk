@@ -121,6 +121,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/console/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Audit log
+         * @description Newest first; entries of the same time by `seq`, highest first (S1B-AC-01). The filters narrow it together (S1B-AC-03 to S1B-AC-06). No entry holds a password, a token, or a link (S1B-AC-07).
+         */
+        get: operations["listAuditEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/audit-log/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export the audit log
+         * @description Every entry the filters of `listAuditEntries` find, in chain order (`seq`, lowest first), streamed as a file (S1B-AC-23, S1B-AC-27). `JSONL` has one JSON object per line with `id`, `seq`, `prevHash`, `hash`, `action`, `actor`, `target`, `changes`, `occurredAt`: everything needed to compute each hash again (S1B-AC-24). `CSV` has the same columns, `actor` as three columns and `target` and `changes` as JSON text; a value that starts with `=`, `+`, `-`, `@`, a tab, or a line break gets `'` in front (S1B-AC-25). The export itself is recorded as `AUDIT_EXPORTED` when it starts and is not in its own file (S1B-AC-26). The response has `Cache-Control: no-store`.
+         */
+        get: operations["exportAuditLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        /**
+         * Headers of an audit log export
+         * @description Checks the same input as `exportAuditLog` and answers with the headers it would send, without the body. The console calls it before it starts the download. It records nothing in the audit log.
+         */
+        head: operations["headAuditLogExport"];
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/audit-log/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check the audit log's hash chain
+         * @description Computes every hash again from the start of the chain, or from the kept starting point when old entries were removed by the retention period (S1B-AC-14, S1B-AC-17). A broken chain is a 200 with `valid` false: `ENTRY_MISMATCH` names the first entry that does not hold (a changed entry, or the entry after a removed one), `HEAD_MISMATCH` means the last entries were removed (S1B-AC-15, S1B-AC-16, S1B-AC-42). A valid result does not rule out that the whole chain was written again. One check runs at a time.
+         */
+        post: operations["verifyAuditLog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/console/companies": {
         parameters: {
             query?: never;
@@ -645,7 +709,7 @@ export interface paths {
         };
         /**
          * Outgoing channels
-         * @description For mail and webhook: configured or not, last success, queued and failed rows (S0-AC-81). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10).
+         * @description For mail, webhook, and the outside copy of the audit log (`auditForward`): configured or not, last success, queued and failed rows (S0-AC-81, S1B-AC-33). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10).
          */
         get: operations["getSystemStatus"];
         put?: never;
@@ -840,6 +904,70 @@ export interface components {
             size: number;
             uploadedBy: components["schemas"]["Person"];
         };
+        AuditActor: {
+            /**
+             * Format: int64
+             * @description 0 for popdesk itself (the first admin, commands in the container).
+             */
+            accountId: number;
+            /** @description Null for popdesk itself. */
+            email: string | null;
+            /** @description Null for popdesk itself. */
+            name: string | null;
+        };
+        AuditBrokenEntry: {
+            /** @description The kind of action as the entry holds it now; it may be a changed value. */
+            action: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: date-time */
+            occurredAt: string;
+        };
+        AuditEntry: {
+            /** @description The kind of action: a value of the `action` filter. An entry someone changed in the database may hold another name, so this is a plain string. */
+            action: string;
+            actor: components["schemas"]["AuditActor"];
+            /** @description What changed, as stored. A changed value is `{"from": ..., "to": ...}` under its field name; a value set for the first time is the value itself. Null when the action changes no value. */
+            changes: {
+                [key: string]: unknown;
+            } | null;
+            /** @description SHA-256 of `prevHash` and the entry's canonical JSON: 64 lowercase hex characters. */
+            hash: string;
+            /** Format: int64 */
+            id: number;
+            /**
+             * Format: date-time
+             * @description When the action was done, with microseconds.
+             */
+            occurredAt: string;
+            /** @description The `hash` of the entry before this one in the chain; 64 zeros for the first. */
+            prevHash: string;
+            /**
+             * Format: int64
+             * @description The entry's place in the hash chain, from 1.
+             */
+            seq: number;
+            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`) and the keys that name it (`accountId`, `code`). */
+            target: {
+                [key: string]: unknown;
+            } | null;
+        };
+        AuditVerification: {
+            /** @description The first entry that does not hold. Null when `valid`, and for `HEAD_MISMATCH`, where no entry that is left is wrong. */
+            brokenEntry: components["schemas"]["AuditBrokenEntry"] | null;
+            /**
+             * Format: int64
+             * @description Entries whose hash was computed again and matched.
+             */
+            checkedCount: number;
+            /**
+             * @description Null when `valid`.
+             * @enum {string|null}
+             */
+            reason: "ENTRY_MISMATCH" | "HEAD_MISMATCH" | null;
+            /** @description Every entry and the end of the chain hold. */
+            valid: boolean;
+        };
         ChangeCompanyStatusRequest: {
             /** @enum {string} */
             status: "ACTIVE" | "SUSPENDED" | "ARCHIVED";
@@ -936,8 +1064,13 @@ export interface components {
             role: "CUSTOMER" | "AGENT" | "ADMIN";
         };
         FailedDelivery: {
+            /**
+             * Format: int64
+             * @description The audit entry of an outside copy (`AUDIT_FORWARD`); null for the other channels.
+             */
+            auditEntryId: number | null;
             /** @enum {string} */
-            channel: "MAIL" | "WEBHOOK";
+            channel: "MAIL" | "WEBHOOK" | "AUDIT_FORWARD";
             /** Format: date-time */
             createdAt: string;
             /** Format: int64 */
@@ -1064,6 +1197,23 @@ export interface components {
         };
         PagedAttachment: {
             items: components["schemas"]["Attachment"][];
+            /**
+             * Format: int32
+             * @description Page number, starting at 1.
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Items per page, 1 to 100.
+             */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
+        };
+        PagedAuditEntry: {
+            items: components["schemas"]["AuditEntry"][];
             /**
              * Format: int32
              * @description Page number, starting at 1.
@@ -1247,7 +1397,9 @@ export interface components {
             email: string;
             password: string;
         };
+        StreamingResponseBody: unknown;
         SystemStatus: {
+            auditForward: components["schemas"]["ChannelStatus"];
             mail: components["schemas"]["ChannelStatus"];
             webhook: components["schemas"]["ChannelStatus"];
         };
@@ -1630,6 +1782,265 @@ export interface operations {
             };
             /** @description `NOT_FOUND`: no such account. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listAuditEntries: {
+        parameters: {
+            query?: {
+                /** @description Only entries of these kinds. Repeat the parameter for several. */
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED")[];
+                /** @description Only entries done by this account. `0` is popdesk itself. */
+                actorAccountId?: number;
+                /** @description Only entries whose target has this `type`. */
+                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE";
+                /** @description Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account. */
+                targetAccountId?: number;
+                /** @description Only entries whose target names this customer company (`code` of the target). */
+                targetCode?: string;
+                /** @description Only entries at or after this time (TIME-1). */
+                from?: string;
+                /** @description Only entries before this time; the time itself is left out. */
+                to?: string;
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description 1 to 100. */
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedAuditEntry"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `action` or `targetType` (`UNKNOWN_VALUE`), `from` after `to` (field `from`, `FROM_AFTER_TO`), `from` or `to` not a time (`INVALID_FORMAT`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    exportAuditLog: {
+        parameters: {
+            query: {
+                /** @description The file format. */
+                format: "CSV" | "JSONL";
+                /** @description Only entries of these kinds. Repeat the parameter for several. */
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED")[];
+                /** @description Only entries done by this account. `0` is popdesk itself. */
+                actorAccountId?: number;
+                /** @description Only entries whose target has this `type`. */
+                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE";
+                /** @description Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account. */
+                targetAccountId?: number;
+                /** @description Only entries whose target names this customer company (`code` of the target). */
+                targetCode?: string;
+                /** @description Only entries at or after this time (TIME-1). */
+                from?: string;
+                /** @description Only entries before this time; the time itself is left out. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file. */
+            200: {
+                headers: {
+                    /** @description `attachment` with a file name that ends in `.csv` or `.jsonl`. */
+                    "Content-Disposition"?: string;
+                    /** @description `text/csv; charset=UTF-8` for `CSV`, `application/x-ndjson` for `JSONL`. */
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-ndjson": string;
+                    "text/csv": string;
+                };
+            };
+            /** @description `INVALID_INPUT`: `format` missing (`REQUIRED`) or unknown (`UNKNOWN_VALUE`), unknown `action` or `targetType` (`UNKNOWN_VALUE`), `from` after `to` (field `from`, `FROM_AFTER_TO`), `from` or `to` not a time (`INVALID_FORMAT`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `SERVER_BUSY`: 2 exports are running; try again after `Retry-After` (S1B-AC-28). */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    headAuditLogExport: {
+        parameters: {
+            query: {
+                /** @description The file format. */
+                format: "CSV" | "JSONL";
+                /** @description Only entries of these kinds. Repeat the parameter for several. */
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED")[];
+                /** @description Only entries done by this account. `0` is popdesk itself. */
+                actorAccountId?: number;
+                /** @description Only entries whose target has this `type`. */
+                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE";
+                /** @description Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account. */
+                targetAccountId?: number;
+                /** @description Only entries whose target names this customer company (`code` of the target). */
+                targetCode?: string;
+                /** @description Only entries at or after this time (TIME-1). */
+                from?: string;
+                /** @description Only entries before this time; the time itself is left out. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The export would start. */
+            200: {
+                headers: {
+                    /** @description `attachment` with a file name that ends in `.csv` or `.jsonl`. */
+                    "Content-Disposition"?: string;
+                    /** @description `text/csv; charset=UTF-8` for `CSV`, `application/x-ndjson` for `JSONL`. */
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `INVALID_INPUT`, as for `exportAuditLog`. A `HEAD` response has no body. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    verifyAuditLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditVerification"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `AUDIT_VERIFICATION_RUNNING`: a check is already running (S1B-AC-18). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

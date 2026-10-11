@@ -122,6 +122,118 @@
         "required" : [ "commentId", "contentType", "createdAt", "deleted", "deletedAt", "deletedBy", "fileName", "id", "internal", "size", "uploadedBy" ],
         "type" : "object"
       },
+      "AuditActor" : {
+        "properties" : {
+          "accountId" : {
+            "description" : "0 for popdesk itself (the first admin, commands in the container).",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "email" : {
+            "description" : "Null for popdesk itself.",
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "description" : "Null for popdesk itself.",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "accountId", "email", "name" ],
+        "type" : "object"
+      },
+      "AuditBrokenEntry" : {
+        "properties" : {
+          "action" : {
+            "description" : "The kind of action as the entry holds it now; it may be a changed value.",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "occurredAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "action", "id", "occurredAt" ],
+        "type" : "object"
+      },
+      "AuditEntry" : {
+        "properties" : {
+          "action" : {
+            "description" : "The kind of action: a value of the `action` filter. An entry someone changed in the database may hold another name, so this is a plain string.",
+            "type" : "string"
+          },
+          "actor" : {
+            "$ref" : "#/components/schemas/AuditActor"
+          },
+          "changes" : {
+            "additionalProperties" : { },
+            "description" : "What changed, as stored. A changed value is `{\"from\": ..., \"to\": ...}` under its field name; a value set for the first time is the value itself. Null when the action changes no value.",
+            "type" : [ "object", "null" ]
+          },
+          "hash" : {
+            "description" : "SHA-256 of `prevHash` and the entry's canonical JSON: 64 lowercase hex characters.",
+            "pattern" : "^[0-9a-f]{64}$",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "occurredAt" : {
+            "description" : "When the action was done, with microseconds.",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "prevHash" : {
+            "description" : "The `hash` of the entry before this one in the chain; 64 zeros for the first.",
+            "pattern" : "^[0-9a-f]{64}$",
+            "type" : "string"
+          },
+          "seq" : {
+            "description" : "The entry's place in the hash chain, from 1.",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "target" : {
+            "additionalProperties" : { },
+            "description" : "What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`) and the keys that name it (`accountId`, `code`).",
+            "type" : [ "object", "null" ]
+          }
+        },
+        "required" : [ "action", "actor", "changes", "hash", "id", "occurredAt", "prevHash", "seq", "target" ],
+        "type" : "object"
+      },
+      "AuditVerification" : {
+        "properties" : {
+          "brokenEntry" : {
+            "description" : "The first entry that does not hold. Null when `valid`, and for `HEAD_MISMATCH`, where no entry that is left is wrong.",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/AuditBrokenEntry"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "checkedCount" : {
+            "description" : "Entries whose hash was computed again and matched.",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "reason" : {
+            "description" : "Null when `valid`.",
+            "enum" : [ "ENTRY_MISMATCH", "HEAD_MISMATCH" ],
+            "type" : [ "string", "null" ]
+          },
+          "valid" : {
+            "description" : "Every entry and the end of the chain hold.",
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "brokenEntry", "checkedCount", "reason", "valid" ],
+        "type" : "object"
+      },
       "ChangeCompanyStatusRequest" : {
         "properties" : {
           "status" : {
@@ -326,8 +438,13 @@
       },
       "FailedDelivery" : {
         "properties" : {
+          "auditEntryId" : {
+            "description" : "The audit entry of an outside copy (`AUDIT_FORWARD`); null for the other channels.",
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
           "channel" : {
-            "enum" : [ "MAIL", "WEBHOOK" ],
+            "enum" : [ "MAIL", "WEBHOOK", "AUDIT_FORWARD" ],
             "type" : "string"
           },
           "createdAt" : {
@@ -348,7 +465,7 @@
             "type" : [ "integer", "null" ]
           }
         },
-        "required" : [ "channel", "createdAt", "id", "lastErrorKind", "recipientAccountId" ],
+        "required" : [ "auditEntryId", "channel", "createdAt", "id", "lastErrorKind", "recipientAccountId" ],
         "type" : "object"
       },
       "FieldError" : {
@@ -580,6 +697,36 @@
           "items" : {
             "items" : {
               "$ref" : "#/components/schemas/Attachment"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PagedAuditEntry" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AuditEntry"
             },
             "type" : "array"
           },
@@ -927,8 +1074,12 @@
         "required" : [ "email", "password" ],
         "type" : "object"
       },
+      "StreamingResponseBody" : { },
       "SystemStatus" : {
         "properties" : {
+          "auditForward" : {
+            "$ref" : "#/components/schemas/ChannelStatus"
+          },
           "mail" : {
             "$ref" : "#/components/schemas/ChannelStatus"
           },
@@ -936,7 +1087,7 @@
             "$ref" : "#/components/schemas/ChannelStatus"
           }
         },
-        "required" : [ "mail", "webhook" ],
+        "required" : [ "auditForward", "mail", "webhook" ],
         "type" : "object"
       },
       "UnreadCount" : {
@@ -1458,6 +1609,489 @@
         },
         "summary" : "Suspend an account",
         "tags" : [ "Accounts" ]
+      }
+    },
+    "/api/console/audit-log" : {
+      "get" : {
+        "description" : "Newest first; entries of the same time by `seq`, highest first (S1B-AC-01). The filters narrow it together (S1B-AC-03 to S1B-AC-06). No entry holds a password, a token, or a link (S1B-AC-07).",
+        "operationId" : "listAuditEntries",
+        "parameters" : [ {
+          "description" : "Only entries of these kinds. Repeat the parameter for several.",
+          "in" : "query",
+          "name" : "action",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        }, {
+          "description" : "Only entries done by this account. `0` is popdesk itself.",
+          "in" : "query",
+          "name" : "actorAccountId",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "Only entries whose target has this `type`.",
+          "in" : "query",
+          "name" : "targetType",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "ACCOUNT", "COMPANY", "DATABASE" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account.",
+          "in" : "query",
+          "name" : "targetAccountId",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "Only entries whose target names this customer company (`code` of the target).",
+          "in" : "query",
+          "name" : "targetCode",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only entries at or after this time (TIME-1).",
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only entries before this time; the time itself is left out.",
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedAuditEntry"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `action` or `targetType` (`UNKNOWN_VALUE`), `from` after `to` (field `from`, `FROM_AFTER_TO`), `from` or `to` not a time (`INVALID_FORMAT`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only."
+          }
+        },
+        "summary" : "Audit log",
+        "tags" : [ "Audit log" ]
+      }
+    },
+    "/api/console/audit-log/export" : {
+      "get" : {
+        "description" : "Every entry the filters of `listAuditEntries` find, in chain order (`seq`, lowest first), streamed as a file (S1B-AC-23, S1B-AC-27). `JSONL` has one JSON object per line with `id`, `seq`, `prevHash`, `hash`, `action`, `actor`, `target`, `changes`, `occurredAt`: everything needed to compute each hash again (S1B-AC-24). `CSV` has the same columns, `actor` as three columns and `target` and `changes` as JSON text; a value that starts with `=`, `+`, `-`, `@`, a tab, or a line break gets `'` in front (S1B-AC-25). The export itself is recorded as `AUDIT_EXPORTED` when it starts and is not in its own file (S1B-AC-26). The response has `Cache-Control: no-store`.",
+        "operationId" : "exportAuditLog",
+        "parameters" : [ {
+          "description" : "The file format.",
+          "in" : "query",
+          "name" : "format",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "CSV", "JSONL" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only entries of these kinds. Repeat the parameter for several.",
+          "in" : "query",
+          "name" : "action",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        }, {
+          "description" : "Only entries done by this account. `0` is popdesk itself.",
+          "in" : "query",
+          "name" : "actorAccountId",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "Only entries whose target has this `type`.",
+          "in" : "query",
+          "name" : "targetType",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "ACCOUNT", "COMPANY", "DATABASE" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account.",
+          "in" : "query",
+          "name" : "targetAccountId",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "Only entries whose target names this customer company (`code` of the target).",
+          "in" : "query",
+          "name" : "targetCode",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only entries at or after this time (TIME-1).",
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only entries before this time; the time itself is left out.",
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/x-ndjson" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              },
+              "text/csv" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "The file.",
+            "headers" : {
+              "Content-Disposition" : {
+                "description" : "`attachment` with a file name that ends in `.csv` or `.jsonl`.",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              },
+              "Content-Type" : {
+                "description" : "`text/csv; charset=UTF-8` for `CSV`, `application/x-ndjson` for `JSONL`.",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              }
+            }
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `format` missing (`REQUIRED`) or unknown (`UNKNOWN_VALUE`), unknown `action` or `targetType` (`UNKNOWN_VALUE`), `from` after `to` (field `from`, `FROM_AFTER_TO`), `from` or `to` not a time (`INVALID_FORMAT`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`SERVER_BUSY`: 2 exports are running; try again after `Retry-After` (S1B-AC-28).",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds to wait before trying again.",
+                "schema" : {
+                  "type" : "integer"
+                },
+                "style" : "simple"
+              }
+            }
+          }
+        },
+        "summary" : "Export the audit log",
+        "tags" : [ "Audit log" ]
+      },
+      "head" : {
+        "description" : "Checks the same input as `exportAuditLog` and answers with the headers it would send, without the body. The console calls it before it starts the download. It records nothing in the audit log.",
+        "operationId" : "headAuditLogExport",
+        "parameters" : [ {
+          "description" : "The file format.",
+          "in" : "query",
+          "name" : "format",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "CSV", "JSONL" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only entries of these kinds. Repeat the parameter for several.",
+          "in" : "query",
+          "name" : "action",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        }, {
+          "description" : "Only entries done by this account. `0` is popdesk itself.",
+          "in" : "query",
+          "name" : "actorAccountId",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "Only entries whose target has this `type`.",
+          "in" : "query",
+          "name" : "targetType",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "ACCOUNT", "COMPANY", "DATABASE" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account.",
+          "in" : "query",
+          "name" : "targetAccountId",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "Only entries whose target names this customer company (`code` of the target).",
+          "in" : "query",
+          "name" : "targetCode",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only entries at or after this time (TIME-1).",
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only entries before this time; the time itself is left out.",
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The export would start.",
+            "headers" : {
+              "Content-Disposition" : {
+                "description" : "`attachment` with a file name that ends in `.csv` or `.jsonl`.",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              },
+              "Content-Type" : {
+                "description" : "`text/csv; charset=UTF-8` for `CSV`, `application/x-ndjson` for `JSONL`.",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              }
+            }
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`, as for `exportAuditLog`. A `HEAD` response has no body."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only."
+          }
+        },
+        "summary" : "Headers of an audit log export",
+        "tags" : [ "Audit log" ]
+      }
+    },
+    "/api/console/audit-log/verify" : {
+      "post" : {
+        "description" : "Computes every hash again from the start of the chain, or from the kept starting point when old entries were removed by the retention period (S1B-AC-14, S1B-AC-17). A broken chain is a 200 with `valid` false: `ENTRY_MISMATCH` names the first entry that does not hold (a changed entry, or the entry after a removed one), `HEAD_MISMATCH` means the last entries were removed (S1B-AC-15, S1B-AC-16, S1B-AC-42). A valid result does not rule out that the whole chain was written again. One check runs at a time.",
+        "operationId" : "verifyAuditLog",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuditVerification"
+                }
+              }
+            },
+            "description" : "The result."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`AUDIT_VERIFICATION_RUNNING`: a check is already running (S1B-AC-18)."
+          }
+        },
+        "summary" : "Check the audit log's hash chain",
+        "tags" : [ "Audit log" ]
       }
     },
     "/api/console/companies" : {
@@ -3779,7 +4413,7 @@
     },
     "/api/console/system/status" : {
       "get" : {
-        "description" : "For mail and webhook: configured or not, last success, queued and failed rows (S0-AC-81). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10).",
+        "description" : "For mail, webhook, and the outside copy of the audit log (`auditForward`): configured or not, last success, queued and failed rows (S0-AC-81, S1B-AC-33). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10).",
         "operationId" : "getSystemStatus",
         "responses" : {
           "200" : {

@@ -1,0 +1,26 @@
+package io.popdesk.helpdesk.web.console;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.OffsetDateTime;
+import java.util.Map;
+
+/**
+ * One audit entry (S1B-AC-01, S1B-AC-07). {@code target} and {@code changes} are the stored JSON as it
+ * is: they went into the hash, so no key is renamed on the way out.
+ */
+public record AuditEntry(
+        long id,
+        @Schema(description = "The entry's place in the hash chain, from 1.") long seq,
+        @Schema(description = "The kind of action: a value of the `action` filter. An entry someone changed in "
+                + "the database may hold another name, so this is a plain string.") String action,
+        AuditActor actor,
+        @Schema(description = "What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`) "
+                + "and the keys that name it (`accountId`, `code`).", nullable = true) Map<String, Object> target,
+        @Schema(description = "What changed, as stored. A changed value is `{\"from\": ..., \"to\": ...}` under "
+                + "its field name; a value set for the first time is the value itself. Null when the action "
+                + "changes no value.", nullable = true) Map<String, Object> changes,
+        @Schema(description = "When the action was done, with microseconds.") OffsetDateTime occurredAt,
+        @Schema(description = "SHA-256 of `prevHash` and the entry's canonical JSON: 64 lowercase hex characters.",
+                pattern = "^[0-9a-f]{64}$") String hash,
+        @Schema(description = "The `hash` of the entry before this one in the chain; 64 zeros for the first.",
+                pattern = "^[0-9a-f]{64}$") String prevHash) {}

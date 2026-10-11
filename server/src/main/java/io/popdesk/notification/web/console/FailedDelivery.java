@@ -11,4 +11,7 @@ public record FailedDelivery(
         @Schema(description = "Kind of the last error, for example `CONNECTION_REFUSED`; never the error text.")
                 String lastErrorKind,
         @Schema(description = "The receiving account of an email; null for a webhook.", nullable = true)
-                Long recipientAccountId) {}
+                Long recipientAccountId,
+        @Schema(description = "The audit entry of an outside copy (`AUDIT_FORWARD`); null for the other channels.",
+                nullable = true)
+                Long auditEntryId) {}

@@ -110,11 +110,12 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 404 | `NOT_FOUND` | The target does not exist or the caller may not see it (`COM-1`). Also a path the host does not serve |
 | 409 | `COMPANY_CODE_TAKEN` | Another customer company has this code |
 | 409 | `EMAIL_TAKEN` | An account has this email |
+| 409 | `AUDIT_VERIFICATION_RUNNING` | A check of the audit log's hash chain is already running. One runs at a time |
 | 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit, a profile photo is over 2 MB (2,097,152 bytes), or the JSON of a new issue (the body, or the `issue` part of a multipart request) is over 256 KB (262,144 bytes). The headers of one multipart part, which carry the file name, are limited to 4 KB: a file name far over 255 characters gets this 413, not the 400 `TOO_LONG`. A proxy in front may answer 413 first with its own body |
 | 429 | `RATE_LIMITED` | Over a rate limit (`COM-8`). `Retry-After` says when to try again |
 | 500 | `INTERNAL_ERROR` | An unexpected server error |
 | 501 | `NOT_IMPLEMENTED` | The endpoint is in the contract but not built yet. Only before a slice is finished; never in a release |
-| 503 | `SERVER_BUSY` | 16 uploads, or 16 downloads, are already running, or 2 profile photos are already being decoded. `Retry-After` says when to try again |
+| 503 | `SERVER_BUSY` | 16 uploads, or 16 downloads, are already running, 2 profile photos are already being decoded, or 2 audit log exports are already running. `Retry-After` says when to try again |
 | 503 | `SETUP_REQUIRED` | The first admin could not be created, or `POPDESK_LOCALE` is not a value popdesk takes, so the app takes no requests yet. The log says what to set |
 
 A request to a host that is neither the portal host nor the console host gets 404 with a plain text note, not this body.
@@ -130,6 +131,7 @@ Codes in `fields[].code`:
 | `INVALID_FORMAT` | Does not match the expected form, for example an email address or a company code |
 | `UNKNOWN_VALUE` | Not one of the allowed values, or names something that does not exist or the caller cannot choose |
 | `OUT_OF_RANGE` | A number outside its range, for example `page` below 1 or `size` above 100 |
+| `FROM_AFTER_TO` | The start of a period is after its end: `from` after `to` in the audit log filters. Reported on `from` |
 | `NOT_ALLOWED` | The field must be left out here, for example companies when inviting staff |
 | `SAME_AS_EMAIL` | The password is the same as the account's email |
 | `UNKNOWN_PARAMETER` | The query parameter is not accepted on this endpoint, for example a staff-only filter on a customer list |
