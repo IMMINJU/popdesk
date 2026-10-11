@@ -5,5 +5,7 @@ public enum NotificationKind {
     /** A row of the outbox became {@code failed}. */
     DELIVERY_FAILED,
     /** Attachments passed 80% of the team quota. */
-    ATTACHMENT_QUOTA_WARNING
+    ATTACHMENT_QUOTA_WARNING,
+    /** A customer manager invited an email that already has an account (S2-AC-39). */
+    MEMBERSHIP_REQUESTED
 }

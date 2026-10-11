@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.web.console;
 
+import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.Role;
@@ -38,16 +39,18 @@ class ConsoleCompanyController {
 
     static Company company(CompanyRow row) {
         return new Company(row.code(), row.name(), row.legalName(), row.status(),
-                row.createdAt().atOffset(ZoneOffset.UTC));
+                row.createdAt().atOffset(ZoneOffset.UTC), 0);
     }
 
     static CompanyMember member(MemberRow row) {
         return new CompanyMember(row.accountId(), row.name(), row.email(), row.status(),
-                row.photoUpdatedAt() == null ? null : row.photoUpdatedAt().atOffset(ZoneOffset.UTC));
+                row.photoUpdatedAt() == null ? null : row.photoUpdatedAt().atOffset(ZoneOffset.UTC), false);
     }
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only (S0-AC-30).";
     static final String NOT_FOUND = "`NOT_FOUND`: no such company, or the caller cannot see it.";
+    static final String NOT_A_MEMBER = "`NOT_FOUND`: no such company, or the account is not a customer who belongs "
+            + "to it (S2-AC-02).";
     static final String PAGE_400 = "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`).";
 
     @Operation(operationId = "listCompanies", summary = "Companies the caller can see",
@@ -195,6 +198,32 @@ class ConsoleCompanyController {
     void removeCompanyCustomer(@PathVariable String code, @PathVariable long accountId) {
         CurrentAccount admin = CurrentAccount.get();
         companies.removeCustomer(admin.viewer(), admin.actor(), code, accountId);
+    }
+
+    @Operation(operationId = "markCompanyManager", summary = "Make a customer a manager of a company",
+            description = "The customer, invited ones included, manages the members of this company from the next "
+                    + "request; in their other companies nothing changes (S2-AC-01, S2-AC-03, S2-AC-05). Marking "
+                    + "again is 200 too.")
+    @ApiResponse(responseCode = "200", description = "A manager.")
+    @ApiResponse(responseCode = "400", description = "`COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-06).")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = NOT_A_MEMBER)
+    @PutMapping("/{code}/customers/{accountId}/manager")
+    CompanyMember markCompanyManager(@PathVariable String code, @PathVariable long accountId) {
+        throw new NotImplementedException();
+    }
+
+    @Operation(operationId = "unmarkCompanyManager", summary = "Make a customer no longer a manager of a company",
+            description = "The customer stays a member. Applies from the next request (S2-AC-01). Works for a "
+                    + "company of any status, and unmarking again is 200 too.")
+    @ApiResponse(responseCode = "200", description = "Not a manager.")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = NOT_A_MEMBER)
+    @DeleteMapping("/{code}/customers/{accountId}/manager")
+    CompanyMember unmarkCompanyManager(@PathVariable String code, @PathVariable long accountId) {
+        throw new NotImplementedException();
     }
 
     @Operation(operationId = "unassignAgent", summary = "Take an agent off a company",

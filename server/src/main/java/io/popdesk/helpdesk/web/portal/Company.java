@@ -7,4 +7,5 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record Company(
         @Schema(description = "Unique, never changes. Issue keys start with it.") String code,
         String name,
-        CompanyStatus status) {}
+        CompanyStatus status,
+        @Schema(description = "The caller is a manager of this company (MGR-1).") boolean manager) {}

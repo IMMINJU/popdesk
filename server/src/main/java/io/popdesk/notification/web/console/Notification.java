@@ -7,5 +7,7 @@ import java.time.OffsetDateTime;
 public record Notification(
         long id,
         NotificationKind kind,
+        @Schema(description = "The company a `MEMBERSHIP_REQUESTED` item is about; null for the other kinds.",
+                nullable = true) String companyCode,
         OffsetDateTime createdAt,
         @Schema(description = "When the caller marked it read.", nullable = true) OffsetDateTime readAt) {}

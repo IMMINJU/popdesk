@@ -318,6 +318,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/console/companies/{code}/customers/{accountId}/manager": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Make a customer a manager of a company
+         * @description The customer, invited ones included, manages the members of this company from the next request; in their other companies nothing changes (S2-AC-01, S2-AC-03, S2-AC-05). Marking again is 200 too.
+         */
+        put: operations["markCompanyManager"];
+        post?: never;
+        /**
+         * Make a customer no longer a manager of a company
+         * @description The customer stays a member. Applies from the next request (S2-AC-01). Works for a company of any status, and unmarking again is 200 too.
+         */
+        delete: operations["unmarkCompanyManager"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/console/companies/{code}/status": {
         parameters: {
             query?: never;
@@ -598,6 +622,66 @@ export interface paths {
          * @description Succeeds also when there is no photo (S1A-AC-24).
          */
         delete: operations["deleteMyPhoto"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/membership-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Membership requests waiting for an admin
+         * @description Open requests only, oldest first (S2-AC-33).
+         */
+        get: operations["listMembershipRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/membership-requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a membership request
+         * @description Makes the account a member of the company and closes the request (S2-AC-34). Approving an approved request again is 200 too (S2-AC-37).
+         */
+        post: operations["approveMembershipRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/membership-requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a membership request
+         * @description Closes the request; the account does not change (S2-AC-35). Works whatever the role of the account or the status of the company. Rejecting a rejected request again is 200 too (S2-AC-37).
+         */
+        post: operations["rejectMembershipRequest"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1019,6 +1103,11 @@ export interface components {
             /** @description The company's legal name. */
             legalName: string;
             name: string;
+            /**
+             * Format: int32
+             * @description Membership requests for this company that wait for an admin (S2-AC-48).
+             */
+            pendingMembershipRequests: number;
             /** @enum {string} */
             status: "ACTIVE" | "SUSPENDED" | "ARCHIVED";
         };
@@ -1026,6 +1115,8 @@ export interface components {
             /** Format: int64 */
             accountId: number;
             email: string;
+            /** @description The customer is a manager of this company (MGR-1). Always `false` for an agent. */
+            manager: boolean;
             name: string;
             /**
              * Format: date-time
@@ -1165,13 +1256,35 @@ export interface components {
             /** @enum {string} */
             role: "CUSTOMER" | "AGENT" | "ADMIN";
         };
+        MembershipRequestAccount: {
+            /** Format: int64 */
+            accountId: number;
+            /** @description The account never accepted its invitation and the invitation is cancelled (S1A-AC-42). */
+            invitationCancelled: boolean;
+            name: string;
+            /**
+             * @description Only a `CUSTOMER` can be approved (S2-AC-36).
+             * @enum {string}
+             */
+            role: "CUSTOMER" | "AGENT" | "ADMIN";
+            /** @enum {string} */
+            status: "INVITED" | "ACTIVE" | "SUSPENDED";
+        };
+        MembershipRequester: {
+            /** Format: int64 */
+            accountId: number;
+            email: string;
+            name: string;
+        };
         Notification: {
+            /** @description The company a `MEMBERSHIP_REQUESTED` item is about; null for the other kinds. */
+            companyCode: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: int64 */
             id: number;
             /** @enum {string} */
-            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING";
+            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MEMBERSHIP_REQUESTED";
             /**
              * Format: date-time
              * @description When the caller marked it read.
@@ -1348,6 +1461,23 @@ export interface components {
             /** Format: int32 */
             totalPages: number;
         };
+        PagedPendingMembership: {
+            items: components["schemas"]["PendingMembership"][];
+            /**
+             * Format: int32
+             * @description Page number, starting at 1.
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Items per page, 1 to 100.
+             */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
+        };
         PasswordResetLink: {
             /** @description The reset link, only when SMTP is not configured; shown once, the token is in the fragment after `#`. `null` when the reset email is sent. */
             resetLink: string | null;
@@ -1369,6 +1499,19 @@ export interface components {
             name: string;
             /** @enum {string} */
             role: "CUSTOMER" | "AGENT" | "ADMIN";
+        };
+        PendingMembership: {
+            account: components["schemas"]["MembershipRequestAccount"];
+            company: components["schemas"]["CompanyRef"];
+            /** @description The email the manager typed. */
+            email: string;
+            /** Format: int64 */
+            id: number;
+            /** @description The name the manager typed. The account's own name is in `account`. */
+            name: string;
+            /** Format: date-time */
+            requestedAt: string;
+            requestedBy: components["schemas"]["MembershipRequester"];
         };
         Person: {
             /** Format: int64 */
@@ -1795,7 +1938,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -1863,7 +2006,7 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -1943,7 +2086,7 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -2596,6 +2739,115 @@ export interface operations {
                 };
             };
             /** @description `NOT_FOUND`: no such company or account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    markCompanyManager: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A manager. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyMember"];
+                };
+            };
+            /** @description `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-06). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the account is not a customer who belongs to it (S2-AC-02). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    unmarkCompanyManager: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not a manager. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyMember"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the account is not a customer who belongs to it (S2-AC-02). */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3696,6 +3948,181 @@ export interface operations {
             };
             /** @description `CSRF_TOKEN_INVALID`. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listMembershipRequests: {
+        parameters: {
+            query?: {
+                /** @description Only requests for this company. */
+                companyCode?: string;
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description 1 to 100. */
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedPendingMembership"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), or `companyCode` names no company (`UNKNOWN_VALUE`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    approveMembershipRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `NOT_A_CUSTOMER`: the account is an agent or an admin. `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-36). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such request. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `REQUEST_CLOSED`: the request was closed the other way, or its manager took it back (S2-AC-37). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    rejectMembershipRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rejected. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such request. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `REQUEST_CLOSED`: the request was closed the other way, or its manager took it back (S2-AC-37). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

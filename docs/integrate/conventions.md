@@ -90,7 +90,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 400 | `CURRENT_PASSWORD_WRONG` | The current password sent with a password change is wrong |
 | 400 | `UNSUPPORTED_IMAGE` | The profile photo is not a PNG, JPEG, or WebP file, judged by its content, or it cannot be decoded |
 | 400 | `IMAGE_TOO_LARGE` | The profile photo has too many pixels: width times height over 25 million for PNG and JPEG, 12 million for WebP |
-| 400 | `OWN_ACCOUNT` | An admin tries to suspend their own account or change their own role |
+| 400 | `OWN_ACCOUNT` | An admin tries to suspend their own account or change their own role, or a customer manager tries to remove themselves from the company |
 | 400 | `CUSTOMER_ROLE_FIXED` | A role change to `CUSTOMER`, or of a customer's account. Only `AGENT` and `ADMIN` change into each other |
 | 400 | `LAST_ADMIN` | The suspension or role change would leave no `ACTIVE` admin |
 | 400 | `ACCOUNT_NOT_ACTIVE` | The account is not `ACTIVE`, so its password cannot be reset by an admin; or it never accepted its invitation, so it cannot be suspended (cancel the invitation instead) |
@@ -98,6 +98,9 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 400 | `INVITATION_ALREADY_ACCEPTED` | The account accepted its invitation before, so the invitation cannot be sent again or cancelled |
 | 400 | `COMPANY_ARCHIVED` | The customer company is `ARCHIVED`: its status, name, and legal name no longer change |
 | 400 | `COMPANY_NOT_ACTIVE` | The customer company is not `ACTIVE`, so nothing can be filed in or added to it |
+| 400 | `MEMBER_IS_MANAGER` | A customer manager tries to remove another manager of the company. An admin does that |
+| 400 | `INVITATION_NOT_RESENDABLE` | A customer manager tries to send again an invitation that cannot be sent again from the portal. One code whatever the reason |
+| 400 | `NOT_A_CUSTOMER` | The account of a membership request is an agent or an admin, so the request cannot be approved. It can be rejected |
 | 400 | `ISSUE_CLOSED` | The issue is `CLOSED`: no comments, attachments, or edits |
 | 400 | `FILE_EMPTY` | The uploaded file has 0 bytes |
 | 400 | `FILE_TOO_LARGE` | The uploaded file is over 10 MB |
@@ -110,6 +113,9 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 404 | `NOT_FOUND` | The target does not exist or the caller may not see it (`COM-1`). Also a path the host does not serve |
 | 409 | `COMPANY_CODE_TAKEN` | Another customer company has this code |
 | 409 | `EMAIL_TAKEN` | An account has this email |
+| 409 | `ALREADY_LISTED` | The email a customer manager invites is already a row of that company's member list |
+| 409 | `TOO_MANY_PENDING` | The company already has 100 rows waiting in its member list (`INVITED`), so its manager cannot invite more |
+| 409 | `REQUEST_CLOSED` | The membership request was closed the other way (approved when rejecting, rejected when approving), or its manager took it back |
 | 409 | `AUDIT_VERIFICATION_RUNNING` | A check of the audit log's hash chain is already running. One runs at a time |
 | 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit, a profile photo is over 2 MB (2,097,152 bytes), or the JSON of a new issue (the body, or the `issue` part of a multipart request) is over 256 KB (262,144 bytes). The headers of one multipart part, which carry the file name, are limited to 4 KB: a file name far over 255 characters gets this 413, not the 400 `TOO_LONG`. A proxy in front may answer 413 first with its own body |
 | 429 | `RATE_LIMITED` | Over a rate limit (`COM-8`). `Retry-After` says when to try again |
@@ -211,7 +217,7 @@ Limits are per account over a 60-second window:
 | Upload an attachment | 30 (each file of a new issue counts as one; a new issue whose files do not all fit is refused whole) |
 | Upload a profile photo | 10 |
 | List with a search term | 60 |
-| Customer manager sends an invitation | 20 |
+| Customer manager sends an invitation, or sends one again | 20 (both count together) |
 | Sign-in attempts | 20 per IP address |
 | Password reset requests | 20 per IP address; at most one reset email per account every 15 minutes |
 

@@ -11,4 +11,6 @@ public record CompanyMember(
         String email,
         AccountStatus status,
         @Schema(description = "When the profile photo last changed; null without a photo (`getPhoto`).",
-                nullable = true) OffsetDateTime photoUpdatedAt) {}
+                nullable = true) OffsetDateTime photoUpdatedAt,
+        @Schema(description = "The customer is a manager of this company (MGR-1). Always `false` for an agent.")
+                boolean manager) {}

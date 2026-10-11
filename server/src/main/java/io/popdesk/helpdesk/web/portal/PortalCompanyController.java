@@ -32,7 +32,7 @@ class PortalCompanyController {
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
         Paged<CompanyRow> rows = companies.list(CurrentAccount.get().viewer(), page, size);
-        return new Paged<>(rows.items().stream().map(c -> new Company(c.code(), c.name(), c.status())).toList(),
+        return new Paged<>(rows.items().stream().map(c -> new Company(c.code(), c.name(), c.status(), false)).toList(),
                 rows.page(), rows.size(), rows.totalElements(), rows.totalPages());
     }
 }

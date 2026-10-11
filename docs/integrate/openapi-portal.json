@@ -125,6 +125,10 @@
             "description" : "Unique, never changes. Issue keys start with it.",
             "type" : "string"
           },
+          "manager" : {
+            "description" : "The caller is a manager of this company (MGR-1).",
+            "type" : "boolean"
+          },
           "name" : {
             "type" : "string"
           },
@@ -133,7 +137,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "code", "name", "status" ],
+        "required" : [ "code", "manager", "name", "status" ],
         "type" : "object"
       },
       "CreateCommentRequest" : {
@@ -185,6 +189,20 @@
           }
         },
         "required" : [ "code", "field" ],
+        "type" : "object"
+      },
+      "InviteMemberRequest" : {
+        "properties" : {
+          "email" : {
+            "description" : "Up to 100 characters.",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "1 to 50 characters.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "email", "name" ],
         "type" : "object"
       },
       "Issue" : {
@@ -314,6 +332,32 @@
         "required" : [ "companies", "email", "id", "locale", "name", "photoUpdatedAt", "role" ],
         "type" : "object"
       },
+      "Member" : {
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "Names the row in this company's list. Random; not an account ID.",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "manager" : {
+            "description" : "A manager of this company.",
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "`INVITED`: has not joined yet.",
+            "enum" : [ "INVITED", "ACTIVE", "SUSPENDED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "email", "id", "manager", "name", "status" ],
+        "type" : "object"
+      },
       "PagedAttachment" : {
         "properties" : {
           "items" : {
@@ -409,6 +453,36 @@
           "items" : {
             "items" : {
               "$ref" : "#/components/schemas/IssueSummary"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PagedMember" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Member"
             },
             "type" : "array"
           },
@@ -580,6 +654,331 @@
         },
         "summary" : "Companies the caller belongs to",
         "tags" : [ "Companies" ]
+      }
+    },
+    "/api/portal/companies/{code}/members" : {
+      "get" : {
+        "description" : "Customers who belong to the company and invitations still waiting, in email order (S2-AC-08). Works for a company of any status (S2-AC-12).",
+        "operationId" : "listCompanyMembers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedMember"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: the caller belongs to the company but is not its manager (S2-AC-09)."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the caller does not belong to it."
+          }
+        },
+        "summary" : "Members of a company the caller manages",
+        "tags" : [ "Company members" ]
+      },
+      "post" : {
+        "description" : "The person appears in the member list as `INVITED`. The answer is the same whether or not the email already has an account (S2-AC-15); it never carries a link (S2-AC-23).",
+        "operationId" : "inviteCompanyMember",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/InviteMemberRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Taken."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `email` malformed or over 100, `name` empty or over 50 (S2-AC-19). `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-18)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: the caller belongs to the company but is not its manager (S2-AC-09). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the caller does not belong to it."
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`ALREADY_LISTED`: the email is a row of this member list (S2-AC-17). `TOO_MANY_PENDING`: the company has 100 `INVITED` rows (S2-AC-21)."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 20 invitations, sent again included, in 60 seconds (S2-AC-20). `Retry-After` says when to try again."
+          }
+        },
+        "summary" : "Invite a customer to the company",
+        "tags" : [ "Company members" ]
+      }
+    },
+    "/api/portal/companies/{code}/members/{id}" : {
+      "delete" : {
+        "description" : "Only the membership of this company goes; the account and its other companies stay as they are (S2-AC-24). For an `INVITED` row this cancels the invitation. The answer is the same for every kind of row (S2-AC-27).",
+        "operationId" : "removeCompanyMember",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "The `id` of the row in the member list.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Removed."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`OWN_ACCOUNT`: the row is the caller. `MEMBER_IS_MANAGER`: the row is another manager (S2-AC-28)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: the caller belongs to the company but is not its manager (S2-AC-09). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the caller does not belong to it. No row of this company has this ID (S2-AC-32)."
+          }
+        },
+        "summary" : "Take a member out of the company",
+        "tags" : [ "Company members" ]
+      }
+    },
+    "/api/portal/companies/{code}/members/{id}/resend" : {
+      "post" : {
+        "description" : "For an `INVITED` row: queues the invitation email with a new link, so the previous link stops working (S2-AC-29).",
+        "operationId" : "resendMemberInvitation",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "The `id` of the row in the member list.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Taken."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVITATION_NOT_RESENDABLE`: the invitation cannot be sent again from here. One code whatever the reason (S2-AC-31)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: the caller belongs to the company but is not its manager (S2-AC-09). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the caller does not belong to it. No row of this company has this ID (S2-AC-32)."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 20 invitations, sent again included, in 60 seconds (S2-AC-20). `Retry-After` says when to try again."
+          }
+        },
+        "summary" : "Send the invitation of a member again",
+        "tags" : [ "Company members" ]
       }
     },
     "/api/portal/issues" : {

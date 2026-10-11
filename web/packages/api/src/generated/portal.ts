@@ -21,6 +21,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/portal/companies/{code}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Members of a company the caller manages
+         * @description Customers who belong to the company and invitations still waiting, in email order (S2-AC-08). Works for a company of any status (S2-AC-12).
+         */
+        get: operations["listCompanyMembers"];
+        put?: never;
+        /**
+         * Invite a customer to the company
+         * @description The person appears in the member list as `INVITED`. The answer is the same whether or not the email already has an account (S2-AC-15); it never carries a link (S2-AC-23).
+         */
+        post: operations["inviteCompanyMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portal/companies/{code}/members/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Take a member out of the company
+         * @description Only the membership of this company goes; the account and its other companies stay as they are (S2-AC-24). For an `INVITED` row this cancels the invitation. The answer is the same for every kind of row (S2-AC-27).
+         */
+        delete: operations["removeCompanyMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portal/companies/{code}/members/{id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send the invitation of a member again
+         * @description For an `INVITED` row: queues the invitation email with a new link, so the previous link stops working (S2-AC-29).
+         */
+        post: operations["resendMemberInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/portal/issues": {
         parameters: {
             query?: never;
@@ -408,6 +472,8 @@ export interface components {
         Company: {
             /** @description Unique, never changes. Issue keys start with it. */
             code: string;
+            /** @description The caller is a manager of this company (MGR-1). */
+            manager: boolean;
             name: string;
             /** @enum {string} */
             status: "ACTIVE" | "SUSPENDED" | "ARCHIVED";
@@ -436,6 +502,12 @@ export interface components {
             code: string;
             /** @description Name of the request field or query parameter. */
             field: string;
+        };
+        InviteMemberRequest: {
+            /** @description Up to 100 characters. */
+            email: string;
+            /** @description 1 to 50 characters. */
+            name: string;
         };
         Issue: {
             companyCode: string;
@@ -501,6 +573,22 @@ export interface components {
              */
             role: "CUSTOMER" | "AGENT" | "ADMIN";
         };
+        Member: {
+            email: string;
+            /**
+             * Format: uuid
+             * @description Names the row in this company's list. Random; not an account ID.
+             */
+            id: string;
+            /** @description A manager of this company. */
+            manager: boolean;
+            name: string;
+            /**
+             * @description `INVITED`: has not joined yet.
+             * @enum {string}
+             */
+            status: "INVITED" | "ACTIVE" | "SUSPENDED";
+        };
         PagedAttachment: {
             items: components["schemas"]["Attachment"][];
             /**
@@ -554,6 +642,23 @@ export interface components {
         };
         PagedIssueSummary: {
             items: components["schemas"]["IssueSummary"][];
+            /**
+             * Format: int32
+             * @description Page number, starting at 1.
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Items per page, 1 to 100.
+             */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
+        };
+        PagedMember: {
+            items: components["schemas"]["Member"][];
             /**
              * Format: int32
              * @description Page number, starting at 1.
@@ -649,6 +754,272 @@ export interface operations {
             };
             /** @description `UNAUTHENTICATED`. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listCompanyMembers: {
+        parameters: {
+            query?: {
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description 1 to 100. */
+                size?: number;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedMember"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: the caller belongs to the company but is not its manager (S2-AC-09). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the caller does not belong to it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    inviteCompanyMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Taken. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `INVALID_INPUT`: `email` malformed or over 100, `name` empty or over 50 (S2-AC-19). `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-18). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: the caller belongs to the company but is not its manager (S2-AC-09). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the caller does not belong to it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `ALREADY_LISTED`: the email is a row of this member list (S2-AC-17). `TOO_MANY_PENDING`: the company has 100 `INVITED` rows (S2-AC-21). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 20 invitations, sent again included, in 60 seconds (S2-AC-20). `Retry-After` says when to try again. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    removeCompanyMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                /** @description The `id` of the row in the member list. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `OWN_ACCOUNT`: the row is the caller. `MEMBER_IS_MANAGER`: the row is another manager (S2-AC-28). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: the caller belongs to the company but is not its manager (S2-AC-09). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the caller does not belong to it. No row of this company has this ID (S2-AC-32). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resendMemberInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                /** @description The `id` of the row in the member list. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Taken. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `INVITATION_NOT_RESENDABLE`: the invitation cannot be sent again from here. One code whatever the reason (S2-AC-31). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: the caller belongs to the company but is not its manager (S2-AC-09). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the caller does not belong to it. No row of this company has this ID (S2-AC-32). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 20 invitations, sent again included, in 60 seconds (S2-AC-20). `Retry-After` says when to try again. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

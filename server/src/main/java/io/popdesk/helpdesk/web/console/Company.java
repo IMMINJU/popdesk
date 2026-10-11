@@ -10,4 +10,6 @@ public record Company(
         String name,
         @Schema(description = "The company's legal name.") String legalName,
         CompanyStatus status,
-        OffsetDateTime createdAt) {}
+        OffsetDateTime createdAt,
+        @Schema(description = "Membership requests for this company that wait for an admin (S2-AC-48).")
+                int pendingMembershipRequests) {}

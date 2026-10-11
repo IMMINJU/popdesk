@@ -334,12 +334,17 @@
           "name" : {
             "type" : "string"
           },
+          "pendingMembershipRequests" : {
+            "description" : "Membership requests for this company that wait for an admin (S2-AC-48).",
+            "format" : "int32",
+            "type" : "integer"
+          },
           "status" : {
             "enum" : [ "ACTIVE", "SUSPENDED", "ARCHIVED" ],
             "type" : "string"
           }
         },
-        "required" : [ "code", "createdAt", "legalName", "name", "status" ],
+        "required" : [ "code", "createdAt", "legalName", "name", "pendingMembershipRequests", "status" ],
         "type" : "object"
       },
       "CompanyMember" : {
@@ -350,6 +355,10 @@
           },
           "email" : {
             "type" : "string"
+          },
+          "manager" : {
+            "description" : "The customer is a manager of this company (MGR-1). Always `false` for an agent.",
+            "type" : "boolean"
           },
           "name" : {
             "type" : "string"
@@ -364,7 +373,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "accountId", "email", "name", "photoUpdatedAt", "status" ],
+        "required" : [ "accountId", "email", "manager", "name", "photoUpdatedAt", "status" ],
         "type" : "object"
       },
       "CompanyRef" : {
@@ -639,8 +648,54 @@
         "required" : [ "companies", "email", "id", "locale", "name", "photoUpdatedAt", "role" ],
         "type" : "object"
       },
+      "MembershipRequestAccount" : {
+        "properties" : {
+          "accountId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "invitationCancelled" : {
+            "description" : "The account never accepted its invitation and the invitation is cancelled (S1A-AC-42).",
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "description" : "Only a `CUSTOMER` can be approved (S2-AC-36).",
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "INVITED", "ACTIVE", "SUSPENDED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "accountId", "invitationCancelled", "name", "role", "status" ],
+        "type" : "object"
+      },
+      "MembershipRequester" : {
+        "properties" : {
+          "accountId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "accountId", "email", "name" ],
+        "type" : "object"
+      },
       "Notification" : {
         "properties" : {
+          "companyCode" : {
+            "description" : "The company a `MEMBERSHIP_REQUESTED` item is about; null for the other kinds.",
+            "type" : [ "string", "null" ]
+          },
           "createdAt" : {
             "format" : "date-time",
             "type" : "string"
@@ -650,7 +705,7 @@
             "type" : "integer"
           },
           "kind" : {
-            "enum" : [ "DELIVERY_FAILED", "ATTACHMENT_QUOTA_WARNING" ],
+            "enum" : [ "DELIVERY_FAILED", "ATTACHMENT_QUOTA_WARNING", "MEMBERSHIP_REQUESTED" ],
             "type" : "string"
           },
           "readAt" : {
@@ -659,7 +714,7 @@
             "type" : [ "string", "null" ]
           }
         },
-        "required" : [ "createdAt", "id", "kind", "readAt" ],
+        "required" : [ "companyCode", "createdAt", "id", "kind", "readAt" ],
         "type" : "object"
       },
       "PagedAccount" : {
@@ -962,6 +1017,36 @@
         "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
         "type" : "object"
       },
+      "PagedPendingMembership" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PendingMembership"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
       "PasswordResetLink" : {
         "properties" : {
           "resetLink" : {
@@ -1013,6 +1098,37 @@
           }
         },
         "required" : [ "accountId", "cancelled", "companies", "email", "expired", "expiresAt", "invitedAt", "name", "role" ],
+        "type" : "object"
+      },
+      "PendingMembership" : {
+        "properties" : {
+          "account" : {
+            "$ref" : "#/components/schemas/MembershipRequestAccount"
+          },
+          "company" : {
+            "$ref" : "#/components/schemas/CompanyRef"
+          },
+          "email" : {
+            "description" : "The email the manager typed.",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "description" : "The name the manager typed. The account's own name is in `account`.",
+            "type" : "string"
+          },
+          "requestedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "requestedBy" : {
+            "$ref" : "#/components/schemas/MembershipRequester"
+          }
+        },
+        "required" : [ "account", "company", "email", "id", "name", "requestedAt", "requestedBy" ],
         "type" : "object"
       },
       "Person" : {
@@ -1622,7 +1738,7 @@
           "required" : false,
           "schema" : {
             "items" : {
-              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED" ],
+              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED" ],
               "type" : "string"
             },
             "type" : "array"
@@ -1767,7 +1883,7 @@
           "required" : false,
           "schema" : {
             "items" : {
-              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED" ],
+              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED" ],
               "type" : "string"
             },
             "type" : "array"
@@ -1930,7 +2046,7 @@
           "required" : false,
           "schema" : {
             "items" : {
-              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED" ],
+              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED" ],
               "type" : "string"
             },
             "type" : "array"
@@ -2804,6 +2920,146 @@
           }
         },
         "summary" : "Make a customer a member of a company",
+        "tags" : [ "Companies" ]
+      }
+    },
+    "/api/console/companies/{code}/customers/{accountId}/manager" : {
+      "delete" : {
+        "description" : "The customer stays a member. Applies from the next request (S2-AC-01). Works for a company of any status, and unmarking again is 200 too.",
+        "operationId" : "unmarkCompanyManager",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyMember"
+                }
+              }
+            },
+            "description" : "Not a manager."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the account is not a customer who belongs to it (S2-AC-02)."
+          }
+        },
+        "summary" : "Make a customer no longer a manager of a company",
+        "tags" : [ "Companies" ]
+      },
+      "put" : {
+        "description" : "The customer, invited ones included, manages the members of this company from the next request; in their other companies nothing changes (S2-AC-01, S2-AC-03, S2-AC-05). Marking again is 200 too.",
+        "operationId" : "markCompanyManager",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyMember"
+                }
+              }
+            },
+            "description" : "A manager."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-06)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the account is not a customer who belongs to it (S2-AC-02)."
+          }
+        },
+        "summary" : "Make a customer a manager of a company",
         "tags" : [ "Companies" ]
       }
     },
@@ -4146,6 +4402,219 @@
         },
         "summary" : "Set the caller's profile photo",
         "tags" : [ "Photos" ]
+      }
+    },
+    "/api/console/membership-requests" : {
+      "get" : {
+        "description" : "Open requests only, oldest first (S2-AC-33).",
+        "operationId" : "listMembershipRequests",
+        "parameters" : [ {
+          "description" : "Only requests for this company.",
+          "in" : "query",
+          "name" : "companyCode",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedPendingMembership"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), or `companyCode` names no company (`UNKNOWN_VALUE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only."
+          }
+        },
+        "summary" : "Membership requests waiting for an admin",
+        "tags" : [ "Membership requests" ]
+      }
+    },
+    "/api/console/membership-requests/{id}/approve" : {
+      "post" : {
+        "description" : "Makes the account a member of the company and closes the request (S2-AC-34). Approving an approved request again is 200 too (S2-AC-37).",
+        "operationId" : "approveMembershipRequest",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Approved."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_A_CUSTOMER`: the account is an agent or an admin. `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-36)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such request."
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`REQUEST_CLOSED`: the request was closed the other way, or its manager took it back (S2-AC-37)."
+          }
+        },
+        "summary" : "Approve a membership request",
+        "tags" : [ "Membership requests" ]
+      }
+    },
+    "/api/console/membership-requests/{id}/reject" : {
+      "post" : {
+        "description" : "Closes the request; the account does not change (S2-AC-35). Works whatever the role of the account or the status of the company. Rejecting a rejected request again is 200 too (S2-AC-37).",
+        "operationId" : "rejectMembershipRequest",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Rejected."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such request."
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`REQUEST_CLOSED`: the request was closed the other way, or its manager took it back (S2-AC-37)."
+          }
+        },
+        "summary" : "Reject a membership request",
+        "tags" : [ "Membership requests" ]
       }
     },
     "/api/console/notifications" : {
