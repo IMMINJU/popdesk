@@ -24,7 +24,7 @@ function attachment(over: Partial<Attachment>): Attachment {
     id: 'a1',
     internal: false,
     size: 100,
-    uploadedBy: { accountId: 1, name: '김상담', role: 'AGENT' },
+    uploadedBy: { accountId: 1, name: '김상담', role: 'AGENT', photoUpdatedAt: null },
     ...over,
   };
 }

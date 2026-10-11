@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
@@ -35,6 +36,19 @@ class ResetPasswordTest {
 
     private static final String NEW_PASSWORD = "reset-Password-7q";
     private static final JsonMapper JSON = JsonMapper.builder().build();
+
+    /**
+     * The password paths of slice 1a in the contract files: forgotten password (AUTH-7, S1A-AC-05 to
+     * S1A-AC-14), changing one's own password (S1A-AC-17), and an admin's reset of an account, which
+     * mails a reset link (S1A-AC-36). None of them is this command over HTTP. A path is one of these
+     * only when the whole path is the same.
+     */
+    private static final Set<String> PASSWORD_PATHS = Set.of(
+            "/api/public/password-reset/request",
+            "/api/public/password-reset/confirm",
+            "/api/portal/me/password",
+            "/api/console/me/password",
+            "/api/console/accounts/{accountId}/password-reset");
 
     /** The installation, with an agent account besides the first admin. */
     record Installation(Stack stack, Db db, String agentEmail) {}
@@ -140,7 +154,8 @@ class ResetPasswordTest {
 
     @Test
     @Order(6)
-    @DisplayName("S0-AC-97 neither contract file has an HTTP path for resetting a password (the app's own mappings: "
+    @DisplayName("S0-AC-97 neither contract file has an HTTP path for this command: besides the password paths of "
+            + "slice 1a, no path holds password, reset, or credential (the app's own mappings: "
             + "ops/EndpointMappingsTest)")
     void noHttpPath() throws IOException {
         for (String app : List.of("portal", "console")) {
@@ -149,7 +164,9 @@ class ResetPasswordTest {
             List<String> paths = new ArrayList<>();
             JSON.readTree(text).path("paths").propertyNames().forEach(paths::add);
 
-            assertThat(paths).as("paths of openapi-%s.json", app).isNotEmpty()
+            assertThat(paths).as("paths of openapi-%s.json", app).isNotEmpty();
+            assertThat(paths.stream().filter(p -> !PASSWORD_PATHS.contains(p)))
+                    .as("paths of openapi-%s.json, besides the password paths of slice 1a", app)
                     .noneMatch(p -> p.toLowerCase(Locale.ROOT).matches(".*(password|reset|credential).*"));
         }
     }

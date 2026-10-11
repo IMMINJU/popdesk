@@ -76,7 +76,7 @@ describe('P-5 문의 상세', () => {
 
   test('P-5 댓글 작성자: 내 댓글은 "나", 상담 쪽 댓글은 "지원팀". 댓글 section 제목은 "댓글 N개", 쓰기 form은 "댓글 쓰기"', async () => {
     state.comments = [
-      comment({ id: 1, author: { accountId: 11, kind: 'CUSTOMER', name: '김고객' }, content: '처음 댓글', createdAt: T0 }),
+      comment({ id: 1, author: { accountId: 11, kind: 'CUSTOMER', name: '김고객', photoUpdatedAt: null }, content: '처음 댓글', createdAt: T0 }),
       comment({ id: 2, author: SUPPORT_TEAM, content: '확인하고 있습니다', createdAt: '2026-10-08T04:00:00Z' }),
     ];
     renderAt(URL_7);
@@ -106,7 +106,7 @@ describe('P-5 문의 상세', () => {
     state.attachments = [
       attachment({ id: MINE_ID, fileName: 'log.txt' }),
       attachment({ id: SUPPORT_FILE_ID, fileName: 'guide.pdf', uploadedBy: SUPPORT_TEAM, contentType: 'application/pdf' }),
-      attachment({ id: DELETED_ID, fileName: null, deleted: true, deletedAt: T0, deletedBy: { accountId: 11, kind: 'CUSTOMER', name: '김고객' } }),
+      attachment({ id: DELETED_ID, fileName: null, deleted: true, deletedAt: T0, deletedBy: { accountId: 11, kind: 'CUSTOMER', name: '김고객', photoUpdatedAt: null } }),
     ];
     renderAt(URL_7);
 

@@ -39,6 +39,15 @@ class NoStoreTest extends BareAppTest {
 
     private static final Set<String> METHODS = Set.of("get", "head", "post", "put", "patch", "delete");
 
+    /**
+     * The one read whose success is not {@code no-store}: a photo answers with
+     * {@code Cache-Control: private, no-cache} and an {@code ETag} (S1A-AC-87, the exception to
+     * S0-AC-101). Its headers are checked by the photo tests of slice 1a. A path is one of these only
+     * when the whole path is the same.
+     */
+    private static final Set<String> PHOTO_READS = Set.of("/api/portal/photos/{accountId}",
+            "/api/console/photos/{accountId}");
+
     @Test
     @DisplayName("S0-AC-101 the invitation response has Cache-Control no-store")
     void invitationResponse() {
@@ -124,7 +133,7 @@ class NoStoreTest extends BareAppTest {
 
     @Test
     @DisplayName("S0-AC-101 every GET and HEAD of both contracts, with path values that exist, answers 2xx with "
-            + "Cache-Control no-store, downloads and range downloads too")
+            + "Cache-Control no-store, downloads and range downloads too; a photo is the exception (S1A-AC-87)")
     void everyReadSucceedsWithNoStore() {
         Session admin = fixtures.signInAdmin();
         Company company = fixtures.createCompany(admin);
@@ -139,6 +148,9 @@ class NoStoreTest extends BareAppTest {
 
         for (Operation op : operations()) {
             if (!op.method().equals("GET") && !op.method().equals("HEAD")) {
+                continue;
+            }
+            if (PHOTO_READS.contains(op.path())) {
                 continue;
             }
             String path = withValues(op.path(), values);

@@ -26,7 +26,11 @@ class PortalIssueContractTest {
     static final List<String> STAFF_ONLY = List.of("assignee", "label", "due", "history", "firstresponse",
             "createdby", "creator", "internal");
 
-    /** The customer's issue and comment types and their fields, as fixed for this slice. */
+    /**
+     * The customer's issue and comment types and their fields, as fixed for this slice.
+     * {@code Person.photoUpdatedAt} came with slice 1a (S1A-AC-25, S1A-AC-26): the time a customer's
+     * photo last changed, never a staff member's.
+     */
     private static final Map<String, List<String>> SNAPSHOT = new TreeMap<>(Map.of(
             "Comment", List.of("author", "content", "createdAt", "id"),
             "Issue", List.of("companyCode", "companyName", "content", "createdAt", "key", "priority", "private",
@@ -35,7 +39,7 @@ class PortalIssueContractTest {
                     "reporter", "status", "title"),
             "PagedComment", List.of("items", "page", "size", "totalElements", "totalPages"),
             "PagedIssueSummary", List.of("items", "page", "size", "totalElements", "totalPages"),
-            "Person", List.of("accountId", "kind", "name")));
+            "Person", List.of("accountId", "kind", "name", "photoUpdatedAt")));
 
     private static JsonNode contract() throws IOException {
         Path file = Path.of("..", "docs", "integrate", "openapi-portal.json");

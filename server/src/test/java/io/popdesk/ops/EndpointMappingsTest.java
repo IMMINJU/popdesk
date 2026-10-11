@@ -32,7 +32,8 @@ import tools.jackson.databind.json.JsonMapper;
  * do. Every mapping under {@code /api/} is an operation of a contract file and the reverse
  * ({@code METHOD path}, path variable names ignored). Outside {@code /api/} the app maps only GET or
  * HEAD (the screens), besides {@code /error}. No mapped path holds {@code password}, {@code reset}, or
- * {@code credential}: the admin password reset is a command only.
+ * {@code credential}, besides the password paths of slice 1a ({@link #PASSWORD_PATHS}): the admin
+ * recovery command {@code popdesk admin reset-password} has no HTTP path.
  */
 @TestPropertySource(properties = {
         "management.endpoints.web.exposure.include=mappings",
@@ -46,6 +47,19 @@ class EndpointMappingsTest extends BareAppTest {
             "trace");
 
     private static final List<String> CONTRACTS = List.of("openapi-portal.json", "openapi-console.json");
+
+    /**
+     * The password paths of slice 1a, as the app maps them: forgotten password (AUTH-7, S1A-AC-05 to
+     * S1A-AC-14), changing one's own password (S1A-AC-17), and an admin's reset of an account, which
+     * mails a reset link (S1A-AC-36). None of them is the admin recovery command of S0-AC-97. A path
+     * is one of these only when the whole path is the same.
+     */
+    private static final Set<String> PASSWORD_PATHS = Set.of(
+            "/api/public/password-reset/request",
+            "/api/public/password-reset/confirm",
+            "/api/portal/me/password",
+            "/api/console/me/password",
+            "/api/console/accounts/{accountId}/password-reset");
 
     @Autowired
     Environment environment;
@@ -145,13 +159,15 @@ class EndpointMappingsTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S0-AC-97 no endpoint the app maps resets a password: no path holds password, reset, or credential")
+    @DisplayName("S0-AC-97 the admin recovery command has no endpoint: besides the password paths of slice 1a, no "
+            + "mapped path holds password, reset, or credential")
     void noPasswordResetPath() {
         List<Mapping> mappings = mappings();
 
         assertThat(mappings).as("handler mappings of the app").isNotEmpty();
-        assertThat(mappings.stream().map(Mapping::pattern).filter(p -> !ownedByBoot(p)))
-                .as("mapped paths")
+        assertThat(mappings.stream().map(Mapping::pattern).filter(p -> !ownedByBoot(p))
+                .filter(p -> !PASSWORD_PATHS.contains(p)))
+                .as("mapped paths, besides the password paths of slice 1a")
                 .noneMatch(p -> p.toLowerCase(Locale.ROOT).matches(".*(password|reset|credential).*"));
     }
 }

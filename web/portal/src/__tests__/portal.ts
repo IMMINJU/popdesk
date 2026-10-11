@@ -29,11 +29,19 @@ export type FieldError = Schemas['FieldError'];
 // ---------------------------------------------------------------------------
 // Fixtures
 
-export const ME: Me = { id: 11, email: 'kim@acme.test', name: '김고객' };
-export const ME_PERSON: Person = { accountId: 11, kind: 'CUSTOMER', name: '김고객' };
-export const COLLEAGUE: Person = { accountId: 12, kind: 'CUSTOMER', name: '박동료' };
+export const ME: Me = {
+  id: 11,
+  email: 'kim@acme.test',
+  name: '김고객',
+  role: 'CUSTOMER',
+  locale: 'ko',
+  photoUpdatedAt: null,
+  companies: [{ code: 'ACME', name: '에이크미', status: 'ACTIVE' }],
+};
+export const ME_PERSON: Person = { accountId: 11, kind: 'CUSTOMER', name: '김고객', photoUpdatedAt: null };
+export const COLLEAGUE: Person = { accountId: 12, kind: 'CUSTOMER', name: '박동료', photoUpdatedAt: null };
 /** Staff as the portal API shows them: no name, no ID (D-49). */
-export const SUPPORT_TEAM: Person = { accountId: null, kind: 'SUPPORT_TEAM', name: null };
+export const SUPPORT_TEAM: Person = { accountId: null, kind: 'SUPPORT_TEAM', name: null, photoUpdatedAt: null };
 
 export const ACME: Company = { code: 'ACME', name: '에이크미', status: 'ACTIVE' };
 export const BETA: Company = { code: 'BETA', name: '베타상사', status: 'ACTIVE' };

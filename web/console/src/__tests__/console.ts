@@ -40,12 +40,12 @@ export type FieldError = Schemas['FieldError'];
 
 export const T0 = '2026-10-08T03:15:00Z';
 
-export const ADMIN: Me = { id: 1, email: 'admin@popdesk.test', name: '최관리', role: 'ADMIN' };
-export const AGENT: Me = { id: 2, email: 'lee@popdesk.test', name: '이상담', role: 'AGENT' };
-export const ADMIN_PERSON: Person = { accountId: 1, name: '최관리', role: 'ADMIN' };
-export const AGENT_PERSON: Person = { accountId: 2, name: '이상담', role: 'AGENT' };
-export const OTHER_AGENT_PERSON: Person = { accountId: 3, name: '정상담', role: 'AGENT' };
-export const CUSTOMER_PERSON: Person = { accountId: 11, name: '김고객', role: 'CUSTOMER' };
+export const ADMIN: Me = { id: 1, email: 'admin@popdesk.test', name: '최관리', role: 'ADMIN', locale: 'ko', photoUpdatedAt: null, companies: [] };
+export const AGENT: Me = { id: 2, email: 'lee@popdesk.test', name: '이상담', role: 'AGENT', locale: 'ko', photoUpdatedAt: null, companies: [] };
+export const ADMIN_PERSON: Person = { accountId: 1, name: '최관리', role: 'ADMIN', photoUpdatedAt: null };
+export const AGENT_PERSON: Person = { accountId: 2, name: '이상담', role: 'AGENT', photoUpdatedAt: null };
+export const OTHER_AGENT_PERSON: Person = { accountId: 3, name: '정상담', role: 'AGENT', photoUpdatedAt: null };
+export const CUSTOMER_PERSON: Person = { accountId: 11, name: '김고객', role: 'CUSTOMER', photoUpdatedAt: null };
 
 export function company(over: Partial<Company> = {}): Company {
   return { code: 'ACME', name: '에이크미', legalName: '에이크미 주식회사', status: 'ACTIVE', createdAt: T0, ...over };
@@ -101,11 +101,11 @@ export function attachment(over: Partial<Attachment> = {}): Attachment {
 }
 
 export function account(over: Partial<Account> = {}): Account {
-  return { id: 1, email: ADMIN.email, name: ADMIN.name, role: 'ADMIN', status: 'ACTIVE', createdAt: T0, ...over };
+  return { id: 1, email: ADMIN.email, name: ADMIN.name, role: 'ADMIN', status: 'ACTIVE', createdAt: T0, photoUpdatedAt: null, ...over };
 }
 
 export function member(over: Partial<CompanyMember> = {}): CompanyMember {
-  return { accountId: 11, email: 'kim@acme.test', name: '김고객', status: 'ACTIVE', ...over };
+  return { accountId: 11, email: 'kim@acme.test', name: '김고객', status: 'ACTIVE', photoUpdatedAt: null, ...over };
 }
 
 export function invitation(over: Partial<PendingInvitation> = {}): PendingInvitation {
@@ -118,6 +118,7 @@ export function invitation(over: Partial<PendingInvitation> = {}): PendingInvita
     invitedAt: T0,
     expiresAt: '2026-10-15T03:15:00Z',
     expired: false,
+    cancelled: false,
     ...over,
   };
 }
@@ -321,7 +322,7 @@ export async function acceptUpload(request: Request): Promise<Response> {
     id: crypto.randomUUID(),
     fileName: partFileName(part),
     size: part?.text.length ?? 1,
-    uploadedBy: { accountId: state.me.id, name: state.me.name, role: state.me.role },
+    uploadedBy: { accountId: state.me.id, name: state.me.name, role: state.me.role, photoUpdatedAt: null },
     commentId: commentId ? Number(commentId) : null,
   });
   state.attachments = [...state.attachments, created];
@@ -362,7 +363,7 @@ const defaultHandlers = [
     const body = (await request.json()) as { content: string; internal?: boolean };
     const created = comment({
       id: 900 + state.comments.length,
-      author: { accountId: state.me.id, name: state.me.name, role: state.me.role },
+      author: { accountId: state.me.id, name: state.me.name, role: state.me.role, photoUpdatedAt: null },
       content: body.content,
       internal: body.internal ?? false,
       createdAt: '2026-10-08T05:00:00Z',
@@ -387,7 +388,7 @@ const defaultHandlers = [
   http.delete('*/api/console/issues/:key/attachments/:id', ({ params }) => {
     const denied = requireSession() ?? unknownIssue(params.key);
     if (denied) return denied;
-    const by: Person = { accountId: state.me.id, name: state.me.name, role: state.me.role };
+    const by: Person = { accountId: state.me.id, name: state.me.name, role: state.me.role, photoUpdatedAt: null };
     state.attachments = state.attachments.map((a) =>
       a.id === params.id ? { ...a, deleted: true, fileName: null, deletedAt: T0, deletedBy: by } : a,
     );
