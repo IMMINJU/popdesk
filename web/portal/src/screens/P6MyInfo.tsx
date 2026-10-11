@@ -127,7 +127,8 @@ function Photo(props: { me: Me; t: T }) {
   const { setMe } = useSession();
   const live = useLive();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Kept as the failure, so its text follows a language change.
+  const [error, setError] = useState<Failure | null>(null);
   // The account as it is when an answer comes, not as it was when the request left.
   const latest = useRef(me);
   useLayoutEffect(() => {
@@ -152,7 +153,7 @@ function Photo(props: { me: Me; t: T }) {
     if (!live()) return;
     setBusy(false);
     if (result.ok) setMe(result.data);
-    else setError(reason(result.failure));
+    else setError(result.failure);
   };
 
   const remove = async () => {
@@ -163,7 +164,7 @@ function Photo(props: { me: Me; t: T }) {
     if (!live()) return;
     setBusy(false);
     if (result.ok) setMe({ ...latest.current, photoUpdatedAt: null });
-    else setError(reason(result.failure));
+    else setError(result.failure);
   };
 
   return (
@@ -186,7 +187,7 @@ function Photo(props: { me: Me; t: T }) {
         uploadLabel={t('myInfo.photoUpload')}
         changeLabel={t('myInfo.photoChange')}
         removeLabel={t('myInfo.photoRemove')}
-        {...(error === null ? {} : { error })}
+        {...(error === null ? {} : { error: reason(error) })}
       />
     </section>
   );
