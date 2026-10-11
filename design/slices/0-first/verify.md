@@ -22,7 +22,7 @@
   - ui 전체 48.37% → 81.25%. C-4 껍데기 때문에 처음부터 통과를 허용한 컴포넌트를 모두 포함한다. 파일별 점수는 탭 보고에 있다.
   - console 56.90% → 96.90%, portal 57.26% → 96.71%. 판단이 걸린 `src/app` 여섯 파일만(sessionContext, result, messages, attachments, paging, navigate). 화면 파일은 한 패키지에 12시간 넘게 걸려 미뤘다.
   - 운영 코드는 맞고 테스트가 빠졌던 곳: 마크다운 링크 허용 목록·`<주소>`·맨 주소 정규식의 `^`, `safeNext`의 제어 문자 검사와 `/login`·`/invite`로 되돌아가기 막기. 지금은 테스트가 잡는다.
-- 서버 PIT: 웹이 끝난 뒤 돈다.
+- 서버 PIT: 14절에 적었다.
 
 ## 5. 보안 검사 도구는 Tomcat·Jackson 패치를 찾았고 올렸다
 
@@ -149,3 +149,29 @@ d04daeb 푸시의 Server 잡에서 `AttachmentConcurrencyLimitTest.seventeenthDo
 
 정한 것: 테스트 쪽 탭(`s0-v3-t-held`)이 붙잡은 요청마다 상태 줄을 읽어 200을 단언하고, 시간이 넘으면 진단을 실패 메시지에 넣게 고친다. 다음에 실패하면 원인이 드러난다. 운영 코드는 고치지 않는다.
 - 고친 뒤(35be9bc): 붙잡은 내려받기가 응답 머리글을 읽어 16개 모두 200인지 단언한다. 시간이 넘으면 탐침 횟수와 마지막 상태, 요청별 상태, 그 사이의 WARN·ERROR 줄이 실패 메시지에 들어간다. 탐침은 1바이트 범위 요청이라 15초에 118번 나간다(전에는 10MB를 통째로 받았다). 이 PC에서 다섯 번 통과했고 실패는 다시 나오지 않았다. 앱이 10MB를 버퍼에 다 쓰고 끝낸 경우는 이 진단으로도 가려지지 않는다.
+
+## 14. 서버 변이 테스트(PIT)를 돌렸고 테스트 열두 클래스를 더했다 (2026-10-11)
+
+탭 `s0-v4-mut-server`(보고 `tasks\s0-v4-mut-server-report.md`). 운영 코드는 고치지 않았다. 클래스별 점수와 줄 번호는 탭 보고에 있다.
+
+- 붙인 것: `server/pom.xml`의 `pit` 프로필(pitest-maven 1.30.0, pitest-junit5-plugin 1.2.3). 보통 빌드와 CI에는 걸리지 않는다. 대상 클래스와 테스트는 명령줄로 준다.
+  - 미니언은 `-Xmx512m -XX:+UseG1GC`로 돈다. 테스트와 같은 SerialGC로는 미니언이 `MEMORY_ERROR`로 죽었다. PIT가 메모리 풀마다 상한의 90%에 문턱을 거는데 SerialGC의 Tenured Gen이 그 문턱을 넘었다. G1에서는 0건이다.
+  - `parseSurefireConfig`를 껐다. 켜 두면 PIT가 surefire의 argLine을 뒤에 덧붙여 `pit.argLine`의 힙 값이 먹지 않는다.
+  - history 파일은 유료 플러그인이 있어야 해서 두지 못했다. 다시 돌리면 처음부터 돈다.
+- 돈 범위와 변이 수: 첨부 170, 문의·댓글·고객사 113, 계정 211, 알림 184, 공용 필터·입력·감사 315. 합 993.
+- 고객사 경계(`IssueVisibility`, `IssueScope`, `Viewer.admin`)와 SMTP의 TLS 요구(S0-AC-74) 쪽 변이는 모두 잡혔다.
+- 테스트가 빠졌던 곳에 새 테스트 열두 클래스를 더하고 잠갔다(잠긴 파일 360개). PIT를 다시 돌려 겨냥한 변이가 잡히는 것을 봤다.
+  - 첨부: 문의 등록에 붙인 파일의 50MB 경계(`FilingAttachmentLimitTest`)와 팀 한도(`FilingQuotaTest`), 정리 작업에 진 올리기가 내용을 남기지 않는지(`UploadCleanupRaceTest`), 정리 작업이 적는 수(`CleanupCountTest`).
+  - 목록의 `totalElements`·`totalPages`: `CompanyMemberPagesTest`, `AccountPagesTest`, `FailedDeliveryCountsTest`.
+  - 끝난 세션의 행이 실제로 지워지는지(`EndedSessionCleanupTest`), 잠긴 계정의 로그인 실패도 감사 행을 남기는지(`LockedSignInAuditTest`).
+  - 감사 JSON의 0과 1 사이 수와 글 끝·처음의 짝 없는 서러게이트(`CanonicalAuditJsonEdgesTest`). 1번 묶음의 해시 사슬이 이 함수를 그대로 쓴다. 리플렉션으로 운영 함수를 부르는 테스트가 `CanonicalAuditJsonTest`와 이것, 둘이 됐다.
+  - 정리 지표의 값(`CleanupMetricsTest`), 계정 목록의 없는 `role` 값(`AccountListRoleTest`).
+- 쓰이지 않는 코드로 드러난 것(지우지 않았다. 1번 묶음에서 쓰게 되면 두고, 아니면 그때 지운다): `Viewer.agent()`, `Viewer.staff()`, `AccountRepository.lockById`, `Sessions.start`의 계정 ID 색인, `Recipient.app()`, `AttachmentRepository.updatePurged`의 반환값. `SessionFilter` 63줄은 48줄과 겹친 검사다.
+- 돌리지 않은 것
+  - 알림의 보내기 루프 쪽(`SendLoops` 뒤쪽, `Wakeups`, `OutboxCleanup`, `Housekeeping`, `OpsRepository`, `CleanupRecordService`)과 `MailSender`의 `attempt` 밖, `MailText`, 큐 둘, `WebhookSender` 뒤쪽. 이쪽 변이는 루프를 멈추게 해서 대부분 시간 초과로 끝나고 하나에 1.5~5분이 걸린다.
+  - 컨트롤러(`helpdesk.web.**`, `notification.web.**`). 얇은 코드라 뒤로 뺐다. 어림은 1.5~2.5시간이다.
+  - 앱이 뜰 때만 도는 코드, `popdesk` 명령, 요청·응답 record.
+- 점수를 읽을 때 알아 둘 것: 시간 초과도 잡힌 것으로 셌다. 알림 쪽은 잡힌 변이의 대부분이 시간 초과라 잘못 잡힌 것이 섞였는지 가리지 못했다. 조각마다 테스트를 2~4개만 짝지은 곳은 짝이 좁아 살아남은 변이가 있다(탭 보고에 가려 적음).
+- 테스트는 없고 기준에도 없는 동작은 1번 묶음 되묻기로 넘긴다: 운영 경보가 풀리는 때, 정지된 계정의 세션, 로그인할 때 CSRF 토큰, 첫 관리자 값이 없을 때 503의 `Content-Type`, `Retry-After` 값, 초대 이메일 길이, 로그인 감사 행의 대상, 웹훅 3xx와 연결 실패 경로, 첨부 크기 단위, 메일의 보낸 사람 주소(`MAIL_FROM`), 믿는 프록시 대역이 8비트 단위가 아닐 때(`172.16.0.0/12`)의 판정, 읽을 수 없는 본문의 `fields` 세부. 내려받기 `Content-Type`은 5번 묶음으로 넘긴다.
+- 이 PC에서 걸린 것: 빈 메모리가 3GB 아래로 내려가면 Claude Code가 백그라운드 셸을 끊는다. 다섯 번 끊겼다. 실행 하나를 30분으로 자르고 `-DmutationUnitSize=4`로 결과를 자주 쓰게 한 뒤로는 끊겨도 잃는 것이 적었다. 시작 전 빈 메모리 기준은 4.2GB로 뒀다.
+- 잠긴 `attachment.AttachmentQuotaTest`가 `@TestMethodOrder`와 static 값으로 순서에 기댄다(AGENTS.md와 어긋남). 고치지 않았고 1번 묶음 테스트 단계에서 정한다.
