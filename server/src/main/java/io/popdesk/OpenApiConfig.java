@@ -36,7 +36,7 @@ import org.springframework.context.annotation.Configuration;
 class OpenApiConfig {
 
     /** The release this contract ships in. Change it with the release, not with the build. */
-    static final String CONTRACT_VERSION = "0.1.0";
+    static final String CONTRACT_VERSION = "0.2.0";
 
     @Bean
     GroupedOpenApi portalApi() {

@@ -5,7 +5,7 @@ Customers raise and follow requests in a customer portal; agents answer, track i
 
 [한국어](README.ko.md)
 
-> **Status: 0.1.0, the first slice.** An empty install, the first admin, an invitation, a request with attachments, an agent's answer, and the email and webhook that follow. The image is not published yet; build it from the tag ([release notes](docs/release-notes/0.1.0.md)). Not ready for production. The plan and decisions live in [`design/`](design/).
+> **Status: 0.2.0.** An empty install, the first admin, an invitation, a request with attachments, an agent's answer, and the email and webhook that follow; managing people and customer companies, password reset, and an audit log with a hash chain. The image is not published yet; build it from the tag ([release notes](docs/release-notes/0.2.0.md)). Not ready for production. The plan and decisions live in [`design/`](design/).
 
 ## What it aims to be
 

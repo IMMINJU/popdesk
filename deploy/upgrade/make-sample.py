@@ -74,6 +74,9 @@ def fill(project):
     customer, customer_id = join(project, admin, "CUSTOMER", "customer@sample.popdesk.test", "Sample Customer",
                                  ["ACME"])
     other, _ = join(project, admin, "CUSTOMER", "other@sample.popdesk.test", "Other Customer", ["BETA"])
+    # A suspended account: it accepted, and an admin suspended it.
+    _, suspended_id = join(project, admin, "AGENT", "suspended@sample.popdesk.test", "Suspended Agent")
+    admin.request("POST", f"/api/console/accounts/{suspended_id}/suspend", expect=200)
     # An invitation nobody accepted.
     admin.json("POST", "/api/console/invitations", {"email": "pending@sample.popdesk.test", "name": "Pending",
                                                     "role": "CUSTOMER", "companyCodes": ["ACME"]}, expect=201)

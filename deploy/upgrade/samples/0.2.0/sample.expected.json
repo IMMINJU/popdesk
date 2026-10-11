@@ -1,0 +1,119 @@
+{
+  "issues": [
+    "ACME-1",
+    "ACME-2",
+    "ACME-3",
+    "BETA-1"
+  ],
+  "attachments": [
+    {
+      "issue": "ACME-1",
+      "id": "b63950df-9034-4fc6-9300-027a3ec89b46",
+      "fileName": "screenshot.png",
+      "size": 20000,
+      "sha256": "6746bb57c0b14feb72784f4d9bacd640d5cc1c20e02f1348c1b4f405c81dc64c"
+    },
+    {
+      "issue": "ACME-2",
+      "id": "749e2319-1a70-4738-813a-e1713c777ba1",
+      "fileName": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.txt",
+      "size": 3000,
+      "sha256": "310ad9ab4a0349b3ea3c3d3fefcfaba857b1788cb2de7ace39d31723811b79ff"
+    },
+    {
+      "issue": "ACME-1",
+      "id": "84c63659-07ae-4bda-aea9-1da737c86ccc",
+      "fileName": "driver-log.txt",
+      "size": 5000,
+      "sha256": "beebeebedd0a8aded279eaa7a026033a18a7276f2f5b0164327bbdf01e25eef0"
+    },
+    {
+      "issue": "ACME-3",
+      "id": "ff1e07c2-d35a-460a-bc97-4c9f4aaef455",
+      "fileName": "large.bin",
+      "size": 820000,
+      "sha256": "06f845e16d8024fb14fc2a7a809a2fe4d8bf25dfc69b352b47053de97f4f6b3e"
+    }
+  ],
+  "outbox": [
+    {
+      "id": 8,
+      "channel": "MAIL",
+      "kind": "STAFF_COMMENT",
+      "state": "failed",
+      "attempts": 25,
+      "lastErrorKind": "SMTP_REFUSED",
+      "failedAt": "2026-10-11T18:57:19.501157+00:00"
+    }
+  ],
+  "audit": [
+    {
+      "id": 1,
+      "action": "FIRST_ADMIN_CREATED",
+      "row": "{\"id\":1,\"tenant_id\":1,\"action\":\"FIRST_ADMIN_CREATED\",\"actor\":{\"name\": null, \"email\": null, \"accountId\": 0},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 1},\"changes\":{\"name\": \"Admin\", \"role\": \"ADMIN\", \"email\": \"admin@sample.popdesk.test\"},\"occurred_at\":\"2026-10-11T18:57:12.696847+00:00\",\"seq\":1,\"prev_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"hash\":\"d2e7c1b377096399ebcee48d0d69a8253678d10eb7506ba8d562444204e35c9b\"}"
+    },
+    {
+      "id": 2,
+      "action": "SIGN_IN_SUCCEEDED",
+      "row": "{\"id\":2,\"tenant_id\":1,\"action\":\"SIGN_IN_SUCCEEDED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 1},\"changes\":null,\"occurred_at\":\"2026-10-11T18:57:16.225978+00:00\",\"seq\":2,\"prev_hash\":\"d2e7c1b377096399ebcee48d0d69a8253678d10eb7506ba8d562444204e35c9b\",\"hash\":\"92066d80cb8e60814ab9dd7891907cb856ae1ffe685aeb896b103194422dc801\"}"
+    },
+    {
+      "id": 3,
+      "action": "COMPANY_CREATED",
+      "row": "{\"id\":3,\"tenant_id\":1,\"action\":\"COMPANY_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"code\": \"ACME\", \"type\": \"COMPANY\"},\"changes\":{\"code\": \"ACME\", \"name\": \"Acme\", \"status\": \"ACTIVE\", \"legalName\": \"Acme Ltd.\"},\"occurred_at\":\"2026-10-11T18:57:16.396522+00:00\",\"seq\":3,\"prev_hash\":\"92066d80cb8e60814ab9dd7891907cb856ae1ffe685aeb896b103194422dc801\",\"hash\":\"96521bf3231b72a7272ffb8b9c9ce5f0503e4f6da59d9b312b16f63c087bf9a3\"}"
+    },
+    {
+      "id": 4,
+      "action": "COMPANY_CREATED",
+      "row": "{\"id\":4,\"tenant_id\":1,\"action\":\"COMPANY_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"code\": \"BETA\", \"type\": \"COMPANY\"},\"changes\":{\"code\": \"BETA\", \"name\": \"Beta\", \"status\": \"ACTIVE\", \"legalName\": \"Beta Ltd.\"},\"occurred_at\":\"2026-10-11T18:57:16.451345+00:00\",\"seq\":4,\"prev_hash\":\"96521bf3231b72a7272ffb8b9c9ce5f0503e4f6da59d9b312b16f63c087bf9a3\",\"hash\":\"e228efd019679d4f8e55e4993ee19d9c857552134e8e19a0a53409ec816403c1\"}"
+    },
+    {
+      "id": 5,
+      "action": "INVITATION_CREATED",
+      "row": "{\"id\":5,\"tenant_id\":1,\"action\":\"INVITATION_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 2},\"changes\":{\"name\": \"Sample Agent\", \"role\": \"AGENT\", \"email\": \"agent@sample.popdesk.test\", \"companyCodes\": []},\"occurred_at\":\"2026-10-11T18:57:16.520642+00:00\",\"seq\":5,\"prev_hash\":\"e228efd019679d4f8e55e4993ee19d9c857552134e8e19a0a53409ec816403c1\",\"hash\":\"1437b55bc44156c290de0ee9f571c88cbee6dae4512b78870b0f48edad806e44\"}"
+    },
+    {
+      "id": 6,
+      "action": "AGENT_ASSIGNED",
+      "row": "{\"id\":6,\"tenant_id\":1,\"action\":\"AGENT_ASSIGNED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"code\": \"ACME\", \"type\": \"COMPANY\", \"accountId\": 2},\"changes\":{\"assigned\": true},\"occurred_at\":\"2026-10-11T18:57:16.881643+00:00\",\"seq\":6,\"prev_hash\":\"1437b55bc44156c290de0ee9f571c88cbee6dae4512b78870b0f48edad806e44\",\"hash\":\"54412c8eede09dd7df4f7744ba7cbaa28b1c057c4a74737c725274323c9dfe98\"}"
+    },
+    {
+      "id": 7,
+      "action": "INVITATION_CREATED",
+      "row": "{\"id\":7,\"tenant_id\":1,\"action\":\"INVITATION_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 3},\"changes\":{\"name\": \"Sample Customer\", \"role\": \"CUSTOMER\", \"email\": \"customer@sample.popdesk.test\", \"companyCodes\": [\"ACME\"]},\"occurred_at\":\"2026-10-11T18:57:16.912941+00:00\",\"seq\":7,\"prev_hash\":\"54412c8eede09dd7df4f7744ba7cbaa28b1c057c4a74737c725274323c9dfe98\",\"hash\":\"1e21a4dc2500c3e249ec394e70573732a841d2fe85b15b8afdbdd8e1542112dd\"}"
+    },
+    {
+      "id": 8,
+      "action": "INVITATION_CREATED",
+      "row": "{\"id\":8,\"tenant_id\":1,\"action\":\"INVITATION_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 4},\"changes\":{\"name\": \"Other Customer\", \"role\": \"CUSTOMER\", \"email\": \"other@sample.popdesk.test\", \"companyCodes\": [\"BETA\"]},\"occurred_at\":\"2026-10-11T18:57:17.223689+00:00\",\"seq\":8,\"prev_hash\":\"1e21a4dc2500c3e249ec394e70573732a841d2fe85b15b8afdbdd8e1542112dd\",\"hash\":\"226589b8383017f85685a24691bb562c65807db62e28708ed7d1331be8fbff4d\"}"
+    },
+    {
+      "id": 9,
+      "action": "INVITATION_CREATED",
+      "row": "{\"id\":9,\"tenant_id\":1,\"action\":\"INVITATION_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 5},\"changes\":{\"name\": \"Suspended Agent\", \"role\": \"AGENT\", \"email\": \"suspended@sample.popdesk.test\", \"companyCodes\": []},\"occurred_at\":\"2026-10-11T18:57:17.505186+00:00\",\"seq\":9,\"prev_hash\":\"226589b8383017f85685a24691bb562c65807db62e28708ed7d1331be8fbff4d\",\"hash\":\"4a5b5aee1d7ad67e1e995880e1e15a64cdfb976123ca3a52b3650ad8df7bfb91\"}"
+    },
+    {
+      "id": 10,
+      "action": "ACCOUNT_SUSPENDED",
+      "row": "{\"id\":10,\"tenant_id\":1,\"action\":\"ACCOUNT_SUSPENDED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 5},\"changes\":{\"status\": {\"to\": \"SUSPENDED\", \"from\": \"ACTIVE\"}},\"occurred_at\":\"2026-10-11T18:57:17.797355+00:00\",\"seq\":10,\"prev_hash\":\"4a5b5aee1d7ad67e1e995880e1e15a64cdfb976123ca3a52b3650ad8df7bfb91\",\"hash\":\"c141ad1f5ba6e2cf40f7e7a5386c725320c222cec814c7daa45a314f115e64cd\"}"
+    },
+    {
+      "id": 11,
+      "action": "INVITATION_CREATED",
+      "row": "{\"id\":11,\"tenant_id\":1,\"action\":\"INVITATION_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 6},\"changes\":{\"name\": \"Pending\", \"role\": \"CUSTOMER\", \"email\": \"pending@sample.popdesk.test\", \"companyCodes\": [\"ACME\"]},\"occurred_at\":\"2026-10-11T18:57:17.827271+00:00\",\"seq\":11,\"prev_hash\":\"c141ad1f5ba6e2cf40f7e7a5386c725320c222cec814c7daa45a314f115e64cd\",\"hash\":\"8baa1d5aa1ea01d8f73e42836455c6d59ac4b3180ea36208a42035e91affe54a\"}"
+    }
+  ],
+  "photos": [
+    {
+      "accountId": 3,
+      "sha256": "6e42ac330d3204e7ded23806ca5501d5488f134a737c45a7725a3fb7b5943f35"
+    }
+  ],
+  "passwordResets": [
+    {
+      "accountId": 4,
+      "createdAt": "2026-10-11T18:57:18.321971+00:00",
+      "expiresAt": "2026-10-11T19:57:18.321971+00:00"
+    }
+  ]
+}

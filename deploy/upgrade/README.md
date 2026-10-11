@@ -8,7 +8,7 @@ Checks that a new image upgrades a database made by an older one (ADR D-24, proc
 python deploy/upgrade/make-sample.py --image IMAGE --out DIR --project NAME
 ```
 
-Starts IMAGE on an empty database and fills every business table through the API, with SQL only for two states the API cannot reach on demand (an attachment in `purging`, a send queue row in `failed`). It includes a 255-character file name, a profile photo, and a password reset link nobody used. Then it runs `popdesk backup` and writes:
+Starts IMAGE on an empty database and fills every business table through the API, with SQL only for two states the API cannot reach on demand (an attachment in `purging`, a send queue row in `failed`). It includes a 255-character file name, a profile photo, a password reset link nobody used, and a suspended account (`suspended@sample.popdesk.test`, from the 0.2.0 sample on). Then it runs `popdesk backup` and writes:
 
 | File | Content |
 |---|---|
@@ -43,6 +43,6 @@ A failed queue row is deleted by the app 7 days after it failed, so the outbox c
 2. Attach `sample.dump`, `sample.image`, and `sample.expected.json` to the release. `sample.image` is the local image ID, so also attach `sample.repodigest` with the image's registry digest (`docker image inspect --format '{{index .RepoDigests 0}}'`).
 3. Later versions run `upgrade-test.py` with each kept sample and the new image.
 
-0.1.0 was tagged without publishing an image. Its sample was made from an image built locally from the tag, so it has `sample.image` and no `sample.repodigest`. To get that image again, build the tag (`docker build -t ghcr.io/imminju/popdesk:0.1.0 .` at `v0.1.0`); the base images are pinned by digest.
+0.1.0 and 0.2.0 were tagged without publishing an image. Their samples were made from an image built locally from the tag, so they have `sample.image` and no `sample.repodigest`. To get such an image again, build the tag (`docker build -t ghcr.io/imminju/popdesk:0.1.0 .` at `v0.1.0`); the base images are pinned by digest.
 
 The self test is `server/src/test/java/io/popdesk/deploy/UpgradeHarnessTest.java`: a broken migration `V999` must make every check fail.
