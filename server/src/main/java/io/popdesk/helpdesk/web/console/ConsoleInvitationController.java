@@ -1,6 +1,5 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.helpdesk.account.CurrentAccount;
 import io.popdesk.helpdesk.account.InvitationService;
@@ -66,7 +65,7 @@ class ConsoleInvitationController {
                 p.row().name(), p.row().role(),
                 p.companies().stream().map(c -> new CompanyRef(c.code(), c.name())).toList(),
                 p.row().invitedAt().atOffset(ZoneOffset.UTC), p.row().expiresAt().atOffset(ZoneOffset.UTC),
-                p.expired(), false)).toList(), rows.page(), rows.size(), rows.totalElements(), rows.totalPages());
+                p.expired(), p.row().cancelled())).toList(), rows.page(), rows.size(), rows.totalElements(), rows.totalPages());
     }
 
     @Operation(operationId = "resendInvitation", summary = "Send an invitation again",
@@ -82,7 +81,8 @@ class ConsoleInvitationController {
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such account.")
     @PostMapping("/{accountId}/resend")
     InvitationResult resendInvitation(@PathVariable long accountId) {
-        throw new NotImplementedException();
+        InvitationService.Invited invited = invitations.resend(CurrentAccount.get(), accountId);
+        return new InvitationResult(invited.accountId(), invited.inviteLink());
     }
 
     @Operation(operationId = "cancelInvitation", summary = "Cancel an invitation",
@@ -97,7 +97,7 @@ class ConsoleInvitationController {
     @PostMapping("/{accountId}/cancel")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void cancelInvitation(@PathVariable long accountId) {
-        throw new NotImplementedException();
+        invitations.cancel(CurrentAccount.get(), accountId);
     }
 
     @Operation(operationId = "createInvitationLink", summary = "Make a new invitation link to copy",

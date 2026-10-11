@@ -27,9 +27,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Customer companies (PROJ-1), agent assignments (PROJ-4), and the company lists (PROJ-5). The order
- * of checks is the one of conventions: the caller's role is checked by the security filter, then the
- * target is looked up in the caller's scope (404), then the input (400), then the state (409).
+ * Customer companies (PROJ-1 to PROJ-3), memberships and agent assignments (PROJ-4), and the company
+ * lists (PROJ-5). The order of checks is the one of conventions: the caller's role is checked by the
+ * security filter, then the target is looked up in the caller's scope (404), then the input (400), then
+ * the state (400, 409). Each change writes its audit row in its own transaction (S0-AC-83, S1A-AC-62).
+ *
+ * <p>A company that is not {@code ACTIVE} takes no new issues. An {@code ARCHIVED} one is final: its
+ * status and names no longer change and nobody is added to it, but people can still be taken out
+ * (S1A-AC-45, S1A-AC-48).
  */
 @Service
 public class CompanyService {
@@ -108,6 +113,122 @@ public class CompanyService {
     }
 
     /**
+     * Changes the name, the legal name, or both (S1A-AC-43); a null value keeps what the company has. The
+     * code never changes: a request that sends one ({@code codeSent}) is 400. A 400 lists every invalid
+     * field and saves nothing. Values the company already has are not audited.
+     */
+    public CompanyRow update(Viewer viewer, AuditLog.Actor admin, String code, String name, String legalName,
+            boolean codeSent) {
+        return transactions.run(() -> {
+            CompanyRow company = companies.lockByCode(viewer, code).orElseThrow(ApiException::notFound);
+            List<ApiError.FieldError> errors = new ArrayList<>();
+            if (codeSent) {
+                errors.add(new ApiError.FieldError("code", "NOT_ALLOWED"));
+            }
+            String newName = name == null ? company.name() : TextInput.required("name", name, NAME_MAX, errors);
+            String newLegalName = legalName == null ? company.legalName()
+                    : TextInput.required("legalName", legalName, NAME_MAX, errors);
+            if (!errors.isEmpty()) {
+                throw ApiException.invalid(errors);
+            }
+            if (company.status() == CompanyStatus.ARCHIVED) {
+                throw archived();
+            }
+            Map<String, Object> changes = new LinkedHashMap<>();
+            if (!newName.equals(company.name())) {
+                changes.put("name", change(company.name(), newName));
+            }
+            if (!newLegalName.equals(company.legalName())) {
+                changes.put("legalName", change(company.legalName(), newLegalName));
+            }
+            if (changes.isEmpty()) {
+                return company;
+            }
+            companies.updateNames(company.id(), newName, newLegalName);
+            audit.record(admin, "COMPANY_UPDATED", target(company.code()), changes);
+            return new CompanyRow(company.id(), company.code(), newName, newLegalName, company.status(),
+                    company.createdAt());
+        });
+    }
+
+    /**
+     * Moves a company between {@code ACTIVE} and {@code SUSPENDED}, or from either to {@code ARCHIVED}
+     * (S1A-AC-44). The status it has changes nothing. An {@code ARCHIVED} company is refused, also for
+     * {@code ARCHIVED} again (S1A-AC-45).
+     */
+    public CompanyRow changeStatus(Viewer viewer, AuditLog.Actor admin, String code, CompanyStatus status) {
+        return transactions.run(() -> {
+            CompanyRow company = companies.lockByCode(viewer, code).orElseThrow(ApiException::notFound);
+            if (status == null) {
+                throw ApiException.invalid("status", "REQUIRED");
+            }
+            if (company.status() == CompanyStatus.ARCHIVED) {
+                throw archived();
+            }
+            if (company.status() == status) {
+                return company;
+            }
+            companies.updateStatus(company.id(), status);
+            audit.record(admin, "COMPANY_STATUS_CHANGED", target(company.code()),
+                    Map.of("status", change(company.status().name(), status.name())));
+            return new CompanyRow(company.id(), company.code(), company.name(), company.legalName(), status,
+                    company.createdAt());
+        });
+    }
+
+    /**
+     * Makes a customer, invited or active, a member of a company (S1A-AC-50). Adding again changes
+     * nothing and is not audited again.
+     */
+    public MemberRow addCustomer(Viewer viewer, AuditLog.Actor admin, String code, long accountId) {
+        return transactions.run(() -> {
+            CompanyRow company = companies.findByCode(viewer, code).orElseThrow(ApiException::notFound);
+            AccountRow customer = accounts.findById(accountId).orElseThrow(ApiException::notFound);
+            if (customer.role() != Role.CUSTOMER) {
+                throw ApiException.invalid("accountId", "UNKNOWN_VALUE");
+            }
+            if (company.status() == CompanyStatus.ARCHIVED) {
+                throw notActive();
+            }
+            if (companies.insertMember(company.id(), customer.id(), now())) {
+                audit.record(admin, "CUSTOMER_ADDED", target(company.code(), customer.id()), Map.of("member", true));
+            }
+            return new MemberRow(company.id(), customer.id(), customer.name(), customer.email(), customer.status());
+        });
+    }
+
+    /**
+     * Takes a customer out of a company of any status (S1A-AC-52). What the customer may still see is
+     * read from the membership on every request ({@code IssueScope}). Removing again changes nothing and
+     * is not audited again.
+     */
+    public void removeCustomer(Viewer viewer, AuditLog.Actor admin, String code, long accountId) {
+        transactions.run(() -> {
+            CompanyRow company = companies.findByCode(viewer, code).orElseThrow(ApiException::notFound);
+            AccountRow customer = accounts.findById(accountId).orElseThrow(ApiException::notFound);
+            if (companies.deleteMember(company.id(), customer.id())) {
+                audit.record(admin, "CUSTOMER_REMOVED", target(company.code(), customer.id()),
+                        Map.of("member", false));
+            }
+        });
+    }
+
+    /**
+     * Takes an agent off a company of any status (S1A-AC-55). Removing again changes nothing and is not
+     * audited again.
+     */
+    public void unassignAgent(Viewer viewer, AuditLog.Actor admin, String code, long accountId) {
+        transactions.run(() -> {
+            CompanyRow company = companies.findByCode(viewer, code).orElseThrow(ApiException::notFound);
+            AccountRow agent = accounts.findById(accountId).orElseThrow(ApiException::notFound);
+            if (companies.deleteAgent(company.id(), agent.id())) {
+                audit.record(admin, "AGENT_UNASSIGNED", target(company.code(), agent.id()),
+                        Map.of("assigned", false));
+            }
+        });
+    }
+
+    /**
      * Assigns an agent, invited or active, to a company (S0-AC-31). Assigning again changes nothing and
      * is not audited again.
      */
@@ -118,20 +239,46 @@ public class CompanyService {
             if (agent.role() != Role.AGENT) {
                 throw ApiException.invalid("accountId", "UNKNOWN_VALUE");
             }
-            if (company.status() != CompanyStatus.ACTIVE) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "COMPANY_NOT_ACTIVE", "The company is not active.");
+            if (company.status() == CompanyStatus.ARCHIVED) {
+                throw notActive();
             }
             if (companies.insertAgent(company.id(), agent.id(), now())) {
-                Map<String, Object> target = new LinkedHashMap<>();
-                target.put("type", "COMPANY");
-                target.put("code", company.code());
-                target.put("accountId", agent.id());
                 Map<String, Object> changes = new LinkedHashMap<>();
                 changes.put("assigned", true);
-                audit.record(admin, "AGENT_ASSIGNED", target, changes);
+                audit.record(admin, "AGENT_ASSIGNED", target(company.code(), agent.id()), changes);
             }
             return new MemberRow(company.id(), agent.id(), agent.name(), agent.email(), agent.status());
         });
+    }
+
+    private static Map<String, Object> target(String code) {
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put("type", "COMPANY");
+        target.put("code", code);
+        return target;
+    }
+
+    /** The target of a membership or an assignment: the company and the account, by ID. */
+    private static Map<String, Object> target(String code, long accountId) {
+        Map<String, Object> target = target(code);
+        target.put("accountId", accountId);
+        return target;
+    }
+
+    /** A changed value of an audit row: what it was and what it is (S1A-AC-63). */
+    private static Map<String, Object> change(String from, String to) {
+        Map<String, Object> change = new LinkedHashMap<>();
+        change.put("from", from);
+        change.put("to", to);
+        return change;
+    }
+
+    private static ApiException archived() {
+        return new ApiException(HttpStatus.BAD_REQUEST, "COMPANY_ARCHIVED", "The company is archived.");
+    }
+
+    private static ApiException notActive() {
+        return new ApiException(HttpStatus.BAD_REQUEST, "COMPANY_NOT_ACTIVE", "The company is not active.");
     }
 
     private Instant now() {

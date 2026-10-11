@@ -19,7 +19,19 @@ public final class PasswordHashes {
     static final int MEMORY_KIB = 19_456;
     static final int ITERATIONS = 2;
 
+    /**
+     * Stored in place of a hash when an admin resets a password (S1A-AC-36): no password matches it, and
+     * unlike null it leaves the account one that accepted its invitation. It stays until the account sets
+     * a password with its reset link.
+     */
+    static final String RESET = "reset-by-admin";
+
     private PasswordHashes() {}
+
+    /** Whether the stored value is a hash a password can match: not null, and not {@link #RESET}. */
+    static boolean usable(String stored) {
+        return stored != null && !RESET.equals(stored);
+    }
 
     public static Argon2PasswordEncoder encoder() {
         return new Argon2PasswordEncoder(SALT_BYTES, HASH_BYTES, PARALLELISM, MEMORY_KIB, ITERATIONS);

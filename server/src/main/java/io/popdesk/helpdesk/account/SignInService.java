@@ -75,20 +75,21 @@ class SignInService {
         }
         Optional<AccountRow> found = accounts.findByEmail(email.strip());
         AccountRow account = found.orElse(null);
-        boolean passwordMatches = passwords.matches(password,
-                account != null && account.passwordHash() != null ? account.passwordHash() : unusedHash);
+        boolean hasPassword = account != null && PasswordHashes.usable(account.passwordHash());
+        boolean passwordMatches = passwords.matches(password, hasPassword ? account.passwordHash() : unusedHash);
         if (account == null) {
             log.info("Sign-in failed: no account has that email.");
             throw failed();
         }
         Instant now = now();
         boolean locked = account.lockedUntil() != null && now.isBefore(account.lockedUntil());
-        boolean mayTry = account.status() == AccountStatus.ACTIVE && account.passwordHash() != null
+        boolean mayTry = account.status() == AccountStatus.ACTIVE && hasPassword
                 && SessionFilter.appOf(account.role()) == app;
         if (!mayTry || locked) {
             transactions.run(() -> audit.record(actor(account), "SIGN_IN_FAILED", target(account), null));
             log.info("Sign-in failed for account {}: {}.", account.id(),
-                    locked ? "locked" : mayTry ? "wrong password" : "not active or another app's account");
+                    locked ? "locked" : mayTry ? "wrong password"
+                            : "not active, without a password, or another app's account");
             throw failed();
         }
         if (!passwordMatches) {

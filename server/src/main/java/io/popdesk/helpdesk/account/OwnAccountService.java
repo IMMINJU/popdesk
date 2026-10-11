@@ -7,6 +7,7 @@ import io.popdesk.TextInput;
 import io.popdesk.Transactions;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
+import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.company.CompanyRepository;
 import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
 import java.time.Clock;
@@ -49,15 +50,17 @@ public class OwnAccountService {
     private final CompanyRepository companies;
     private final Sessions sessions;
     private final PasswordEncoder passwords;
+    private final AuditLog audit;
     private final Transactions transactions;
     private final Clock clock;
 
     OwnAccountService(AccountRepository accounts, CompanyRepository companies, Sessions sessions,
-            PasswordEncoder passwords, Transactions transactions, Clock clock) {
+            PasswordEncoder passwords, AuditLog audit, Transactions transactions, Clock clock) {
         this.accounts = accounts;
         this.companies = companies;
         this.sessions = sessions;
         this.passwords = passwords;
+        this.audit = audit;
         this.transactions = transactions;
         this.clock = clock;
     }
@@ -93,7 +96,8 @@ public class OwnAccountService {
      * Changes the caller's password and ends every session of the account (S1A-AC-17, S1A-AC-02); the
      * caller's session is started again by {@link SignInFlow}. A new password that breaks AUTH-5 is 400
      * before the current one is looked at. A wrong current password is 400 and counts; after five in a
-     * row every try is 429 for 15 minutes (S1A-AC-18).
+     * row every try is 429 for 15 minutes (S1A-AC-18). The change leaves an audit row whose person and
+     * target are the account, without either password (S1A-AC-62).
      */
     void changePassword(CurrentAccount me, String currentPassword, String newPassword) {
         AccountRow account = row(me);
@@ -110,7 +114,8 @@ public class OwnAccountService {
         if (!errors.isEmpty()) {
             throw ApiException.invalid(errors);
         }
-        if (account.passwordHash() == null || !passwords.matches(currentPassword, account.passwordHash())) {
+        if (!PasswordHashes.usable(account.passwordHash())
+                || !passwords.matches(currentPassword, account.passwordHash())) {
             boolean locked = transactions.run(() -> {
                 Instant at = now();
                 if (accounts.updateFailedSignIns(account.id(), at) < SignInService.MAX_FAILURES) {
@@ -132,6 +137,7 @@ public class OwnAccountService {
             }
             accounts.updatePassword(account.id(), hash, now());
             sessions.endAll(account.id());
+            audit.record(me.actor(), "PASSWORD_CHANGED", AccountService.target(account.id()), null);
             return true;
         });
         if (!changed) {

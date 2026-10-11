@@ -278,14 +278,20 @@ public class AttachmentService {
     // Deleting
 
     /**
-     * Deletes an attachment (S0-AC-61): the uploader or an admin. The row becomes {@code purging} and is
-     * committed, then the file goes and the row becomes {@code purged}. When removing the file fails the
-     * delete still succeeds; the row stays {@code purging} and the cleanup finishes it.
+     * Deletes an attachment (S0-AC-61): the uploader or an admin. A customer deletes only while they
+     * still belong to the issue's company, like comments and uploads (S1A-AC-54). The row becomes
+     * {@code purging} and is committed, then the file goes and the row becomes {@code purged}. When
+     * removing the file fails the delete still succeeds; the row stays {@code purging} and the cleanup
+     * finishes it.
      */
     public void delete(Viewer viewer, String key, String attachmentId) {
-        AttachmentRow attachment = get(viewer, key, attachmentId);
-        UUID id = attachment.id();
+        UUID id = attachmentId(attachmentId).orElseThrow(ApiException::notFound);
+        IssueRow issue = issue(viewer, key);
+        AttachmentRow attachment = attachments.find(viewer, issue.id(), id).orElseThrow(ApiException::notFound);
         if (!viewer.admin() && attachment.uploadedById() != viewer.accountId()) {
+            throw ApiException.forbidden();
+        }
+        if (viewer.customer() && companies.findByCode(viewer, issue.companyCode()).isEmpty()) {
             throw ApiException.forbidden();
         }
         if (attachments.updatePurging(id, viewer.accountId(), now()) != 1) {

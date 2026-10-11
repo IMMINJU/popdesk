@@ -9,9 +9,11 @@ import io.popdesk.PublicAddress;
 import io.popdesk.PublicAddress.App;
 import io.popdesk.TextInput;
 import io.popdesk.Transactions;
+import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.CompanyStatus;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
+import io.popdesk.helpdesk.account.AccountRepository.InvitationState;
 import io.popdesk.helpdesk.account.AccountRepository.PendingRow;
 import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.company.CompanyRepository;
@@ -182,6 +184,77 @@ public class InvitationService implements InvitationLinks {
     }
 
     /**
+     * Sends the invitation of an account that has not accepted yet again (S1A-AC-38): a new token, so the
+     * previous link stops working, valid for 7 days from now, and a new invitation email. A cancelled
+     * invitation is open again and its account {@code INVITED} (S1A-AC-40). An account that accepted
+     * before is refused (S1A-AC-41).
+     *
+     * @return the account, and its link when there is no SMTP to mail it
+     */
+    public Invited resend(CurrentAccount admin, long accountId) {
+        String token = Tokens.create();
+        Invited invited = transactions.run(() -> {
+            InvitationState state = lockNeverAccepted(accountId);
+            Instant now = now();
+            Instant expiresAt = now.plus(VALIDITY);
+            accounts.updateInvitationToken(accountId, Tokens.hash(token), expiresAt);
+            Map<String, Object> changes = new LinkedHashMap<>();
+            changes.put("expiresAt", expiresAt);
+            if (state.status() != AccountStatus.INVITED) {
+                accounts.updateInvitationCancelled(accountId, null);
+                accounts.updateStatus(accountId, AccountStatus.INVITED, now);
+                changes.put("status", AccountService.change(state.status().name(), AccountStatus.INVITED.name()));
+            }
+            mail.queue(MailKind.INVITATION, accountId, null, null);
+            audit.record(admin.actor(), "INVITATION_RESENT", accountTarget(accountId), changes);
+            return new Invited(accountId, mail.enabled() ? null : address.invitationLink(appOf(state.role()), token));
+        });
+        log.info("The invitation of account {} was sent again.", accountId);
+        return invited;
+    }
+
+    /**
+     * Cancels the invitation of an account that has not accepted yet (S1A-AC-39): the account becomes
+     * {@code SUSPENDED}, so its link stops working and an invitation email still queued is not sent. Its
+     * memberships and assignments stay. Cancelling again changes nothing and is not audited again. An
+     * account that accepted before is refused (S1A-AC-41).
+     */
+    public void cancel(CurrentAccount admin, long accountId) {
+        boolean cancelled = transactions.run(() -> {
+            InvitationState state = lockNeverAccepted(accountId);
+            if (state.status() != AccountStatus.INVITED) {
+                return false;
+            }
+            Instant now = now();
+            accounts.updateInvitationCancelled(accountId, now);
+            accounts.updateStatus(accountId, AccountStatus.SUSPENDED, now);
+            audit.record(admin.actor(), "INVITATION_CANCELLED", accountTarget(accountId), Map.of("status",
+                    AccountService.change(AccountStatus.INVITED.name(), AccountStatus.SUSPENDED.name())));
+            return true;
+        });
+        if (cancelled) {
+            log.info("The invitation of account {} was cancelled.", accountId);
+        }
+    }
+
+    /**
+     * The invitation of an account that never accepted, with both rows locked: 404 for an account that
+     * does not exist, 400 for one that accepted before, also one suspended since.
+     */
+    private InvitationState lockNeverAccepted(long accountId) {
+        if (accounts.findById(accountId).isEmpty()) {
+            throw ApiException.notFound();
+        }
+        // An account without an invitation row was never invited: the first admin, who has a password.
+        InvitationState state = accounts.lockInvitationState(accountId).orElse(null);
+        if (state == null || state.accepted()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVITATION_ALREADY_ACCEPTED",
+                    "This account accepted its invitation before.");
+        }
+        return state;
+    }
+
+    /**
      * A new token for the invitation email the send loop is about to send (S0-AC-72): the database keeps
      * only token hashes, so the token made at {@link #invite} cannot be mailed. The previous link stops
      * working; the invitation keeps its expiry. Empty when the account has accepted meanwhile.
@@ -195,7 +268,10 @@ public class InvitationService implements InvitationLinks {
         }));
     }
 
-    /** {@code INVITED} accounts, newest invitation first, with their companies (S0-AC-40). */
+    /**
+     * Accounts that have not accepted, newest invitation first, with their companies (S0-AC-40):
+     * {@code INVITED} ones and those whose invitation was cancelled (S1A-AC-42).
+     */
     @Transactional(readOnly = true)
     public Paged<Pending> pending(CurrentAccount admin, int page, int size) {
         PageRequest request = PageRequest.of(page, size);

@@ -1,11 +1,11 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
 import io.popdesk.helpdesk.account.AccountService;
+import io.popdesk.helpdesk.account.CurrentAccount;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -31,6 +31,11 @@ class ConsoleAccountController {
         this.accounts = accounts;
     }
 
+    static Account account(AccountRow a) {
+        return new Account(a.id(), a.email(), a.name(), a.role(), a.status(), a.createdAt().atOffset(ZoneOffset.UTC),
+                null);
+    }
+
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`.";
     static final String NOT_FOUND = "`NOT_FOUND`: no such account.";
 
@@ -53,10 +58,9 @@ class ConsoleAccountController {
                     @RequestParam(required = false) @Nullable String q,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        Paged<AccountRow> rows = accounts.list(role, page, size);
-        return new Paged<>(rows.items().stream().map(a -> new Account(a.id(), a.email(), a.name(), a.role(), a.status(),
-                a.createdAt().atOffset(ZoneOffset.UTC), null)).toList(), rows.page(), rows.size(),
-                rows.totalElements(), rows.totalPages());
+        Paged<AccountRow> rows = accounts.list(role, status, q, page, size);
+        return new Paged<>(rows.items().stream().map(ConsoleAccountController::account).toList(), rows.page(),
+                rows.size(), rows.totalElements(), rows.totalPages());
     }
 
     @Operation(operationId = "updateAccount", summary = "Change an account's name",
@@ -69,7 +73,7 @@ class ConsoleAccountController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @PatchMapping("/api/console/accounts/{accountId}")
     Account updateAccount(@PathVariable long accountId, @RequestBody UpdateAccountRequest request) {
-        throw new NotImplementedException();
+        return account(accounts.rename(CurrentAccount.get(), accountId, request.name()));
     }
 
     @Operation(operationId = "changeAccountRole", summary = "Make an agent an admin, or an admin an agent",
@@ -85,7 +89,7 @@ class ConsoleAccountController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @PutMapping("/api/console/accounts/{accountId}/role")
     Account changeAccountRole(@PathVariable long accountId, @RequestBody ChangeRoleRequest request) {
-        throw new NotImplementedException();
+        return account(accounts.changeRole(CurrentAccount.get(), accountId, request.role()));
     }
 
     @Operation(operationId = "suspendAccount", summary = "Suspend an account",
@@ -101,7 +105,7 @@ class ConsoleAccountController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @PostMapping("/api/console/accounts/{accountId}/suspend")
     Account suspendAccount(@PathVariable long accountId) {
-        throw new NotImplementedException();
+        return account(accounts.suspend(CurrentAccount.get(), accountId));
     }
 
     @Operation(operationId = "reactivateAccount", summary = "Lift an account's suspension",
@@ -115,7 +119,7 @@ class ConsoleAccountController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @PostMapping("/api/console/accounts/{accountId}/reactivate")
     Account reactivateAccount(@PathVariable long accountId) {
-        throw new NotImplementedException();
+        return account(accounts.reactivate(CurrentAccount.get(), accountId));
     }
 
     @Operation(operationId = "resetAccountPassword", summary = "Reset an account's password",
@@ -131,6 +135,6 @@ class ConsoleAccountController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @PostMapping("/api/console/accounts/{accountId}/password-reset")
     PasswordResetLink resetAccountPassword(@PathVariable long accountId) {
-        throw new NotImplementedException();
+        return new PasswordResetLink(accounts.resetPassword(CurrentAccount.get(), accountId).orElse(null));
     }
 }

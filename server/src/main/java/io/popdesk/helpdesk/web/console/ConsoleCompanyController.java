@@ -1,6 +1,5 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.CurrentAccount;
@@ -143,7 +142,9 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @PatchMapping("/{code}")
     Company updateCompany(@PathVariable String code, @RequestBody UpdateCompanyRequest request) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        return company(companies.update(admin.viewer(), admin.actor(), code, request.name(), request.legalName(),
+                request.code() != null));
     }
 
     @Operation(operationId = "changeCompanyStatus", summary = "Change a company's status",
@@ -159,7 +160,8 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @PutMapping("/{code}/status")
     Company changeCompanyStatus(@PathVariable String code, @RequestBody ChangeCompanyStatusRequest request) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        return company(companies.changeStatus(admin.viewer(), admin.actor(), code, request.status()));
     }
 
     @Operation(operationId = "addCompanyCustomer", summary = "Make a customer a member of a company",
@@ -174,7 +176,8 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
     @PutMapping("/{code}/customers/{accountId}")
     CompanyMember addCompanyCustomer(@PathVariable String code, @PathVariable long accountId) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        return member(companies.addCustomer(admin.viewer(), admin.actor(), code, accountId));
     }
 
     @Operation(operationId = "removeCompanyCustomer", summary = "Take a customer out of a company",
@@ -188,7 +191,8 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
     @DeleteMapping("/{code}/customers/{accountId}")
     void removeCompanyCustomer(@PathVariable String code, @PathVariable long accountId) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        companies.removeCustomer(admin.viewer(), admin.actor(), code, accountId);
     }
 
     @Operation(operationId = "unassignAgent", summary = "Take an agent off a company",
@@ -200,7 +204,8 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
     @DeleteMapping("/{code}/agents/{accountId}")
     void unassignAgent(@PathVariable String code, @PathVariable long accountId) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        companies.unassignAgent(admin.viewer(), admin.actor(), code, accountId);
     }
 
     private Paged<CompanyMember> members(String code, Role role, int page, int size) {

@@ -69,6 +69,17 @@ public class CompanyRepository {
                 .query(CompanyRepository::company).optional();
     }
 
+    /**
+     * The company with this code, if the viewer may see it, locked until the end of the transaction. A
+     * change of its names or status takes this lock before it reads them.
+     */
+    Optional<CompanyRow> lockByCode(Viewer viewer, String code) {
+        return jdbc.sql("select " + COLUMNS + " from company c where c.code = ? and " + SCOPE
+                        + " for no key update of c")
+                .params(with(new Object[] {code}, scope(viewer)))
+                .query(CompanyRepository::company).optional();
+    }
+
     /** The companies with these codes that the viewer may see. */
     public List<CompanyRow> findByCodes(Viewer viewer, Collection<String> codes) {
         if (codes.isEmpty()) {
@@ -141,11 +152,31 @@ public class CompanyRepository {
                 .query(Long.class).optional();
     }
 
-    /** Makes a customer belong to a company. */
-    public void insertMember(long companyId, long accountId, Instant now) {
-        jdbc.sql("insert into company_member (company_id, account_id, tenant_id, created_at) values (?, ?, 1, ?) "
+    void updateNames(long id, String name, String legalName) {
+        jdbc.sql("update company set name = ?, legal_name = ? where id = ?").params(name, legalName, id).update();
+    }
+
+    void updateStatus(long id, CompanyStatus status) {
+        jdbc.sql("update company set status = ? where id = ?").params(status.name(), id).update();
+    }
+
+    /** Makes a customer belong to a company; false when the customer belonged to it already. */
+    public boolean insertMember(long companyId, long accountId, Instant now) {
+        return jdbc.sql("insert into company_member (company_id, account_id, tenant_id, created_at) values (?, ?, 1, ?) "
                         + "on conflict do nothing")
-                .params(companyId, accountId, Timestamp.from(now)).update();
+                .params(companyId, accountId, Timestamp.from(now)).update() == 1;
+    }
+
+    /** Takes a customer out of a company; false when the customer did not belong to it. */
+    boolean deleteMember(long companyId, long accountId) {
+        return jdbc.sql("delete from company_member where company_id = ? and account_id = ?")
+                .params(companyId, accountId).update() == 1;
+    }
+
+    /** Takes an agent off a company; false when the agent was not assigned to it. */
+    boolean deleteAgent(long companyId, long accountId) {
+        return jdbc.sql("delete from company_agent where company_id = ? and account_id = ?")
+                .params(companyId, accountId).update() == 1;
     }
 
     /** Assigns an agent to a company; false when the agent was assigned already. */

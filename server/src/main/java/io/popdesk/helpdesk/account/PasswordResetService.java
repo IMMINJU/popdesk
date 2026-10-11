@@ -7,6 +7,7 @@ import io.popdesk.Transactions;
 import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
 import io.popdesk.helpdesk.account.PasswordResetRepository.ResetRow;
+import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.notification.MailKind;
 import io.popdesk.notification.MailQueue;
 import io.popdesk.notification.PasswordResetLinks;
@@ -46,6 +47,7 @@ public class PasswordResetService implements PasswordResetLinks {
     private final PasswordResetRepository resets;
     private final Sessions sessions;
     private final MailQueue mail;
+    private final AuditLog audit;
     private final PasswordEncoder passwords;
     private final PublicAddress address;
     private final Transactions transactions;
@@ -53,11 +55,12 @@ public class PasswordResetService implements PasswordResetLinks {
     private final IpRateLimit rateLimit;
 
     PasswordResetService(AccountRepository accounts, PasswordResetRepository resets, Sessions sessions, MailQueue mail,
-            PasswordEncoder passwords, PublicAddress address, Transactions transactions, Clock clock) {
+            AuditLog audit, PasswordEncoder passwords, PublicAddress address, Transactions transactions, Clock clock) {
         this.accounts = accounts;
         this.resets = resets;
         this.sessions = sessions;
         this.mail = mail;
+        this.audit = audit;
         this.passwords = passwords;
         this.address = address;
         this.transactions = transactions;
@@ -106,7 +109,8 @@ public class PasswordResetService implements PasswordResetLinks {
      * Sets the password with a link's token (S1A-AC-09): the lock of wrong passwords is lifted and every
      * session of the account ends (S1A-AC-04). Every token that does not count gets the same 400
      * (S1A-AC-10, S1A-AC-84). A password that breaks AUTH-5 is 400 and leaves the token as it was
-     * (S1A-AC-11).
+     * (S1A-AC-11). The new password leaves an audit row whose person and target are the account, without
+     * the token or the password (S1A-AC-62); a request for a link leaves none.
      */
     void confirm(String token, String password, App app) {
         if (token == null || token.isEmpty()) {
@@ -129,6 +133,8 @@ public class PasswordResetService implements PasswordResetLinks {
             accounts.updatePassword(account.id(), passwords.encode(password), now);
             resets.updateUsed(account.id(), now);
             sessions.endAll(account.id());
+            audit.record(new AuditLog.Actor(account.id(), account.name(), account.email()),
+                    "PASSWORD_RESET_COMPLETED", AccountService.target(account.id()), null);
             return account.id();
         });
         log.info("Account {} set a new password with a reset link.", accountId);
