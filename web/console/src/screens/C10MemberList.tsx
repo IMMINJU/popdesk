@@ -40,6 +40,8 @@ type Account = Schemas['Account'];
 type Role = Account['role'];
 
 const ROLE_WORDS: Record<Role, string> = { CUSTOMER: '고객', AGENT: '상담원', ADMIN: '관리자' };
+// The role a staff member is changed to, with its particle.
+const ROLE_TO: Record<'AGENT' | 'ADMIN', string> = { AGENT: '상담원으로', ADMIN: '관리자로' };
 const ROLE_OPTIONS = (['CUSTOMER', 'AGENT', 'ADMIN'] as const).map((value) => ({ value, label: ROLE_WORDS[value] }));
 const STATUS_OPTIONS = (['ACTIVE', 'INVITED', 'SUSPENDED'] as const).map((value) => ({ value, label: ACCOUNT_STATUS_WORDS[value] }));
 
@@ -198,7 +200,7 @@ function AskDialog(props: ActionDialogProps & { action: AskedAction; mailEnabled
       return;
     }
     if (action === 'suspend') toast(`${account.name} 님을 정지했습니다`);
-    else if (action === 'role') toast(`${account.name} 님의 역할을 ${ROLE_WORDS[nextRole]}(으)로 바꿨습니다`);
+    else if (action === 'role') toast(`${account.name} 님의 역할을 ${ROLE_TO[nextRole]} 바꿨습니다`);
     else if (action === 'cancel') toast('초대를 취소했습니다');
     else if (link === null) toast('재설정 메일을 보냈습니다.');
     else props.onLink(link);
@@ -214,7 +216,7 @@ function AskDialog(props: ActionDialogProps & { action: AskedAction; mailEnabled
     },
     role: {
       title: '역할 바꾸기',
-      text: `역할을 ${ROLE_WORDS[account.role]}에서 ${ROLE_WORDS[nextRole]}(으)로 바꿉니다. ${account.name} 님은 다시 로그인해야 합니다.`,
+      text: `역할을 ${ROLE_WORDS[account.role]}에서 ${ROLE_TO[nextRole]} 바꿉니다. ${account.name} 님은 다시 로그인해야 합니다.`,
       confirm: '역할 바꾸기',
       danger: false,
     },

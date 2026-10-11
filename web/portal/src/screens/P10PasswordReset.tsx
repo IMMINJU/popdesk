@@ -7,7 +7,7 @@ import { Link } from 'react-router';
 import { api } from '../api';
 import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
 import { useCooldown, useDocumentTitle, useFieldErrors, useLive } from '../app/hooks';
-import { useT } from '../app/locale';
+import { t } from '../app/locale';
 import { TEXT } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { call, type Failure } from '../app/result';
@@ -20,7 +20,6 @@ function tokenFromHash(): string | null {
 }
 
 export function P10PasswordReset() {
-  const t = useT();
   const live = useLive();
   const navigate = useLiveNavigate();
   const toast = useToast();

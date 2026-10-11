@@ -6,7 +6,7 @@ import { Link, Outlet, useLocation } from 'react-router';
 import { api } from '../api';
 import { BusyContext } from './busy';
 import { useDocumentTitle, useFocusWhenReady } from './hooks';
-import { useT } from './locale';
+import { t } from './locale';
 import { TEXT } from './messages';
 import { useLiveNavigate } from './navigate';
 import { photoUrl } from './photos';
@@ -30,7 +30,6 @@ export function ConsoleLayout() {
   const toLogin = useToLogin();
   const navigate = useLiveNavigate();
   const location = useLocation();
-  const t = useT();
   const [problem, setProblem] = useState(false);
   const [busy, setBusy] = useState(false);
   const [collapsed, setCollapsed] = useState(false);

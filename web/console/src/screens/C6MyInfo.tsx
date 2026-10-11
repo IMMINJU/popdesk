@@ -6,7 +6,7 @@ import { api } from '../api';
 import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
 import { useCooldown, useFieldErrors, useLive } from '../app/hooks';
 import { PageTitle } from '../app/layout';
-import { textIn, useT, type Locale, type MessageKey } from '../app/locale';
+import { t, type Locale } from '../app/locale';
 import { failureText, TEXT } from '../app/messages';
 import { photoUrl } from '../app/photos';
 import { call, type Failure } from '../app/result';
@@ -15,10 +15,8 @@ import { useToast } from '../app/toastContext';
 
 const PHOTO_TYPES = 'image/png,image/jpeg,image/webp';
 
-type T = (key: MessageKey) => string;
-
-function Profile(props: { me: Me; t: T }) {
-  const { me, t } = props;
+function Profile(props: { me: Me }) {
+  const { me } = props;
   const { setMe } = useSession();
   const toast = useToast();
   const live = useLive();
@@ -43,10 +41,10 @@ function Profile(props: { me: Me; t: T }) {
     if (!live()) return;
     setPending(false);
     if (result.ok) {
-      // The head shows the new name and the screens the new language at once.
+      // The head shows the new name at once.
       setMe(result.data);
       setName(result.data.name);
-      toast(textIn(result.data.locale, 'myInfo.saved'));
+      toast(t('myInfo.saved'));
       return;
     }
     const f = result.failure;
@@ -83,6 +81,7 @@ function Profile(props: { me: Me; t: T }) {
         <Select
           id="me-locale"
           label={t('myInfo.language')}
+          helpText={t('myInfo.languageHelp')}
           options={[
             { value: 'ko', label: t('myInfo.languageKo') },
             { value: 'en', label: t('myInfo.languageEn') },
@@ -124,13 +123,12 @@ function Profile(props: { me: Me; t: T }) {
   );
 }
 
-function Photo(props: { me: Me; t: T }) {
-  const { me, t } = props;
+function Photo(props: { me: Me }) {
+  const { me } = props;
   const { setMe } = useSession();
   const live = useLive();
   const [busy, setBusy] = useState(false);
-  // Kept as the failure, so its text follows a language change.
-  const [error, setError] = useState<Failure | null>(null);
+  const [error, setError] = useState<string | null>(null);
   // The account as it is when an answer comes, not as it was when the request left.
   const latest = useRef(me);
   useLayoutEffect(() => {
@@ -155,7 +153,7 @@ function Photo(props: { me: Me; t: T }) {
     if (!live()) return;
     setBusy(false);
     if (result.ok) setMe(result.data);
-    else setError(result.failure);
+    else setError(reason(result.failure));
   };
 
   const remove = async () => {
@@ -166,7 +164,7 @@ function Photo(props: { me: Me; t: T }) {
     if (!live()) return;
     setBusy(false);
     if (result.ok) setMe({ ...latest.current, photoUpdatedAt: null });
-    else setError(result.failure);
+    else setError(reason(result.failure));
   };
 
   return (
@@ -189,14 +187,13 @@ function Photo(props: { me: Me; t: T }) {
         uploadLabel={t('myInfo.photoUpload')}
         changeLabel={t('myInfo.photoChange')}
         removeLabel={t('myInfo.photoRemove')}
-        {...(error === null ? {} : { error: reason(error) })}
+        {...(error === null ? {} : { error })}
       />
     </section>
   );
 }
 
-function Password(props: { t: T }) {
-  const { t } = props;
+function Password() {
   const toast = useToast();
   const live = useLive();
   const [current, setCurrent] = useState('');
@@ -297,7 +294,6 @@ function Password(props: { t: T }) {
 }
 
 export function C6MyInfo() {
-  const t = useT();
   const { me } = useSession();
   // The frame draws its screens only with a session.
   if (!me) return null;
@@ -306,9 +302,9 @@ export function C6MyInfo() {
       <div className="pd-screen-head">
         <PageTitle>{t('myInfo.title')}</PageTitle>
       </div>
-      <Profile me={me} t={t} />
-      <Photo me={me} t={t} />
-      <Password t={t} />
+      <Profile me={me} />
+      <Photo me={me} />
+      <Password />
     </div>
   );
 }

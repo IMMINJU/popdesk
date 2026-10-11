@@ -478,7 +478,7 @@ export function C4IssueDetail() {
         open={deleteTarget !== null}
         tone="danger"
         title="첨부 지우기"
-        message={`${deleteTarget?.fileName ?? ''}을(를) 지웁니다. 목록에는 "지워진 첨부"로 남습니다.`}
+        message={`첨부 ${deleteTarget?.fileName ?? ''} 파일을 지웁니다. 목록에는 "지워진 첨부"로 남습니다.`}
         confirmLabel="지우기"
         cancelLabel={TEXT.cancel}
         pending={deleting !== null}

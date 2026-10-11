@@ -29,6 +29,7 @@ export const ko = {
   'myInfo.email': '이메일',
   'myInfo.emailHelp': '이메일은 바꿀 수 없습니다.',
   'myInfo.language': '언어',
+  'myInfo.languageHelp': '메일에 쓰는 언어입니다. 화면은 한국어로 보입니다.',
   'myInfo.languageKo': '한국어',
   'myInfo.languageEn': 'English',
   'myInfo.save': '저장',

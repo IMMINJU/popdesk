@@ -30,6 +30,7 @@ export const en: Record<keyof typeof ko, string> = {
   'myInfo.email': 'Email',
   'myInfo.emailHelp': 'The email cannot be changed.',
   'myInfo.language': 'Language',
+  'myInfo.languageHelp': 'The language of your mail. The screens are in Korean.',
   'myInfo.languageKo': '한국어',
   'myInfo.languageEn': 'English',
   'myInfo.save': 'Save',

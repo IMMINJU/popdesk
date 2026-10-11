@@ -6,7 +6,7 @@ import { Link, Outlet } from 'react-router';
 import { api } from '../api';
 import { BusyContext } from './busy';
 import { useDocumentTitle, useFocusWhenReady } from './hooks';
-import { useT } from './locale';
+import { t } from './locale';
 import { TEXT } from './messages';
 import { useLiveNavigate } from './navigate';
 import { photoUrl } from './photos';
@@ -17,7 +17,6 @@ export function PortalLayout() {
   const { me, setMe } = useSession();
   const toLogin = useToLogin();
   const navigate = useLiveNavigate();
-  const t = useT();
   const [problem, setProblem] = useState(false);
   const [busy, setBusy] = useState(false);
   const [leaving, setLeaving] = useState(false);
