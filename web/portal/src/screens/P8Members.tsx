@@ -1,7 +1,9 @@
 // P-8 우리 회사 사람 (2-manager screens.md 1절). A company manager sees the people of
 // the company, invites more, sends an invitation again and takes a person out (MGR-2~4).
 // Whether the caller is a manager is the server's answer: a 403 on any request turns
-// the whole screen into 권한이 없습니다 (S2-AC-11, S2-AC-45).
+// the whole screen into 권한이 없습니다 (S2-AC-11, S2-AC-45). The session's own
+// account is read again on every opening: the manager mark may have changed since
+// the portal was opened (screens.md 6절).
 import {
   Alert,
   Badge,
@@ -402,7 +404,34 @@ function CompanyMembers(props: CompanyMembersProps) {
   );
 }
 
+/**
+ * Reads 내 정보 again before drawing: the menu and this screen follow what the
+ * server says now, not what it said when the portal was opened (screens.md 6절).
+ */
 export function P8Members() {
+  const { setMe } = useSession();
+  const live = useLive();
+  const fresh = useLoad(async () => {
+    const result = await call(api.GET('/api/portal/me'));
+    if (result.ok && live()) setMe(result.data);
+    return result;
+  }, 'me');
+  useMainBusy(fresh.status === 'loading');
+
+  if (fresh.status === 'loading') return null;
+  if (fresh.status === 'failed') {
+    return (
+      <LoadFailed
+        onRetry={() => {
+          void fresh.reload();
+        }}
+      />
+    );
+  }
+  return <ManagedCompanies />;
+}
+
+function ManagedCompanies() {
   const { me } = useSession();
   const [params, setParams] = useSearchParams();
   const heading = useRef<HTMLHeadingElement>(null);

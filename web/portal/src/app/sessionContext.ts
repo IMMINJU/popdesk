@@ -1,5 +1,6 @@
-// Who is signed in. The portal asks `GET /api/portal/me` once when a signed-in
-// screen opens; screens read the name from here (화면 머리, "나" for own issues).
+// Who is signed in. The portal asks `GET /api/portal/me` when a signed-in screen
+// opens, and again when 우리 회사 사람 opens; screens read the name from here
+// (화면 머리, "나" for own issues).
 import { createContext, useCallback, useContext, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
 import type { Schemas } from '../api';
