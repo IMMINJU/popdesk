@@ -1,0 +1,58 @@
+# Audit log
+
+How long audit entries are kept, what the integrity check can and cannot tell you, and how to keep a copy of the log outside popdesk. The settings are in [configuration.md](configuration.md); the formats are in [the API conventions](../integrate/conventions.md#audit-log-hash-chain).
+
+popdesk is not released yet. Values here are the planned contract and may change before the first release.
+
+## How long entries are kept
+
+Entries older than `POPDESK_AUDIT_RETENTION` (default `P365D`) are deleted once a day. The age of an entry is the difference between now and its time, both in UTC; a day is 24 hours.
+
+- The value is an ISO-8601 duration of days and time, such as `P365D`, `P90D`, or `PT720H`. Years and months (`P1Y`, `P6M`) are not accepted, because their length is not fixed.
+- The shortest period is `P30D`. With a shorter value, or one that is not a duration, popdesk does not serve requests and deletes nothing: the process keeps running, logs the name of the setting, and its health check stays unhealthy.
+- Entries are deleted only from the start of the log, as far as old entries follow one another. An entry gets its time when the action is done and its place in the log when the change is committed, so now and then an entry sits right behind one that is a moment newer. Such an entry stays until the one in front of it is old enough too, at most a day longer. Deleting it out of the middle would break the hash chain.
+- The job is `audit-retention` in the cleanup metrics (`popdesk_cleanup_last_run_seconds`, `popdesk_cleanup_deleted`, label `job`).
+- A shorter period takes effect on the next daily run after the restart and cannot be undone. Export the entries first if you may need them ([export format](../integrate/conventions.md#audit-log-export)).
+
+## What the integrity check tells you
+
+Every entry holds a hash over its values and the entry before it. The integrity check in the console (audit log, admins only) computes every hash again from the entries in the database.
+
+It finds:
+
+- an entry whose values were changed,
+- an entry that was deleted from the middle,
+- entries that were deleted from the end.
+
+It does not find a log that someone rewrote from start to end. A person who can write to the database can change an entry and then compute every hash after it again; the check then says the log is whole. So "valid" means "nobody changed a part of it", not "nobody could have changed it".
+
+To cover that case, keep the hashes somewhere the database administrator cannot write:
+
+- turn on the outside copy (below), so every entry leaves popdesk with its hash as it is written, or
+- export the log regularly and keep the files, or at least the `hash` of the last line, elsewhere.
+
+An entry in an outside copy or an old export can then be compared with the same entry in popdesk: same `id`, same `hash`. To check an exported file without popdesk, run [`audit-verify.py`](../integrate/audit-verify.py) on it.
+
+### How long the check and an export take
+
+Measured on a development machine with 1,000,000 entries: the integrity check took 12 seconds, and a JSON Lines export 11 seconds (395 MB). Both grow with the number of entries; 5,000,000 entries are about a minute.
+
+Both are one HTTP request that stays open until it is done. A reverse proxy in front of popdesk usually ends a request after 60 seconds (`proxy_read_timeout` in nginx). If your log is large, raise that limit for the console host, or the check ends with a connection error although popdesk finishes it. One check runs at a time, and two exports.
+
+## A copy outside popdesk
+
+With `AUDIT_FORWARD_URL` set, popdesk posts every audit entry to that address as it is written, for example to a log collector or a SIEM. The body and the delivery rules are in [the API conventions](../integrate/conventions.md#audit-log-outside-copy).
+
+- **Only new entries are sent.** Entries written before you set the address are not sent. Move those with an export.
+- **Authentication.** Set `AUDIT_FORWARD_TOKEN` and popdesk sends `Authorization: Bearer <token>` with every entry. Without it, no `Authorization` header is sent. Do not put a token or a password into the address: an address ends up in proxy logs. The address and the token are never written to popdesk's log, API answers, or metrics. Both can be given as a file (`AUDIT_FORWARD_URL_FILE`, `AUDIT_FORWARD_TOKEN_FILE`).
+- **Use `https`.** With an `http` address popdesk logs a warning at startup, and a second one when a token is set, because the token then crosses the network unencrypted. Redirects are not followed, so the token goes only to the host you set.
+- **The copy holds personal data.** Each entry carries the name and email address of the person who acted, and often of the account it was done to. The receiver stores them under its own rules: deleting or anonymizing an account in popdesk later does not change what was already sent. Choose a receiver you may send that data to.
+- **When the receiver is down.** popdesk tries again for 24 hours (after 1 second, then 2, 4, and so on, at most every 10 minutes). After that the entry's copy is given up: it shows as failed in the console's system status with the entry's ID, every admin gets an item in the console inbox, and the row is deleted 7 days later. There is no way yet to send a failed copy again. Export the entries of that time and load them into the receiver; they have the same fields.
+- **Watching it.** The system status shows the copy as a channel of its own: on or off, the last successful send, and the queued and failed copies. The metrics `popdesk_outbox_queued`, `popdesk_outbox_failed`, and `popdesk_outbox_sent_total` have the label `channel="audit_forward"`.
+- **Commands.** `popdesk backup`, `popdesk restore`, and `popdesk admin reset-password` also write audit entries. They read the same environment as the app, so run them in the app's container (`docker compose exec app …`, `docker compose run app …`) as [configuration.md](configuration.md#commands) shows; the app then sends their copies.
+
+### A test installation from a copy of the real database
+
+A copy of your database started with your real settings would post its own audit entries to your real receiver and mix them with the real ones. Start such an installation with `POPDESK_SANDBOX=true`: the outside copy is then off although `AUDIT_FORWARD_URL` is set. Nothing is queued, copies that were waiting in the copied database are dropped without being sent, and the system status shows the copy as off.
+
+The release Compose file passes only the settings it lists to the app, and `POPDESK_SANDBOX` is not among them yet. Add it to the `app` service's `environment` in your copy of the file for the test installation, and check in the system status that the copy is off before you use it.

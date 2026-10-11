@@ -21,9 +21,10 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `POPDESK_STORAGE` | Where attachment files are stored: `db`, `disk`, or `s3`. This version stores in `db` only; with `disk` or `s3` popdesk does not start, so that files do not land somewhere a backup of the folder or bucket would miss | `db` |
 | `POPDESK_STORAGE_DIR` | Folder for attachments when `POPDESK_STORAGE=disk` (mount a volume here) | `/data/attachments` |
 | `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | S3-compatible storage when `POPDESK_STORAGE=s3` | None |
-| `POPDESK_AUDIT_RETENTION` | How long audit log entries are kept (ISO-8601 duration). At least `P30D`; a shorter value stops startup | `P365D` |
+| `POPDESK_AUDIT_RETENTION` | How long audit log entries are kept: an ISO-8601 duration of days and time, such as `P365D` or `PT720H` (no years or months), at least `P30D`. Older entries are deleted once a day, and only from the start of the log as far as old entries follow one another ([audit-log.md](audit-log.md#how-long-entries-are-kept)) | `P365D` when the variable is not set. With a shorter value, an empty value, or one that is not such a duration, popdesk does not serve requests and deletes no entry, as with a missing first admin: the process keeps running, logs the name of the setting, and its health check stays unhealthy |
 | `POPDESK_ISSUE_RETENTION` | How long after closing an issue it is moved to the trash. At least `P90D`; a shorter value stops startup | None (off) |
-| `AUDIT_FORWARD_URL` | Address that receives a copy of every audit log entry | None (off) |
+| `AUDIT_FORWARD_URL` | Address that receives a copy of every audit log entry written from then on, as an HTTP `POST` ([audit-log.md](audit-log.md#a-copy-outside-popdesk)) | None (off). Also off while `POPDESK_SANDBOX=true` |
+| `AUDIT_FORWARD_TOKEN` | Token for the receiver of the audit copy: sent as `Authorization: Bearer <token>` with every entry | None. Without it, no `Authorization` header is sent |
 | `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` | Incoming email | None. Without them, incoming email is off. `IMAP_FOLDER` defaults to `INBOX` |
 | `IMAP_ALLOW_PLAINTEXT` | `true` allows an unencrypted IMAP connection when the server does not offer STARTTLS. popdesk logs a warning at startup while it is on | `false` |
 | `IMAP_PROCESSED_FOLDER` | Folder that processed email is moved to. popdesk reads every message in `IMAP_FOLDER`, so use a mailbox that only popdesk reads | `popdesk-processed` |
@@ -49,7 +50,7 @@ The names and meanings of the variables above are a public contract. When one is
 
 ### Secrets
 
-These values are secrets: `POPDESK_DB_PASSWORD`, `POPDESK_ADMIN_PASSWORD`, `SMTP_PASSWORD`, `IMAP_PASSWORD`, `NOTIFY_WEBHOOK_URL`, `S3_SECRET_KEY`, `OIDC_CLIENT_SECRET`.
+These values are secrets: `POPDESK_DB_PASSWORD`, `POPDESK_ADMIN_PASSWORD`, `SMTP_PASSWORD`, `IMAP_PASSWORD`, `NOTIFY_WEBHOOK_URL`, `S3_SECRET_KEY`, `OIDC_CLIENT_SECRET`, `AUDIT_FORWARD_URL`, `AUDIT_FORWARD_TOKEN`.
 
 - popdesk has no default for any of them.
 - Each can also be given as a file: set `<NAME>_FILE` to a path (for example `POPDESK_DB_PASSWORD_FILE=/run/secrets/db_password`) and popdesk reads the value from it. Setting both is an error. One line break at the end of the file (`\n` or `\r\n`) is removed, because most editors and secret tools add one; anything else in the file, including other whitespace, is part of the value. Use this for Docker secrets, or when a value contains `$`, which Compose would otherwise substitute.
@@ -102,6 +103,7 @@ popdesk starts in this order: it takes the single-instance database lock, runs d
   ```
 
 - If the first admin is not configured, the app stays running with readiness down (see `POPDESK_ADMIN_EMAIL`).
+- The upgrade to 0.2.0 computes a hash for every audit entry before the ports open; [upgrade.md](upgrade.md#upgrading-to-020) says how long that takes.
 
 ### Memory and JVM options
 
@@ -183,14 +185,16 @@ popdesk always encrypts its connections to the SMTP and IMAP servers unless you 
 
 `NOTIFY_WEBHOOK_URL` and `AUDIT_FORWARD_URL` may use `http`, because many internal receivers do not have TLS. popdesk accepts them and logs a warning at startup (without the address). Use `https` when the receiver is outside your network.
 
+When `AUDIT_FORWARD_URL` uses `http` and `AUDIT_FORWARD_TOKEN` is set, popdesk logs one more warning (without the token): the token is then sent unencrypted with every entry.
+
 ## Sending email and webhook messages
 
-Emails and webhook messages wait in a queue in the database and are sent by the app in the background, oldest first. The address, the language, and the text are read when a message is sent, not when it is queued.
+Emails, webhook messages, and the copies of audit entries (`AUDIT_FORWARD_URL`) wait in a queue in the database and are sent by the app in the background, oldest first. Each of the three has its own sender, so a slow receiver of one does not hold up the others. The address, the language, and the text are read when a message is sent, not when it is queued.
 
 - A message that fails is tried again after 1 second, then 2, 4, and so on, at most every 10 minutes. 24 hours after its first failure it is given up: it stays in the queue as failed, every admin gets an item in the console inbox, and it is deleted 7 days later.
-- Admins see, per channel, whether it is set up, the last successful send, and the queued and failed messages in the console's system status. The metrics `popdesk_outbox_queued`, `popdesk_outbox_failed`, and `popdesk_outbox_sent_total` (label `channel`) show the same.
+- Admins see, per channel, whether it is set up, the last successful send, and the queued and failed messages in the console's system status. The metrics `popdesk_outbox_queued`, `popdesk_outbox_failed`, and `popdesk_outbox_sent_total` (label `channel`: `mail`, `webhook`, `audit_forward`) show the same.
 - An invitation email gets a new link each time the app restarts before it was sent; the link of an earlier failed attempt then stops working.
-- Any `2xx` answer from the webhook receiver counts as sent. Redirects are not followed.
+- Any `2xx` answer from the receiver of a webhook message or an audit copy counts as sent. Redirects are not followed.
 
 ## Attachments
 

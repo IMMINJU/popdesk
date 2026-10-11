@@ -22,6 +22,15 @@ While migrations run, the ports are closed and health checks cannot connect. Giv
 
 Migrations only move forward. There are no down migrations: to go back to an older version, restore the backup you took before the upgrade.
 
+## Upgrading to 0.2.0
+
+0.2.0 joins the audit log into a hash chain. On its first start it gives every audit entry that is already there its place in the chain and its hash (migration 7), in one transaction, before the ports open.
+
+- **How long it takes.** Measured on a development machine: 2.6 seconds for 100,000 audit entries, 26 seconds for 1,000,000. It grows with the number of entries. Each sign-in is an audit entry, so an installation in use for a while can have many; count them before you upgrade with `SELECT count(*) FROM audit_log;`.
+- **The ports stay closed meanwhile.** Health checks cannot connect until the migration is done. The Compose file's `start_period` of 3 minutes is enough for some millions of entries on such a machine; with more, or on a slow disk, raise `start_period` in your copy of the Compose file (on Kubernetes, the `failureThreshold` of the `startupProbe`) before you upgrade, as [configuration.md](configuration.md#health-checks-while-starting) shows. If the app is stopped before the migration is done, nothing is kept: the next start computes everything again from the beginning.
+- **There is no way back to the old image.** After this migration the 0.1.0 image does not start on the database (see [below](#the-database-is-newer-than-the-app)). To go back, restore the backup you took before the upgrade; what was written after it is lost.
+- Entries written before the upgrade are checked by the integrity check like any other from then on. The hash covers what the database held at the time of the upgrade; it says nothing about changes made before.
+
 ## A migration failed
 
 popdesk stops and logs a line like this:

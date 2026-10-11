@@ -259,7 +259,7 @@ Every audit entry has a place in one chain and a hash over its values and the en
 - A name once used for `action`, or for a key of an entry, is never renamed: it is part of the hash.
 - After the retention period removed old entries, the chain starts at the first entry that is left. Its `prevHash` is the `hash` of the last entry removed, which popdesk keeps as the chain's starting point; the integrity check starts there.
 
-The integrity check (`verifyAuditLog`) computes the same from the database and also compares the last entry with the recorded end of the chain. It finds a changed entry, a removed entry, and removed last entries. It cannot find a chain that someone with write access to the database computed again from start to end; keep the last `hash` of an export somewhere else, or send the entries to another system as they are written.
+The integrity check (`verifyAuditLog`) computes the same from the database and also compares the last entry with the recorded end of the chain. It finds a changed entry, a removed entry, and removed last entries. It cannot find a chain that someone with write access to the database computed again from start to end; keep the last `hash` of an export somewhere else, or send the entries to another system as they are written ([outside copy](#audit-log-outside-copy)).
 
 ## Audit log export
 
@@ -285,3 +285,26 @@ CSV (`text/csv; charset=UTF-8`) is for reading in a spreadsheet. The file starts
 - `target` and `changes` are JSON text in one column each (`null` when the entry has none). `actorName` and `actorEmail` are empty for popdesk itself.
 - Every value is in double quotes, and a quote inside is doubled.
 - A value that starts with `=`, `+`, `-`, `@`, a tab, or a line break gets an apostrophe (`'`) in front, so a spreadsheet does not run it as a formula. The apostrophe is not part of the stored value; do not compute hashes from a CSV file.
+
+## Audit log outside copy
+
+With `AUDIT_FORWARD_URL` set, popdesk sends every audit entry to that address as it is written (AUDIT-9), so a system outside popdesk holds the entries and their hashes. Operating it is in [docs/operate/audit-log.md](../operate/audit-log.md#a-copy-outside-popdesk).
+
+One request per entry:
+
+```
+POST <AUDIT_FORWARD_URL>
+Content-Type: application/json
+Authorization: Bearer <AUDIT_FORWARD_TOKEN>
+
+{"id":412,"seq":398,"prevHash":"…","hash":"…","action":"ACCOUNT_SUSPENDED","actor":{"name":"…","email":"…","accountId":3},"target":{…},"changes":null,"occurredAt":"2026-10-08T03:15:00.123456Z"}
+```
+
+- The body is the entry with the fields of a JSON Lines export line, described above: `id`, `seq`, `prevHash`, `hash`, `action`, `actor`, `target`, `changes`, `occurredAt`. The values and hashes are the stored ones, read when the request is sent. A receiver can compute `hash` from the body alone, by the rules of the hash chain. Ignore fields you do not know; later versions may add some.
+- The `Authorization` header is there only when `AUDIT_FORWARD_TOKEN` is set.
+- Answer with any `2xx` once the entry is stored. Any other answer, a redirect (it is not followed), no answer within 30 seconds, or a failed connection counts as a failure.
+- **Delivery is at least once.** A failed entry is sent again after 1 second, then 2, 4, and so on, at most every 10 minutes, for 24 hours after its first failure. An entry can arrive twice, for example when the answer was lost or popdesk restarted between sending and noting it. Keep one entry per `id`: an entry never changes, so a second arrival with the same `id` holds the same body.
+- **Order is not guaranteed.** Entries are sent one at a time, oldest first, but an entry that failed waits for its next try while later ones go out. Put the entries in order by `seq`, or follow `prevHash`: the entry after one with hash `h` is the one whose `prevHash` is `h`. A gap in `seq` means an entry has not arrived yet, or was given up.
+- **Only entries written while the address is set are sent.** Entries from before are not sent later; get them with an export.
+- An entry still failing 24 hours after its first failure is given up and not sent again; the console's system status lists it with its `auditEntryId`. This version has no API to send it again. Fill the gap from an export: its lines have the same fields.
+- The outside copy is off while `POPDESK_SANDBOX=true`.
