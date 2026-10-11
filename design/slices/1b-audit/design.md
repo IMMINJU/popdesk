@@ -79,8 +79,9 @@
 - 보기의 순서는 시각 내림차순, 같으면 `seq` 내림차순이다. 쪽 나누기는 COM-4(`page`, `size`).
 - 응답의 바뀐 값은 저장된 꼴 그대로다: `{칸: {from, to}}` [소스: `AccountService.change`]. 해시에 들어간 값이라 이름을 바꿔 줄 수 없다(내보낸 파일로 다시 계산해야 한다). 화면이 `from`과 `to`가 있는 값을 "전 → 뒤"로 보인다. 값이 바뀌는 일을 새로 남길 때는 이 꼴을 쓴다고 `conventions.md`에 적는다. 1a에서 넘어온 "전·뒤 방향을 테스트가 보지 않는다"는 이 묶음의 테스트가 종류마다 본다(S1B-AC-07).
 - 내보내기: ① 짧은 트랜잭션에서 지금의 머리 번호와 조건에 맞는 건수를 읽고 `AUDIT_EXPORTED`를 남긴다 ② 머리 번호까지만 `seq` 오름차순으로 커서로 흘려 보낸다. 그래서 파일에 자기 자신의 내보내기 항목은 없다.
-- JSON Lines 한 줄: `id`, `seq`, `prevHash`, `hash`, `action`, `actor`, `target`, `changes`, `occurredAt`. CSV는 같은 칸이고 `actor`는 세 칸으로 펴고 `target`·`changes`는 JSON 글자 한 칸이다. CSV는 사람이 읽는 용도이고 사슬 확인은 JSON Lines로 한다.
-- 동시 수 2는 프로필 사진과 같은 꼴이다(`Semaphore`, 503과 `Retry-After`) [소스: `PhotoService`]. 응답은 `Cache-Control: no-store`.
+- JSON Lines 한 줄: `id`, `seq`, `prevHash`, `hash`, `action`, `actor`, `target`, `changes`, `occurredAt`. CSV는 첫 줄이 머리글이고 칸 이름이 같다. `actor`는 세 칸(`actorAccountId`, `actorName`, `actorEmail`)으로 펴고 `target`·`changes`는 JSON 글자 한 칸이다. CSV는 사람이 읽는 용도이고 사슬 확인은 JSON Lines로 한다.
+- 동시 수 2는 프로필 사진과 같은 꼴이다(`Semaphore`, 503과 `Retry-After`) [소스: `PhotoService`]. 응답은 `Cache-Control: no-store`. 자리를 먼저 잡고 그 뒤에 `AUDIT_EXPORTED`를 남긴다. 거절된 내보내기는 항목을 남기지 않는다(C-5의 `AuditExportLimitTest`가 이 순서에 기댄다).
+- CSV의 수식 막기에서 탭과 줄바꿈으로 시작하는 값은 API로 넣을 길이 없다(이름 입력이 앞뒤 공백을 지운다). 이 둘은 구현 쪽 단위 테스트가 본다.
 - 화면은 받기 전에 같은 주소를 `HEAD`로 먼저 부른다(첨부와 같다) [소스: `attachments.ts`]. `HEAD`는 감사 항목을 남기지 않는다.
 - 바깥 사본은 웹훅 보내기와 같은 틀(`Sender`, 보내기 루프)을 쓴다. 리다이렉트를 따라가지 않는다(토큰이 다른 호스트로 가지 않게). 시간 제한은 웹훅과 같다. 2xx만 성공이다.
 - `POPDESK_SANDBOX=true`면 주소가 있어도 꺼진 것으로 본다(D-46).
