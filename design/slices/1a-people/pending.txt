@@ -2,4 +2,6 @@
 # 구현 탭이 이 테스트들을 통과시키고 병합되면 메인이 그 줄을 지운다. 묶음이 끝나면 파일이 빈다.
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
-# 서버 줄은 구현 탭(tasks.md 3절)마다 묶었다. 탭이 병합되면 그 묶음을 지운다.
+# 서버 줄은 구현 탭마다 묶는다. 탭이 병합되면 그 묶음을 지운다.
+# 1a: 새 operation 24개가 경계 테스트 목록(BoundaryList)에 아직 없다. C-5 테스트 쪽이 목록에 넣으면 지운다.
+server io/popdesk/boundary/BoundaryListTest.java
