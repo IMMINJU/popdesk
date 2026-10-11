@@ -6,3 +6,5 @@ src/screens/adminOnly.1b.test.tsx.옆 메뉴와 관리자 전용 화면 (1b) > S
 src/screens/adminOnly.1b.test.tsx.옆 메뉴와 관리자 전용 화면 (1b) > S1B-AC-35 C-12 상담원이 감사 로그 주소로 오면 화면 전체가 "권한이 없습니다"이고 목록을 부르지 않는다 | S1B-AC-35 C-4 껍데기가 경로를 AdminOnly 안에 두었다
 src/components/DataTable.expand.test.tsx.DataTable 줄 펼치기 > DataTable 줄 펼치기 없음: renderExpanded를 주지 않으면 버튼이 없다 | design 5절. 주지 않았을 때는 지금 마크업 그대로다. 구현이 버튼을 늘 그리는 것을 막는 테스트다
 src/components/TextField.date.test.tsx.TextField 날짜 > TextField date: 이름표로 찾는 날짜 칸이고, 넣은 날짜가 YYYY-MM-DD로 onChange에 나간다 | design 5절. C-4 껍데기가 type을 input에 그대로 넘긴다
+io.popdesk.audit.AuditChainTest.agentCannotRunTheIntegrityCheck | S1B-AC-18 C-4 계약 껍데기가 보안 설정의 관리자 전용 목록에 /api/console/audit-log/**를 넣어 상담원이 이미 403을 받는다
+io.popdesk.start.AuditRetentionSettingTest.shortestPeriodAllowedStarts | S1B-AC-20 P30D는 지금도 구현 뒤에도 떠야 한다. 경계를 <=로 잘못 막는 구현을 잡는 테스트다

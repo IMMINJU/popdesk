@@ -7,6 +7,13 @@ server io/popdesk/audit/AuditChangesTest.java
 server io/popdesk/audit/AuditExportLimitTest.java
 server io/popdesk/audit/AuditExportTest.java
 server io/popdesk/audit/AuditLogViewTest.java
+server io/popdesk/audit/AuditChainTest.java
+server io/popdesk/audit/AuditRetentionTest.java
+server io/popdesk/audit/AuditTamperTest.java
+server io/popdesk/start/AuditRetentionSettingTest.java
+server io/popdesk/deploy/CommandAuditChainTest.java
+server io/popdesk/deploy/UpgradeAuditChainTest.java
+server io/popdesk/deploy/UpgradeInterruptedTest.java
 web src/screens/C12AuditLog.test.tsx
 web src/screens/C12AuditLog.filters.test.tsx
 web src/screens/C12AuditLog.actions.test.tsx
