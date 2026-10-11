@@ -95,7 +95,7 @@
 | S1A-AC-34 | When 관리자가 `ACTIVE` 계정을 정지하면, the system shall 상태를 `SUSPENDED`로 바꾼다. 정지된 계정은 로그인할 수 없고 메일을 받지 않는다. 이미 정지된 계정을 다시 정지하면 200이다. If 수락 전이거나 초대가 취소된 계정을 정지하려 하면, then 400 `ACCOUNT_NOT_ACTIVE`다(초대 취소를 쓴다). (ACCT-3, S0-AC-22, S0-AC-69, C-4에서 정함) |
 | S1A-AC-35 | When 관리자가 정지를 풀면, the system shall 상태를 `ACTIVE`로 바꾼다. 이미 `ACTIVE`면 200이다. If 그 계정이 초대를 수락한 적이 없으면, then 400이다(다시 보내기를 쓴다). (ACCT-3, INVITE-3, 5절 4) |
 | S1A-AC-36 | When 관리자가 `ACTIVE` 계정의 비밀번호를 초기화하면, the system shall 지금 비밀번호를 못 쓰게 하고, 잠금을 풀고, 비밀번호 찾기와 같은 재설정 메일을 넣는다. If 계정이 `ACTIVE`가 아니면, then 400 `ACCOUNT_NOT_ACTIVE`다. (ACCT-3, AUTH-3, AUTH-7, 5절 5, C-4에서 정함) |
-| S1A-AC-37 | Where SMTP 설정이 없으면, the system shall 비밀번호 초기화 응답에 재설정 링크를 한 번만 준다(`Cache-Control: no-store`). SMTP 설정이 있으면 응답에 링크가 없다. (INVITE-6과 같게, 5절 5) |
+| S1A-AC-37 | Where SMTP 설정이 없으면, the system shall 비밀번호 초기화 응답에 재설정 링크를 한 번만 준다(`Cache-Control: no-store`). SMTP 설정이 있으면 응답에 링크가 없다. 초기화를 다시 하면 비밀번호 찾기의 15분 규칙과 관계없이 새 링크를 만들고 앞 링크를 무효로 한다. (INVITE-6과 같게, 5절 5, C-5에서 정함) |
 
 ### 3.6 초대 다시 보내기와 취소
 
@@ -113,7 +113,7 @@
 |---|---|
 | S1A-AC-43 | When 관리자가 고객사의 이름이나 회사명을 고치면, the system shall 저장한다. 코드는 고칠 수 없다(요청에 코드가 있으면 400). (PROJ-1) |
 | S1A-AC-44 | When 관리자가 고객사 상태를 `ACTIVE`↔`SUSPENDED`로, 또는 둘 가운데 하나에서 `ARCHIVED`로 바꾸면, the system shall 상태를 바꾼다. 지금과 같은 상태로 바꾸는 요청은 200이다. (PROJ-2) |
-| S1A-AC-45 | If `ARCHIVED` 고객사의 상태를 바꾸려 하면, then the system shall 400으로 답한다. (PROJ-2) |
+| S1A-AC-45 | If `ARCHIVED` 고객사의 상태를 바꾸려 하면, then the system shall 400 `COMPANY_ARCHIVED`로 답한다. 같은 `ARCHIVED`로 바꾸는 요청도 400이다. (PROJ-2) |
 | S1A-AC-46 | If `ACTIVE`가 아닌 고객사에 새 문의를 올리면, then the system shall 400 `COMPANY_NOT_ACTIVE`로 답한다. (PROJ-3) |
 | S1A-AC-47 | While 고객사가 `ACTIVE`가 아니어도, the system shall 이미 있는 문의의 보기, 댓글, 첨부를 그대로 받는다. (PROJ-3) |
 | S1A-AC-48 | If `ARCHIVED` 고객사에 소속이나 배정을 더하거나 이름·회사명을 고치려 하면, then the system shall 400으로 답한다. 빼기는 된다. (PROJ-3) |
@@ -125,7 +125,7 @@
 |---|---|
 | S1A-AC-50 | When 관리자가 고객 계정(수락 전 포함)을 고객사에 소속시키면, the system shall 다음 요청부터 그 고객에게 그 고객사와 그 공개 문의를 보인다. 같은 소속을 다시 하면 200이다. (PROJ-4, S0-AC-26) |
 | S1A-AC-51 | If 고객이 아닌 계정을 소속시키거나 상담원이 아닌 계정을 배정하려 하면, then the system shall 400으로 답한다. (PROJ-4, 5절 6) |
-| S1A-AC-52 | When 관리자가 고객을 소속에서 빼면, the system shall 다음 요청부터 그 고객에게 그 고객사와 동료의 문의를 보이지 않는다(404, 목록에 없음). 이미 뺀 것을 다시 빼면 200이다. (PROJ-4, RULE-02) |
+| S1A-AC-52 | When 관리자가 고객을 소속에서 빼면, the system shall 다음 요청부터 그 고객에게 그 고객사와 동료의 문의를 보이지 않는다(404, 목록에 없음). 이미 뺀 것을 다시 빼면 200이다. 빠진 고객이 그 고객사에 새 문의를 올리면 다른 고객사에 올릴 때와 같은 404다. (PROJ-4, RULE-02) |
 | S1A-AC-53 | While 고객이 소속에서 빠져 있어도, the system shall 그 고객이 올린 문의의 상세, 댓글 목록, 첨부 내려받기를 그대로 준다. (PROJ-4, 권한 모델) |
 | S1A-AC-54 | If 소속에서 빠진 고객이 자기가 올린 문의에 댓글을 달거나 첨부를 붙이거나 지우려 하면, then the system shall 403으로 답한다. (PROJ-4) |
 | S1A-AC-55 | When 관리자가 상담원을 배정에서 빼면, the system shall 다음 요청부터 그 상담원에게 그 고객사의 문의, 댓글, 첨부를 404로 답하고 목록에서 뺀다. 이미 뺀 것을 다시 빼면 200이다. (PROJ-4, RULE-03) |
@@ -149,7 +149,7 @@
 |---|---|
 | S1A-AC-62 | When 초대 다시 보내기·취소, 정지·해제, 역할·이름 변경(관리자가 한 것), 비밀번호 초기화, 비밀번호 찾기로 바꾼 비밀번호, 본인의 비밀번호 변경, 고객사 고치기·상태 변경, 소속·배정 더하기·빼기가 일어나면, the system shall S0-AC-83의 모양으로 감사 행을 남긴다. 비밀번호 찾기 요청은 남기지 않는다. (AUDIT-1, AUDIT-2, 5절 7) |
 | S1A-AC-63 | The system shall 감사 행의 바뀐 값에 전과 뒤를 넣되 비밀번호, 토큰, 링크, 사진 내용은 넣지 않는다. (AUDIT-2, PII-2) |
-| S1A-AC-64 | The system shall 로그인 성공·실패·잠금 감사 행의 대상을 그 계정으로 적는다. 계정이 없는 이메일의 실패는 대상을 `null`로 둔다. (S0-AC-83, PIT 질문 8) |
+| S1A-AC-64 | The system shall 로그인 성공·실패·잠금 감사 행의 대상을 그 계정으로 적는다. 계정이 없는 이메일의 실패는 첫 묶음대로 행을 남기지 않는다(입력한 이메일을 저장하지 않는다). (S0-AC-83, PIT 질문 8) |
 
 ### 3.11 첫 묶음에서 넘어온 것
 
