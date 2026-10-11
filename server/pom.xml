@@ -215,5 +215,58 @@
                 </plugins>
             </build>
         </profile>
+        <!-- Mutation tests (PIT), one part at a time. Not part of a normal build or of CI.
+             ./mvnw -Ppit test-compile org.pitest:pitest-maven:mutationCoverage -Dpit.part=attachment
+                 "-DtargetClasses=io.popdesk.helpdesk.attachment.*" "-DtargetTests=io.popdesk.attachment.*"
+             Reports: target/pit-reports/<part>. No history file: PIT 1.30.0 runs history only with the
+             arcmutate plugin, which needs a licence. -->
+        <profile>
+            <id>pit</id>
+            <properties>
+                <pit.part>all</pit.part>
+                <pit.timeoutConstant>8000</pit.timeoutConstant>
+                <!-- test.argLine with G1. PIT ends a minion with MEMORY_ERROR when a memory pool passes 90%
+                     of its maximum, garbage included; with the serial collector at 512m the old generation
+                     (341 MB) does. The normal test run keeps test.argLine. -->
+                <pit.argLine>-Xmx512m -XX:+UseG1GC -XX:TieredStopAtLevel=1 -Djdk.httpclient.allowRestrictedHeaders=host</pit.argLine>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <version>1.30.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.pitest</groupId>
+                                <artifactId>pitest-junit5-plugin</artifactId>
+                                <version>1.2.3</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <!-- targetClasses, targetTests, excludedClasses, excludedMethods, and
+                                 excludedTestClasses come from the command line (-D), part by part. -->
+                            <threads>1</threads>
+                            <!-- Off: PIT would add the Surefire argLine after this one, and its -Xmx512m wins. -->
+                            <parseSurefireConfig>false</parseSurefireConfig>
+                            <argLine>${pit.argLine}</argLine>
+                            <excludedGroups>
+                                <param>openapi</param>
+                                <param>deploy</param>
+                            </excludedGroups>
+                            <timeoutConstant>${pit.timeoutConstant}</timeoutConstant>
+                            <timestampedReports>false</timestampedReports>
+                            <reportsDirectory>${project.build.directory}/pit-reports/${pit.part}</reportsDirectory>
+                            <outputFormats>
+                                <param>XML</param>
+                                <param>CSV</param>
+                                <param>HTML</param>
+                            </outputFormats>
+                            <failWhenNoMutations>false</failWhenNoMutations>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 </project>
