@@ -31,6 +31,14 @@ Migrations only move forward. There are no down migrations: to go back to an old
 - **There is no way back to the old image.** After this migration the 0.1.0 image does not start on the database (see [below](#the-database-is-newer-than-the-app)). To go back, restore the backup you took before the upgrade; what was written after it is lost.
 - Entries written before the upgrade are checked by the integrity check like any other from then on. The hash covers what the database held at the time of the upgrade; it says nothing about changes made before.
 
+## Upgrading to the version after 0.2.0
+
+This version adds customer managers (migration 8): a manager mark and a row ID on every membership of a customer in a company, a table for membership requests, and the company an inbox item is about.
+
+- **It does not take long.** The migration adds columns and a table and computes nothing. Every membership that is there gets a random row ID from the column default; no customer is a manager after the upgrade.
+- **There is no way back to the old image.** After this migration the 0.2.0 image does not start on the database (see [below](#the-database-is-newer-than-the-app)). To go back, restore the backup you took before the upgrade; what was written after it is lost.
+- Nothing has to be set. An admin marks managers on the console afterwards.
+
 ## A migration failed
 
 popdesk stops and logs a line like this:

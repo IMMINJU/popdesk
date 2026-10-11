@@ -157,6 +157,25 @@ Attachments are always addressed under their issue:
 - Attachment IDs are hard to guess (`ATT-7`), but that is not a permission check.
 - Uploads and downloads are each limited to 16 at a time. Over the limit, the response is 503 with a `Retry-After` header.
 
+## Member list of a customer manager
+
+`GET /api/portal/companies/{code}/members` lists two kinds of rows as one list: customers who belong to the company, and membership requests that wait for an admin (a manager invited an email that already has an account). A manager must not be able to tell them apart, because that would tell whether an email has an account at another company (`MGR-3`).
+
+- A row is named by `id`, a random UUID made for that row. It is not an account ID and is not derived from one. `DELETE …/members/{id}` and `POST …/members/{id}/resend` take it. An `id` of another company, an unknown one, or text that is no UUID is 404.
+- The row of a membership request has the name and email the manager typed and the status `INVITED`, with the same fields as the row of a new account. When an admin approves the request, the row keeps its `id` and shows the account's own name and status from then on. When an admin rejects it, the row is gone.
+- Both kinds are sorted together by email, ignoring case, and paged together.
+- Two cases have the same answer wherever one of them would give the account away: the same status, body, and headers.
+
+| Request | The two cases | Answer |
+|---|---|---|
+| Invite | a new email; an email that has an account | 204, no body |
+| Invite to an `ARCHIVED` company, or with 100 invited rows | the same two | 400 `COMPANY_NOT_ACTIVE`, 409 `TOO_MANY_PENDING` |
+| Remove a row | a member; a membership request | 204, no body |
+| Send again | an invited member of this company alone; a membership request (nothing is sent) | 204, no body |
+
+- 409 `ALREADY_LISTED` is given only for an email that is already a row of this list, which the manager can see anyway. The email is compared without case and without the spaces around it.
+- Response times are not made equal.
+
 ## Retrying on lock conflicts
 
 Each database connection has `lock_timeout` set to 5 seconds. When a transaction fails with a deadlock (`40P01`) or a lock timeout (`55P03`), the server retries the whole transaction once. If the retry also fails, the request fails like any other server error; clients see a 5xx and may try again later.

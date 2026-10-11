@@ -55,7 +55,7 @@ Order of checks: sign-in (401) → target in scope (404) → permission (403) �
 | Change role between agent and admin | – | – | Yes, not own role. A customer can never become staff or the reverse |
 | Invite staff | – | – | Yes |
 | Invite customers | Manager: to their company only (see below) | – | Yes, with at least one company |
-| Resend or cancel an invitation | Manager: see below | – | Yes, for accounts that have not accepted yet. Resending revives a cancelled invitation |
+| Resend or cancel an invitation | Manager: resends, and cancels by removing (see below) | – | Yes, for accounts that have not accepted yet. Resending revives a cancelled invitation |
 | Export one person's data | – | – | Yes (`PII-3`) |
 | Anonymize an account | – | – | Yes, not self, not the last admin (`PII-4`) |
 
@@ -77,9 +77,18 @@ Order of checks: sign-in (401) → target in scope (404) → permission (403) �
 For the company where they are manager, a customer manager can:
 
 - See the members of that company: name, email, status, manager mark.
-- Invite a customer by email and name. If the email is new, an invitation is sent and the person joins the company. If the email already has an account, the account is not touched and an admin gets a membership request. Both cases return the same response and show the same invited row in the member list, so a manager cannot learn whether someone has an account at another company (`MGR-3`). If an admin rejects the request, the row disappears as if the invitation were cancelled. Managers can send up to 20 invitations a minute.
-- Remove a customer from that company. Not themselves, not another manager. This does not suspend the account or touch other memberships.
-- Resend or cancel an invitation, only if the invited customer belongs to that company alone. When this is refused because of another membership, the error is the same as for any other refusal.
+- Invite a customer by email and name. If the email is new, an invitation is sent and the person joins the company. If the email already has an account, the account is not touched and an admin gets a membership request. Both cases return the same response and show the same invited row in the member list, so a manager cannot learn whether someone has an account at another company (`MGR-3`). If an admin rejects the request, the row disappears as if the invitation were cancelled.
+  - The name takes no control characters such as a line break or a tab, because it goes into the invitation email.
+  - A manager can send up to 20 invitations a minute, counting the ones sent again.
+  - A company can have at most 100 invited rows at a time: customers who have not accepted yet and membership requests that wait for an admin, together. With 100, the next invitation is refused until one of them accepts, is approved, or is removed.
+  - Nobody can be invited to an `ARCHIVED` company.
+- Remove a row from the member list. Not their own, not another manager's. For a member this takes away the membership of that company only: the account is not suspended and its other memberships stay. For a row that is still invited there is no separate "cancel": removing it is how a manager cancels.
+  - If the invited person belongs to that company alone, removing also cancels the invitation, so the link stops working.
+  - If the invited person belongs to another company too, the invitation stays and they still join the other company.
+  - If the row is a membership request, the request is withdrawn and the admins no longer see it.
+- Send an invitation again, only if the invited customer belongs to that company alone and the invitation is still open. Otherwise it is refused with one error, whatever the reason: the customer accepted already, is suspended, has an invitation an admin cancelled, or belongs to another company too.
+
+A manager who removes an invited person and invites the same email again gets a membership request, because the account still exists. An admin approves it and sends the invitation again from the console; approving alone does not reopen a cancelled invitation.
 
 Everything a manager does goes to the audit log.
 
