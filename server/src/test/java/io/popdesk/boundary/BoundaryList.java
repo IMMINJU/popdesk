@@ -35,6 +35,8 @@ final class BoundaryList {
     private static final String STAFF_ISSUE = "/api/console/issues/{key}";
     private static final String BOUNDARY = "boundary.CompanyBoundaryTest#";
     private static final String STAFF = "boundary.StaffIdentityTest#";
+    private static final String PHOTO = "boundary.PhotoBoundaryTest#";
+    private static final String ADMIN_ONLY = "boundary.AgentCannotManageAccountsTest#";
 
     static final List<Entry> ENTRIES = List.of(
             // Before sign-in, both hosts
@@ -156,5 +158,67 @@ final class BoundaryList {
                     "named by the criterion as unrelated to the boundary: system status (admins only is checked by ops.SystemStatusTest#agentForbidden)"),
             tested("GET", "/api/console/system/failed-deliveries",
                     "ops.SystemStatusTest#agentForbidden",
-                    "ops.CheckOrderTest#roleBeforeTargetAndInput"));
+                    "ops.CheckOrderTest#roleBeforeTargetAndInput"),
+
+            // Slice 1a (S1A-AC-77): the 24 operations it adds.
+            // Before sign-in, both hosts
+            none("POST", "/api/public/password-reset/request",
+                    "named by the criterion as unrelated to the boundary: asking for a password reset link"),
+            none("POST", "/api/public/password-reset/confirm",
+                    "named by the criterion as unrelated to the boundary: setting a password with a reset token"),
+
+            // Portal
+            tested("PATCH", "/api/portal/me",
+                    PHOTO + "ownAccountAnswersHoldNothingOfB"),
+            none("PUT", "/api/portal/me/password",
+                    "named by the criterion as unrelated to the boundary: changes the caller's own password; no input picks a target and the answer has no body"),
+            tested("POST", "/api/portal/me/photo",
+                    PHOTO + "ownAccountAnswersHoldNothingOfB"),
+            none("DELETE", "/api/portal/me/photo",
+                    "deletes the caller's own photo; no input picks a target and the answer has no body"),
+            tested("GET", "/api/portal/photos/{accountId}",
+                    PHOTO + "customerOfAGetsNoPhotoOfB",
+                    "photo.PhotoAccessTest#otherPhotosAreLikeNoAccount",
+                    "photo.PhotoAccessTest#portalAnswersHoldNoStaffPhoto",
+                    "photo.PhotoResponseTest#rightIsCheckedBeforeNotModified"),
+
+            // Console
+            none("PATCH", "/api/console/me",
+                    "named by the criterion as unrelated to the boundary: changes the caller's own name and language; no input picks a target"),
+            none("PUT", "/api/console/me/password",
+                    "named by the criterion as unrelated to the boundary: changes the caller's own password; no input picks a target and the answer has no body"),
+            none("POST", "/api/console/me/photo",
+                    "stores the caller's own photo and answers with the caller's own account; no input picks a target"),
+            none("DELETE", "/api/console/me/photo",
+                    "deletes the caller's own photo; no input picks a target and the answer has no body"),
+            tested("GET", "/api/console/photos/{accountId}",
+                    "photo.PhotoAccessTest#staffGetPhotosOfAccountsTheySee",
+                    "photo.PhotoResponseTest#rightIsCheckedBeforeNotModified"),
+            tested("PATCH", "/api/console/accounts/{accountId}",
+                    ADMIN_ONLY + "agentCannotChangeAnAccount"),
+            tested("PUT", "/api/console/accounts/{accountId}/role",
+                    ADMIN_ONLY + "agentCannotChangeAnAccount"),
+            tested("POST", "/api/console/accounts/{accountId}/suspend",
+                    ADMIN_ONLY + "agentCannotChangeAnAccount"),
+            tested("POST", "/api/console/accounts/{accountId}/reactivate",
+                    ADMIN_ONLY + "agentCannotChangeAnAccount"),
+            tested("POST", "/api/console/accounts/{accountId}/password-reset",
+                    ADMIN_ONLY + "agentCannotChangeAnAccount"),
+            tested("POST", "/api/console/invitations/{accountId}/resend",
+                    ADMIN_ONLY + "agentCannotChangeAnInvitation"),
+            tested("POST", "/api/console/invitations/{accountId}/cancel",
+                    ADMIN_ONLY + "agentCannotChangeAnInvitation"),
+            tested("PATCH", "/api/console/companies/{code}",
+                    "project.CompanyUpdateTest#agentsCannotChangeACompany"),
+            tested("PUT", "/api/console/companies/{code}/status",
+                    "project.CompanyUpdateTest#agentsCannotChangeACompany"),
+            tested("PUT", "/api/console/companies/{code}/customers/{accountId}",
+                    "project.MembershipTest#agentsCannotChangeMembers",
+                    "project.MembershipTest#addedCustomerSeesTheCompany"),
+            tested("DELETE", "/api/console/companies/{code}/customers/{accountId}",
+                    "project.MembershipTest#agentsCannotChangeMembers",
+                    "project.MembershipTest#removedCustomerLosesTheCompany"),
+            tested("DELETE", "/api/console/companies/{code}/agents/{accountId}",
+                    "project.MembershipTest#agentsCannotChangeMembers",
+                    "project.MembershipTest#unassignedAgentLosesTheCompany"));
 }
