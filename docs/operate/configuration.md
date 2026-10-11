@@ -109,6 +109,8 @@ popdesk starts in this order: it takes the single-instance database lock, runs d
 
 The image sets its JVM options itself, so the app behaves the same on every host: the G1 garbage collector and a heap of at most 384 MB. Measured before the first release, on a development machine: the app container used about 0.4 GB right after start and up to about 0.6 GB with 20 transfers of 10 MB at once; PostgreSQL up to about 0.35 GB. To change the heap, set `JDK_JAVA_OPTIONS` (for example `JDK_JAVA_OPTIONS=-Xmx768m`); an `-Xmx` there wins over the image's default. The heap does not shrink to a container memory limit, so if you set one (`mem_limit`, Kubernetes `resources.limits.memory`), give the app at least 0.75 GB or lower `-Xmx` with it.
 
+Checking or setting a password computes an Argon2id hash that holds 19 MiB of heap while it runs. At most 4 are computed at once (76 MiB), a fixed limit without a setting; when many people sign in at the same moment, the rest wait their turn and get their answer a little later instead of an error.
+
 ### More Compose files
 
 These go on top of the release file, which stays as it is:
