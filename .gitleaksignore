@@ -1,0 +1,7 @@
+# Test data that gitleaks takes for secrets. One fingerprint per line (commit:file:rule:line).
+# 1a web tests: made-up password reset tokens in fixtures (rst-...), not real tokens.
+247bc727b40bd399af35ff21340d83573302916e:web/console/src/__tests__/console1a.ts:generic-api-key:35
+247bc727b40bd399af35ff21340d83573302916e:web/console/src/app/safeNext.1a.test.ts:generic-api-key:10
+247bc727b40bd399af35ff21340d83573302916e:web/console/src/screens/C17PasswordReset.test.tsx:generic-api-key:28
+247bc727b40bd399af35ff21340d83573302916e:web/portal/src/app/safeNext.1a.test.ts:generic-api-key:10
+247bc727b40bd399af35ff21340d83573302916e:web/portal/src/screens/P10PasswordReset.test.tsx:generic-api-key:28
