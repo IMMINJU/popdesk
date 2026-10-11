@@ -1,8 +1,11 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.account.CurrentAccount;
 import io.popdesk.helpdesk.audit.AuditAction;
+import io.popdesk.helpdesk.audit.AuditFilter;
+import io.popdesk.helpdesk.audit.AuditRow;
+import io.popdesk.helpdesk.audit.AuditService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
@@ -10,10 +13,18 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import org.jspecify.annotations.Nullable;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,11 +33,13 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The audit log: reading, exporting, and checking its hash chain (AUDIT-3, AUDIT-7, AUDIT-8). Admins
- * only, and read only: no endpoint changes or deletes an entry (S1B-AC-08). Contract shells for slice
- * 1b; every endpoint answers 501 until the slice builds it.
+ * only, and read only: no endpoint changes or deletes an entry (S1B-AC-08).
  */
 @Tag(name = "Audit log")
 @RestController
@@ -48,6 +61,72 @@ class ConsoleAuditController {
     static final String FROM = "Only entries at or after this time (TIME-1).";
     static final String TO = "Only entries before this time; the time itself is left out.";
 
+    private static final MediaType CSV = new MediaType("text", "csv", StandardCharsets.UTF_8);
+    private static final MediaType JSON_LINES = new MediaType("application", "x-ndjson");
+    private static final DateTimeFormatter FILE_TIME =
+            DateTimeFormatter.ofPattern("uuuuMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC);
+
+    private final AuditService audit;
+    private final JsonMapper json;
+    private final Clock clock;
+
+    ConsoleAuditController(AuditService audit, JsonMapper json, Clock clock) {
+        this.audit = audit;
+        this.json = json;
+        this.clock = clock;
+    }
+
+    private static AuditFilter filter(@Nullable List<AuditAction> action, @Nullable Long actorAccountId,
+            @Nullable AuditTargetType targetType, @Nullable Long targetAccountId, @Nullable String targetCode,
+            @Nullable OffsetDateTime from, @Nullable OffsetDateTime to) {
+        return new AuditFilter(action, actorAccountId, targetType == null ? null : targetType.name(),
+                targetAccountId, targetCode, from == null ? null : from.toInstant(),
+                to == null ? null : to.toInstant());
+    }
+
+    /** The stored values as they are; a value that is not what popdesk writes (a changed row) is left out. */
+    private AuditEntry entry(AuditRow row) {
+        JsonNode actor = tree(row.actor());
+        return new AuditEntry(row.id(), row.seq(), row.action(),
+                new AuditActor(actor.path("accountId").asLong(0), actor.path("name").asString(null),
+                        actor.path("email").asString(null)),
+                object(row.target()), object(row.changes()), row.occurredAt().atOffset(ZoneOffset.UTC), row.hash(),
+                row.prevHash());
+    }
+
+    private JsonNode tree(String text) {
+        try {
+            return json.readTree(text);
+        } catch (JacksonException e) {
+            return json.createObjectNode();
+        }
+    }
+
+    private @Nullable Map<String, Object> object(@Nullable String text) {
+        if (text == null) {
+            return null;
+        }
+        try {
+            if (json.readValue(text, Object.class) instanceof Map<?, ?> map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> out = (Map<String, Object>) map;
+                return out;
+            }
+        } catch (JacksonException e) {
+            // Not JSON the app wrote; the integrity check names the entry.
+        }
+        return null;
+    }
+
+    private HttpHeaders fileHeaders(AuditExportFormat format) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(format == AuditExportFormat.CSV ? CSV : JSON_LINES);
+        headers.setContentDisposition(ContentDisposition.attachment().filename("audit-log-"
+                + FILE_TIME.format(clock.instant()) + (format == AuditExportFormat.CSV ? ".csv" : ".jsonl")).build());
+        headers.setCacheControl(CacheControl.noStore());
+        return headers;
+    }
+
     @Operation(operationId = "listAuditEntries", summary = "Audit log",
             description = "Newest first; entries of the same time by `seq`, highest first (S1B-AC-01). The "
                     + "filters narrow it together (S1B-AC-03 to S1B-AC-06). No entry holds a password, a token, or "
@@ -68,7 +147,8 @@ class ConsoleAuditController {
             @Parameter(description = TO) @RequestParam(required = false) @Nullable OffsetDateTime to,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return audit.list(filter(action, actorAccountId, targetType, targetAccountId, targetCode, from, to), page, size)
+                .map(this::entry);
     }
 
     @Operation(operationId = "exportAuditLog", summary = "Export the audit log",
@@ -111,7 +191,10 @@ class ConsoleAuditController {
             @Parameter(description = TARGET_CODE) @RequestParam(required = false) @Nullable String targetCode,
             @Parameter(description = FROM) @RequestParam(required = false) @Nullable OffsetDateTime from,
             @Parameter(description = TO) @RequestParam(required = false) @Nullable OffsetDateTime to) {
-        throw new NotImplementedException();
+        AuditService.Export export = audit.export(CurrentAccount.get().actor(),
+                AuditService.Format.valueOf(format.name()),
+                filter(action, actorAccountId, targetType, targetAccountId, targetCode, from, to));
+        return ResponseEntity.ok().headers(fileHeaders(format)).body(export::writeTo);
     }
 
     @Operation(operationId = "headAuditLogExport", summary = "Headers of an audit log export",
@@ -144,7 +227,8 @@ class ConsoleAuditController {
             @Parameter(description = TARGET_CODE) @RequestParam(required = false) @Nullable String targetCode,
             @Parameter(description = FROM) @RequestParam(required = false) @Nullable OffsetDateTime from,
             @Parameter(description = TO) @RequestParam(required = false) @Nullable OffsetDateTime to) {
-        throw new NotImplementedException();
+        audit.checkExport(filter(action, actorAccountId, targetType, targetAccountId, targetCode, from, to));
+        return ResponseEntity.ok().headers(fileHeaders(format)).build();
     }
 
     @Operation(operationId = "verifyAuditLog", summary = "Check the audit log's hash chain",
@@ -161,6 +245,11 @@ class ConsoleAuditController {
             + "(S1B-AC-18).")
     @PostMapping("/verify")
     AuditVerification verifyAuditLog() {
-        throw new NotImplementedException();
+        AuditService.Verification result = audit.verify();
+        AuditRow broken = result.brokenEntry();
+        return new AuditVerification(result.valid(), result.checkedCount(),
+                result.valid() ? null : broken == null ? AuditBreakReason.HEAD_MISMATCH : AuditBreakReason.ENTRY_MISMATCH,
+                broken == null ? null : new AuditBrokenEntry(broken.id(), broken.occurredAt().atOffset(ZoneOffset.UTC),
+                        broken.action()));
     }
 }

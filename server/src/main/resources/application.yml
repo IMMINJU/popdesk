@@ -29,6 +29,11 @@ spring:
     timeout: 8h
   jpa:
     open-in-view: false
+  mvc:
+    async:
+      # An audit log export streams for as long as its file takes (S1B-AC-27); the container's default
+      # would end it after 30 seconds. A client that stops reading still ends it: the write fails.
+      request-timeout: 0
   web:
     resources:
       # Each host gets its own app's screens (io.popdesk.AppScreens); Boot's /** mapping would serve both.

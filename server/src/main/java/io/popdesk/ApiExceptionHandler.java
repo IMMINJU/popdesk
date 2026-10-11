@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -52,8 +53,18 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     ResponseEntity<ApiError> typeMismatch(MethodArgumentTypeMismatchException e) {
-        boolean enumValue = e.getRequiredType() != null && e.getRequiredType().isEnum();
+        boolean enumValue = e.getRequiredType() != null && e.getRequiredType().isEnum() || enumInAList(e);
         return respond(ApiException.invalid(e.getName(), enumValue ? "UNKNOWN_VALUE" : "INVALID_FORMAT"));
+    }
+
+    /** A parameter that takes several enum values (a repeated query parameter) got one it does not know. */
+    private static boolean enumInAList(Throwable e) {
+        for (Throwable t = e.getCause(); t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof ConversionFailedException failed && failed.getTargetType().getType().isEnum()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
