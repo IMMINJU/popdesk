@@ -241,11 +241,11 @@
 
 ## 14. 감사 로그 (AUDIT)
 
-→ `../slices/1b-audit/rules.md`로 옮김. 익명화에 따른 사슬 재계산(AUDIT-6의 끝부분, AUDIT-7의 구간 나누기)은 10번 묶음에서 한다.
+→ `../archive/1b-audit/rules.md`로 옮김. 익명화에 따른 사슬 재계산(AUDIT-6의 끝부분, AUDIT-7의 구간 나누기)은 10번 묶음에서 한다.
 
 ## 15. 고객사 담당자 (MGR)
 
-→ `../slices/2-manager/rules.md`로 옮김(2번 묶음).
+→ `../archive/2-manager/rules.md`로 옮김(2번 묶음).
 
 ## 16. SLA
 
