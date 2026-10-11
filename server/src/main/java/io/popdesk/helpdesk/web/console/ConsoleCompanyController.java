@@ -133,11 +133,11 @@ class ConsoleCompanyController {
     }
 
     @Operation(operationId = "updateCompany", summary = "Change a company's name or legal name",
-            description = "A field left out keeps its value. The code never changes (S1A-AC-43).")
+            description = "A field left out or sent as `null` keeps its value. The code never changes "
+                    + "(S1A-AC-43).")
     @ApiResponse(responseCode = "200", description = "Saved.")
-    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `name` or `legalName` empty or over 100, or "
-            + "`null` (`REQUIRED`); `code` sent (`NOT_ALLOWED`). `COMPANY_ARCHIVED`: the company is `ARCHIVED` "
-            + "(S1A-AC-48).")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `name` or `legalName` empty (`REQUIRED`) or "
+            + "over 100; `code` sent (`NOT_ALLOWED`). `COMPANY_ARCHIVED`: the company is `ARCHIVED` (S1A-AC-48).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "404", description = NOT_FOUND)

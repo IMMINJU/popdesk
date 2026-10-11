@@ -64,10 +64,10 @@ class ConsoleAccountController {
     }
 
     @Operation(operationId = "updateAccount", summary = "Change an account's name",
-            description = "Also for an account that has not accepted its invitation yet (S1A-AC-30).")
+            description = "A `name` left out or sent as `null` keeps its value. Also for an account that has not "
+                    + "accepted its invitation yet (S1A-AC-30).")
     @ApiResponse(responseCode = "200", description = "Saved.")
-    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `name` empty or over 50, or `null` "
-            + "(`REQUIRED`).")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `name` empty (`REQUIRED`) or over 50.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY)
     @ApiResponse(responseCode = "404", description = NOT_FOUND)

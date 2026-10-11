@@ -100,8 +100,11 @@ class PortalIssueController {
     @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: the caller does not belong to the company "
             + "(S0-AC-43).")
-    @ApiResponse(responseCode = "413", description = "`PAYLOAD_TOO_LARGE`: the request is over the upload limit.")
-    @ApiResponse(responseCode = "429", description = "`RATE_LIMITED`: more than 10 issues in 60 seconds (S0-AC-50).")
+    @ApiResponse(responseCode = "413", description = "`PAYLOAD_TOO_LARGE`: the request is over the upload limit, or "
+            + "has more than 20 files (S1A-AC-65).")
+    @ApiResponse(responseCode = "429", description = "`RATE_LIMITED`: more than 10 issues in 60 seconds (S0-AC-50). "
+            + "The files of a filing also count toward the limit on attachment uploads, 30 in 60 seconds "
+            + "(S1A-AC-66).")
     @ApiResponse(responseCode = "503", description = "`SERVER_BUSY`: 16 uploads are running; try again after "
             + "`Retry-After` (S0-AC-99).")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)

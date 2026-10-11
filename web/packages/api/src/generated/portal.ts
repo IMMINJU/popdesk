@@ -157,7 +157,7 @@ export interface paths {
         head?: never;
         /**
          * Change the caller's name or language
-         * @description A field left out keeps its value. Later email to the account uses the new language (S1A-AC-16).
+         * @description A field left out or sent as `null` keeps its value. Later email to the account uses the new language (S1A-AC-16).
          */
         patch: operations["updateMe"];
         trace?: never;
@@ -763,7 +763,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
-            /** @description `PAYLOAD_TOO_LARGE`: the request is over the upload limit. */
+            /** @description `PAYLOAD_TOO_LARGE`: the request is over the upload limit, or has more than 20 files (S1A-AC-65). */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -772,7 +772,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
-            /** @description `RATE_LIMITED`: more than 10 issues in 60 seconds (S0-AC-50). */
+            /** @description `RATE_LIMITED`: more than 10 issues in 60 seconds (S0-AC-50). The files of a filing also count toward the limit on attachment uploads, 30 in 60 seconds (S1A-AC-66). */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -1307,7 +1307,7 @@ export interface operations {
                     "application/json": components["schemas"]["Me"];
                 };
             };
-            /** @description `INVALID_INPUT`: `name` empty or over 50, or `null` (`REQUIRED`); `locale` not `ko` or `en` (`UNKNOWN_VALUE`), or `null` (`REQUIRED`). */
+            /** @description `INVALID_INPUT`: `name` empty (`REQUIRED`) or over 50; `locale` empty (`REQUIRED`), or not `ko` or `en` (`UNKNOWN_VALUE`). */
             400: {
                 headers: {
                     [name: string]: unknown;

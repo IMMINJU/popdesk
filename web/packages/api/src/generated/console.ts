@@ -36,7 +36,7 @@ export interface paths {
         head?: never;
         /**
          * Change an account's name
-         * @description Also for an account that has not accepted its invitation yet (S1A-AC-30).
+         * @description A `name` left out or sent as `null` keeps its value. Also for an account that has not accepted its invitation yet (S1A-AC-30).
          */
         patch: operations["updateAccount"];
         trace?: never;
@@ -161,7 +161,7 @@ export interface paths {
         head?: never;
         /**
          * Change a company's name or legal name
-         * @description A field left out keeps its value. The code never changes (S1A-AC-43).
+         * @description A field left out or sent as `null` keeps its value. The code never changes (S1A-AC-43).
          */
         patch: operations["updateCompany"];
         trace?: never;
@@ -490,7 +490,7 @@ export interface paths {
         head?: never;
         /**
          * Change the caller's name or language
-         * @description A field left out keeps its value. Later email to the account uses the new language (S1A-AC-16).
+         * @description A field left out or sent as `null` keeps its value. Later email to the account uses the new language (S1A-AC-16).
          */
         patch: operations["updateMe"];
         trace?: never;
@@ -1365,7 +1365,7 @@ export interface operations {
                     "application/json": components["schemas"]["Account"];
                 };
             };
-            /** @description `INVALID_INPUT`: `name` empty or over 50, or `null` (`REQUIRED`). */
+            /** @description `INVALID_INPUT`: `name` empty (`REQUIRED`) or over 50. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1806,7 +1806,7 @@ export interface operations {
                     "application/json": components["schemas"]["Company"];
                 };
             };
-            /** @description `INVALID_INPUT`: `name` or `legalName` empty or over 100, or `null` (`REQUIRED`); `code` sent (`NOT_ALLOWED`). `COMPANY_ARCHIVED`: the company is `ARCHIVED` (S1A-AC-48). */
+            /** @description `INVALID_INPUT`: `name` or `legalName` empty (`REQUIRED`) or over 100; `code` sent (`NOT_ALLOWED`). `COMPANY_ARCHIVED`: the company is `ARCHIVED` (S1A-AC-48). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3079,7 +3079,7 @@ export interface operations {
                     "application/json": components["schemas"]["Me"];
                 };
             };
-            /** @description `INVALID_INPUT`: `name` empty or over 50, or `null` (`REQUIRED`); `locale` not `ko` or `en` (`UNKNOWN_VALUE`), or `null` (`REQUIRED`). */
+            /** @description `INVALID_INPUT`: `name` empty (`REQUIRED`) or over 50; `locale` empty (`REQUIRED`), or not `ko` or `en` (`UNKNOWN_VALUE`). */
             400: {
                 headers: {
                     [name: string]: unknown;
