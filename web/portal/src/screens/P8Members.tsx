@@ -463,7 +463,7 @@ function ManagedCompanies() {
   };
 
   return (
-    <div className="pd-screen">
+    <div className="pd-screen pd-members">
       <div className="pd-screen-head">
         <div className="pd-members-title">
           <PageTitle titleRef={heading}>{t('companyPeople.title')}</PageTitle>
