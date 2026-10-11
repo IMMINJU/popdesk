@@ -7,6 +7,7 @@ import io.popdesk.Transactions;
 import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
 import io.popdesk.helpdesk.account.PasswordResetRepository.ResetRow;
+import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.notification.MailKind;
 import io.popdesk.notification.MailQueue;
@@ -134,7 +135,7 @@ public class PasswordResetService implements PasswordResetLinks {
             resets.updateUsed(account.id(), now);
             sessions.endAll(account.id());
             audit.record(new AuditLog.Actor(account.id(), account.name(), account.email()),
-                    "PASSWORD_RESET_COMPLETED", AccountService.target(account.id()), null);
+                    AuditAction.PASSWORD_RESET_COMPLETED, AccountService.target(account.id()), null);
             return account.id();
         });
         log.info("Account {} set a new password with a reset link.", accountId);

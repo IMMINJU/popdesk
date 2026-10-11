@@ -15,6 +15,7 @@ import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.account.AccountRepository.InvitationState;
 import io.popdesk.helpdesk.account.AccountRepository.PendingRow;
+import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.company.CompanyRepository;
 import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
@@ -130,7 +131,7 @@ public class InvitationService implements InvitationLinks {
             changes.put("name", cleanName);
             changes.put("role", role.name());
             changes.put("companyCodes", found.stream().map(CompanyRow::code).sorted().toList());
-            audit.record(admin.actor(), "INVITATION_CREATED", accountTarget(accountId), changes);
+            audit.record(admin.actor(), AuditAction.INVITATION_CREATED, accountTarget(accountId), changes);
             return new Invited(accountId, mail.enabled() ? null : address.invitationLink(appOf(role), token));
         });
         log.info("Account {} invited as {}.", invited.accountId(), role);
@@ -176,7 +177,7 @@ public class InvitationService implements InvitationLinks {
             accounts.updateInvitationToken(accountId, Tokens.hash(token), expiresAt);
             Map<String, Object> changes = new LinkedHashMap<>();
             changes.put("expiresAt", expiresAt);
-            audit.record(admin.actor(), "INVITATION_LINK_CREATED", accountTarget(accountId), changes);
+            audit.record(admin.actor(), AuditAction.INVITATION_LINK_CREATED, accountTarget(accountId), changes);
             return address.invitationLink(appOf(pending.role()), token);
         });
         log.info("A new invitation link was made for account {}.", accountId);
@@ -206,7 +207,7 @@ public class InvitationService implements InvitationLinks {
                 changes.put("status", AccountService.change(state.status().name(), AccountStatus.INVITED.name()));
             }
             mail.queue(MailKind.INVITATION, accountId, null, null);
-            audit.record(admin.actor(), "INVITATION_RESENT", accountTarget(accountId), changes);
+            audit.record(admin.actor(), AuditAction.INVITATION_RESENT, accountTarget(accountId), changes);
             return new Invited(accountId, mail.enabled() ? null : address.invitationLink(appOf(state.role()), token));
         });
         log.info("The invitation of account {} was sent again.", accountId);
@@ -228,7 +229,7 @@ public class InvitationService implements InvitationLinks {
             Instant now = now();
             accounts.updateInvitationCancelled(accountId, now);
             accounts.updateStatus(accountId, AccountStatus.SUSPENDED, now);
-            audit.record(admin.actor(), "INVITATION_CANCELLED", accountTarget(accountId), Map.of("status",
+            audit.record(admin.actor(), AuditAction.INVITATION_CANCELLED, accountTarget(accountId), Map.of("status",
                     AccountService.change(AccountStatus.INVITED.name(), AccountStatus.SUSPENDED.name())));
             return true;
         });

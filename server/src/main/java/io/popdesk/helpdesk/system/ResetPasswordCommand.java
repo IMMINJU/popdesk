@@ -3,6 +3,7 @@ package io.popdesk.helpdesk.system;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.PasswordHashes;
 import io.popdesk.helpdesk.account.PasswordRules;
+import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.system.PopdeskCommand.Failed;
 import java.io.Console;
 import java.sql.Connection;
@@ -101,7 +102,7 @@ final class ResetPasswordCommand {
                 s.setString(1, Long.toString(admin.id()));
                 s.executeUpdate();
             }
-            CommandDatabase.auditBySystem(c, clock, "ADMIN_PASSWORD_RESET",
+            CommandDatabase.auditBySystem(c, clock, AuditAction.ADMIN_PASSWORD_RESET,
                     Map.of("type", "ACCOUNT", "accountId", admin.id()), null);
             c.commit();
         } catch (SQLException | RuntimeException e) {

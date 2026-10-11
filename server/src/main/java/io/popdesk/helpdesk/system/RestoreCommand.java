@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.system;
 
 import io.popdesk.InstanceLock;
+import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.system.PopdeskCommand.Failed;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,7 +56,7 @@ final class RestoreCommand {
                 throw new Failed("pg_restore ended with exit code " + exit + "; it ran in one transaction, so the "
                         + "database is still empty.");
             }
-            CommandDatabase.auditBySystem(c, clock, "DATABASE_RESTORED", Map.of("type", "DATABASE"),
+            CommandDatabase.auditBySystem(c, clock, AuditAction.DATABASE_RESTORED, Map.of("type", "DATABASE"),
                     Map.of("file", file));
             System.out.println("Restored " + file + ". Start the app now.");
         }

@@ -12,6 +12,7 @@ import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.account.AccountRepository;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
+import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
 import io.popdesk.helpdesk.company.CompanyRepository.MemberRow;
@@ -88,7 +89,7 @@ public class CompanyService {
             changes.put("name", cleanName);
             changes.put("legalName", cleanLegalName);
             changes.put("status", CompanyStatus.ACTIVE.name());
-            audit.record(admin, "COMPANY_CREATED", target, changes);
+            audit.record(admin, AuditAction.COMPANY_CREATED, target, changes);
             return new CompanyRow(id, finalCode, cleanName, cleanLegalName, CompanyStatus.ACTIVE, now);
         });
     }
@@ -147,7 +148,7 @@ public class CompanyService {
                 return company;
             }
             companies.updateNames(company.id(), newName, newLegalName);
-            audit.record(admin, "COMPANY_UPDATED", target(company.code()), changes);
+            audit.record(admin, AuditAction.COMPANY_UPDATED, target(company.code()), changes);
             return new CompanyRow(company.id(), company.code(), newName, newLegalName, company.status(),
                     company.createdAt());
         });
@@ -171,7 +172,7 @@ public class CompanyService {
                 return company;
             }
             companies.updateStatus(company.id(), status);
-            audit.record(admin, "COMPANY_STATUS_CHANGED", target(company.code()),
+            audit.record(admin, AuditAction.COMPANY_STATUS_CHANGED, target(company.code()),
                     Map.of("status", change(company.status().name(), status.name())));
             return new CompanyRow(company.id(), company.code(), company.name(), company.legalName(), status,
                     company.createdAt());
@@ -193,7 +194,7 @@ public class CompanyService {
                 throw notActive();
             }
             if (companies.insertMember(company.id(), customer.id(), now())) {
-                audit.record(admin, "CUSTOMER_ADDED", target(company.code(), customer.id()), Map.of("member", true));
+                audit.record(admin, AuditAction.CUSTOMER_ADDED, target(company.code(), customer.id()), Map.of("member", true));
             }
             return new MemberRow(company.id(), customer.id(), customer.name(), customer.email(), customer.status(),
                     customer.photoUpdatedAt());
@@ -210,7 +211,7 @@ public class CompanyService {
             CompanyRow company = companies.findByCode(viewer, code).orElseThrow(ApiException::notFound);
             AccountRow customer = accounts.findById(accountId).orElseThrow(ApiException::notFound);
             if (companies.deleteMember(company.id(), customer.id())) {
-                audit.record(admin, "CUSTOMER_REMOVED", target(company.code(), customer.id()),
+                audit.record(admin, AuditAction.CUSTOMER_REMOVED, target(company.code(), customer.id()),
                         Map.of("member", false));
             }
         });
@@ -225,7 +226,7 @@ public class CompanyService {
             CompanyRow company = companies.findByCode(viewer, code).orElseThrow(ApiException::notFound);
             AccountRow agent = accounts.findById(accountId).orElseThrow(ApiException::notFound);
             if (companies.deleteAgent(company.id(), agent.id())) {
-                audit.record(admin, "AGENT_UNASSIGNED", target(company.code(), agent.id()),
+                audit.record(admin, AuditAction.AGENT_UNASSIGNED, target(company.code(), agent.id()),
                         Map.of("assigned", false));
             }
         });
@@ -248,7 +249,7 @@ public class CompanyService {
             if (companies.insertAgent(company.id(), agent.id(), now())) {
                 Map<String, Object> changes = new LinkedHashMap<>();
                 changes.put("assigned", true);
-                audit.record(admin, "AGENT_ASSIGNED", target(company.code(), agent.id()), changes);
+                audit.record(admin, AuditAction.AGENT_ASSIGNED, target(company.code(), agent.id()), changes);
             }
             return new MemberRow(company.id(), agent.id(), agent.name(), agent.email(), agent.status(),
                     agent.photoUpdatedAt());

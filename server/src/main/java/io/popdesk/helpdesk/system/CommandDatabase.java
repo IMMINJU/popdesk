@@ -1,6 +1,10 @@
 package io.popdesk.helpdesk.system;
 
 import io.popdesk.SecretFiles;
+import io.popdesk.helpdesk.audit.AuditAction;
+import io.popdesk.helpdesk.audit.AuditChain;
+import io.popdesk.helpdesk.audit.AuditChainRepository;
+import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.system.PopdeskCommand.Failed;
 import java.io.IOException;
 import java.net.URI;
@@ -9,16 +13,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.Clock;
-import java.time.temporal.ChronoUnit;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The database as the {@code popdesk} commands see it: the app's own settings ({@code POPDESK_DB_URL},
@@ -32,8 +31,6 @@ final class CommandDatabase {
     /** The default of {@code spring.datasource.url} in application.yml. */
     static final String DEFAULT_URL = "jdbc:postgresql://localhost:5432/popdesk?logServerErrorDetail=false";
     static final String DEFAULT_USER = "popdesk";
-
-    private static final JsonMapper JSON = JsonMapper.builder().build();
 
     private final String url;
     private final String user;
@@ -122,24 +119,36 @@ final class CommandDatabase {
     }
 
     /**
-     * Writes an audit row whose person is popdesk itself ({@code {accountId: 0, name: null, email:
-     * null}}), as {@code AuditLog.recordBySystem} does in the app, on the caller's connection and in its
-     * transaction.
+     * Records an audit entry whose person is popdesk itself ({@code {accountId: 0, name: null, email:
+     * null}}), as {@code AuditLog.recordBySystem} does in the app, and joins it to the hash chain with
+     * the app's own code ({@link AuditChainRepository}, S1B-AC-43). On a connection in auto-commit mode the entry
+     * is committed here; otherwise it goes with the caller's transaction, which should commit right
+     * after: the chain's head row stays locked until then.
+     *
+     * <p>A schema from before the chain (a dump of an older version just restored, or a database the
+     * app has not migrated yet) gets the row as that version wrote it; the migration chains it later.
      */
-    static void auditBySystem(Connection c, Clock clock, String action, Map<String, ?> target,
+    static void auditBySystem(Connection c, Clock clock, AuditAction action, Map<String, ?> target,
             Map<String, ?> changes) throws SQLException {
-        Map<String, Object> person = new LinkedHashMap<>();
-        person.put("accountId", 0);
-        person.put("name", null);
-        person.put("email", null);
-        try (PreparedStatement s = c.prepareStatement("insert into audit_log (tenant_id, action, actor, target, "
-                + "changes, occurred_at) values (1, ?, cast(? as jsonb), cast(? as jsonb), cast(? as jsonb), ?)")) {
-            s.setString(1, action);
-            s.setString(2, JSON.writeValueAsString(person));
-            s.setString(3, target == null ? null : JSON.writeValueAsString(target));
-            s.setString(4, changes == null ? null : JSON.writeValueAsString(changes));
-            s.setTimestamp(5, Timestamp.from(clock.instant().truncatedTo(ChronoUnit.MICROS)));
-            s.executeUpdate();
+        List<AuditChain.Values> entry = List.of(AuditChain.values(action, AuditLog.SYSTEM_ACCOUNT_ID, null, null,
+                target, changes, clock.instant()));
+        if (!AuditChainRepository.exists(c)) {
+            AuditChainRepository.insertBeforeTheChain(c, entry);
+            return;
+        }
+        if (!c.getAutoCommit()) {
+            AuditChainRepository.append(c, entry);
+            return;
+        }
+        c.setAutoCommit(false);
+        try {
+            AuditChainRepository.append(c, entry);
+            c.commit();
+        } catch (SQLException | RuntimeException e) {
+            c.rollback();
+            throw e;
+        } finally {
+            c.setAutoCommit(true);
         }
     }
 

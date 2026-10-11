@@ -4,24 +4,25 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.core.Ordered;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.databind.json.JsonMapper;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * The audit log (AUDIT-1, S0-AC-83). A row is written in the transaction of the change it records, so
- * both are kept or neither is. The person is always {@code {accountId, name, email}}. Never pass a
+ * The audit log (AUDIT-1, S0-AC-83). An entry is written in the transaction of the change it records,
+ * so both are kept or neither is. The person is always {@code {accountId, name, email}}. Never pass a
  * password, a token, or a link.
  *
- * <p>A row holds exactly the inputs of {@link CanonicalAuditJson#encode}: {@code action}, the person,
- * {@code target}, {@code changes}, and the time at microseconds. Instants inside {@code target} and
- * {@code changes} are stored in the canonical text form, so slice 1 can read a row back and get the
- * same bytes.
+ * <p>{@link #record} only keeps the entry with the transaction; its time is taken then. Just before
+ * the transaction commits, all its entries join the hash chain at once ({@link AuditChainRepository#append}),
+ * so the chain's head row is locked last and only for the hashing and the inserts (S1B-AC-09 to
+ * S1B-AC-11). Until then the entry is not in the database: code in the same transaction cannot read it
+ * back. A transaction that rolls back takes its entries with it.
  */
 @Service
 public class AuditLog {
@@ -36,51 +37,75 @@ public class AuditLog {
     }
 
     private final AuditRepository repository;
-    private final JsonMapper json;
     private final Clock clock;
 
-    AuditLog(AuditRepository repository, JsonMapper json, Clock clock) {
+    AuditLog(AuditRepository repository, Clock clock) {
         this.repository = repository;
-        this.json = json;
         this.clock = clock;
     }
 
     /** Records an action done by popdesk itself: the person is account 0 without name or email. */
     @Transactional(propagation = Propagation.MANDATORY)
-    public void recordBySystem(String action, Map<String, ?> target, Map<String, ?> changes) {
+    public void recordBySystem(AuditAction action, Map<String, ?> target, Map<String, ?> changes) {
         record(Actor.SYSTEM, action, target, changes);
     }
 
-    /** Records an action in the caller's transaction. */
+    /**
+     * Records an action in the caller's transaction. A number in {@code target} or {@code changes}
+     * must be an {@code Integer}, {@code Long} or {@code Short}; any other is an
+     * {@link IllegalArgumentException}.
+     */
     @Transactional(propagation = Propagation.MANDATORY)
-    public void record(Actor actor, String action, Map<String, ?> target, Map<String, ?> changes) {
-        Map<String, Object> person = new LinkedHashMap<>();
-        person.put("accountId", actor.accountId());
-        person.put("name", actor.name());
-        person.put("email", actor.email());
+    public void record(Actor actor, AuditAction action, Map<String, ?> target, Map<String, ?> changes) {
         // The column keeps microseconds (timestamptz).
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
-        repository.insert(action, json.writeValueAsString(person), toJson(target), toJson(changes), now);
+        pending().add(AuditChain.values(action, actor.accountId(), actor.name(), actor.email(), target, changes,
+                now));
     }
 
-    private String toJson(Map<String, ?> value) {
-        return value == null ? null : json.writeValueAsString(canonicalTimes(value));
+    /** The entries of the current transaction; the first call registers them for its commit. */
+    private Pending pending() {
+        for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+            if (synchronization instanceof Pending pending && pending.log() == this) {
+                return pending;
+            }
+        }
+        Pending pending = new Pending();
+        TransactionSynchronizationManager.registerSynchronization(pending);
+        return pending;
     }
 
-    private static Object canonicalTimes(Object value) {
-        return switch (value) {
-            case Instant instant -> CanonicalAuditJson.time(instant);
-            case Map<?, ?> map -> {
-                Map<Object, Object> out = new LinkedHashMap<>();
-                map.forEach((k, v) -> out.put(k, v == null ? null : canonicalTimes(v)));
-                yield out;
+    /**
+     * The entries one transaction recorded. They live with the transaction's synchronizations, so a
+     * retry in a new transaction ({@code Transactions.run}) starts with none.
+     */
+    private final class Pending implements TransactionSynchronization {
+
+        private final List<AuditChain.Values> entries = new ArrayList<>();
+        private boolean appended;
+
+        AuditLog log() {
+            return AuditLog.this;
+        }
+
+        void add(AuditChain.Values entry) {
+            if (appended) {
+                throw new IllegalStateException("An audit entry was recorded after the transaction's entries "
+                        + "joined the chain");
             }
-            case Collection<?> list -> {
-                List<Object> out = new ArrayList<>();
-                list.forEach(v -> out.add(v == null ? null : canonicalTimes(v)));
-                yield out;
-            }
-            default -> value;
-        };
+            entries.add(entry);
+        }
+
+        /** After every other synchronization: nothing is locked once the chain's head row is. */
+        @Override
+        public int getOrder() {
+            return Ordered.LOWEST_PRECEDENCE;
+        }
+
+        @Override
+        public void beforeCommit(boolean readOnly) {
+            appended = true;
+            repository.append(entries);
+        }
     }
 }

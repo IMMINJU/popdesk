@@ -7,6 +7,7 @@ import io.popdesk.PatchText;
 import io.popdesk.Transactions;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
+import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.company.CompanyRepository;
 import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
@@ -140,7 +141,7 @@ public class OwnAccountService {
             }
             accounts.updatePassword(account.id(), hash, now());
             sessions.endAll(account.id());
-            audit.record(me.actor(), "PASSWORD_CHANGED", AccountService.target(account.id()), null);
+            audit.record(me.actor(), AuditAction.PASSWORD_CHANGED, AccountService.target(account.id()), null);
             return true;
         });
         if (!changed) {

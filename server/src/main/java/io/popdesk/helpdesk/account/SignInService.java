@@ -6,6 +6,7 @@ import io.popdesk.PublicAddress.App;
 import io.popdesk.Transactions;
 import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
+import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
 import java.time.Clock;
 import java.time.Duration;
@@ -86,7 +87,7 @@ class SignInService {
         boolean mayTry = account.status() == AccountStatus.ACTIVE && hasPassword
                 && SessionFilter.appOf(account.role()) == app;
         if (!mayTry || locked) {
-            transactions.run(() -> audit.record(actor(account), "SIGN_IN_FAILED", target(account), null));
+            transactions.run(() -> audit.record(actor(account), AuditAction.SIGN_IN_FAILED, target(account), null));
             log.info("Sign-in failed for account {}: {}.", account.id(),
                     locked ? "locked" : mayTry ? "wrong password"
                             : "not active, without a password, or another app's account");
@@ -96,7 +97,7 @@ class SignInService {
             boolean nowLocked = transactions.run(() -> {
                 Instant at = now();
                 int failures = accounts.updateFailedSignIns(account.id(), at);
-                audit.record(actor(account), "SIGN_IN_FAILED", target(account), null);
+                audit.record(actor(account), AuditAction.SIGN_IN_FAILED, target(account), null);
                 if (failures < MAX_FAILURES) {
                     return false;
                 }
@@ -104,7 +105,7 @@ class SignInService {
                 accounts.updateLockedUntil(account.id(), until, at);
                 Map<String, Object> changes = new LinkedHashMap<>();
                 changes.put("lockedUntil", until);
-                audit.record(actor(account), "ACCOUNT_LOCKED", target(account), changes);
+                audit.record(actor(account), AuditAction.ACCOUNT_LOCKED, target(account), changes);
                 return true;
             });
             log.info("Sign-in failed for account {}: wrong password{}.", account.id(),
@@ -120,7 +121,7 @@ class SignInService {
                 return false;
             }
             accounts.updateClearFailures(account.id(), now());
-            audit.record(actor(account), "SIGN_IN_SUCCEEDED", target(account), null);
+            audit.record(actor(account), AuditAction.SIGN_IN_SUCCEEDED, target(account), null);
             return true;
         });
         if (!signedIn) {

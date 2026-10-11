@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.system;
 
+import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.system.PopdeskCommand.Failed;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -43,7 +44,7 @@ final class BackupCommand {
             if (exit != 0) {
                 throw new Failed("pg_dump ended with exit code " + exit + "; no backup was written.");
             }
-            CommandDatabase.auditBySystem(c, clock, "BACKUP_CREATED", Map.of("type", "DATABASE"),
+            CommandDatabase.auditBySystem(c, clock, AuditAction.BACKUP_CREATED, Map.of("type", "DATABASE"),
                     Map.of("file", file));
             System.out.println("Wrote the backup to " + file + ".");
         }

@@ -10,6 +10,7 @@ import io.popdesk.Transactions;
 import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
+import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
 import java.text.Normalizer;
 import java.time.Clock;
@@ -96,7 +97,7 @@ public class AccountService {
                 return account;
             }
             accounts.updateName(accountId, cleanName, now());
-            audit.record(admin.actor(), "ACCOUNT_NAME_CHANGED", target(accountId),
+            audit.record(admin.actor(), AuditAction.ACCOUNT_NAME_CHANGED, target(accountId),
                     Map.of("name", change(account.name(), cleanName)));
             return accounts.findById(accountId).orElseThrow();
         });
@@ -162,11 +163,11 @@ public class AccountService {
             Instant now = now();
             if (suspension) {
                 accounts.updateStatus(accountId, AccountStatus.SUSPENDED, now);
-                audit.record(admin.actor(), "ACCOUNT_SUSPENDED", target(accountId),
+                audit.record(admin.actor(), AuditAction.ACCOUNT_SUSPENDED, target(accountId),
                         Map.of("status", change(account.status().name(), AccountStatus.SUSPENDED.name())));
             } else {
                 accounts.updateRole(accountId, role, now);
-                audit.record(admin.actor(), "ACCOUNT_ROLE_CHANGED", target(accountId),
+                audit.record(admin.actor(), AuditAction.ACCOUNT_ROLE_CHANGED, target(accountId),
                         Map.of("role", change(account.role().name(), role.name())));
             }
             sessions.endAll(accountId);
@@ -190,7 +191,7 @@ public class AccountService {
                 return account;
             }
             accounts.updateStatus(accountId, AccountStatus.ACTIVE, now());
-            audit.record(admin.actor(), "ACCOUNT_REACTIVATED", target(accountId),
+            audit.record(admin.actor(), AuditAction.ACCOUNT_REACTIVATED, target(accountId),
                     Map.of("status", change(account.status().name(), AccountStatus.ACTIVE.name())));
             return accounts.findById(accountId).orElseThrow();
         });
@@ -215,7 +216,7 @@ public class AccountService {
             accounts.updatePassword(accountId, PasswordHashes.RESET, now());
             sessions.endAll(accountId);
             Optional<String> made = resets.issue(account);
-            audit.record(admin.actor(), "ACCOUNT_PASSWORD_RESET", target(accountId), null);
+            audit.record(admin.actor(), AuditAction.ACCOUNT_PASSWORD_RESET, target(accountId), null);
             return made;
         });
         log.info("The password of account {} was reset by an admin.", accountId);

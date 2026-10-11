@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.account;
 
 import io.popdesk.helpdesk.Role;
+import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
 import java.time.Clock;
 import java.time.Instant;
@@ -52,7 +53,7 @@ class FirstAdminService {
             changes.put("email", email);
             changes.put("name", name);
             changes.put("role", Role.ADMIN.name());
-            audit.recordBySystem("FIRST_ADMIN_CREATED", target, changes);
+            audit.recordBySystem(AuditAction.FIRST_ADMIN_CREATED, target, changes);
         });
         return created;
     }
