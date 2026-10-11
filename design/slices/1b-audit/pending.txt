@@ -15,10 +15,3 @@ server io/popdesk/start/AuditRetentionSettingTest.java
 server io/popdesk/deploy/CommandAuditChainTest.java
 server io/popdesk/deploy/UpgradeAuditChainTest.java
 server io/popdesk/deploy/UpgradeInterruptedTest.java
-web src/screens/C12AuditLog.test.tsx
-web src/screens/C12AuditLog.filters.test.tsx
-web src/screens/C12AuditLog.actions.test.tsx
-web src/screens/C18SystemStatus.1b.test.tsx
-web src/screens/adminOnly.1b.test.tsx
-web src/components/DataTable.expand.test.tsx
-web src/components/Select.group.test.tsx
