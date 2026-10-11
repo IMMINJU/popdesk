@@ -354,6 +354,7 @@ fe7a1de93a65389daaf5157d2fb982cd11f5e50cbbbcc73a214976aea0ec185e  web/console/sr
 4bb0aab445d2b8fa6d06865c82acbd8040a187ac6f5330e94913b3c4c70cbb4f  web/console/src/__tests__/console1b.ts
 b5352806a8d41fba40d6459074ac0b508d4bd435501b8bfca6b59d0b291af1cf  web/console/src/__tests__/network.ts
 0e60ee6203ff85161e9d1821b3f7ca74b48a2c9045a35fe8f2b830bf39afe754  web/console/src/app/RowMenu.behavior.test.tsx
+7db203491d9765a3c946ba08f2cc1caa3d9e1473bac6cf3f7d08a04e9492b277  web/console/src/app/auditWords.words.test.ts
 2352f951e6c0e2e016d99fe2d129a5115ac557fed82cb4ea23a3512f2ccd6f6d  web/console/src/app/csrfRetry.1a.test.tsx
 0200e072e5f1c7f1c7805cec9bbac50c2ecec3243945d0c6e59d37dd07cc706f  web/console/src/app/header.1a.test.tsx
 76eff73b2a000ec6c0a4539cd52c6036e6024f9f2241e67482ce8a57ef83f80a  web/console/src/app/lateAnswer.test.tsx
@@ -393,6 +394,7 @@ a549479caeb9860b1bf4f1d8cab980514fe801d9e1c3bd817bbffafcc86b9c52  web/e2e/playwr
 597adae3e8925481fba27841a08259db59f3b9af4031146089ee541dc744cdbf  web/packages/ui/src/__tests__/support.ts
 d1e48e84392df9c60d16ff1b6b98620015d88e1c32dcf62f5da4a1612e3d1f84  web/packages/ui/src/components/Alert.test.tsx
 2808f1988f1994463b8abff309c524c5c47be23fddf67ec89d17349ea4155339  web/packages/ui/src/components/AppShell.behavior.test.tsx
+40cd681762d6fcb1388b76aaab93a25392ef9868e61d92f853aaaef0a3bbecd3  web/packages/ui/src/components/AppShell.narrow.test.tsx
 9978e34968a01a03ac12dc3ac8b607ea64c7ec8ab6cc6ebc4a4c223772755156  web/packages/ui/src/components/AppShell.test.tsx
 53660a2fcc073f201db54347bc0497bf3a298ea1d27531432f8e82e9e4190c59  web/packages/ui/src/components/AttachmentList.behavior.test.tsx
 73ca5bcc71130ca87a6f2d741fd67ac72a9b688d7e8b9bfa6655b51f57cc4743  web/packages/ui/src/components/AttachmentList.test.tsx
