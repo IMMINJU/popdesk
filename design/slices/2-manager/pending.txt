@@ -13,3 +13,13 @@ server io/popdesk/manager/MemberInviteTest.java
 server io/popdesk/manager/MemberListTest.java
 server io/popdesk/manager/MemberMailTest.java
 server io/popdesk/manager/MemberRemoveTest.java
+web src/app/layout.navCount.test.tsx
+web src/screens/C12AuditLog.kinds2.test.tsx
+web src/screens/C8CompanyList.requests.test.tsx
+web src/screens/C9CompanyDetail.manager.test.tsx
+web src/screens/C9CompanyDetail.requests.test.tsx
+web src/components/AppShell.navCount.test.tsx
+web src/screens/P6MyInfo.manager.test.tsx
+web src/screens/P8Members.actions.test.tsx
+web src/screens/P8Members.late.test.tsx
+web src/screens/P8Members.test.tsx

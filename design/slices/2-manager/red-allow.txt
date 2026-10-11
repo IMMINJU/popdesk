@@ -1,3 +1,10 @@
 # C-6 처음부터 통과해도 되는 테스트. 형식: <이름> | <이유> (scripts/ci/check-red.py --allow)
 
 io.popdesk.manager.ManagerMarkTest.agentsCannotMark | S2-AC-02 보안 설정이 /api/console/companies/*/customers/**를 이미 상담원에게 403으로 막는다. 구현 뒤에도 그대로여야 한다
+src/app/layout.navCount.test.tsx.콘솔 옆 메뉴: 고객사의 소속 요청 수 (2번 묶음) > S2-AC-48 옆 메뉴(관리자): 걸려 있는 요청이 없으면 숫자가 없고 이름은 "고객사"뿐이다 | S2-AC-48 숫자를 아직 그리지 않는다. 구현 뒤에도 그대로여야 한다
+src/app/layout.navCount.test.tsx.콘솔 옆 메뉴: 고객사의 소속 요청 수 (2번 묶음) > S2-AC-48 옆 메뉴(상담원): "고객사" 항목도 숫자도 없다 | S2-AC-48 상담원에게는 원래 "고객사" 항목이 없다. 구현 뒤에도 그대로여야 한다
+src/components/AppShell.navCount.test.tsx.AppShell NavItem의 count (2번 묶음) > AppShell count를 주지 않으면: 숫자가 없고 링크의 이름은 글자뿐이다 | design.md 6절 숫자를 아직 그리지 않는다. 구현 뒤에도 그대로여야 한다
+src/components/AppShell.navCount.test.tsx.AppShell NavItem의 count (2번 묶음) > AppShell count를 0이면: 숫자가 없고 링크의 이름은 글자뿐이다 | design.md 6절 숫자를 아직 그리지 않는다. 구현 뒤에도 그대로여야 한다
+src/components/AppShell.navCount.test.tsx.AppShell NavItem의 count (2번 묶음) > AppShell 포털의 nav: app이 portal이어도 nav를 주면 항목이 링크로 보인다 | design.md 6절 `AppShell`은 `app`과 관계없이 `nav`를 그린다. 구현 뒤에도 그대로여야 한다
+src/components/RowMenu.shared.test.tsx.RowMenu (@popdesk/ui) > RowMenu 이름: 버튼과 열린 목록이 label을 접근 가능한 이름으로 갖고, 항목은 준 순서대로다 | design.md 6절 C-4 껍데기가 이미 옮겼다. 구현 뒤에도 그대로여야 한다
+src/components/RowMenu.shared.test.tsx.RowMenu (@popdesk/ui) > RowMenu axe: 닫혔을 때와 열렸을 때 접근성 위반이 없다 | design.md 6절 C-4 껍데기가 이미 옮겼다. 구현 뒤에도 그대로여야 한다
