@@ -1,0 +1,9 @@
+# gitleaks configuration (CI job "Secrets"). The default rules, plus what they take for a secret
+# in this repository but is test data.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Made-up password reset tokens in test fixtures. They start with rst- and are no real tokens."
+regexTarget = "match"
+regexes = ['''rst-[A-Za-z0-9]{8,24}''']
