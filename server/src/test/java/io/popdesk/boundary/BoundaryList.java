@@ -222,6 +222,29 @@ final class BoundaryList {
                     "project.MembershipTest#agentsCannotChangeMembers",
                     "project.MembershipTest#unassignedAgentLosesTheCompany"),
 
+            // Slice 2 (S2-AC-50): the 9 operations it adds. On the portal a manager of company A gets nothing
+            // of company B; the console ones are for admins, who see every customer company.
+            tested("GET", "/api/portal/companies/{code}/members",
+                    "manager.MemberAccessTest#onlyManagersOfTheCompany"),
+            tested("POST", "/api/portal/companies/{code}/members",
+                    "manager.MemberAccessTest#onlyManagersOfTheCompany"),
+            tested("DELETE", "/api/portal/companies/{code}/members/{id}",
+                    "manager.MemberAccessTest#onlyManagersOfTheCompany",
+                    "manager.MemberAccessTest#rowsOfTheCompanyInThePathOnly"),
+            tested("POST", "/api/portal/companies/{code}/members/{id}/resend",
+                    "manager.MemberAccessTest#onlyManagersOfTheCompany",
+                    "manager.MemberAccessTest#rowsOfTheCompanyInThePathOnly"),
+            none("PUT", "/api/console/companies/{code}/customers/{accountId}/manager",
+                    "admins only (checked by manager.ManagerMarkTest#agentsCannotMark), and an admin sees every customer company; no customer company narrows what an admin may mark"),
+            none("DELETE", "/api/console/companies/{code}/customers/{accountId}/manager",
+                    "admins only (checked by manager.ManagerMarkTest#agentsCannotMark), and an admin sees every customer company; no customer company narrows what an admin may unmark"),
+            none("GET", "/api/console/membership-requests",
+                    "admins only (checked by manager.MembershipRequestTest#agentCannotList), and an admin sees every customer company; the list is not narrowed by a customer company"),
+            none("POST", "/api/console/membership-requests/{id}/approve",
+                    "admins only (checked by ops.CheckOrderTest#roleBeforeTargetAndInput), and an admin sees every customer company; no customer company narrows which request an admin may approve"),
+            none("POST", "/api/console/membership-requests/{id}/reject",
+                    "admins only (checked by ops.CheckOrderTest#roleBeforeTargetAndInput), and an admin sees every customer company; no customer company narrows which request an admin may reject"),
+
             // Slice 1b (S1B-AC-39): the 4 operations it adds. Only admins read the audit log, and an admin
             // sees every customer company, so no answer is narrowed by a customer company.
             none("GET", "/api/console/audit-log",

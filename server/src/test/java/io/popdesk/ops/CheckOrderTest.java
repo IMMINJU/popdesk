@@ -126,6 +126,24 @@ class CheckOrderTest extends BareAppTest {
                 new Case("portal comments", () -> p.get(pi + "/comments").query("size", 0), 401, "UNAUTHENTICATED"),
                 new Case("portal comment", () -> p.post(pi + "/comments").json(Map.of("content", "")), 401,
                         "UNAUTHENTICATED"),
+                new Case("portal members", () -> p.get("/api/portal/companies/" + NO_CODE + "/members")
+                        .query("size", 0), 401, "UNAUTHENTICATED"),
+                new Case("portal invite member", () -> p.post("/api/portal/companies/" + NO_CODE + "/members")
+                        .json(Map.of("email", "x", "name", "")), 401, "UNAUTHENTICATED"),
+                new Case("portal remove member", () -> p.delete("/api/portal/companies/" + NO_CODE
+                        + "/members/nope"), 401, "UNAUTHENTICATED"),
+                new Case("portal resend to member", () -> p.post("/api/portal/companies/" + NO_CODE
+                        + "/members/nope/resend"), 401, "UNAUTHENTICATED"),
+                new Case("mark manager", () -> c.put("/api/console/companies/" + NO_CODE + "/customers/" + NO_ID
+                        + "/manager"), 401, "UNAUTHENTICATED"),
+                new Case("unmark manager", () -> c.delete("/api/console/companies/" + NO_CODE + "/customers/" + NO_ID
+                        + "/manager"), 401, "UNAUTHENTICATED"),
+                new Case("membership requests", () -> c.get("/api/console/membership-requests").query("size", 0),
+                        401, "UNAUTHENTICATED"),
+                new Case("approve membership request", () -> c.post("/api/console/membership-requests/" + NO_ID
+                        + "/approve"), 401, "UNAUTHENTICATED"),
+                new Case("reject membership request", () -> c.post("/api/console/membership-requests/" + NO_ID
+                        + "/reject"), 401, "UNAUTHENTICATED"),
                 new Case("portal me", () -> p.get("/api/portal/me"), 401, "UNAUTHENTICATED")));
         check(cases);
     }
@@ -153,6 +171,16 @@ class CheckOrderTest extends BareAppTest {
                         .json(badInvitation("x")), 403, "FORBIDDEN"),
                 new Case("link of a missing account", () -> agent.post("/api/console/invitations/" + NO_ID + "/link"),
                         403, "FORBIDDEN"),
+                new Case("mark a manager of a missing company", () -> agent.put("/api/console/companies/" + NO_CODE
+                        + "/customers/" + NO_ID + "/manager"), 403, "FORBIDDEN"),
+                new Case("unmark a manager of a missing company", () -> agent.delete("/api/console/companies/"
+                        + NO_CODE + "/customers/" + NO_ID + "/manager"), 403, "FORBIDDEN"),
+                new Case("membership requests, size 0", () -> agent.get("/api/console/membership-requests")
+                        .query("size", 0), 403, "FORBIDDEN"),
+                new Case("approve a missing membership request", () -> agent.post("/api/console/membership-requests/"
+                        + NO_ID + "/approve"), 403, "FORBIDDEN"),
+                new Case("reject a missing membership request", () -> agent.post("/api/console/membership-requests/"
+                        + NO_ID + "/reject"), 403, "FORBIDDEN"),
                 new Case("system status", () -> agent.get("/api/console/system/status"), 403, "FORBIDDEN"),
                 new Case("failed deliveries, size 0", () -> agent.get("/api/console/system/failed-deliveries")
                         .query("size", 0), 403, "FORBIDDEN")));
