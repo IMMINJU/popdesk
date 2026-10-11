@@ -31,7 +31,7 @@
 | S1B-AC-04 | When 한 사람(계정 ID)으로 거르면, the system shall 그 계정이 한 일만 준다. 시스템이 한 일은 계정 ID 0으로 거른다. (AUDIT-2, AUDIT-3) |
 | S1B-AC-05 | When 대상(종류와 ID)으로 거르면, the system shall 그 대상의 항목만 준다. (AUDIT-3) |
 | S1B-AC-06 | When 기간(부터, 까지)으로 거르면, the system shall 시각이 그 사이인 항목만 준다. 부터는 포함하고 까지는 포함하지 않는다. 부터가 까지보다 뒤면 400이다. (AUDIT-3, TIME-1) |
-| S1B-AC-07 | The system shall 응답의 바뀐 값을 칸마다 전 값과 뒤 값으로 준다. 비밀번호, 토큰, 링크는 어느 항목에도 없다. (AUDIT-2, PII-2, 1a verify) |
+| S1B-AC-07 | The system shall 값이 바뀌는 종류(이름·역할·상태 바꾸기, 고객사 고치기)의 바뀐 값을 칸마다 전 값(`from`)과 뒤 값(`to`)으로 준다. 만들기처럼 전 값이 없는 종류는 저장된 값 그대로 준다. 비밀번호, 토큰, 링크는 어느 항목에도 없다. (AUDIT-2, PII-2, 1a verify) |
 | S1B-AC-08 | The system shall 감사 로그를 고치거나 지우는 API를 두지 않는다. 그 경로의 PUT·PATCH·DELETE는 405나 404다. (AUDIT-4) |
 
 ### 2.2 해시 사슬
