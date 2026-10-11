@@ -1,7 +1,7 @@
 // 2번 묶음 screens.md 1절 P-8 우리 회사 사람: 포털 메뉴(S2-AC-45), 고객사 고르기, 표(S2-AC-08, 10), 줄 메뉴(S2-AC-47).
 // 동작과 초대 대화상자는 P8Members.actions.test.tsx, 늦게 온 답은 P8Members.late.test.tsx에 있다.
 import { describe, expect, test } from 'vitest';
-import { callsTo, dialog, eventually, expectNoAxeViolations, heading1, hrefPath, link, pageText, renderAt, screen, sent, text } from '../__tests__/portal';
+import { callsTo, dialog, eventually, expectNoAxeViolations, heading1, hrefPath, link, pageText, renderAt, screen, sent, text, within } from '../__tests__/portal';
 import {
   ACME_MANAGED,
   BETA_MANAGED,
@@ -26,6 +26,7 @@ import {
   people,
   rowActions,
   rowOf,
+  screenState,
 } from '../__tests__/portal2';
 
 const URL_PEOPLE = '/members';
@@ -91,18 +92,27 @@ describe('P-8 우리 회사 사람: 고객사 고르기', () => {
   });
 
   test.each([
-    ['소속이지만 담당자가 아닌 곳이면 403 상태', 'GAMMA', '권한이 없습니다'],
-    ['소속이 아닌 곳이면 404 상태', 'NOPE', '찾을 수 없습니다'],
+    ['소속이지만 담당자가 아닌 곳이면 403 상태: h1 "권한이 없습니다"', 'GAMMA', '권한이 없습니다'],
+    ['소속이 아닌 곳이면 404 상태: h1 "찾을 수 없습니다"', 'NOPE', '찾을 수 없습니다'],
   ])('S2-AC-45 P-8 쿼리의 고객사가 %s', async (_, code, wanted) => {
     belongTo(ACME_MANAGED, GAMMA_MEMBER);
     renderAt(`${URL_PEOPLE}?company=${code}`);
 
-    await eventually(() => {
-      expect(pageText()).toContain(wanted);
-    });
+    await screenState(wanted);
     expect(screen.queryAllByRole('table'), '표').toHaveLength(0);
     expect(inviteButtons(), '"초대" 버튼').toHaveLength(0);
     expect(pageText()).not.toContain(COLLEAGUE.email);
+  });
+
+  test('P-8 쿼리가 없고 담당자인 고객사가 둘: 내 정보의 고객사 순서에서 담당자인 첫 고객사의 목록을 부르고, 주소에 싣지 않는다', async () => {
+    belongTo(GAMMA_MEMBER, BETA_MANAGED, ACME_MANAGED);
+    renderAt(URL_PEOPLE);
+
+    await rowOf(BETA_ROW.email);
+    expect(text((await companySelect()).selectedOptions[0])).toContain(BETA_MANAGED.name);
+    expect(callsTo('GET', membersPath('ACME')), '둘째 고객사의 목록').toHaveLength(0);
+    expect(callsTo('GET', membersPath('GAMMA')), '담당자가 아닌 고객사의 목록').toHaveLength(0);
+    expect(companyInAddress()).toBeNull();
   });
 
   test.each([
@@ -181,7 +191,9 @@ describe('P-8 우리 회사 사람: 줄 메뉴', () => {
     belongTo(ACME_MANAGED);
     const { user } = renderAt(URL_PEOPLE);
 
-    expect(await rowActions(user, await rowOf(row.email))).toEqual([...wanted].sort());
+    const shown = await rowOf(row.email);
+    expect(within(shown).queryAllByRole('button').length === 0, '줄 안에 버튼이 하나도 없음').toBe(wanted.length === 0);
+    expect(await rowActions(user, shown)).toEqual([...wanted].sort());
   });
 
   test('P-8 axe: 표와 열린 초대 대화상자에 접근성 위반이 없다', async () => {

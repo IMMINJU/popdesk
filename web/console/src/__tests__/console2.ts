@@ -11,7 +11,6 @@ import { rejected } from './console1a';
 
 type Schemas = ConsoleComponents['schemas'];
 export type PendingMembership = Schemas['PendingMembership'];
-export type Notification = Schemas['Notification'];
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -30,11 +29,6 @@ export function request(over: Partial<PendingMembership> = {}): PendingMembershi
   };
 }
 
-/** What the admin's inbox gets for a request (S2-AC-39). No screen reads it yet. */
-export function notification(of: PendingMembership): Notification {
-  return { id: 9000 + of.id, kind: 'MEMBERSHIP_REQUESTED', companyCode: of.company.code, createdAt: of.requestedAt, readAt: null };
-}
-
 // ---------------------------------------------------------------------------
 // Fake server
 
@@ -51,9 +45,10 @@ function requireAdmin(): Response | undefined {
   return requireSession() ?? (state.me.role === 'ADMIN' ? undefined : errors.forbidden());
 }
 
-/** The company with the number of its open requests, so the list and the request list agree. */
+/** The company with the number of its open requests, so the list and the request list agree. An agent always gets 0 (S2-AC-33). */
 function counted(c: Company): Company {
-  return { ...c, pendingMembershipRequests: pending.requests.filter((r) => r.company.code === c.code).length };
+  const open = state.me.role === 'ADMIN' ? pending.requests.filter((r) => r.company.code === c.code).length : 0;
+  return { ...c, pendingMembershipRequests: open };
 }
 
 type PathValue = string | readonly string[] | undefined;
@@ -109,8 +104,6 @@ const handlers2 = [
   }),
   http.post(`*${REQUESTS}/:id/approve`, ({ params }) => close(params.id, true)),
   http.post(`*${REQUESTS}/:id/reject`, ({ params }) => close(params.id, false)),
-  http.get('*/api/console/notifications/unread-count', () => requireSession() ?? HttpResponse.json({ count: state.me.role === 'ADMIN' ? pending.requests.length : 0 })),
-  http.get('*/api/console/notifications', () => requireSession() ?? HttpResponse.json(paged(state.me.role === 'ADMIN' ? pending.requests.map(notification) : []))),
 ];
 
 beforeEach(() => {

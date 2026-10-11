@@ -3,7 +3,6 @@
 import { HttpResponse } from 'msw/http';
 import { describe, expect, test } from 'vitest';
 import {
-  button,
   callsTo,
   describedText,
   errors,
@@ -30,8 +29,10 @@ import {
   closed,
   confirmButton,
   expectNotSaid,
+  fillInvite,
   membersPath,
   openDialog,
+  openInvite as openInviteOf,
   people,
   rowAction,
   rowOf,
@@ -58,17 +59,7 @@ async function reloaded(loads: number) {
   });
 }
 
-async function openInvite(user: User) {
-  await user.click(await button(/^초대$/));
-  const box = await found(() => screen.queryByRole('dialog', { name: `${ACME_MANAGED.name}에 초대` }), '대화상자 "에이크미에 초대"');
-  const fieldIn = (label: RegExp) => found(() => within(box).queryAllByLabelText<HTMLInputElement>(label, { selector: 'input' })[0], `대화상자 칸 ${String(label)}`);
-  return { box, email: await fieldIn(/^이메일/), name: await fieldIn(/^이름/) };
-}
-
-async function fillInvite(user: User, d: Awaited<ReturnType<typeof openInvite>>, email = 'new@acme.test', name = '신입') {
-  await user.type(d.email, email);
-  await user.type(d.name, name);
-}
+const openInvite = (user: User) => openInviteOf(user, ACME_MANAGED.name);
 
 describe('P-8 우리 회사 사람: 줄 메뉴의 동작', () => {
   test('S2-AC-29 S2-AC-47 P-8 초대 다시 보내기: 확인 없이 바로 보내고 토스트 "초대를 다시 보냈습니다"', async () => {

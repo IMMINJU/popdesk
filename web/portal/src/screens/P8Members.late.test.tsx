@@ -1,7 +1,7 @@
 // 2번 묶음 screens.md 1절 P-8 우리 회사 사람: 떠나거나 고객사가 바뀐 뒤 온 답을 버린다(S2-AC-49).
-// 보는 중에 담당자 지정이 풀리면 다음 요청이 403이고 화면 전체가 403 상태가 된다(S2-AC-11).
+// 보는 중에 담당자 지정이 풀리면 다음 요청이 403이고 화면 전체가 403 상태가 된다(S2-AC-11). 목록, 초대, 빼기, 다시 보내기 어느 것이든 같다(screens.md 5절).
 import { describe, expect, test } from 'vitest';
-import { atPath, button, errors, found, gate, isBlocked, link, pageText, renderAt, screen, sent, within } from '../__tests__/portal';
+import { atPath, callsTo, errors, found, gate, isBlocked, link, pageText, renderAt, sent, within } from '../__tests__/portal';
 import { answered, rejected, route, settle } from '../__tests__/portal1a';
 import {
   ACME_MANAGED,
@@ -14,27 +14,35 @@ import {
   choose,
   confirmButton,
   expectNotSaid,
+  fillInvite,
   forbiddenScreen,
   membersPath,
   openDialog,
+  openInvite,
   people,
   rowAction,
   rowOf,
 } from '../__tests__/portal2';
 
 const ACME_LIST = membersPath('ACME');
+const BETA_LIST = membersPath('BETA');
+const RESEND = `${ACME_LIST}/${INVITED_ROW.id}/resend`;
+const REMOVE = `${ACME_LIST}/${COLLEAGUE.id}`;
 const TOO_MANY = '수락을 기다리는 초대가 너무 많습니다';
 const ALREADY_GONE = '이미 목록에 없는 사람입니다';
+const INVITED = '요청을 처리했습니다';
+const RESENT = '초대를 다시 보냈습니다';
+const NOT_RESENDABLE = '이 초대는 다시 보낼 수 없습니다';
+const REMOVED = '소속에서 뺐습니다';
+const noContent = () => new Response(null, { status: 204 });
 
 type User = ReturnType<typeof renderAt>['user'];
 
-async function openInvite(user: User, companyName: string): Promise<HTMLElement> {
-  await user.click(await button(/^초대$/));
-  return found(() => screen.queryByRole('dialog', { name: `${companyName}에 초대` }), `대화상자 "${companyName}에 초대"`);
+/** Opens 소속에서 빼기 of 최동료 and returns the button that goes on. */
+async function removeConfirm(user: User): Promise<HTMLElement> {
+  await user.click(await rowAction(user, await rowOf(COLLEAGUE.email), '소속에서 빼기'));
+  return confirmButton(await found(() => openDialog(), '확인 대화상자'));
 }
-
-const emailIn = (box: HTMLElement) => found(() => within(box).queryAllByLabelText<HTMLInputElement>(/^이메일/, { selector: 'input' })[0], '이메일 칸');
-const nameIn = (box: HTMLElement) => found(() => within(box).queryAllByLabelText<HTMLInputElement>(/^이름/, { selector: 'input' })[0], '이름 칸');
 
 /** BETA's rows are on the screen and none of ACME's. */
 async function showsBeta() {
@@ -83,23 +91,26 @@ describe('P-8 우리 회사 사람: 늦게 온 답', () => {
     await showsBeta();
   });
 
-  test('S2-AC-49 P-8 초대: 보내는 중에 닫고 고객사를 바꾼 뒤 온 답은 버린다. 다시 열면 오류 없이 새 고객사의 빈 대화상자다', async () => {
+  test.each([
+    ['409 TOO_MANY_PENDING', () => rejected('TOO_MANY_PENDING', 409)],
+    ['204', noContent],
+  ])('S2-AC-49 P-8 초대: 보내는 중에 닫고 고객사를 바꾼 뒤 온 답(%s)은 버린다. 토스트도 없고 목록을 다시 부르지도 않는다. 다시 열면 오류 없이 새 고객사의 빈 대화상자다', async (_, answer) => {
     belongTo(ACME_MANAGED, BETA_MANAGED);
     const release = gate();
     route('post', ACME_LIST, async () => {
       await release.opened;
-      return rejected('TOO_MANY_PENDING', 409);
+      return answer();
     });
     const { user } = renderAt('/members?company=ACME');
     await rowOf(COLLEAGUE.email);
     const first = await openInvite(user, ACME_MANAGED.name);
-    await user.type(await emailIn(first), 'new@acme.test');
-    await user.type(await nameIn(first), '신입');
-    await user.click(confirmButton(first));
+    await fillInvite(user, first);
+    await user.click(confirmButton(first.box));
     await sent('POST', ACME_LIST);
-    await cancel(user, first);
+    await cancel(user, first.box);
     await choose(user, BETA_MANAGED);
     await rowOf(BETA_ROW.email);
+    const loads = callsTo('GET', BETA_LIST).length;
 
     const done = answered('POST', ACME_LIST);
     release.open();
@@ -108,16 +119,46 @@ describe('P-8 우리 회사 사람: 늦게 온 답', () => {
 
     expect(openDialog(), '늦은 답이 대화상자를 다시 열지 않는다').toBeNull();
     expectNotSaid(TOO_MANY);
+    expectNotSaid(INVITED);
+    expect(callsTo('GET', BETA_LIST), '늦은 답 때문에 다시 부른 목록').toHaveLength(loads);
     await showsBeta();
     const second = await openInvite(user, BETA_MANAGED.name);
-    expect(within(second).queryAllByRole('alert'), 'ACME의 오류').toHaveLength(0);
-    expect(await emailIn(second)).toHaveValue('');
-    expect(isBlocked(confirmButton(second)), 'BETA의 "초대" 버튼').toBe(false);
+    expect(within(second.box).queryAllByRole('alert'), 'ACME의 오류').toHaveLength(0);
+    expect(second.email).toHaveValue('');
+    expect(isBlocked(confirmButton(second.box)), 'BETA의 "초대" 버튼').toBe(false);
+  });
+
+  test.each([
+    ['204', noContent],
+    ['400 INVITATION_NOT_RESENDABLE', () => rejected('INVITATION_NOT_RESENDABLE')],
+  ])('S2-AC-49 P-8 초대 다시 보내기: 보내는 중에 고객사를 바꾼 뒤 온 답(%s)은 버린다. 토스트도 없고 표도 그대로다', async (_, answer) => {
+    belongTo(ACME_MANAGED, BETA_MANAGED);
+    const release = gate();
+    route('post', RESEND, async () => {
+      await release.opened;
+      return answer();
+    });
+    const { user } = renderAt('/members?company=ACME');
+    await user.click(await rowAction(user, await rowOf(INVITED_ROW.email), '초대 다시 보내기'));
+    await sent('POST', RESEND);
+    await choose(user, BETA_MANAGED);
+    await rowOf(BETA_ROW.email);
+    const loads = callsTo('GET', BETA_LIST).length;
+
+    const done = answered('POST', RESEND);
+    release.open();
+    await done;
+    await settle();
+
+    expectNotSaid(RESENT);
+    expectNotSaid(NOT_RESENDABLE);
+    expect(callsTo('GET', BETA_LIST), '늦은 답 때문에 다시 부른 목록').toHaveLength(loads);
+    await showsBeta();
   });
 
   test('S2-AC-49 P-8 빼기: 빼는 중에 닫고 고객사를 바꾼 뒤 온 답은 버린다. 토스트도 없고 표도 그대로다', async () => {
     belongTo(ACME_MANAGED, BETA_MANAGED);
-    const path = `${ACME_LIST}/${COLLEAGUE.id}`;
+    const path = REMOVE;
     const release = gate();
     route('delete', path, async () => {
       await release.opened;
@@ -142,18 +183,45 @@ describe('P-8 우리 회사 사람: 늦게 온 답', () => {
     await showsBeta();
   });
 
-  test('S2-AC-11 P-8 보는 중에 담당자 지정이 풀림: 다음 요청이 403이면 화면 전체가 403 상태가 된다', async () => {
+  test.each([
+    {
+      what: '초대 다시 보내기',
+      request: ['POST', RESEND],
+      ready: (user: User) => rowOf(INVITED_ROW.email).then((row) => rowAction(user, row, '초대 다시 보내기')),
+    },
+    {
+      what: '초대',
+      request: ['POST', ACME_LIST],
+      ready: async (user: User) => {
+        const d = await openInvite(user, ACME_MANAGED.name);
+        await fillInvite(user, d);
+        return confirmButton(d.box);
+      },
+    },
+    { what: '빼기', request: ['DELETE', REMOVE], ready: removeConfirm },
+    {
+      // Someone else took the row out first: the 404 makes the screen read the list again, and that answer is the 403.
+      what: '목록 다시 부르기',
+      request: ['GET', ACME_LIST],
+      ready: (user: User) => {
+        route('delete', REMOVE, () => errors.notFound());
+        return removeConfirm(user);
+      },
+    },
+  ] as const)('S2-AC-11 P-8 보는 중에 담당자 지정이 풀림($what): 그 요청이 403이면 화면 전체가 403 상태가 된다', async ({ request: [method, path], ready }) => {
     belongTo(ACME_MANAGED);
     const { user } = renderAt('/members');
-    const row = await rowOf(INVITED_ROW.email);
-    const resend = await rowAction(user, row, '초대 다시 보내기');
+    await rowOf(INVITED_ROW.email);
+    const go = await ready(user);
+    const before = callsTo(method, path).length;
     // An admin took the manager mark away: the fake server answers 403 from now on.
     belongTo({ ...ACME_MANAGED, manager: false });
-    await user.click(resend);
+    await user.click(go);
 
-    await sent('POST', `${ACME_LIST}/${INVITED_ROW.id}/resend`);
+    await sent(method, path, before + 1);
     await forbiddenScreen();
+    expect(openDialog(), '대화상자').toBeNull();
     expect(pageText()).not.toContain(INVITED_ROW.email);
-    expectNotSaid('초대를 다시 보냈습니다');
+    for (const done of [RESENT, INVITED, REMOVED]) expectNotSaid(done);
   });
 });

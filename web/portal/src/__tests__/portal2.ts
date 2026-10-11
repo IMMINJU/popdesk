@@ -5,7 +5,7 @@
 import type { PortalComponents } from '@popdesk/api/portal';
 import { http, HttpResponse } from 'msw/http';
 import { beforeEach, expect } from 'vitest';
-import { ME, errors, eventually, found, liveRegions, matchText, pageText, paged, screen, server, state, text, within, type Company } from './portal';
+import { ME, button, errors, eventually, found, liveRegions, matchText, paged, screen, server, state, text, within, type Company } from './portal';
 // The 1a handlers too: `/api/portal/me` answers `session.me`.
 import { rejected, session } from './portal1a';
 
@@ -253,11 +253,32 @@ export function expectNotSaid(wanted: string | RegExp) {
   expect(saidNow(wanted), `토스트나 띠: ${String(wanted)}`).toBe(false);
 }
 
-/** The whole screen in the 403 state (S2-AC-45): no table and nothing to invite with. */
+type Typist = User & { type: (el: Element, text: string) => Promise<void> };
+
+/** Opens the invitation dialog of P-8 for the company shown and returns it with its two fields. */
+export async function openInvite(user: User, companyName: string) {
+  await user.click(await button(/^초대$/));
+  const box = await found(() => screen.queryByRole('dialog', { name: `${companyName}에 초대` }), `대화상자 "${companyName}에 초대"`);
+  return { box, email: await emailIn(box), name: await nameIn(box) };
+}
+
+export const emailIn = (box: HTMLElement) => found(() => within(box).queryAllByLabelText<HTMLInputElement>(/^이메일/, { selector: 'input' })[0], '대화상자의 이메일 칸');
+export const nameIn = (box: HTMLElement) => found(() => within(box).queryAllByLabelText<HTMLInputElement>(/^이름/, { selector: 'input' })[0], '대화상자의 이름 칸');
+
+/** Types an email and a name into an open invitation dialog. */
+export async function fillInvite(user: Typist, d: Awaited<ReturnType<typeof openInvite>>, email = 'new@acme.test', name = '신입') {
+  await user.type(d.email, email);
+  await user.type(d.name, name);
+}
+
+/** The whole screen in a state named by its `h1` (screens.md 4절): "권한이 없습니다" for 403, "찾을 수 없습니다" for 404. */
+export async function screenState(title: string): Promise<HTMLElement> {
+  return found(() => screen.queryByRole('heading', { level: 1, name: title }), `화면 제목 h1 "${title}"`);
+}
+
+/** The whole screen in the 403 state (S2-AC-45): the `h1`, no table and nothing to invite with. */
 export async function forbiddenScreen() {
-  await eventually(() => {
-    expect(pageText()).toContain('권한이 없습니다');
-  });
+  await screenState('권한이 없습니다');
   expect(screen.queryAllByRole('table'), '표').toHaveLength(0);
   expect(screen.queryByRole('button', { name: /^초대$/ }), '"초대" 버튼').toBeNull();
 }
