@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.web.console;
 
+import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.AccountStatus;
@@ -39,6 +40,9 @@ class ConsoleAccountController {
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`.";
     static final String NOT_FOUND = "`NOT_FOUND`: no such account.";
+    static final String CLEAR_ASSIGNMENTS = "`true`: in the same request, also clear the assignee of every issue counted by "
+            + "`countOpenAssignments` (S3-AC-69). Each of them gets a history entry by the caller, and no webhook message "
+            + "is sent (S3-AC-70). Left out or `false`, assignees stay.";
 
     @Operation(operationId = "listAccounts", summary = "Accounts",
             description = "Every account, newest first (C-10). `role` narrows it, for example to pick an agent to "
@@ -96,7 +100,8 @@ class ConsoleAccountController {
     @Operation(operationId = "suspendAccount", summary = "Suspend an account",
             description = "Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, "
                     + "S1A-AC-34). A suspended account cannot sign in and gets no email. Suspending an account that "
-                    + "is already `SUSPENDED` is 200 too.")
+                    + "is already `SUSPENDED` is 200 too. Issues keep the account as assignee, marked "
+                    + "`assigneeUnavailable`, unless `clearAssignments` is sent (S3-AC-31).")
     @ApiResponse(responseCode = "200", description = "Suspended.")
     @ApiResponse(responseCode = "400", description = "`OWN_ACCOUNT`: the caller's own account (S1A-AC-33). "
             + "`LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81). `ACCOUNT_NOT_ACTIVE`: the account never "
@@ -105,8 +110,27 @@ class ConsoleAccountController {
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY)
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @PostMapping("/api/console/accounts/{accountId}/suspend")
-    Account suspendAccount(@PathVariable long accountId) {
-        return account(accounts.suspend(CurrentAccount.get(), accountId));
+    SuspendedAccount suspendAccount(@PathVariable long accountId,
+            @Parameter(description = CLEAR_ASSIGNMENTS) @RequestParam(defaultValue = "false")
+                    boolean clearAssignments) {
+        if (clearAssignments) {
+            throw new NotImplementedException();
+        }
+        Account a = account(accounts.suspend(CurrentAccount.get(), accountId));
+        return new SuspendedAccount(a.id(), a.email(), a.name(), a.role(), a.status(), a.createdAt(),
+                a.photoUpdatedAt(), new ClearedAssignments(0));
+    }
+
+    @Operation(operationId = "countOpenAssignments", summary = "What an account is still assigned to",
+            description = "Issues that are not `CLOSED` and have the account as assignee, in every company: what "
+                    + "`suspendAccount` clears with `clearAssignments` (S3-AC-68).")
+    @ApiResponse(responseCode = "200", description = "The counts.")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: admins only.")
+    @ApiResponse(responseCode = "404", description = NOT_FOUND)
+    @GetMapping("/api/console/accounts/{accountId}/open-assignments")
+    OpenAssignments countOpenAssignments(@PathVariable long accountId) {
+        throw new NotImplementedException();
     }
 
     @Operation(operationId = "reactivateAccount", summary = "Lift an account's suspension",

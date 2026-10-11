@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.web.console;
 
+import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.Role;
@@ -15,6 +16,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -58,6 +60,9 @@ class ConsoleCompanyController {
     static final String NOT_FOUND = "`NOT_FOUND`: no such company, or the caller cannot see it.";
     static final String NOT_A_MEMBER = "`NOT_FOUND`: no such company, or the account is not a customer who belongs "
             + "to it (S2-AC-02).";
+    static final String CLEAR_ASSIGNMENTS = "`true`: in the same request, also clear the assignee of every issue counted by "
+            + "`countCompanyOpenAssignments` (S3-AC-69). Each of them gets a history entry by the caller, and no webhook message "
+            + "is sent (S3-AC-70). Left out or `false`, assignees stay.";
     static final String PAGE_400 = "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`).";
 
     @Operation(operationId = "listCompanies", summary = "Companies the caller can see",
@@ -235,17 +240,50 @@ class ConsoleCompanyController {
         return member(companies.unmarkManager(admin.viewer(), admin.actor(), code, accountId));
     }
 
+    @Operation(operationId = "listAssigneeCandidates", summary = "Who can be assignee of the company's issues",
+            description = "Every `ACTIVE` admin and every `ACTIVE` agent assigned to the company, in name order "
+                    + "(S3-AC-27). All of them at once, without pages: the list fills a picker.")
+    @ApiResponse(responseCode = "200", description = "The candidates.")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "404", description = NOT_FOUND)
+    @GetMapping("/{code}/assignees")
+    AssigneeCandidates listAssigneeCandidates(@PathVariable String code) {
+        throw new NotImplementedException();
+    }
+
+    @Operation(operationId = "countCompanyOpenAssignments",
+            summary = "What an agent is still assigned to in a company",
+            description = "Issues of this company that are not `CLOSED` and have the agent as assignee: what "
+                    + "`unassignAgent` clears with `clearAssignments` (S3-AC-68).")
+    @ApiResponse(responseCode = "200", description = "The counts.")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = ADMIN_ONLY)
+    @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
+    @GetMapping("/{code}/agents/{accountId}/open-assignments")
+    OpenAssignments countCompanyOpenAssignments(@PathVariable String code, @PathVariable long accountId) {
+        throw new NotImplementedException();
+    }
+
     @Operation(operationId = "unassignAgent", summary = "Take an agent off a company",
             description = "From the next request the agent no longer sees the company's issues, comments, or files "
-                    + "(S1A-AC-55). Works for a company of any status, and removing again is 200 too.")
-    @ApiResponse(responseCode = "200", description = "Not assigned.")
+                    + "(S1A-AC-55). Works for a company of any status, and removing again is 200 too. Issues "
+                    + "keep the agent as assignee, marked `assigneeUnavailable`, unless `clearAssignments` is "
+                    + "sent (S3-AC-31).")
+    @ApiResponse(responseCode = "200", description = "Not assigned. With `clearAssignments=true` the body says "
+            + "what was cleared; without it there is no body.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
     @DeleteMapping("/{code}/agents/{accountId}")
-    void unassignAgent(@PathVariable String code, @PathVariable long accountId) {
+    ResponseEntity<ClearedAssignments> unassignAgent(@PathVariable String code, @PathVariable long accountId,
+            @Parameter(description = CLEAR_ASSIGNMENTS) @RequestParam(defaultValue = "false")
+                    boolean clearAssignments) {
+        if (clearAssignments) {
+            throw new NotImplementedException();
+        }
         CurrentAccount admin = CurrentAccount.get();
         companies.unassignAgent(admin.viewer(), admin.actor(), code, accountId);
+        return ResponseEntity.ok().build();
     }
 
     private Paged<CompanyMember> members(String code, Role role, int page, int size) {

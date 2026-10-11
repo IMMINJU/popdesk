@@ -18,6 +18,11 @@ public record Issue(
         @JsonProperty("private")
                 @Schema(description = "Visible only to the reporter and staff.") boolean privateIssue,
         Person reporter,
+        @Schema(description = "The support team filed the issue for the reporter (S3-AC-36).") boolean filedBySupport,
+        @Schema(description = "When the issue became `RESOLVED`; null when it is not resolved (S3-AC-59).",
+                nullable = true) OffsetDateTime resolvedAt,
+        @Schema(description = "When the issue became `CLOSED`; null while it is open. It can be reopened for 14 "
+                + "days from then.", nullable = true) OffsetDateTime closedAt,
         @Schema(description = "Goes up by 1 on every change to the issue (S0-AC-45).") long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {}

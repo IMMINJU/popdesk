@@ -41,6 +41,26 @@ export interface paths {
         patch: operations["updateAccount"];
         trace?: never;
     };
+    "/api/console/accounts/{accountId}/open-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What an account is still assigned to
+         * @description Issues that are not `CLOSED` and have the account as assignee, in every company: what `suspendAccount` clears with `clearAssignments` (S3-AC-68).
+         */
+        get: operations["countOpenAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/console/accounts/{accountId}/password-reset": {
         parameters: {
             query?: never;
@@ -112,7 +132,7 @@ export interface paths {
         put?: never;
         /**
          * Suspend an account
-         * @description Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, S1A-AC-34). A suspended account cannot sign in and gets no email. Suspending an account that is already `SUSPENDED` is 200 too.
+         * @description Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, S1A-AC-34). A suspended account cannot sign in and gets no email. Suspending an account that is already `SUSPENDED` is 200 too. Issues keep the account as assignee, marked `assigneeUnavailable`, unless `clearAssignments` is sent (S3-AC-31).
          */
         post: operations["suspendAccount"];
         delete?: never;
@@ -266,9 +286,49 @@ export interface paths {
         post?: never;
         /**
          * Take an agent off a company
-         * @description From the next request the agent no longer sees the company's issues, comments, or files (S1A-AC-55). Works for a company of any status, and removing again is 200 too.
+         * @description From the next request the agent no longer sees the company's issues, comments, or files (S1A-AC-55). Works for a company of any status, and removing again is 200 too. Issues keep the agent as assignee, marked `assigneeUnavailable`, unless `clearAssignments` is sent (S3-AC-31).
          */
         delete: operations["unassignAgent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/companies/{code}/agents/{accountId}/open-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What an agent is still assigned to in a company
+         * @description Issues of this company that are not `CLOSED` and have the agent as assignee: what `unassignAgent` clears with `clearAssignments` (S3-AC-68).
+         */
+        get: operations["countCompanyOpenAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/companies/{code}/assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who can be assignee of the company's issues
+         * @description Every `ACTIVE` admin and every `ACTIVE` agent assigned to the company, in name order (S3-AC-27). All of them at once, without pages: the list fills a picker.
+         */
+        get: operations["listAssigneeCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -455,11 +515,15 @@ export interface paths {
         };
         /**
          * Issues the caller can see
-         * @description All issues of assigned companies for agents, all issues for admins, newest first (S0-AC-47).
+         * @description All issues of assigned companies for agents, all issues for admins, newest first (S0-AC-47). The filters narrow that and never widen it: with several, an issue must match all of them (S3-AC-06).
          */
         get: operations["listIssues"];
         put?: never;
-        post?: never;
+        /**
+         * File an issue on behalf of a customer
+         * @description The customer is the reporter and the caller is `createdBy`; otherwise the issue is made like one the customer files: key `{code}-{number}`, status `RECEIVED` (S3-AC-32). The customer gets an email (S3-AC-37). JSON only; attach files to the issue afterwards.
+         */
+        post: operations["createIssue"];
         delete?: never;
         options?: never;
         head?: never;
@@ -478,6 +542,34 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change an issue's title, content, or priority
+         * @description A field left out keeps its value; the rules for each field are those of filing (S3-AC-18). Saving goes up `version` by 1; sending what the issue already has changes nothing and is 200 too (S3-AC-22). Works whatever the status of the company (S3-AC-60).
+         */
+        patch: operations["updateIssue"];
+        trace?: never;
+    };
+    "/api/console/issues/{key}/assignee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set an issue's assignee
+         * @description One of the company's `listAssigneeCandidates` (ISSUE-7). Goes up `version` by 1; the assignee the issue already has changes nothing and is 200 too (S3-AC-24). Works on a `CLOSED` issue too (S3-AC-30).
+         */
+        put: operations["setIssueAssignee"];
+        post?: never;
+        /**
+         * Clear an issue's assignee
+         * @description An issue without an assignee stays as it is and is 200 too (S3-AC-26). Works on a `CLOSED` issue too (S3-AC-30).
+         */
+        delete: operations["clearIssueAssignee"];
         options?: never;
         head?: never;
         patch?: never;
@@ -553,6 +645,66 @@ export interface paths {
          * @description A public comment emails the reporter and sets the first response time once (S0-AC-46, S0-AC-70). An internal comment is hidden from customers (S0-AC-53).
          */
         post: operations["createComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/issues/{key}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * History of an issue
+         * @description One `CREATED` entry, then one `CHANGED` entry for each field that changed, oldest first (S3-AC-61, S3-AC-62, S3-AC-64). The portal has no such path (S3-AC-65).
+         */
+        get: operations["listIssueHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/issues/{key}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reopen an issue
+         * @description A `RESOLVED` issue, or a `CLOSED` one within 14 days of `closedAt`, goes back to `RECEIVED`, and `resolvedAt` and `closedAt` are cleared; the assignee and `firstResponseAt` stay (S3-AC-56). Takes no body.
+         */
+        post: operations["reopenIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/issues/{key}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change an issue's status
+         * @description One of the issue's `nextStatuses` (STATUS-1). Takes no `version`: changes to one issue are applied one after another (S3-AC-51). `RESOLVED` sets `resolvedAt`, `CLOSED` sets `closedAt`, and leaving `RESOLVED` for `IN_PROGRESS` clears `resolvedAt` (S3-AC-50). A `CLOSED` issue leaves that status only through `reopenIssue`.
+         */
+        put: operations["changeIssueStatus"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -959,6 +1111,9 @@ export interface components {
             fields?: components["schemas"]["FieldError"][];
             message: string;
         };
+        AssigneeCandidates: {
+            items: components["schemas"]["Person"][];
+        };
         Attachment: {
             /**
              * Format: int64
@@ -1056,6 +1211,10 @@ export interface components {
             /** @enum {string} */
             status: "ACTIVE" | "SUSPENDED" | "ARCHIVED";
         };
+        ChangeIssueStatusRequest: {
+            /** @enum {string} */
+            status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+        };
         ChangePasswordRequest: {
             currentPassword: string;
             /** @description 10 to 72 characters, not only whitespace, not the same as the email (AUTH-5). */
@@ -1083,6 +1242,13 @@ export interface components {
              * @description Rows waiting to be sent.
              */
             queued: number;
+        };
+        ClearedAssignments: {
+            /**
+             * Format: int64
+             * @description Issues whose assignee was cleared. 0 without `clearAssignments`.
+             */
+            issues: number;
         };
         Comment: {
             author: components["schemas"]["Person"];
@@ -1154,6 +1320,31 @@ export interface components {
             /** @enum {string} */
             role: "CUSTOMER" | "AGENT" | "ADMIN";
         };
+        CreateIssueRequest: {
+            /**
+             * @description How the request came in.
+             * @enum {string}
+             */
+            channel: "PHONE" | "OTHER";
+            /** @description Code of an active company the caller can see. */
+            companyCode: string;
+            /** @description Markdown, up to 10,000 characters. Empty when left out. */
+            content?: string;
+            /**
+             * @description `NORMAL` when left out.
+             * @enum {string}
+             */
+            priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+            /** @description Public when left out. */
+            private?: boolean;
+            /**
+             * Format: int64
+             * @description Account ID of an `ACTIVE` customer who belongs to that company. The customer is the reporter of the issue.
+             */
+            reporterId: number;
+            /** @description 1 to 200 characters after trimming. */
+            title: string;
+        };
         FailedDelivery: {
             /**
              * Format: int64
@@ -1191,14 +1382,25 @@ export interface components {
             inviteLink: string | null;
         };
         Issue: {
+            /** @description Null when nobody is assigned (S3-AC-28). */
+            assignee: components["schemas"]["Person"] | null;
+            /** @description The assignee can no longer see the issue: the account is not `ACTIVE`, or it is an agent who is not assigned to the company (ISSUE-11). `false` without an assignee. */
+            assigneeUnavailable: boolean;
             /** @enum {string} */
             channel: "PORTAL" | "EMAIL" | "PHONE" | "OTHER";
+            /**
+             * Format: date-time
+             * @description When the issue became `CLOSED`; null while it is open.
+             */
+            closedAt: string | null;
             companyCode: string;
             companyName: string;
             /** @description Markdown, as written (COM-6). */
             content: string;
             /** Format: date-time */
             createdAt: string;
+            /** @description The staff member who filed the issue for the reporter; null when the reporter filed it (S3-AC-36). */
+            createdBy: components["schemas"]["Person"] | null;
             /**
              * Format: date-time
              * @description When staff first commented publicly (S0-AC-46).
@@ -1206,10 +1408,19 @@ export interface components {
             firstResponseAt: string | null;
             /** @description `{company code}-{number}`, for example `ACME-7`. */
             key: string;
+            /** @description The statuses `changeIssueStatus` takes now (STATUS-1). Empty for a `CLOSED` issue. */
+            nextStatuses: ("RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED")[];
             /** @enum {string} */
             priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
             private: boolean;
+            /** @description `reopenIssue` works now: the issue is `RESOLVED`, or `CLOSED` for less than 14 days (STATUS-4). */
+            reopenable: boolean;
             reporter: components["schemas"]["Person"];
+            /**
+             * Format: date-time
+             * @description When the issue became `RESOLVED`; null when it is not resolved (S3-AC-59).
+             */
+            resolvedAt: string | null;
             /** @enum {string} */
             status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
             title: string;
@@ -1221,11 +1432,58 @@ export interface components {
              */
             version: number;
         };
+        IssueHistoryActor: {
+            /**
+             * Format: int64
+             * @description 0 for popdesk itself.
+             */
+            accountId: number;
+            /** @description Null for popdesk itself. */
+            name: string | null;
+            /**
+             * Format: date-time
+             * @description When the profile photo last changed; null without a photo (`getPhoto`) and for popdesk itself.
+             */
+            photoUpdatedAt: string | null;
+            /**
+             * @description Null for popdesk itself.
+             * @enum {string|null}
+             */
+            role: "CUSTOMER" | "AGENT" | "ADMIN" | null;
+        };
+        IssueHistoryEntry: {
+            actor: components["schemas"]["IssueHistoryActor"];
+            /** Format: date-time */
+            createdAt: string;
+            /** @description The field that changed: `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, or `PRIORITY`. Later releases add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `CREATED`. */
+            field: string | null;
+            /**
+             * Format: int64
+             * @description Entries of an issue are in the order of their IDs.
+             */
+            id: number;
+            /** @enum {string} */
+            kind: "CREATED" | "CHANGED";
+            /** @description For `ASSIGNEE`: the assignee after the change; null when it was cleared. Null for every other field. */
+            newPerson: components["schemas"]["Person"] | null;
+            /** @description The value after the change, like `oldValue`. */
+            newValue: string | null;
+            /** @description For `ASSIGNEE`: the assignee before the change, by the account's current name; null when there was none. Null for every other field. */
+            oldPerson: components["schemas"]["Person"] | null;
+            /** @description The value before the change: the name of the status or priority, or the title or content as it was. Null for `CREATED`, for `ASSIGNEE`, and when there was no value. */
+            oldValue: string | null;
+        };
         IssueSummary: {
+            /** @description Null when nobody is assigned (S3-AC-28). */
+            assignee: components["schemas"]["Person"] | null;
+            /** @description The assignee can no longer see the issue (ISSUE-11). `false` without an assignee. */
+            assigneeUnavailable: boolean;
             companyCode: string;
             companyName: string;
             /** Format: date-time */
             createdAt: string;
+            /** @description Staff filed the issue for the reporter (ISSUE-9). */
+            filedOnBehalf: boolean;
             /** @description `{company code}-{number}`, for example `ACME-7`. */
             key: string;
             /** @enum {string} */
@@ -1290,6 +1548,13 @@ export interface components {
              * @description When the caller marked it read.
              */
             readAt: string | null;
+        };
+        OpenAssignments: {
+            /**
+             * Format: int64
+             * @description Issues that are not `CLOSED` and have this account as assignee.
+             */
+            issues: number;
         };
         PagedAccount: {
             items: components["schemas"]["Account"][];
@@ -1395,6 +1660,23 @@ export interface components {
         };
         PagedFailedDelivery: {
             items: components["schemas"]["FailedDelivery"][];
+            /**
+             * Format: int32
+             * @description Page number, starting at 1.
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Items per page, 1 to 100.
+             */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
+        };
+        PagedIssueHistoryEntry: {
+            items: components["schemas"]["IssueHistoryEntry"][];
             /**
              * Format: int32
              * @description Page number, starting at 1.
@@ -1535,12 +1817,37 @@ export interface components {
             /** @description The token from the reset link's fragment (after `#`). Sent only in the body. */
             token: string;
         };
+        SetAssigneeRequest: {
+            /**
+             * Format: int64
+             * @description An `ACTIVE` admin, or an `ACTIVE` agent assigned to the issue's company (ISSUE-7).
+             */
+            accountId: number;
+        };
         SignInRequest: {
             /** @description Leading and trailing whitespace and case are ignored. */
             email: string;
             password: string;
         };
         StreamingResponseBody: unknown;
+        SuspendedAccount: {
+            cleared: components["schemas"]["ClearedAssignments"];
+            /** Format: date-time */
+            createdAt: string;
+            email: string;
+            /** Format: int64 */
+            id: number;
+            name: string;
+            /**
+             * Format: date-time
+             * @description When the profile photo last changed; null without a photo (`getPhoto`).
+             */
+            photoUpdatedAt: string | null;
+            /** @enum {string} */
+            role: "CUSTOMER" | "AGENT" | "ADMIN";
+            /** @enum {string} */
+            status: "INVITED" | "ACTIVE" | "SUSPENDED";
+        };
         SystemStatus: {
             auditForward: components["schemas"]["ChannelStatus"];
             mail: components["schemas"]["ChannelStatus"];
@@ -1559,6 +1866,22 @@ export interface components {
             legalName?: string;
             /** @description 1 to 100 characters. */
             name?: string;
+        };
+        UpdateIssueRequest: {
+            /** @description Markdown, up to 10,000 characters. `null` clears it. */
+            content?: string;
+            /**
+             * @description `null` is refused.
+             * @enum {string}
+             */
+            priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+            /** @description 1 to 200 characters after trimming. `null` is refused. */
+            title?: string;
+            /**
+             * Format: int64
+             * @description The `version` of the issue as the caller read it (S3-AC-19).
+             */
+            version: number;
         };
         UpdateMeRequest: {
             /**
@@ -1679,6 +2002,55 @@ export interface operations {
                 };
             };
             /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    countOpenAssignments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The counts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAssignments"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1878,7 +2250,10 @@ export interface operations {
     };
     suspendAccount: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description `true`: in the same request, also clear the assignee of every issue counted by `countOpenAssignments` (S3-AC-69). Each of them gets a history entry by the caller, and no webhook message is sent (S3-AC-70). Left out or `false`, assignees stay. */
+                clearAssignments?: boolean;
+            };
             header?: never;
             path: {
                 accountId: number;
@@ -1893,7 +2268,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Account"];
+                    "application/json": components["schemas"]["SuspendedAccount"];
                 };
             };
             /** @description `OWN_ACCOUNT`: the caller's own account (S1A-AC-33). `LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81). `ACCOUNT_NOT_ACTIVE`: the account never accepted its invitation (`INVITED`, or a cancelled invitation); cancel the invitation instead. */
@@ -2533,7 +2908,10 @@ export interface operations {
     };
     unassignAgent: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description `true`: in the same request, also clear the assignee of every issue counted by `countCompanyOpenAssignments` (S3-AC-69). Each of them gets a history entry by the caller, and no webhook message is sent (S3-AC-70). Left out or `false`, assignees stay. */
+                clearAssignments?: boolean;
+            };
             header?: never;
             path: {
                 code: string;
@@ -2543,12 +2921,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Not assigned. */
+            /** @description Not assigned. With `clearAssignments=true` the body says what was cleared; without it there is no body. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ClearedAssignments"];
+                };
             };
             /** @description `UNAUTHENTICATED`. */
             401: {
@@ -2569,6 +2949,96 @@ export interface operations {
                 };
             };
             /** @description `NOT_FOUND`: no such company or account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    countCompanyOpenAssignments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The counts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAssignments"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only (S0-AC-30). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company or account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listAssigneeCandidates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The candidates. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssigneeCandidates"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the caller cannot see it. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3198,6 +3668,16 @@ export interface operations {
     listIssues: {
         parameters: {
             query?: {
+                /** @description Only issues with one of these statuses. Give it once for each status. */
+                status?: ("RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED")[];
+                /** @description Only issues of the company with this code. A company the caller cannot see gives an empty page (S3-AC-02). */
+                company?: string;
+                /** @description Only issues with this assignee: an account ID, `me` for the caller, `none` for issues without an assignee, or `unavailable` for issues whose assignee can no longer see them (S3-AC-03, S3-AC-04). */
+                assignee?: string;
+                /** @description Only issues this account reported. An account that does not exist gives an empty page (S3-AC-05). */
+                reporter?: number;
+                /** @description Only issues whose title or content, as shown, holds this text, 1 to 100 characters. Case is ignored; `%` and `_` are ordinary characters (COM-5). */
+                q?: string;
                 /** @description Page number, from 1. */
                 page?: number;
                 /** @description 1 to 100. */
@@ -3218,7 +3698,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedIssueSummary"];
                 };
             };
-            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`). */
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `status` or `assignee` (`UNKNOWN_VALUE`), `reporter` not a number (`INVALID_FORMAT`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14), or a parameter this list does not take (`UNKNOWN_PARAMETER`, S3-AC-07). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3229,6 +3709,105 @@ export interface operations {
             };
             /** @description `UNAUTHENTICATED`. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 60 lists with `q` in 60 seconds, counted together with the account list (S3-AC-15). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createIssue: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Makes a retry safe: a filing with a key this account used in the last 24 hours answers with the issue that key made (S3-AC-41). 1 to 100 visible ASCII characters. See "Filing an issue once" in the conventions. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. Also for a retry with the same `Idempotency-Key` and content: the issue made the first time, as it is now (S3-AC-41). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `title` empty or over 200, `content` over 10,000, `priority` unknown, `channel` missing or not `PHONE` or `OTHER` (S3-AC-35), `reporterId` missing, or not an `ACTIVE` customer who belongs to the company (`UNKNOWN_VALUE`, one answer whatever the reason, S3-AC-33); `fields` lists all. `Idempotency-Key` not 1 to 100 visible ASCII characters (S3-AC-45). `COMPANY_NOT_ACTIVE`: the company is not `ACTIVE`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the caller, an agent, is not assigned to it (S3-AC-34). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `IDEMPOTENCY_KEY_REUSED`: the account used this `Idempotency-Key` for a filing with other content (S3-AC-42). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: the body is over 256 KB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 10 issues in 60 seconds (S3-AC-39). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3260,6 +3839,188 @@ export interface operations {
             };
             /** @description `UNAUTHENTICATED`. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description The issue as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `version` missing (`REQUIRED`), `title` empty, over 200, or `null`, `content` over 10,000, `priority` unknown or `null`; `fields` lists all. `ISSUE_CLOSED`: the issue is `CLOSED` (S3-AC-21). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `VERSION_CONFLICT`: `version` is not the issue's current one; nothing changed. Read the issue again (S3-AC-19). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    setIssueAssignee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAssigneeRequest"];
+            };
+        };
+        responses: {
+            /** @description The issue with its assignee. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `accountId` missing (`REQUIRED`), or not an account that can be the assignee (`UNKNOWN_VALUE`, one answer whatever the reason, S3-AC-25). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    clearIssueAssignee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The issue without an assignee. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3693,6 +4454,180 @@ export interface operations {
             };
             /** @description `RATE_LIMITED`: more than 30 comments in 60 seconds (S0-AC-55). */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listIssueHistory: {
+        parameters: {
+            query?: {
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description 1 to 100. */
+                size?: number;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedIssueHistoryEntry"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    reopenIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The issue, now `RECEIVED`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `NOT_REOPENABLE`: the issue is neither `RESOLVED` nor `CLOSED`, or it was closed 14 days ago or longer (S3-AC-57). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    changeIssueStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeIssueStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description The issue with its new status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `status` missing (`REQUIRED`) or unknown (`UNKNOWN_VALUE`). `INVALID_TRANSITION`: the issue cannot go from its status to this one, or has it already; nothing changed (S3-AC-49). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

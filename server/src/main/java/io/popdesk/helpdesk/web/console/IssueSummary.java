@@ -16,4 +16,8 @@ public record IssueSummary(
         Priority priority,
         @JsonProperty("private") boolean privateIssue,
         Person reporter,
+        @Schema(description = "Staff filed the issue for the reporter (ISSUE-9).") boolean filedOnBehalf,
+        @Schema(description = "Null when nobody is assigned (S3-AC-28).", nullable = true) Person assignee,
+        @Schema(description = "The assignee can no longer see the issue (ISSUE-11). `false` without an "
+                + "assignee.") boolean assigneeUnavailable,
         OffsetDateTime createdAt) {}

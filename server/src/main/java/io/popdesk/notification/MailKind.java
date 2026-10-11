@@ -19,5 +19,8 @@ public enum MailKind {
      * A public comment by staff on an issue, to the issue's reporter (S0-AC-70). Internal comments queue
      * nothing (S0-AC-53).
      */
-    STAFF_COMMENT
+    STAFF_COMMENT,
+
+    /** Staff filed an issue on behalf of a customer, to that customer (S3-AC-37). */
+    ISSUE_FILED_ON_BEHALF
 }

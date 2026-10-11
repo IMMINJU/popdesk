@@ -101,7 +101,9 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 400 | `MEMBER_IS_MANAGER` | A customer manager tries to remove another manager of the company. An admin does that |
 | 400 | `INVITATION_NOT_RESENDABLE` | A customer manager tries to send again an invitation that cannot be sent again from the portal. One code whatever the reason |
 | 400 | `NOT_A_CUSTOMER` | The account of a membership request is an agent or an admin, so the request cannot be approved. It can be rejected |
-| 400 | `ISSUE_CLOSED` | The issue is `CLOSED`: no comments, attachments, or edits |
+| 400 | `ISSUE_CLOSED` | The issue is `CLOSED`: no comments, attachments, edits, or status changes. A customer closes an issue that is closed already |
+| 400 | `INVALID_TRANSITION` | A status change by staff: the issue cannot go from its current status to the one sent, or has that status already. Nothing changed |
+| 400 | `NOT_REOPENABLE` | The issue is neither `RESOLVED` nor `CLOSED`, or it was closed 14 days ago or longer, so it cannot be reopened |
 | 400 | `FILE_EMPTY` | The uploaded file has 0 bytes |
 | 400 | `FILE_TOO_LARGE` | The uploaded file is over 10 MB |
 | 400 | `ISSUE_ATTACHMENTS_TOO_LARGE` | The public attachments of the issue (on the issue and its public comments) would pass 50 MB |
@@ -116,6 +118,8 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 409 | `ALREADY_LISTED` | The email a customer manager invites is already a row of that company's member list |
 | 409 | `TOO_MANY_PENDING` | The company already has 100 rows waiting in its member list (`INVITED`), so its manager cannot invite more |
 | 409 | `REQUEST_CLOSED` | The membership request was closed the other way (approved when rejecting, rejected when approving), or its manager took it back |
+| 409 | `VERSION_CONFLICT` | The `version` sent with an edit of an issue is not the issue's current one: someone changed the issue in between. Nothing changed. Read the issue again |
+| 409 | `IDEMPOTENCY_KEY_REUSED` | The account used this `Idempotency-Key` in the last 24 hours for a filing with other content. Nothing is created |
 | 409 | `AUDIT_VERIFICATION_RUNNING` | A check of the audit log's hash chain is already running. One runs at a time |
 | 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit, a profile photo is over 2 MB (2,097,152 bytes), or the JSON of a new issue (the body, or the `issue` part of a multipart request) is over 256 KB (262,144 bytes). The headers of one multipart part, which carry the file name, are limited to 4 KB: a file name far over 255 characters gets this 413, not the 400 `TOO_LONG`. A proxy in front may answer 413 first with its own body |
 | 429 | `RATE_LIMITED` | Over a rate limit (`COM-8`). `Retry-After` says when to try again |
@@ -176,6 +180,18 @@ Attachments are always addressed under their issue:
 - 409 `ALREADY_LISTED` is given only for an email that is already a row of this list, which the manager can see anyway. The email is compared without case and without the spaces around it.
 - Response times are not made equal.
 
+## Filing an issue once
+
+The two requests that file an issue (`POST /api/portal/issues`, `POST /api/console/issues`) take an optional `Idempotency-Key` header, so that a request sent again after a lost answer does not file a second issue (`ISSUE-12`).
+
+- The key is 1 to 100 visible ASCII characters (`!` to `~`); anything else is 400. Clients make a new random key for each filing, keep it when they send the same filing again, and make a new one when the input changes.
+- A key belongs to the account that sent it. Another account that sends the same key files its own issue.
+- For 24 hours, a request with a key the account already used and the same content creates nothing: the answer is 201 with the issue the first request made, as it is now.
+- The same key with other content is 409 `IDEMPOTENCY_KEY_REUSED`. The content compared is the company, title, content, priority, and whether the issue is private; for a filing on behalf also the customer and the channel. Files are not compared.
+- Two requests with the same key at the same time file one issue and use one issue number.
+- A key is kept only for a filing that succeeded. After a 400, 404, or 429 the same key can be sent again with the input put right.
+- Without the header every request files a new issue.
+
 ## Retrying on lock conflicts
 
 Each database connection has `lock_timeout` set to 5 seconds. When a transaction fails with a deadlock (`40P01`) or a lock timeout (`55P03`), the server retries the whole transaction once. If the retry also fails, the request fails like any other server error; clients see a 5xx and may try again later.
@@ -209,6 +225,7 @@ A `page` past the last page returns an empty `items`. A `page` below 1 or a `siz
 - Matching ignores case and finds the text anywhere in the field, not by word.
 - `%` and `_` are ordinary characters, not wildcards.
 - Search uses a trigram index (D-13).
+- The issue lists search the title and the content as it is shown: the text of a link, the description of an image, and the text of code are searched; Markdown marks (`**`, `#`, list marks, code fences) and the addresses of links and images are not.
 
 ## Text input
 
@@ -235,7 +252,7 @@ Limits are per account over a 60-second window:
 | Add a comment | 30 |
 | Upload an attachment | 30 (each file of a new issue counts as one; a new issue whose files do not all fit is refused whole) |
 | Upload a profile photo | 10 |
-| List with a search term | 60 |
+| List with a search term | 60 (the issue list and the account list count together) |
 | Customer manager sends an invitation, or sends one again | 20 (both count together) |
 | Sign-in attempts | 20 per IP address |
 | Password reset requests | 20 per IP address; at most one reset email per account every 15 minutes |

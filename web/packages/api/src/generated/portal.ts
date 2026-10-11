@@ -94,7 +94,7 @@ export interface paths {
         };
         /**
          * Issues the caller can see
-         * @description Public issues of the caller's companies and every issue the caller reported, newest first (S0-AC-47). Takes only `page` and `size`.
+         * @description Public issues of the caller's companies and every issue the caller reported, newest first (S0-AC-47). The filters narrow that and never widen it: with several, an issue must match all of them (S3-AC-08, S3-AC-10).
          */
         get: operations["listIssues"];
         put?: never;
@@ -123,7 +123,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Change an issue's title, content, or priority
+         * @description For the reporter. A field left out keeps its value; the rules for each field are those of filing (S3-AC-18). Saving goes up `version` by 1; sending what the issue already has changes nothing and is 200 too (S3-AC-22).
+         */
+        patch: operations["updateIssue"];
         trace?: never;
     };
     "/api/portal/issues/{key}/attachments": {
@@ -178,6 +182,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/portal/issues/{key}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close an issue
+         * @description For the reporter, from any status but `CLOSED`, also after leaving the company (S3-AC-53, S3-AC-54). On a `RESOLVED` issue this confirms the resolution. Takes no body.
+         */
+        post: operations["closeIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/portal/issues/{key}/comments": {
         parameters: {
             query?: never;
@@ -196,6 +220,26 @@ export interface paths {
          * @description Only the reporter may comment (S0-AC-51, S0-AC-52).
          */
         post: operations["createComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portal/issues/{key}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reopen an issue
+         * @description For the reporter: a `RESOLVED` issue, or a `CLOSED` one within 14 days of `closedAt`, goes back to `RECEIVED`, and `resolvedAt` and `closedAt` are cleared (S3-AC-56). Takes no body.
+         */
+        post: operations["reopenIssue"];
         delete?: never;
         options?: never;
         head?: never;
@@ -510,12 +554,19 @@ export interface components {
             name: string;
         };
         Issue: {
+            /**
+             * Format: date-time
+             * @description When the issue became `CLOSED`; null while it is open. It can be reopened for 14 days from then.
+             */
+            closedAt: string | null;
             companyCode: string;
             companyName: string;
             /** @description Markdown, as written (COM-6). */
             content: string;
             /** Format: date-time */
             createdAt: string;
+            /** @description The support team filed the issue for the reporter (S3-AC-36). */
+            filedBySupport: boolean;
             /** @description `{company code}-{number}`, for example `ACME-7`. */
             key: string;
             /** @enum {string} */
@@ -523,6 +574,11 @@ export interface components {
             /** @description Visible only to the reporter and staff. */
             private: boolean;
             reporter: components["schemas"]["Person"];
+            /**
+             * Format: date-time
+             * @description When the issue became `RESOLVED`; null when it is not resolved (S3-AC-59).
+             */
+            resolvedAt: string | null;
             /** @enum {string} */
             status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
             title: string;
@@ -535,10 +591,17 @@ export interface components {
             version: number;
         };
         IssueSummary: {
+            /**
+             * Format: date-time
+             * @description When the issue became `CLOSED`; null while it is open.
+             */
+            closedAt: string | null;
             companyCode: string;
             companyName: string;
             /** Format: date-time */
             createdAt: string;
+            /** @description The support team filed the issue for the reporter (S3-AC-36). */
+            filedBySupport: boolean;
             /** @description `{company code}-{number}`, for example `ACME-7`. */
             key: string;
             /** @enum {string} */
@@ -546,6 +609,11 @@ export interface components {
             /** @description Visible only to the reporter and staff. */
             private: boolean;
             reporter: components["schemas"]["Person"];
+            /**
+             * Format: date-time
+             * @description When the issue became `RESOLVED`; null when it is not resolved (S3-AC-59).
+             */
+            resolvedAt: string | null;
             /** @enum {string} */
             status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
             title: string;
@@ -701,6 +769,22 @@ export interface components {
             /** @description Leading and trailing whitespace and case are ignored. */
             email: string;
             password: string;
+        };
+        UpdateIssueRequest: {
+            /** @description Markdown, up to 10,000 characters. `null` clears it. */
+            content?: string;
+            /**
+             * @description `null` is refused.
+             * @enum {string}
+             */
+            priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+            /** @description 1 to 200 characters after trimming. `null` is refused. */
+            title?: string;
+            /**
+             * Format: int64
+             * @description The `version` of the issue as the caller read it (S3-AC-19).
+             */
+            version: number;
         };
         UpdateMeRequest: {
             /**
@@ -1032,6 +1116,14 @@ export interface operations {
     listIssues: {
         parameters: {
             query?: {
+                /** @description Only issues with one of these statuses. Give it once for each status. */
+                status?: ("RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED")[];
+                /** @description Only issues of the company with this code. A company the caller does not belong to gives an empty page. */
+                company?: string;
+                /** @description `true`: only issues the caller reported. */
+                mine?: boolean;
+                /** @description Only issues whose title or content, as shown, holds this text, 1 to 100 characters. Case is ignored; `%` and `_` are ordinary characters (COM-5). */
+                q?: string;
                 /** @description Page number, from 1. */
                 page?: number;
                 /** @description 1 to 100. */
@@ -1052,7 +1144,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedIssueSummary"];
                 };
             };
-            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), or a parameter customers may not use, such as `assignee`, `label`, `sla`, `sort` (`UNKNOWN_PARAMETER`, S0-AC-48). */
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `status` (`UNKNOWN_VALUE`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14), or a parameter customers may not use, such as `assignee`, `reporter`, `label`, `sla`, `sort` (`UNKNOWN_PARAMETER`, S0-AC-48, S3-AC-09). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1070,12 +1162,24 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            /** @description `RATE_LIMITED`: more than 60 lists with `q` in 60 seconds (S3-AC-15). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     createIssue: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Makes a retry safe: a filing with a key this account used in the last 24 hours answers with the issue that key made (S3-AC-41). 1 to 100 visible ASCII characters. See "Filing an issue once" in the conventions. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1089,7 +1193,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created. */
+            /** @description Created. Also for a retry with the same `Idempotency-Key` and content: the issue made the first time, as it is now (S3-AC-41). */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -1098,7 +1202,7 @@ export interface operations {
                     "application/json": components["schemas"]["Issue"];
                 };
             };
-            /** @description `INVALID_INPUT`: `title` empty or over 200, `content` over 10,000, `priority` unknown; `fields` lists all (S0-AC-42). `COMPANY_NOT_ACTIVE`: the company is not `ACTIVE`. With files: `FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `ISSUE_ATTACHMENTS_TOO_LARGE` (public attachments of the issue over 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), and `INVALID_INPUT` with field `files` `TOO_LONG` (file name over 255) (S0-AC-57, S0-AC-58). Nothing is created then (S0-AC-63). */
+            /** @description `INVALID_INPUT`: `title` empty or over 200, `content` over 10,000, `priority` unknown; `fields` lists all (S0-AC-42). `COMPANY_NOT_ACTIVE`: the company is not `ACTIVE`. `INVALID_INPUT` with field `Idempotency-Key` (`INVALID_FORMAT`, `TOO_LONG`): the key is not 1 to 100 visible ASCII characters (S3-AC-45). With files: `FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `ISSUE_ATTACHMENTS_TOO_LARGE` (public attachments of the issue over 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), and `INVALID_INPUT` with field `files` `TOO_LONG` (file name over 255) (S0-AC-57, S0-AC-58). Nothing is created then (S0-AC-63). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1127,6 +1231,15 @@ export interface operations {
             };
             /** @description `NOT_FOUND`: the caller does not belong to the company (S0-AC-43). */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `IDEMPOTENCY_KEY_REUSED`: the account used this `Idempotency-Key` for a filing with other content (S3-AC-42). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1194,6 +1307,77 @@ export interface operations {
             };
             /** @description `NOT_FOUND`: no such issue, or the caller cannot see it (COM-1). */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description The issue as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `version` missing (`REQUIRED`), `title` empty, over 200, or `null`, `content` over 10,000, `priority` unknown or `null`; `fields` lists all. `ISSUE_CLOSED`: the issue is `CLOSED` (S3-AC-21). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: the caller is not the reporter, or no longer belongs to the company (S3-AC-20). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it (COM-1). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `VERSION_CONFLICT`: `version` is not the issue's current one; nothing changed. Read the issue again (S3-AC-19). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1502,6 +1686,64 @@ export interface operations {
             };
         };
     };
+    closeIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The issue, now `CLOSED`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `ISSUE_CLOSED`: the issue is `CLOSED` already. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: the caller is not the reporter (S3-AC-55). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it (COM-1). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listComments: {
         parameters: {
             query?: {
@@ -1618,6 +1860,64 @@ export interface operations {
             };
             /** @description `RATE_LIMITED`: more than 30 comments in 60 seconds (S0-AC-55). */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    reopenIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The issue, now `RECEIVED`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `NOT_REOPENABLE`: the issue is neither `RESOLVED` nor `CLOSED`, or it was closed 14 days ago or longer (S3-AC-57). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: the caller is not the reporter, or no longer belongs to the company (S3-AC-55, S3-AC-58). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it (COM-1). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

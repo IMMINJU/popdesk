@@ -69,6 +69,18 @@
         "required" : [ "code", "message" ],
         "type" : "object"
       },
+      "AssigneeCandidates" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Person"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "items" ],
+        "type" : "object"
+      },
       "Attachment" : {
         "properties" : {
           "commentId" : {
@@ -244,6 +256,16 @@
         "required" : [ "status" ],
         "type" : "object"
       },
+      "ChangeIssueStatusRequest" : {
+        "properties" : {
+          "status" : {
+            "enum" : [ "RECEIVED", "CONFIRMED", "IN_PROGRESS", "RESOLVED", "CLOSED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "status" ],
+        "type" : "object"
+      },
       "ChangePasswordRequest" : {
         "properties" : {
           "currentPassword" : {
@@ -290,6 +312,17 @@
           }
         },
         "required" : [ "enabled", "failed", "lastSuccessAt", "queued" ],
+        "type" : "object"
+      },
+      "ClearedAssignments" : {
+        "properties" : {
+          "issues" : {
+            "description" : "Issues whose assignee was cleared. 0 without `clearAssignments`.",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "issues" ],
         "type" : "object"
       },
       "Comment" : {
@@ -445,6 +478,43 @@
         "required" : [ "email", "name", "role" ],
         "type" : "object"
       },
+      "CreateIssueRequest" : {
+        "properties" : {
+          "channel" : {
+            "description" : "How the request came in.",
+            "enum" : [ "PHONE", "OTHER" ],
+            "type" : "string"
+          },
+          "companyCode" : {
+            "description" : "Code of an active company the caller can see.",
+            "type" : "string"
+          },
+          "content" : {
+            "description" : "Markdown, up to 10,000 characters. Empty when left out.",
+            "type" : "string"
+          },
+          "priority" : {
+            "description" : "`NORMAL` when left out.",
+            "enum" : [ "LOW", "NORMAL", "HIGH", "URGENT" ],
+            "type" : "string"
+          },
+          "private" : {
+            "description" : "Public when left out.",
+            "type" : "boolean"
+          },
+          "reporterId" : {
+            "description" : "Account ID of an `ACTIVE` customer who belongs to that company. The customer is the reporter of the issue.",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "title" : {
+            "description" : "1 to 200 characters after trimming.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "channel", "companyCode", "reporterId", "title" ],
+        "type" : "object"
+      },
       "FailedDelivery" : {
         "properties" : {
           "auditEntryId" : {
@@ -517,9 +587,26 @@
       },
       "Issue" : {
         "properties" : {
+          "assignee" : {
+            "description" : "Null when nobody is assigned (S3-AC-28).",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/Person"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "assigneeUnavailable" : {
+            "description" : "The assignee can no longer see the issue: the account is not `ACTIVE`, or it is an agent who is not assigned to the company (ISSUE-11). `false` without an assignee.",
+            "type" : "boolean"
+          },
           "channel" : {
             "enum" : [ "PORTAL", "EMAIL", "PHONE", "OTHER" ],
             "type" : "string"
+          },
+          "closedAt" : {
+            "description" : "When the issue became `CLOSED`; null while it is open.",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
           },
           "companyCode" : {
             "type" : "string"
@@ -535,6 +622,14 @@
             "format" : "date-time",
             "type" : "string"
           },
+          "createdBy" : {
+            "description" : "The staff member who filed the issue for the reporter; null when the reporter filed it (S3-AC-36).",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/Person"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "firstResponseAt" : {
             "description" : "When staff first commented publicly (S0-AC-46).",
             "format" : "date-time",
@@ -544,6 +639,14 @@
             "description" : "`{company code}-{number}`, for example `ACME-7`.",
             "type" : "string"
           },
+          "nextStatuses" : {
+            "description" : "The statuses `changeIssueStatus` takes now (STATUS-1). Empty for a `CLOSED` issue.",
+            "items" : {
+              "enum" : [ "RECEIVED", "CONFIRMED", "IN_PROGRESS", "RESOLVED", "CLOSED" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "priority" : {
             "enum" : [ "LOW", "NORMAL", "HIGH", "URGENT" ],
             "type" : "string"
@@ -551,8 +654,17 @@
           "private" : {
             "type" : "boolean"
           },
+          "reopenable" : {
+            "description" : "`reopenIssue` works now: the issue is `RESOLVED`, or `CLOSED` for less than 14 days (STATUS-4).",
+            "type" : "boolean"
+          },
           "reporter" : {
             "$ref" : "#/components/schemas/Person"
+          },
+          "resolvedAt" : {
+            "description" : "When the issue became `RESOLVED`; null when it is not resolved (S3-AC-59).",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
           },
           "status" : {
             "enum" : [ "RECEIVED", "CONFIRMED", "IN_PROGRESS", "RESOLVED", "CLOSED" ],
@@ -571,11 +683,98 @@
             "type" : "integer"
           }
         },
-        "required" : [ "channel", "companyCode", "companyName", "content", "createdAt", "firstResponseAt", "key", "priority", "private", "reporter", "status", "title", "updatedAt", "version" ],
+        "required" : [ "assignee", "assigneeUnavailable", "channel", "closedAt", "companyCode", "companyName", "content", "createdAt", "createdBy", "firstResponseAt", "key", "nextStatuses", "priority", "private", "reopenable", "reporter", "resolvedAt", "status", "title", "updatedAt", "version" ],
+        "type" : "object"
+      },
+      "IssueHistoryActor" : {
+        "properties" : {
+          "accountId" : {
+            "description" : "0 for popdesk itself.",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "description" : "Null for popdesk itself.",
+            "type" : [ "string", "null" ]
+          },
+          "photoUpdatedAt" : {
+            "description" : "When the profile photo last changed; null without a photo (`getPhoto`) and for popdesk itself.",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "role" : {
+            "description" : "Null for popdesk itself.",
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "accountId", "name", "photoUpdatedAt", "role" ],
+        "type" : "object"
+      },
+      "IssueHistoryEntry" : {
+        "properties" : {
+          "actor" : {
+            "$ref" : "#/components/schemas/IssueHistoryActor"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "field" : {
+            "description" : "The field that changed: `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, or `PRIORITY`. Later releases add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `CREATED`.",
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "description" : "Entries of an issue are in the order of their IDs.",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "kind" : {
+            "enum" : [ "CREATED", "CHANGED" ],
+            "type" : "string"
+          },
+          "newPerson" : {
+            "description" : "For `ASSIGNEE`: the assignee after the change; null when it was cleared. Null for every other field.",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/Person"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "newValue" : {
+            "description" : "The value after the change, like `oldValue`.",
+            "type" : [ "string", "null" ]
+          },
+          "oldPerson" : {
+            "description" : "For `ASSIGNEE`: the assignee before the change, by the account's current name; null when there was none. Null for every other field.",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/Person"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "oldValue" : {
+            "description" : "The value before the change: the name of the status or priority, or the title or content as it was. Null for `CREATED`, for `ASSIGNEE`, and when there was no value.",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "actor", "createdAt", "field", "id", "kind", "newPerson", "newValue", "oldPerson", "oldValue" ],
         "type" : "object"
       },
       "IssueSummary" : {
         "properties" : {
+          "assignee" : {
+            "description" : "Null when nobody is assigned (S3-AC-28).",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/Person"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "assigneeUnavailable" : {
+            "description" : "The assignee can no longer see the issue (ISSUE-11). `false` without an assignee.",
+            "type" : "boolean"
+          },
           "companyCode" : {
             "type" : "string"
           },
@@ -585,6 +784,10 @@
           "createdAt" : {
             "format" : "date-time",
             "type" : "string"
+          },
+          "filedOnBehalf" : {
+            "description" : "Staff filed the issue for the reporter (ISSUE-9).",
+            "type" : "boolean"
           },
           "key" : {
             "description" : "`{company code}-{number}`, for example `ACME-7`.",
@@ -608,7 +811,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "companyCode", "companyName", "createdAt", "key", "priority", "private", "reporter", "status", "title" ],
+        "required" : [ "assignee", "assigneeUnavailable", "companyCode", "companyName", "createdAt", "filedOnBehalf", "key", "priority", "private", "reporter", "status", "title" ],
         "type" : "object"
       },
       "Me" : {
@@ -715,6 +918,17 @@
           }
         },
         "required" : [ "companyCode", "createdAt", "id", "kind", "readAt" ],
+        "type" : "object"
+      },
+      "OpenAssignments" : {
+        "properties" : {
+          "issues" : {
+            "description" : "Issues that are not `CLOSED` and have this account as assignee.",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "issues" ],
         "type" : "object"
       },
       "PagedAccount" : {
@@ -902,6 +1116,36 @@
           "items" : {
             "items" : {
               "$ref" : "#/components/schemas/FailedDelivery"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "PagedIssueHistoryEntry" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/IssueHistoryEntry"
             },
             "type" : "array"
           },
@@ -1177,6 +1421,17 @@
         "required" : [ "password", "token" ],
         "type" : "object"
       },
+      "SetAssigneeRequest" : {
+        "properties" : {
+          "accountId" : {
+            "description" : "An `ACTIVE` admin, or an `ACTIVE` agent assigned to the issue's company (ISSUE-7).",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "accountId" ],
+        "type" : "object"
+      },
       "SignInRequest" : {
         "properties" : {
           "email" : {
@@ -1191,6 +1446,42 @@
         "type" : "object"
       },
       "StreamingResponseBody" : { },
+      "SuspendedAccount" : {
+        "properties" : {
+          "cleared" : {
+            "$ref" : "#/components/schemas/ClearedAssignments"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "photoUpdatedAt" : {
+            "description" : "When the profile photo last changed; null without a photo (`getPhoto`).",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "role" : {
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "INVITED", "ACTIVE", "SUSPENDED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "cleared", "createdAt", "email", "id", "name", "photoUpdatedAt", "role", "status" ],
+        "type" : "object"
+      },
       "SystemStatus" : {
         "properties" : {
           "auditForward" : {
@@ -1236,6 +1527,30 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "UpdateIssueRequest" : {
+        "properties" : {
+          "content" : {
+            "description" : "Markdown, up to 10,000 characters. `null` clears it.",
+            "type" : "string"
+          },
+          "priority" : {
+            "description" : "`null` is refused.",
+            "enum" : [ "LOW", "NORMAL", "HIGH", "URGENT" ],
+            "type" : "string"
+          },
+          "title" : {
+            "description" : "1 to 200 characters after trimming. `null` is refused.",
+            "type" : "string"
+          },
+          "version" : {
+            "description" : "The `version` of the issue as the caller read it (S3-AC-19).",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "version" ],
         "type" : "object"
       },
       "UpdateMeRequest" : {
@@ -1438,6 +1753,65 @@
           }
         },
         "summary" : "Change an account's name",
+        "tags" : [ "Accounts" ]
+      }
+    },
+    "/api/console/accounts/{accountId}/open-assignments" : {
+      "get" : {
+        "description" : "Issues that are not `CLOSED` and have the account as assignee, in every company: what `suspendAccount` clears with `clearAssignments` (S3-AC-68).",
+        "operationId" : "countOpenAssignments",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OpenAssignments"
+                }
+              }
+            },
+            "description" : "The counts."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such account."
+          }
+        },
+        "summary" : "What an account is still assigned to",
         "tags" : [ "Accounts" ]
       }
     },
@@ -1660,7 +2034,7 @@
     },
     "/api/console/accounts/{accountId}/suspend" : {
       "post" : {
-        "description" : "Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, S1A-AC-34). A suspended account cannot sign in and gets no email. Suspending an account that is already `SUSPENDED` is 200 too.",
+        "description" : "Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, S1A-AC-34). A suspended account cannot sign in and gets no email. Suspending an account that is already `SUSPENDED` is 200 too. Issues keep the account as assignee, marked `assigneeUnavailable`, unless `clearAssignments` is sent (S3-AC-31).",
         "operationId" : "suspendAccount",
         "parameters" : [ {
           "in" : "path",
@@ -1670,13 +2044,22 @@
             "format" : "int64",
             "type" : "integer"
           }
+        }, {
+          "description" : "`true`: in the same request, also clear the assignee of every issue counted by `countOpenAssignments` (S3-AC-69). Each of them gets a history entry by the caller, and no webhook message is sent (S3-AC-70). Left out or `false`, assignees stay.",
+          "in" : "query",
+          "name" : "clearAssignments",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
         } ],
         "responses" : {
           "200" : {
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/Account"
+                  "$ref" : "#/components/schemas/SuspendedAccount"
                 }
               }
             },
@@ -2571,7 +2954,7 @@
     },
     "/api/console/companies/{code}/agents/{accountId}" : {
       "delete" : {
-        "description" : "From the next request the agent no longer sees the company's issues, comments, or files (S1A-AC-55). Works for a company of any status, and removing again is 200 too.",
+        "description" : "From the next request the agent no longer sees the company's issues, comments, or files (S1A-AC-55). Works for a company of any status, and removing again is 200 too. Issues keep the agent as assignee, marked `assigneeUnavailable`, unless `clearAssignments` is sent (S3-AC-31).",
         "operationId" : "unassignAgent",
         "parameters" : [ {
           "in" : "path",
@@ -2588,10 +2971,26 @@
             "format" : "int64",
             "type" : "integer"
           }
+        }, {
+          "description" : "`true`: in the same request, also clear the assignee of every issue counted by `countCompanyOpenAssignments` (S3-AC-69). Each of them gets a history entry by the caller, and no webhook message is sent (S3-AC-70). Left out or `false`, assignees stay.",
+          "in" : "query",
+          "name" : "clearAssignments",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
         } ],
         "responses" : {
           "200" : {
-            "description" : "Not assigned."
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClearedAssignments"
+                }
+              }
+            },
+            "description" : "Not assigned. With `clearAssignments=true` the body says what was cleared; without it there is no body."
           },
           "401" : {
             "content" : {
@@ -2699,6 +3098,120 @@
           }
         },
         "summary" : "Assign an agent to a company",
+        "tags" : [ "Companies" ]
+      }
+    },
+    "/api/console/companies/{code}/agents/{accountId}/open-assignments" : {
+      "get" : {
+        "description" : "Issues of this company that are not `CLOSED` and have the agent as assignee: what `unassignAgent` clears with `clearAssignments` (S3-AC-68).",
+        "operationId" : "countCompanyOpenAssignments",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OpenAssignments"
+                }
+              }
+            },
+            "description" : "The counts."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only (S0-AC-30)."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company or account."
+          }
+        },
+        "summary" : "What an agent is still assigned to in a company",
+        "tags" : [ "Companies" ]
+      }
+    },
+    "/api/console/companies/{code}/assignees" : {
+      "get" : {
+        "description" : "Every `ACTIVE` admin and every `ACTIVE` agent assigned to the company, in name order (S3-AC-27). All of them at once, without pages: the list fills a picker.",
+        "operationId" : "listAssigneeCandidates",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AssigneeCandidates"
+                }
+              }
+            },
+            "description" : "The candidates."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the caller cannot see it."
+          }
+        },
+        "summary" : "Who can be assignee of the company's issues",
         "tags" : [ "Companies" ]
       }
     },
@@ -3472,9 +3985,54 @@
     },
     "/api/console/issues" : {
       "get" : {
-        "description" : "All issues of assigned companies for agents, all issues for admins, newest first (S0-AC-47).",
+        "description" : "All issues of assigned companies for agents, all issues for admins, newest first (S0-AC-47). The filters narrow that and never widen it: with several, an issue must match all of them (S3-AC-06).",
         "operationId" : "listIssues",
         "parameters" : [ {
+          "description" : "Only issues with one of these statuses. Give it once for each status.",
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "enum" : [ "RECEIVED", "CONFIRMED", "IN_PROGRESS", "RESOLVED", "CLOSED" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        }, {
+          "description" : "Only issues of the company with this code. A company the caller cannot see gives an empty page (S3-AC-02).",
+          "in" : "query",
+          "name" : "company",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only issues with this assignee: an account ID, `me` for the caller, `none` for issues without an assignee, or `unavailable` for issues whose assignee can no longer see them (S3-AC-03, S3-AC-04).",
+          "in" : "query",
+          "name" : "assignee",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Only issues this account reported. An account that does not exist gives an empty page (S3-AC-05).",
+          "in" : "query",
+          "name" : "reporter",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "Only issues whose title or content, as shown, holds this text, 1 to 100 characters. Case is ignored; `%` and `_` are ordinary characters (COM-5).",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "description" : "Page number, from 1.",
           "in" : "query",
           "name" : "page",
@@ -3514,7 +4072,7 @@
                 }
               }
             },
-            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `status` or `assignee` (`UNKNOWN_VALUE`), `reporter` not a number (`INVALID_FORMAT`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14), or a parameter this list does not take (`UNKNOWN_PARAMETER`, S3-AC-07)."
           },
           "401" : {
             "content" : {
@@ -3525,9 +4083,126 @@
               }
             },
             "description" : "`UNAUTHENTICATED`."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 60 lists with `q` in 60 seconds, counted together with the account list (S3-AC-15)."
           }
         },
         "summary" : "Issues the caller can see",
+        "tags" : [ "Issues" ]
+      },
+      "post" : {
+        "description" : "The customer is the reporter and the caller is `createdBy`; otherwise the issue is made like one the customer files: key `{code}-{number}`, status `RECEIVED` (S3-AC-32). The customer gets an email (S3-AC-37). JSON only; attach files to the issue afterwards.",
+        "operationId" : "createIssue",
+        "parameters" : [ {
+          "description" : "Makes a retry safe: a filing with a key this account used in the last 24 hours answers with the issue that key made (S3-AC-41). 1 to 100 visible ASCII characters. See \"Filing an issue once\" in the conventions.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateIssueRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description" : "Created. Also for a retry with the same `Idempotency-Key` and content: the issue made the first time, as it is now (S3-AC-41)."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `title` empty or over 200, `content` over 10,000, `priority` unknown, `channel` missing or not `PHONE` or `OTHER` (S3-AC-35), `reporterId` missing, or not an `ACTIVE` customer who belongs to the company (`UNKNOWN_VALUE`, one answer whatever the reason, S3-AC-33); `fields` lists all. `Idempotency-Key` not 1 to 100 visible ASCII characters (S3-AC-45). `COMPANY_NOT_ACTIVE`: the company is not `ACTIVE`."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such company, or the caller, an agent, is not assigned to it (S3-AC-34)."
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`IDEMPOTENCY_KEY_REUSED`: the account used this `Idempotency-Key` for a filing with other content (S3-AC-42)."
+          },
+          "413" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`PAYLOAD_TOO_LARGE`: the body is over 256 KB."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 10 issues in 60 seconds (S3-AC-39)."
+          }
+        },
+        "summary" : "File an issue on behalf of a customer",
         "tags" : [ "Issues" ]
       }
     },
@@ -3575,6 +4250,226 @@
           }
         },
         "summary" : "One issue",
+        "tags" : [ "Issues" ]
+      },
+      "patch" : {
+        "description" : "A field left out keeps its value; the rules for each field are those of filing (S3-AC-18). Saving goes up `version` by 1; sending what the issue already has changes nothing and is 200 too (S3-AC-22). Works whatever the status of the company (S3-AC-60).",
+        "operationId" : "updateIssue",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateIssueRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description" : "The issue as it is now."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `version` missing (`REQUIRED`), `title` empty, over 200, or `null`, `content` over 10,000, `priority` unknown or `null`; `fields` lists all. `ISSUE_CLOSED`: the issue is `CLOSED` (S3-AC-21)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4)."
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`VERSION_CONFLICT`: `version` is not the issue's current one; nothing changed. Read the issue again (S3-AC-19)."
+          }
+        },
+        "summary" : "Change an issue's title, content, or priority",
+        "tags" : [ "Issues" ]
+      }
+    },
+    "/api/console/issues/{key}/assignee" : {
+      "delete" : {
+        "description" : "An issue without an assignee stays as it is and is 200 too (S3-AC-26). Works on a `CLOSED` issue too (S3-AC-30).",
+        "operationId" : "clearIssueAssignee",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description" : "The issue without an assignee."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4)."
+          }
+        },
+        "summary" : "Clear an issue's assignee",
+        "tags" : [ "Issues" ]
+      },
+      "put" : {
+        "description" : "One of the company's `listAssigneeCandidates` (ISSUE-7). Goes up `version` by 1; the assignee the issue already has changes nothing and is 200 too (S3-AC-24). Works on a `CLOSED` issue too (S3-AC-30).",
+        "operationId" : "setIssueAssignee",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SetAssigneeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description" : "The issue with its assignee."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `accountId` missing (`REQUIRED`), or not an account that can be the assignee (`UNKNOWN_VALUE`, one answer whatever the reason, S3-AC-25)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4)."
+          }
+        },
+        "summary" : "Set an issue's assignee",
         "tags" : [ "Issues" ]
       }
     },
@@ -4124,6 +5019,230 @@
         },
         "summary" : "Add a public or internal comment",
         "tags" : [ "Comments" ]
+      }
+    },
+    "/api/console/issues/{key}/history" : {
+      "get" : {
+        "description" : "One `CREATED` entry, then one `CHANGED` entry for each field that changed, oldest first (S3-AC-61, S3-AC-62, S3-AC-64). The portal has no such path (S3-AC-65).",
+        "operationId" : "listIssueHistory",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedIssueHistoryEntry"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4)."
+          }
+        },
+        "summary" : "History of an issue",
+        "tags" : [ "Issues" ]
+      }
+    },
+    "/api/console/issues/{key}/reopen" : {
+      "post" : {
+        "description" : "A `RESOLVED` issue, or a `CLOSED` one within 14 days of `closedAt`, goes back to `RECEIVED`, and `resolvedAt` and `closedAt` are cleared; the assignee and `firstResponseAt` stay (S3-AC-56). Takes no body.",
+        "operationId" : "reopenIssue",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description" : "The issue, now `RECEIVED`."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_REOPENABLE`: the issue is neither `RESOLVED` nor `CLOSED`, or it was closed 14 days ago or longer (S3-AC-57)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4)."
+          }
+        },
+        "summary" : "Reopen an issue",
+        "tags" : [ "Issues" ]
+      }
+    },
+    "/api/console/issues/{key}/status" : {
+      "put" : {
+        "description" : "One of the issue's `nextStatuses` (STATUS-1). Takes no `version`: changes to one issue are applied one after another (S3-AC-51). `RESOLVED` sets `resolvedAt`, `CLOSED` sets `closedAt`, and leaving `RESOLVED` for `IN_PROGRESS` clears `resolvedAt` (S3-AC-50). A `CLOSED` issue leaves that status only through `reopenIssue`.",
+        "operationId" : "changeIssueStatus",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangeIssueStatusRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description" : "The issue with its new status."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `status` missing (`REQUIRED`) or unknown (`UNKNOWN_VALUE`). `INVALID_TRANSITION`: the issue cannot go from its status to this one, or has it already; nothing changed (S3-AC-49)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4)."
+          }
+        },
+        "summary" : "Change an issue's status",
+        "tags" : [ "Issues" ]
       }
     },
     "/api/console/me" : {

@@ -73,6 +73,9 @@ class WebhookSender implements Sender {
         String what = switch (kind) {
             case ISSUE_CREATED -> korean ? "새 문의" : "New issue";
             case CUSTOMER_COMMENT -> korean ? "고객 댓글" : "Customer comment on";
+            // In the contract of slice 3; nothing queues these kinds until the slice is built.
+            case ISSUE_RESOLVED, ISSUE_CLOSED, ISSUE_REOPENED, ASSIGNEE_CHANGED ->
+                    throw new UnsupportedOperationException("Not built yet: " + kind);
         };
         String company = korean ? " (고객사 " + issue.companyCode() + ")" : " from " + issue.companyCode();
         return what + " " + issue.key() + company + ": " + title + "\n" + link;
