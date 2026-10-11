@@ -55,6 +55,16 @@
 - 고치는 공용 컴포넌트: `Avatar`(사진 주소를 받으면 그림, 못 받으면 머리글자. 지금은 자리만 있다), `StatusBadge`(초대 취소됨, 고객사의 중지·보관).
 - 새 토큰은 없다. 색과 모양은 `design/tokens.md`대로다.
 
+## 5-1. 계약 단계(C-4)에서 정한 것
+
+- 화면 경로: 비밀번호 찾기 `/forgot-password`, 재설정 `/reset-password`(토큰은 `#token=` 뒤), 내 정보 `/me`. 두 앱이 같은 이름을 쓴다. 서버는 재설정 링크를 `<앱 주소>/reset-password#token=…`으로 만든다.
+- 로그인 뒤 돌아갈 주소(`next`)로 `/forgot-password`, `/reset-password`는 받지 않는다(`/login`, `/invite`와 같게). C-5에서 테스트로 정한다.
+- 상태 배지: 고객사 말(사용 중, 중지, 보관)은 새 kind `company`에 둔다. 첫 묶음의 kind `project`("멈춤")는 C-5에서 잠긴 테스트를 `company`로 옮긴 뒤 C-9에서 지운다. "초대 취소됨"은 화면 쪽 값이고(API는 `cancelled`로 준다) 끝난 상태처럼 중립 색의 속 빈 점으로 보인다.
+- `PhotoField`의 props: 이름, 사진 주소, 올리는 중, 오류, 안내 문구, `accept`, 올리기·지우기 콜백, 버튼 글자 셋. 껍데기는 콜백을 잇지 않았다.
+- 문구 사전의 키는 점으로 이은 납작한 꼴이다(`passwordForgot.title`).
+- 사진 응답의 404와 401은 다른 응답처럼 `no-store`다. `private, no-cache`와 `ETag`는 200과 304에만 붙는다.
+- `PATCH /api/console/companies/{code}`와 `PUT …/status`는 보안 설정의 관리자 전용 목록에 아직 없다. C-9에서 넣는다. 이미 목록에 있는 경로의 "상담원은 403" 테스트는 구현 전에도 통과하므로 C-6에서 `red-allow.txt`에 올린다.
+
 ## 6. 일하는 차례
 
 1. 계약 앞 실험: Spring Session의 지워진 세션 다시 저장(부검 3), WebP 라이브러리(부검 4). 작은 탭 하나, 30분 안쪽.
