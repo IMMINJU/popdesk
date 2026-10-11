@@ -52,11 +52,13 @@ class PortalAttachmentController {
 
     static Attachment attachment(AttachmentRow row) {
         return new Attachment(row.id(), row.fileName(), row.size(), row.contentType(), row.commentId(),
-                PortalIssueController.person(row.uploadedById(), row.uploadedByName(), row.uploadedByRole()),
+                PortalIssueController.person(row.uploadedById(), row.uploadedByName(), row.uploadedByRole(),
+                        row.uploadedByPhotoUpdatedAt()),
                 PortalIssueController.utc(row.createdAt()), row.deleted(),
                 row.deletedAt() == null ? null : PortalIssueController.utc(row.deletedAt()),
                 row.deletedById() == null ? null
-                        : PortalIssueController.person(row.deletedById(), row.deletedByName(), row.deletedByRole()));
+                        : PortalIssueController.person(row.deletedById(), row.deletedByName(), row.deletedByRole(),
+                                row.deletedByPhotoUpdatedAt()));
     }
 
     @Operation(operationId = "uploadAttachment", summary = "Attach a file",

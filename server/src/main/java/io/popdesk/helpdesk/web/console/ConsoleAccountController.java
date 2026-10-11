@@ -33,7 +33,7 @@ class ConsoleAccountController {
 
     static Account account(AccountRow a) {
         return new Account(a.id(), a.email(), a.name(), a.role(), a.status(), a.createdAt().atOffset(ZoneOffset.UTC),
-                null);
+                a.photoUpdatedAt() == null ? null : a.photoUpdatedAt().atOffset(ZoneOffset.UTC));
     }
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`.";

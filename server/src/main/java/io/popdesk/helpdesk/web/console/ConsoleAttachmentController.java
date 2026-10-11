@@ -51,11 +51,13 @@ class ConsoleAttachmentController {
 
     static Attachment attachment(AttachmentRow row) {
         return new Attachment(row.id(), row.fileName(), row.size(), row.contentType(), row.commentId(),
-                row.internal(), new Person(row.uploadedById(), row.uploadedByName(), row.uploadedByRole(), null),
+                row.internal(), ConsoleIssueController.person(row.uploadedById(), row.uploadedByName(),
+                        row.uploadedByRole(), row.uploadedByPhotoUpdatedAt()),
                 ConsoleIssueController.utc(row.createdAt()), row.deleted(),
                 row.deletedAt() == null ? null : ConsoleIssueController.utc(row.deletedAt()),
                 row.deletedById() == null ? null
-                        : new Person(row.deletedById(), row.deletedByName(), row.deletedByRole(), null));
+                        : ConsoleIssueController.person(row.deletedById(), row.deletedByName(), row.deletedByRole(),
+                                row.deletedByPhotoUpdatedAt()));
     }
 
     @Operation(operationId = "uploadAttachment", summary = "Attach a file",

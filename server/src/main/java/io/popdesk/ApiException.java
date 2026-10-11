@@ -77,6 +77,17 @@ public class ApiException extends RuntimeException {
         return e;
     }
 
+    /**
+     * 503 {@code SERVER_BUSY}: the server already does as much of this as it does at once; the caller
+     * tries again after {@code seconds}.
+     */
+    public static ApiException busy(long seconds) {
+        ApiException e = new ApiException(HttpStatus.SERVICE_UNAVAILABLE, ApiErrors.SERVER_BUSY,
+                ApiErrors.SERVER_BUSY_MESSAGE);
+        e.retryAfterSeconds = seconds;
+        return e;
+    }
+
     /** 409 for a state that does not allow the change. */
     public static ApiException conflict(String code, String message) {
         return new ApiException(HttpStatus.CONFLICT, code, message);

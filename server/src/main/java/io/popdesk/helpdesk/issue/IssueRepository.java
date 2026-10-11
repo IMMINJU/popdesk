@@ -23,10 +23,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class IssueRepository {
 
-    /** One issue with its company and reporter. */
+    /** One issue with its company and reporter; {@code reporterPhotoUpdatedAt} is null without a profile photo. */
     public record IssueRow(UUID id, long companyId, String companyCode, String companyName, int number, String title,
             String content, IssueStatus status, Priority priority, boolean privateIssue, long reporterId,
-            String reporterName, Role reporterRole, String channel, Instant firstResponseAt, long version,
+            String reporterName, Role reporterRole, Instant reporterPhotoUpdatedAt, String channel, Instant firstResponseAt, long version,
             Instant createdAt, Instant updatedAt) {
 
         public String key() {
@@ -36,8 +36,9 @@ public class IssueRepository {
 
     private static final String SELECT = "select i.id, i.company_id, c.code, c.name, i.number, i.title, i.content, "
             + "i.status, i.priority, i.is_private, i.reporter_id, r.name as reporter_name, r.role as reporter_role, "
-            + "i.channel, i.first_response_at, i.version, i.created_at, i.updated_at "
-            + "from issue i join company c on c.id = i.company_id join account r on r.id = i.reporter_id ";
+            + "rp.updated_at as reporter_photo_updated_at, i.channel, i.first_response_at, i.version, i.created_at, i.updated_at "
+            + "from issue i join company c on c.id = i.company_id join account r on r.id = i.reporter_id "
+            + "left join account_photo rp on rp.account_id = i.reporter_id ";
 
     private final JdbcClient jdbc;
 
@@ -109,11 +110,13 @@ public class IssueRepository {
 
     private static IssueRow issue(ResultSet rs, int row) throws SQLException {
         Timestamp firstResponse = rs.getTimestamp("first_response_at");
+        Timestamp reporterPhoto = rs.getTimestamp("reporter_photo_updated_at");
         return new IssueRow(rs.getObject("id", UUID.class), rs.getLong("company_id"), rs.getString("code"),
                 rs.getString("name"), rs.getInt("number"), rs.getString("title"), rs.getString("content"),
                 IssueStatus.valueOf(rs.getString("status")), Priority.valueOf(rs.getString("priority")),
                 rs.getBoolean("is_private"), rs.getLong("reporter_id"), rs.getString("reporter_name"),
-                Role.valueOf(rs.getString("reporter_role")), rs.getString("channel"),
+                Role.valueOf(rs.getString("reporter_role")), reporterPhoto == null ? null : reporterPhoto.toInstant(),
+                rs.getString("channel"),
                 firstResponse == null ? null : firstResponse.toInstant(), rs.getLong("version"),
                 rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant());
     }

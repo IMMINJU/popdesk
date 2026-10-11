@@ -29,10 +29,11 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class AttachmentRepository {
 
-    /** An attachment as the lists and downloads show it. */
+    /** An attachment as the lists and downloads show it; a photo time is null without a profile photo. */
     public record AttachmentRow(UUID id, UUID issueId, Long commentId, boolean internal, String fileName, long size,
             String contentType, String state, long uploadedById, String uploadedByName, Role uploadedByRole,
-            Instant createdAt, Instant deletedAt, Long deletedById, String deletedByName, Role deletedByRole) {
+            Instant uploadedByPhotoUpdatedAt, Instant createdAt, Instant deletedAt, Long deletedById,
+            String deletedByName, Role deletedByRole, Instant deletedByPhotoUpdatedAt) {
 
         public boolean deleted() {
             return !STORED.equals(state);
@@ -44,10 +45,13 @@ public class AttachmentRepository {
 
     private static final String SELECT = "select a.id, a.issue_id, a.comment_id, coalesce(cm.internal, false) as internal, "
             + "a.file_name, a.size, a.content_type, a.state, a.uploaded_by, u.name as uploader_name, "
-            + "u.role as uploader_role, a.created_at, a.deleted_at, a.deleted_by, d.name as deleter_name, "
-            + "d.role as deleter_role from attachment a join issue i on i.id = a.issue_id "
+            + "u.role as uploader_role, up.updated_at as uploader_photo_updated_at, a.created_at, a.deleted_at, "
+            + "a.deleted_by, d.name as deleter_name, d.role as deleter_role, "
+            + "dp.updated_at as deleter_photo_updated_at from attachment a join issue i on i.id = a.issue_id "
             + "left join comment cm on cm.id = a.comment_id join account u on u.id = a.uploaded_by "
-            + "left join account d on d.id = a.deleted_by ";
+            + "left join account d on d.id = a.deleted_by "
+            + "left join account_photo up on up.account_id = a.uploaded_by "
+            + "left join account_photo dp on dp.account_id = a.deleted_by ";
 
     /** Attachments of internal comments only for staff; one parameter, the viewer's role. */
     private static final String VISIBLE = " and (cm.id is null or not cm.internal or ? <> 'CUSTOMER')";
@@ -154,11 +158,15 @@ public class AttachmentRepository {
         Long deletedBy = rs.wasNull() ? null : deletedById;
         Timestamp deletedAt = rs.getTimestamp("deleted_at");
         String deleterRole = rs.getString("deleter_role");
+        Timestamp uploaderPhoto = rs.getTimestamp("uploader_photo_updated_at");
+        Timestamp deleterPhoto = rs.getTimestamp("deleter_photo_updated_at");
         return new AttachmentRow(rs.getObject("id", UUID.class), rs.getObject("issue_id", UUID.class), comment,
                 rs.getBoolean("internal"), rs.getString("file_name"), rs.getLong("size"), rs.getString("content_type"),
                 rs.getString("state"), rs.getLong("uploaded_by"), rs.getString("uploader_name"),
-                Role.valueOf(rs.getString("uploader_role")), rs.getTimestamp("created_at").toInstant(),
+                Role.valueOf(rs.getString("uploader_role")), uploaderPhoto == null ? null : uploaderPhoto.toInstant(),
+                rs.getTimestamp("created_at").toInstant(),
                 deletedAt == null ? null : deletedAt.toInstant(), deletedBy, rs.getString("deleter_name"),
-                deleterRole == null ? null : Role.valueOf(deleterRole));
+                deleterRole == null ? null : Role.valueOf(deleterRole),
+                deleterPhoto == null ? null : deleterPhoto.toInstant());
     }
 }

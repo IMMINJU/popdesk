@@ -1,6 +1,9 @@
 package io.popdesk.helpdesk.web.portal;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.account.OwnAccountService;
+import io.popdesk.helpdesk.photo.PhotoResponses;
+import io.popdesk.helpdesk.photo.PhotoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -27,6 +30,14 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 class PortalPhotoController {
 
+    private final PhotoService photos;
+    private final OwnAccountService own;
+
+    PortalPhotoController(PhotoService photos, OwnAccountService own) {
+        this.photos = photos;
+        this.own = own;
+    }
+
     @Operation(operationId = "uploadMyPhoto", summary = "Set the caller's profile photo",
             description = "Takes a PNG, JPEG, or WebP file of up to 2 MB, judged by its content. The server keeps "
                     + "only a copy scaled to fit 256 px and encoded again, without the original or its metadata "
@@ -45,7 +56,9 @@ class PortalPhotoController {
     @PostMapping(path = "/api/portal/me/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     Me uploadMyPhoto(@RequestPart("file") MultipartFile file) {
-        throw new NotImplementedException();
+        CurrentAccount me = CurrentAccount.get();
+        photos.upload(me.viewer(), file);
+        return PortalMeController.me(own.get(me));
     }
 
     @Operation(operationId = "deleteMyPhoto", summary = "Delete the caller's profile photo",
@@ -56,7 +69,7 @@ class PortalPhotoController {
     @DeleteMapping("/api/portal/me/photo")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void deleteMyPhoto() {
-        throw new NotImplementedException();
+        photos.delete(CurrentAccount.get().viewer());
     }
 
     @Operation(operationId = "getPhoto", summary = "Profile photo of a customer",
@@ -77,6 +90,6 @@ class PortalPhotoController {
             @PathVariable long accountId,
             @Parameter(description = "The `ETag` of the copy the caller has.")
                     @RequestHeader(name = HttpHeaders.IF_NONE_MATCH, required = false) @Nullable String ifNoneMatch) {
-        throw new NotImplementedException();
+        return PhotoResponses.of(photos.get(CurrentAccount.get().viewer(), accountId), ifNoneMatch);
     }
 }

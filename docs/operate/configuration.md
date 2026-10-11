@@ -202,6 +202,10 @@ Emails and webhook messages wait in a queue in the database and are sent by the 
 - The metric `popdesk_attachments_bytes` is the total that `POPDESK_ATTACHMENT_QUOTA` limits.
 - A new issue carries at most 20 files; with more the request gets 413. Each file of a new issue counts toward the account's 30 uploads in 60 seconds.
 
+## Profile photos
+
+A profile photo is a PNG, JPEG, or WebP file of at most 2 MB (2,097,152 bytes), judged by its content and not by its name. popdesk decodes it, scales it to fit 256 px, and keeps only that copy as a PNG in the database (table `account_photo`, a few tens of KB each); the uploaded file and its metadata are not kept. The limits are fixed, there is no setting for them: a PNG or JPEG may have up to 25 million pixels (width times height) and a WebP up to 12 million, read from the file's header before anything is decoded, and an account uploads at most 10 photos in 60 seconds. Decoding is what costs memory. PNG and JPEG are read at a reduced size and need little, but a WebP that is lossless or has transparency is decoded whole first, about 72 MB of heap for one at the limit. So at most 2 photos are decoded at once, which fits the image's 384 MB heap next to the app's other work; a third upload at that moment gets 503 `SERVER_BUSY` with `Retry-After`, and the screens try again. If you lower `-Xmx` below the default, leave room for about 150 MB of photo decoding. Photos are in the database dump, so `popdesk backup` covers them whatever `POPDESK_STORAGE` is.
+
 ## Commands
 
 The `popdesk` command is in the app image. Each one is recorded in the audit log, with popdesk itself (account `0`) as the person. A command that fails changes nothing and ends with a non-zero exit code.

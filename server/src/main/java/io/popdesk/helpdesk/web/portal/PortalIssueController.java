@@ -51,19 +51,23 @@ class PortalIssueController {
 
     static Issue issue(IssueRow row) {
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
-                row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole()),
+                row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
                 row.version(), utc(row.createdAt()), utc(row.updatedAt()));
     }
 
     static IssueSummary summary(IssueRow row) {
         return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
-                row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole()),
+                row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
                 utc(row.createdAt()));
     }
 
-    /** A customer by name; staff only as the support team, without name or ID (ADR D-49). */
-    static Person person(long accountId, String name, Role role) {
-        return role == Role.CUSTOMER ? new Person(PersonKind.CUSTOMER, accountId, name, null)
+    /**
+     * A customer by name, with the time of the profile photo; staff only as the support team, without
+     * name, ID, or anything of a photo (ADR D-49, S1A-AC-26).
+     */
+    static Person person(long accountId, String name, Role role, Instant photoUpdatedAt) {
+        return role == Role.CUSTOMER
+                ? new Person(PersonKind.CUSTOMER, accountId, name, photoUpdatedAt == null ? null : utc(photoUpdatedAt))
                 : new Person(PersonKind.SUPPORT_TEAM, null, null, null);
     }
 
@@ -115,10 +119,15 @@ class PortalIssueController {
             @RequestPart("issue") CreateIssueRequest issue,
             @RequestPart(name = "files", required = false) List<MultipartFile> files) {
         Viewer viewer = CurrentAccount.get().viewer();
+        boolean withFiles = files != null && !files.isEmpty();
+        if (withFiles) {
+            // How many files there are, and the upload limit, before anything else (S1A-AC-65, S1A-AC-66).
+            attachments.countFiling(viewer, files);
+        }
         // The company and the fields are checked before any file is looked at, every file before any is
         // written, and the files are written before the filing transaction begins (S0-AC-56, S0-AC-63).
         IssueService.Draft draft = issues.prepare(viewer, received(issue));
-        if (files == null || files.isEmpty()) {
+        if (!withFiles) {
             return issue(issues.file(viewer, draft));
         }
         List<UUID> pending = attachments.writeFiling(viewer, files);

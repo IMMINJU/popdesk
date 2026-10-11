@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.web.console;
 
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.CurrentAccount;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.helpdesk.issue.IssueService;
@@ -30,15 +31,20 @@ class ConsoleIssueController {
 
     static Issue issue(IssueRow row) {
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
-                row.priority(), row.privateIssue(), new Person(row.reporterId(), row.reporterName(), row.reporterRole(), null),
+                row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
                 IssueChannel.valueOf(row.channel()), utc(row.firstResponseAt()), row.version(), utc(row.createdAt()),
                 utc(row.updatedAt()));
     }
 
     static IssueSummary summary(IssueRow row) {
         return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
-                row.priority(), row.privateIssue(), new Person(row.reporterId(), row.reporterName(), row.reporterRole(), null),
+                row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
                 utc(row.createdAt()));
+    }
+
+    /** Staff see every person by name, with the time of the profile photo for the photo's address. */
+    static Person person(long accountId, String name, Role role, Instant photoUpdatedAt) {
+        return new Person(accountId, name, role, utc(photoUpdatedAt));
     }
 
     static OffsetDateTime utc(Instant instant) {

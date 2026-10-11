@@ -30,7 +30,8 @@ class PortalCommentController {
     }
 
     static Comment comment(CommentRow row) {
-        return new Comment(row.id(), PortalIssueController.person(row.authorId(), row.authorName(), row.authorRole()),
+        return new Comment(row.id(), PortalIssueController.person(row.authorId(), row.authorName(), row.authorRole(),
+                row.authorPhotoUpdatedAt()),
                 row.content(), PortalIssueController.utc(row.createdAt()));
     }
 

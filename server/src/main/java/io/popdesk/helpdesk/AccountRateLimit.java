@@ -31,7 +31,9 @@ public class AccountRateLimit {
         /** Adding a comment (S0-AC-55). */
         COMMENT(30),
         /** Uploading an attachment (S0-AC-65), also one filed with a new issue (S1A-AC-66). */
-        ATTACHMENT(30);
+        ATTACHMENT(30),
+        /** Uploading a profile photo (S1A-AC-28). */
+        PHOTO(10);
 
         final int limit;
 

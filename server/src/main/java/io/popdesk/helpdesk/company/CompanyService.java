@@ -193,7 +193,8 @@ public class CompanyService {
             if (companies.insertMember(company.id(), customer.id(), now())) {
                 audit.record(admin, "CUSTOMER_ADDED", target(company.code(), customer.id()), Map.of("member", true));
             }
-            return new MemberRow(company.id(), customer.id(), customer.name(), customer.email(), customer.status());
+            return new MemberRow(company.id(), customer.id(), customer.name(), customer.email(), customer.status(),
+                    customer.photoUpdatedAt());
         });
     }
 
@@ -247,7 +248,8 @@ public class CompanyService {
                 changes.put("assigned", true);
                 audit.record(admin, "AGENT_ASSIGNED", target(company.code(), agent.id()), changes);
             }
-            return new MemberRow(company.id(), agent.id(), agent.name(), agent.email(), agent.status());
+            return new MemberRow(company.id(), agent.id(), agent.name(), agent.email(), agent.status(),
+                    agent.photoUpdatedAt());
         });
     }
 

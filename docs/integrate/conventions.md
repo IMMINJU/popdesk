@@ -207,6 +207,7 @@ Limits are per account over a 60-second window:
 | Create an issue | 10 |
 | Add a comment | 30 |
 | Upload an attachment | 30 (each file of a new issue counts as one; a new issue whose files do not all fit is refused whole) |
+| Upload a profile photo | 10 |
 | List with a search term | 60 |
 | Customer manager sends an invitation | 20 |
 | Sign-in attempts | 20 per IP address |

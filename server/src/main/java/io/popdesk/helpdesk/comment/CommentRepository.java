@@ -22,13 +22,14 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class CommentRepository {
 
-    /** One comment with its author. */
+    /** One comment with its author; {@code authorPhotoUpdatedAt} is null without a profile photo. */
     public record CommentRow(long id, UUID issueId, long authorId, String authorName, Role authorRole,
-            boolean internal, String content, Instant createdAt) {}
+            Instant authorPhotoUpdatedAt, boolean internal, String content, Instant createdAt) {}
 
-    private static final String SELECT = "select cm.id, cm.issue_id, cm.author_id, a.name, a.role, cm.internal, "
-            + "cm.content, cm.created_at from comment cm join issue i on i.id = cm.issue_id "
-            + "join account a on a.id = cm.author_id ";
+    private static final String SELECT = "select cm.id, cm.issue_id, cm.author_id, a.name, a.role, "
+            + "ap.updated_at as author_photo_updated_at, cm.internal, cm.content, cm.created_at "
+            + "from comment cm join issue i on i.id = cm.issue_id join account a on a.id = cm.author_id "
+            + "left join account_photo ap on ap.account_id = cm.author_id ";
 
     /** Internal comments only for staff; one parameter, the viewer's role. */
     private static final String VISIBLE = " and (not cm.internal or ? <> 'CUSTOMER')";
@@ -73,8 +74,10 @@ public class CommentRepository {
     }
 
     private static CommentRow comment(ResultSet rs, int row) throws SQLException {
+        Timestamp authorPhoto = rs.getTimestamp("author_photo_updated_at");
         return new CommentRow(rs.getLong("id"), rs.getObject("issue_id", UUID.class), rs.getLong("author_id"),
-                rs.getString("name"), Role.valueOf(rs.getString("role")), rs.getBoolean("internal"),
+                rs.getString("name"), Role.valueOf(rs.getString("role")), authorPhoto == null ? null : authorPhoto.toInstant(),
+                rs.getBoolean("internal"),
                 rs.getString("content"), rs.getTimestamp("created_at").toInstant());
     }
 }

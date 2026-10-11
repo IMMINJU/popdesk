@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.ZoneOffset;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -69,9 +70,10 @@ class ConsoleMeController {
         flow.changePassword(request.currentPassword(), request.newPassword(), http, response);
     }
 
-    private static Me me(Own own) {
+    static Me me(Own own) {
         AccountRow account = own.account();
-        return new Me(account.id(), account.email(), account.name(), account.role(), account.locale(), null,
+        return new Me(account.id(), account.email(), account.name(), account.role(), account.locale(),
+                account.photoUpdatedAt() == null ? null : account.photoUpdatedAt().atOffset(ZoneOffset.UTC),
                 own.companies().stream().map(c -> new CompanyRef(c.code(), c.name())).toList());
     }
 }

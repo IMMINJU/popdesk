@@ -21,10 +21,12 @@ public class AccountRepository {
 
     /**
      * One account row. {@code passwordHash} is null until an invitation is accepted;
-     * {@code passwordChangedAt} is null for a password that never changed.
+     * {@code passwordChangedAt} is null for a password that never changed; {@code photoUpdatedAt} is null
+     * for an account without a profile photo.
      */
     public record AccountRow(long id, String email, String name, Role role, AccountStatus status, String passwordHash,
-            String locale, int failedSignIns, Instant lockedUntil, Instant passwordChangedAt, Instant createdAt) {}
+            String locale, int failedSignIns, Instant lockedUntil, Instant passwordChangedAt, Instant createdAt,
+            Instant photoUpdatedAt) {}
 
     /**
      * An account that has not accepted its invitation, with the invitation. {@code cancelled}: an admin
@@ -37,7 +39,8 @@ public class AccountRepository {
     record InvitationState(Role role, AccountStatus status, boolean accepted) {}
 
     private static final String ACCOUNT_COLUMNS = "a.id, a.email, a.name, a.role, a.status, a.password_hash, a.locale, "
-            + "a.failed_sign_ins, a.locked_until, a.password_changed_at, a.created_at";
+            + "a.failed_sign_ins, a.locked_until, a.password_changed_at, a.created_at, "
+            + "(select p.updated_at from account_photo p where p.account_id = a.id) as photo_updated_at";
 
     private static final String PENDING_COLUMNS = "a.id, a.email, a.name, a.role, i.invited_at, i.expires_at, "
             + "i.cancelled_at";
@@ -253,7 +256,7 @@ public class AccountRepository {
                 Role.valueOf(rs.getString("role")), AccountStatus.valueOf(rs.getString("status")),
                 rs.getString("password_hash"), rs.getString("locale"), rs.getInt("failed_sign_ins"),
                 instant(rs.getTimestamp("locked_until")), instant(rs.getTimestamp("password_changed_at")),
-                instant(rs.getTimestamp("created_at")));
+                instant(rs.getTimestamp("created_at")), instant(rs.getTimestamp("photo_updated_at")));
     }
 
     private static PendingRow pending(ResultSet rs, int row) throws SQLException {

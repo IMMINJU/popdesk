@@ -28,8 +28,9 @@ public class CompanyRepository {
     public record CompanyRow(long id, String code, String name, String legalName, CompanyStatus status,
             Instant createdAt) {}
 
-    /** A customer or agent of a company. */
-    public record MemberRow(long companyId, long accountId, String name, String email, AccountStatus status) {}
+    /** A customer or agent of a company; {@code photoUpdatedAt} is null without a profile photo. */
+    public record MemberRow(long companyId, long accountId, String name, String email, AccountStatus status,
+            Instant photoUpdatedAt) {}
 
     /** A company someone belongs to, by account. */
     public record MembershipRow(long accountId, String code, String name) {}
@@ -118,8 +119,9 @@ public class CompanyRepository {
 
     /** One page of a company's customers or agents, in name order, if the viewer may see the company. */
     public List<MemberRow> listMembers(Viewer viewer, long companyId, Role role, long offset, int limit) {
-        return jdbc.sql("select m.company_id, a.id, a.name, a.email, a.status from " + memberTable(role) + " m "
-                        + "join account a on a.id = m.account_id join company c on c.id = m.company_id "
+        return jdbc.sql("select m.company_id, a.id, a.name, a.email, a.status, p.updated_at from "
+                        + memberTable(role) + " m join account a on a.id = m.account_id "
+                        + "join company c on c.id = m.company_id left join account_photo p on p.account_id = a.id "
                         + "where m.company_id = ? and " + SCOPE + " order by a.name, a.id offset ? limit ?")
                 .params(with(with(new Object[] {companyId}, scope(viewer)), offset, limit))
                 .query(CompanyRepository::member).list();
@@ -211,7 +213,8 @@ public class CompanyRepository {
     }
 
     private static MemberRow member(ResultSet rs, int row) throws SQLException {
+        Timestamp photo = rs.getTimestamp(6);
         return new MemberRow(rs.getLong(1), rs.getLong(2), rs.getString(3), rs.getString(4),
-                AccountStatus.valueOf(rs.getString(5)));
+                AccountStatus.valueOf(rs.getString(5)), photo == null ? null : photo.toInstant());
     }
 }
