@@ -18,13 +18,17 @@ import java.util.Set;
  *
  * <p>The membership table is not named by the slice. It is found by its shape: a table with a
  * foreign key to the account table and one to the company table, and no columns but those keys,
- * {@code tenant_id}, its primary key, and times. The issue table also points at both, but has text
- * columns, so it does not match.
+ * {@code tenant_id}, its primary key, times, and marks on the membership itself (a boolean such as
+ * the manager mark, a uuid such as the row ID; slice 2). The issue table also points at both, but
+ * has text columns, so it does not match.
  */
 final class Membership {
 
     private static final Set<String> TIME_TYPES = Set.of("timestamp with time zone", "timestamp without time zone",
             "date");
+
+    /** Marks on a membership: they say nothing that makes the table another kind of table. */
+    private static final Set<String> MARK_TYPES = Set.of("boolean", "uuid");
 
     /** A single-column foreign key. */
     private record ForeignKey(String column, String targetTable, String targetColumn) {}
@@ -79,7 +83,8 @@ final class Membership {
             }
         }
         for (Column c : db.columns(table)) {
-            if (!keyColumns.contains(c.name()) && !c.name().equals("tenant_id") && !TIME_TYPES.contains(c.dataType())) {
+            if (!keyColumns.contains(c.name()) && !c.name().equals("tenant_id") && !TIME_TYPES.contains(c.dataType())
+                    && !MARK_TYPES.contains(c.dataType())) {
                 return false;
             }
         }
