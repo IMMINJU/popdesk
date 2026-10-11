@@ -1,5 +1,6 @@
 package io.popdesk.notification.outbox;
 
+import io.popdesk.notification.AuditCopyRows;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -16,20 +17,25 @@ public class OutboxRepository {
 
     public static final String MAIL = "MAIL";
     public static final String WEBHOOK = "WEBHOOK";
+
+    /** The outside copy of the audit log. Its rows are queued by {@link AuditCopyRows}, not here. */
+    public static final String AUDIT_FORWARD = AuditCopyRows.CHANNEL;
     static final String QUEUED = "queued";
     static final String FAILED = "failed";
 
-    /** A row as the send loop reads it. */
+    /** A row as the send loop reads it. {@code auditId} is the audit entry of an outside copy, else null. */
     record OutboxRow(long id, String channel, String kind, Long recipientAccountId, UUID issueId, Long commentId,
-            int attempts, Instant firstFailedAt, Instant createdAt) {}
+            Long auditId, int attempts, Instant firstFailedAt, Instant createdAt) {}
 
-    /** A {@code failed} row for the system status (S0-AC-81). */
-    public record FailedRow(long id, String channel, Instant createdAt, String lastErrorKind, Long recipientAccountId) {}
+    /** A {@code failed} row for the system status (S0-AC-81, S1B-AC-33). */
+    public record FailedRow(long id, String channel, Instant createdAt, String lastErrorKind, Long recipientAccountId,
+            Long auditId) {}
 
     /** Rows of one channel and state. */
     public record Count(String channel, String state, long rows) {}
 
-    private static final String COLUMNS = "id, channel, kind, recipient_account_id, issue_id, comment_id, attempts, "
+    private static final String COLUMNS = "id, channel, kind, recipient_account_id, issue_id, comment_id, audit_id, "
+            + "attempts, "
             + "first_failed_at, created_at";
 
     private final JdbcClient jdbc;
@@ -97,12 +103,13 @@ public class OutboxRepository {
 
     /** {@code failed} rows, the latest failure first. */
     public List<FailedRow> listFailed(long offset, int limit) {
-        return jdbc.sql("select id, channel, created_at, last_error_kind, recipient_account_id from outbox "
+        return jdbc.sql("select id, channel, created_at, last_error_kind, recipient_account_id, audit_id "
+                        + "from outbox "
                         + "where state = ? order by failed_at desc, id desc offset ? limit ?")
                 .params(FAILED, offset, limit)
                 .query((rs, n) -> new FailedRow(rs.getLong("id"), rs.getString("channel"),
                         instant(rs.getTimestamp("created_at")), rs.getString("last_error_kind"),
-                        rs.getObject("recipient_account_id", Long.class)))
+                        rs.getObject("recipient_account_id", Long.class), rs.getObject("audit_id", Long.class)))
                 .list();
     }
 
@@ -134,7 +141,7 @@ public class OutboxRepository {
     private static OutboxRow row(ResultSet rs, int n) throws SQLException {
         return new OutboxRow(rs.getLong("id"), rs.getString("channel"), rs.getString("kind"),
                 rs.getObject("recipient_account_id", Long.class), rs.getObject("issue_id", UUID.class),
-                rs.getObject("comment_id", Long.class), rs.getInt("attempts"),
+                rs.getObject("comment_id", Long.class), rs.getObject("audit_id", Long.class), rs.getInt("attempts"),
                 instant(rs.getTimestamp("first_failed_at")), instant(rs.getTimestamp("created_at")));
     }
 

@@ -6,6 +6,7 @@ import io.popdesk.helpdesk.audit.AuditChain;
 import io.popdesk.helpdesk.audit.AuditChainRepository;
 import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.system.PopdeskCommand.Failed;
+import io.popdesk.notification.AuditCopyRows;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -35,11 +36,13 @@ final class CommandDatabase {
     private final String url;
     private final String user;
     private final String password;
+    private final boolean auditCopy;
 
-    private CommandDatabase(String url, String user, String password) {
+    private CommandDatabase(String url, String user, String password, boolean auditCopy) {
         this.url = url;
         this.user = user;
         this.password = password;
+        this.auditCopy = auditCopy;
     }
 
     static CommandDatabase fromEnvironment(Map<String, String> env) {
@@ -58,7 +61,20 @@ final class CommandDatabase {
                         + e.getClass().getSimpleName() + ").");
             }
         }
-        return new CommandDatabase(url, user, password);
+        return new CommandDatabase(url, user, password, auditCopy(env));
+    }
+
+    /**
+     * Whether the outside copy of the audit log is on, by the container's environment as the app reads
+     * it. An address given as a file counts without reading the file: should it turn out empty, the
+     * app drops the row when its turn comes.
+     */
+    private static boolean auditCopy(Map<String, String> env) {
+        return AuditCopyRows.enabled(key -> {
+            String value = env.get(key);
+            String file = env.get(key + "_FILE");
+            return key.equals(AuditCopyRows.URL_KEY) && value == null && file != null && !file.isEmpty() ? file : value;
+        });
     }
 
     private static String valueOr(String value, String fallback) {
@@ -123,12 +139,13 @@ final class CommandDatabase {
      * null}}), as {@code AuditLog.recordBySystem} does in the app, and joins it to the hash chain with
      * the app's own code ({@link AuditChainRepository}, S1B-AC-43). On a connection in auto-commit mode the entry
      * is committed here; otherwise it goes with the caller's transaction, which should commit right
-     * after: the chain's head row stays locked until then.
+     * after: the chain's head row stays locked until then. With the outside copy on, the entry's row
+     * for the send queue goes in with it, and the app's send loop sends it (S1B-AC-29).
      *
      * <p>A schema from before the chain (a dump of an older version just restored, or a database the
      * app has not migrated yet) gets the row as that version wrote it; the migration chains it later.
      */
-    static void auditBySystem(Connection c, Clock clock, AuditAction action, Map<String, ?> target,
+    void auditBySystem(Connection c, Clock clock, AuditAction action, Map<String, ?> target,
             Map<String, ?> changes) throws SQLException {
         List<AuditChain.Values> entry = List.of(AuditChain.values(action, AuditLog.SYSTEM_ACCOUNT_ID, null, null,
                 target, changes, clock.instant()));
@@ -137,12 +154,12 @@ final class CommandDatabase {
             return;
         }
         if (!c.getAutoCommit()) {
-            AuditChainRepository.append(c, entry);
+            AuditChainRepository.append(c, entry, auditCopy);
             return;
         }
         c.setAutoCommit(false);
         try {
-            AuditChainRepository.append(c, entry);
+            AuditChainRepository.append(c, entry, auditCopy);
             c.commit();
         } catch (SQLException | RuntimeException e) {
             c.rollback();

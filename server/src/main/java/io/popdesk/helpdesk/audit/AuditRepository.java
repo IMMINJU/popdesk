@@ -7,6 +7,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -37,8 +38,14 @@ class AuditRepository {
     }
 
     /** Appends to the chain in the current transaction; the IDs of the new rows, in order. */
-    List<Long> append(List<AuditChain.Values> entries) {
-        return jdbc.execute((ConnectionCallback<List<Long>>) c -> AuditChainRepository.append(c, entries));
+    List<Long> append(List<AuditChain.Values> entries, boolean copy) {
+        return jdbc.execute((ConnectionCallback<List<Long>>) c -> AuditChainRepository.append(c, entries, copy));
+    }
+
+    /** One entry by its ID. */
+    Optional<AuditRow> find(long id) {
+        return jdbc.query("select " + COLUMNS + " from audit_log where id = ?", (rs, n) -> row(rs), id).stream()
+                .findFirst();
     }
 
     Chain chain() {

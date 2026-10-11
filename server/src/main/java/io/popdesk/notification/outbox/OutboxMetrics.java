@@ -8,18 +8,20 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
- * Outbox metrics (S0-AC-78, architecture.md section 6), label {@code channel} = {@code mail} or
- * {@code webhook}, both always there even when a channel is off: {@code popdesk_outbox_queued} and
+ * Outbox metrics (S0-AC-78, architecture.md section 6), label {@code channel} = {@code mail},
+ * {@code webhook} or {@code audit_forward}, all always there even when a channel is off: {@code popdesk_outbox_queued} and
  * {@code popdesk_outbox_failed} (rows now), {@code popdesk_outbox_sent_total} (rows sent). The two
  * gauges hold the counts of the last {@link #refresh()}. No address or URL is ever a label.
  */
 @Component
 public class OutboxMetrics {
 
-    private static final List<String> CHANNELS = List.of(OutboxRepository.MAIL, OutboxRepository.WEBHOOK);
+    private static final List<String> CHANNELS = List.of(OutboxRepository.MAIL, OutboxRepository.WEBHOOK,
+            OutboxRepository.AUDIT_FORWARD);
 
     private final OutboxRepository outbox;
     private final Map<String, AtomicLong> queued;
@@ -30,14 +32,12 @@ public class OutboxMetrics {
         this.outbox = outbox;
         this.queued = gauges(registry, "popdesk.outbox.queued", "Outbox rows waiting to be sent");
         this.failed = gauges(registry, "popdesk.outbox.failed", "Outbox rows that stopped retrying");
-        this.sent = Map.of(
-                OutboxRepository.MAIL, counter(registry, OutboxRepository.MAIL),
-                OutboxRepository.WEBHOOK, counter(registry, OutboxRepository.WEBHOOK));
+        this.sent = CHANNELS.stream().collect(Collectors.toUnmodifiableMap(c -> c, c -> counter(registry, c)));
     }
 
     private static Map<String, AtomicLong> gauges(MeterRegistry registry, String name, String description) {
-        Map<String, AtomicLong> out = Map.of(OutboxRepository.MAIL, new AtomicLong(),
-                OutboxRepository.WEBHOOK, new AtomicLong());
+        Map<String, AtomicLong> out = CHANNELS.stream()
+                .collect(Collectors.toUnmodifiableMap(c -> c, c -> new AtomicLong()));
         for (String channel : CHANNELS) {
             Gauge.builder(name, out.get(channel), AtomicLong::get)
                     .description(description)

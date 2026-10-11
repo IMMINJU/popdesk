@@ -35,9 +35,7 @@ class ConsoleSystemController {
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: admins only.")
     @GetMapping("/status")
     SystemStatus getSystemStatus() {
-        // Contract shell (S1B-AC-33): the outside copy of the audit log is off until slice 1b builds it.
-        return new SystemStatus(channel(status.mail()), channel(status.webhook()),
-                new ChannelStatus(false, null, 0, 0));
+        return new SystemStatus(channel(status.mail()), channel(status.webhook()), channel(status.auditForward()));
     }
 
     @Operation(operationId = "listFailedDeliveries", summary = "Outbox rows that stopped retrying",
@@ -59,7 +57,7 @@ class ConsoleSystemController {
 
     private static FailedDelivery failedDelivery(FailedRow row) {
         return new FailedDelivery(row.id(), DeliveryChannel.valueOf(row.channel()), utc(row.createdAt()),
-                row.lastErrorKind(), row.recipientAccountId(), null);
+                row.lastErrorKind(), row.recipientAccountId(), row.auditId());
     }
 
     private static OffsetDateTime utc(Instant at) {

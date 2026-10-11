@@ -17,7 +17,8 @@ class Wakeups {
 
     private final Map<String, Semaphore> channels = Map.of(
             OutboxRepository.MAIL, new Semaphore(0),
-            OutboxRepository.WEBHOOK, new Semaphore(0));
+            OutboxRepository.WEBHOOK, new Semaphore(0),
+            OutboxRepository.AUDIT_FORWARD, new Semaphore(0));
 
     /** Wakes the channel's loop when the current transaction commits. */
     void afterCommit(String channel) {
@@ -27,6 +28,11 @@ class Wakeups {
                 channels.get(channel).release();
             }
         });
+    }
+
+    /** Wakes the channel's loop now, for a caller whose transaction has already committed. */
+    void now(String channel) {
+        channels.get(channel).release();
     }
 
     /** Waits until the channel is woken or {@code atMost} has passed. */

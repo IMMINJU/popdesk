@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.audit;
 
 import io.popdesk.helpdesk.audit.AuditChain.Values;
+import io.popdesk.notification.AuditCopyRows;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -30,10 +31,15 @@ public final class AuditChainRepository {
      *
      * <p>Order of work (architecture.md "동시성과 잠금 순서" 5): the JSON goes to the database and comes
      * back as {@code jsonb} writes it, in one statement for all entries; then the head row is locked
-     * {@code FOR NO KEY UPDATE}; then the hashes are computed, the rows inserted, and the head moved.
-     * Nothing else happens while the head row is held.
+     * {@code FOR NO KEY UPDATE}; then the hashes are computed, the rows inserted, the send-queue rows
+     * of the outside copy inserted when it is on, and the head moved. Nothing else happens while the
+     * head row is held.
+     *
+     * @param copy whether the outside copy is on ({@link AuditCopyRows#enabled}): then each entry gets
+     *     its row in the send queue here, so the entry and its copy are kept or lost together
+     *     (S1B-AC-30)
      */
-    public static List<Long> append(Connection c, List<Values> entries) throws SQLException {
+    public static List<Long> append(Connection c, List<Values> entries, boolean copy) throws SQLException {
         if (entries.isEmpty()) {
             return List.of();
         }
@@ -84,9 +90,10 @@ public final class AuditChainRepository {
         for (Long each : seqs) {
             ids.add(idBySeq.get(each));
         }
-        // The outside copy (slice 1b, AUDIT-5): when it is on, the send-queue rows for these IDs go in
-        // here, after the audit rows and before the head moves. The queue has no foreign key, so
-        // nothing else is locked.
+        if (copy) {
+            // The queue has no foreign key, so nothing else is locked. Due at the latest entry's time.
+            AuditCopyRows.insert(c, ids, stored.getLast().occurredAt());
+        }
         try (PreparedStatement s = c.prepareStatement("update audit_chain set head_seq = ?, head_hash = ?")) {
             s.setLong(1, seq);
             s.setString(2, prevHash);

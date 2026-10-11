@@ -26,7 +26,8 @@ public class SecretFiles implements EnvironmentPostProcessor, Ordered {
 
     /** The secrets of configuration.md. Each may be given as {@code <NAME>_FILE}. */
     public static final List<String> SECRETS = List.of("POPDESK_DB_PASSWORD", "POPDESK_ADMIN_PASSWORD",
-            "SMTP_PASSWORD", "IMAP_PASSWORD", "NOTIFY_WEBHOOK_URL", "S3_SECRET_KEY", "OIDC_CLIENT_SECRET");
+            "SMTP_PASSWORD", "IMAP_PASSWORD", "NOTIFY_WEBHOOK_URL", "S3_SECRET_KEY", "OIDC_CLIENT_SECRET",
+            "AUDIT_FORWARD_URL", "AUDIT_FORWARD_TOKEN");
 
     static final String SOURCE_NAME = "popdeskSecretFiles";
 

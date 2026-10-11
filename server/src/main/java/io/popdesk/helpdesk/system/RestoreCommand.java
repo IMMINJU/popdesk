@@ -56,7 +56,7 @@ final class RestoreCommand {
                 throw new Failed("pg_restore ended with exit code " + exit + "; it ran in one transaction, so the "
                         + "database is still empty.");
             }
-            CommandDatabase.auditBySystem(c, clock, AuditAction.DATABASE_RESTORED, Map.of("type", "DATABASE"),
+            database.auditBySystem(c, clock, AuditAction.DATABASE_RESTORED, Map.of("type", "DATABASE"),
                     Map.of("file", file));
             System.out.println("Restored " + file + ". Start the app now.");
         }

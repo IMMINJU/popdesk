@@ -102,7 +102,7 @@ final class ResetPasswordCommand {
                 s.setString(1, Long.toString(admin.id()));
                 s.executeUpdate();
             }
-            CommandDatabase.auditBySystem(c, clock, AuditAction.ADMIN_PASSWORD_RESET,
+            database.auditBySystem(c, clock, AuditAction.ADMIN_PASSWORD_RESET,
                     Map.of("type", "ACCOUNT", "accountId", admin.id()), null);
             c.commit();
         } catch (SQLException | RuntimeException e) {

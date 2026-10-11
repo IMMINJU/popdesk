@@ -7,17 +7,10 @@ import io.popdesk.notification.IssueFacts;
 import io.popdesk.notification.IssueFacts.Issue;
 import io.popdesk.notification.WebhookKind;
 import io.popdesk.notification.outbox.OutboxRepository.OutboxRow;
-import java.io.IOException;
-import java.net.ConnectException;
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import javax.net.ssl.SSLException;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
@@ -32,9 +25,6 @@ import org.springframework.stereotype.Component;
  */
 @Component
 class WebhookSender implements Sender {
-
-    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
-    private static final Duration TIMEOUT = Duration.ofSeconds(30);
 
     private final IssueFacts issues;
     private final PublicAddress address;
@@ -65,29 +55,14 @@ class WebhookSender implements Sender {
         HttpRequest request;
         try {
             request = HttpRequest.newBuilder(URI.create(url.strip()))
-                    .timeout(TIMEOUT)
+                    .timeout(JsonPost.TIMEOUT)
                     .header("Content-Type", "application/json; charset=utf-8")
                     .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
                     .build();
         } catch (IllegalArgumentException e) {
             return Attempt.failed("WEBHOOK_URL_INVALID");
         }
-        try {
-            HttpResponse<Void> response = client().send(request, HttpResponse.BodyHandlers.discarding());
-            int status = response.statusCode();
-            return status >= 200 && status < 300 ? Attempt.sent() : Attempt.failed("HTTP_" + status);
-        } catch (HttpConnectTimeoutException | ConnectException e) {
-            return Attempt.failed("CONNECTION_FAILED");
-        } catch (HttpTimeoutException e) {
-            return Attempt.failed("TIMEOUT");
-        } catch (SSLException e) {
-            return Attempt.failed("TLS_FAILED");
-        } catch (IOException e) {
-            return Attempt.failed(e.getCause() instanceof SSLException ? "TLS_FAILED" : "IO_ERROR");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return Attempt.failed("INTERRUPTED");
-        }
+        return JsonPost.send(client(), request);
     }
 
     /** The message text in the installation's language ({@code POPDESK_LOCALE}). */
@@ -106,10 +81,7 @@ class WebhookSender implements Sender {
     private HttpClient client() {
         HttpClient c = client;
         if (c == null) {
-            c = HttpClient.newBuilder()
-                    .connectTimeout(CONNECT_TIMEOUT)
-                    .followRedirects(HttpClient.Redirect.NEVER)
-                    .build();
+            c = JsonPost.newClient();
             client = c;
         }
         return c;

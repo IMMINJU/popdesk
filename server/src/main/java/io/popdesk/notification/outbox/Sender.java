@@ -5,7 +5,7 @@ import io.popdesk.notification.outbox.OutboxRepository.OutboxRow;
 /** Sends the rows of one channel. Called by that channel's send loop only, outside any transaction. */
 interface Sender {
 
-    /** {@link OutboxRepository#MAIL} or {@link OutboxRepository#WEBHOOK}. */
+    /** {@link OutboxRepository#MAIL}, {@link OutboxRepository#WEBHOOK} or {@link OutboxRepository#AUDIT_FORWARD}. */
     String channel();
 
     /** Checks the row against the database now and sends it, or not. Never throws for a failed send. */

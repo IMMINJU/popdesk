@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.audit;
 
+import io.popdesk.notification.AuditCopies;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -22,7 +23,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * the transaction commits, all its entries join the hash chain at once ({@link AuditChainRepository#append}),
  * so the chain's head row is locked last and only for the hashing and the inserts (S1B-AC-09 to
  * S1B-AC-11). Until then the entry is not in the database: code in the same transaction cannot read it
- * back. A transaction that rolls back takes its entries with it.
+ * back. A transaction that rolls back takes its entries with it. With the outside copy on
+ * ({@code AUDIT_FORWARD_URL}), each entry's row for the send queue goes in with it (S1B-AC-30).
  */
 @Service
 public class AuditLog {
@@ -37,10 +39,12 @@ public class AuditLog {
     }
 
     private final AuditRepository repository;
+    private final AuditCopies copies;
     private final Clock clock;
 
-    AuditLog(AuditRepository repository, Clock clock) {
+    AuditLog(AuditRepository repository, AuditCopies copies, Clock clock) {
         this.repository = repository;
+        this.copies = copies;
         this.clock = clock;
     }
 
@@ -105,7 +109,14 @@ public class AuditLog {
         @Override
         public void beforeCommit(boolean readOnly) {
             appended = true;
-            repository.append(entries);
+            repository.append(entries, copies.enabled());
+        }
+
+        @Override
+        public void afterCommit() {
+            if (copies.enabled()) {
+                copies.wake();
+            }
         }
     }
 }

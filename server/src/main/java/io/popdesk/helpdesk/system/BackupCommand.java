@@ -44,7 +44,7 @@ final class BackupCommand {
             if (exit != 0) {
                 throw new Failed("pg_dump ended with exit code " + exit + "; no backup was written.");
             }
-            CommandDatabase.auditBySystem(c, clock, AuditAction.BACKUP_CREATED, Map.of("type", "DATABASE"),
+            database.auditBySystem(c, clock, AuditAction.BACKUP_CREATED, Map.of("type", "DATABASE"),
                     Map.of("file", file));
             System.out.println("Wrote the backup to " + file + ".");
         }
