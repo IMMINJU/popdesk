@@ -1,5 +1,5 @@
 /*
- * Design tokens from design/slices/0-first/tokens.md.
+ * Design tokens from design/tokens.md.
  * Values only: no component uses them yet (C-9 does).
  *
  * Theme: <html data-theme="light|dark">. Without it, prefers-color-scheme
