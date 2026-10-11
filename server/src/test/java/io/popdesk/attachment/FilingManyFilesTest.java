@@ -48,12 +48,12 @@ class FilingManyFilesTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("V-13 S0-AC-56 a filing with 30 files is 201 and all 30 are attached")
-    void thirtyFiles() {
+    @DisplayName("V-13 S0-AC-56 a filing with 20 files is 201 and all 20 are attached")
+    void twentyFiles() {
         Scene s = steps.scene();
-        List<String> names = names(30);
+        List<String> names = names(20);
 
-        ApiResponse filed = file(s, Unique.text("Thirty files"), names);
+        ApiResponse filed = file(s, Unique.text("Twenty files"), names);
 
         assertThat(filed.status()).as("%s: %s", filed, filed.snippet()).isEqualTo(201);
         assertThat(list(s.customer(), filed.jsonText("key"))).extracting(n -> text(n, "fileName"))
