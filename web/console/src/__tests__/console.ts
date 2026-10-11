@@ -455,6 +455,9 @@ const defaultHandlers = [
     return HttpResponse.json({ inviteLink: INVITE_LINK }, { headers: { 'Cache-Control': 'no-store' } });
   }),
 
+  // The frame asks for the number of open requests for an admin's menu (2-manager screens.md 4절): none.
+  http.get('*/api/console/membership-requests', () => requireAdmin() ?? HttpResponse.json(paged<Schemas['PendingMembership']>([]))),
+
   http.get('*/api/console/system/status', () => requireAdmin() ?? HttpResponse.json(state.status)),
   http.get('*/api/console/system/failed-deliveries', () => requireAdmin() ?? HttpResponse.json(paged(state.failed))),
 ];

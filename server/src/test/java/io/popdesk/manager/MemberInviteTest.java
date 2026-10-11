@@ -175,6 +175,17 @@ class MemberInviteTest extends BareAppTest {
                 Arguments.of("a tab", "Tab\tname"));
     }
 
+    /**
+     * Line breaks that are not ISO control characters, and NEL which is one. In the middle of the name, so
+     * trimming does not take them off. The admin's invitation is not asked about these.
+     */
+    static Stream<Arguments> namesWithUnicodeLineBreaks() {
+        return Stream.of(
+                Arguments.of("a line separator (U+2028)", "Line break"),
+                Arguments.of("a paragraph separator (U+2029)", "Line break"),
+                Arguments.of("a next line character (U+0085)", "Line\u0085break"));
+    }
+
     static Stream<Arguments> invalidInput() {
         return Stream.concat(Stream.of(
                 Arguments.of("no email", "", "Name", "email", "REQUIRED"),
@@ -186,8 +197,9 @@ class MemberInviteTest extends BareAppTest {
                 Arguments.of("a name of only spaces", null, "   ", "name", "BLANK"),
                 Arguments.of("a name of 51 characters", null, "n".repeat(51), "name", "TOO_LONG"),
                 Arguments.of("a name with a NUL character", null, "Na\u0000me", "name", "INVALID_FORMAT")),
-                namesWithControlCharacters().map(a -> Arguments.of("a name with " + a.get()[0], null, a.get()[1],
-                        "name", "INVALID_FORMAT")));
+                Stream.concat(namesWithControlCharacters(), namesWithUnicodeLineBreaks())
+                        .map(a -> Arguments.of("a name with " + a.get()[0], null, a.get()[1], "name",
+                                "INVALID_FORMAT")));
     }
 
     @ParameterizedTest(name = "{0}")
