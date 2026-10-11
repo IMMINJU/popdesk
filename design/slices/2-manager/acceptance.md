@@ -57,7 +57,7 @@
 | S2-AC-19 | If 이메일이나 이름이 관리자 초대의 입력 규칙에 맞지 않으면, then the system shall 계정이 있는지 보기 전에 400으로 답한다. 담당자인지는 그보다 먼저 본다(소속이 아니면 틀린 입력이어도 404, 담당자가 아니면 403). (INVITE-1, COM-1, COM-2) |
 | S2-AC-53 | If 담당자가 넣은 이름에 줄바꿈이나 탭 같은 제어 문자가 있으면, then the system shall 400 `INVALID_INPUT`으로 답하고 `fields`에 `name`의 `INVALID_FORMAT`을 준다(S2-AC-19의 꼴). 관리자 초대의 규칙은 바꾸지 않는다. (5절 10) |
 | S2-AC-20 | The system shall 담당자의 초대와 다시 보내기를 합쳐 한 계정에 60초 동안 20번까지 받는다. 넘으면 429와 `Retry-After`다. (COM-8, TM-35) |
-| S2-AC-21 | If 그 고객사의 수락 전 소속과 걸려 있는 소속 요청을 합쳐 100개이면, then the system shall 초대를 409 `TOO_MANY_PENDING`으로 답한다. (5절 3) |
+| S2-AC-21 | If 그 고객사의 구성원 목록에 `INVITED`로 보이는 행(수락 전 소속과 걸려 있는 소속 요청)이 100개이면, then the system shall 초대를 409 `TOO_MANY_PENDING`으로 답한다. (5절 3) |
 | S2-AC-22 | The system shall 담당자의 초대 요청에 역할과 고객사를 고르는 칸을 두지 않는다. 계정은 늘 고객이고 고객사는 경로의 그 고객사다. (MGR-3) |
 | S2-AC-23 | Where SMTP 설정이 없어도, the system shall 담당자에게 초대 링크를 주지 않는다. 초대는 되고 메일은 나가지 않는다. (INVITE-6) |
 
