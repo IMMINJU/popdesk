@@ -59,4 +59,7 @@ export const en: Record<keyof typeof ko, string> = {
 
   // Slice 2 (design/slices/2-manager/screens.md 1절).
   'companyPeople.title': 'People in our company',
+
+  // Slice 3 (design/slices/3-issues/screens.md 1절).
+  'issueOnBehalf.title': 'New issue for a customer',
 };

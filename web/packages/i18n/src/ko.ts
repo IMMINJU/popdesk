@@ -58,4 +58,7 @@ export const ko = {
 
   // Slice 2 (design/slices/2-manager/screens.md 1절).
   'companyPeople.title': '우리 회사 사람',
+
+  // Slice 3 (design/slices/3-issues/screens.md 1절).
+  'issueOnBehalf.title': '대리 등록',
 } as const;

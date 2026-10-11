@@ -8,6 +8,7 @@ import { C12AuditLog } from './screens/C12AuditLog';
 import { C16PasswordForgot } from './screens/C16PasswordForgot';
 import { C17PasswordReset } from './screens/C17PasswordReset';
 import { C18SystemStatus } from './screens/C18SystemStatus';
+import { C19IssueCreate } from './screens/C19IssueCreate';
 import { C1Login } from './screens/C1Login';
 import { C2InviteAccept } from './screens/C2InviteAccept';
 import { C3IssueList } from './screens/C3IssueList';
@@ -21,6 +22,7 @@ import { C9CompanyDetail } from './screens/C9CompanyDetail';
 // Slice 1a adds C-16 and C-17 (signed out; C-17 takes its token after `#`, like
 // the invitation) and C-6 (signed in, every role).
 // Slice 1b adds C-12 (admin only).
+// Slice 3 adds C-19 (every role), before `/issues/:issueKey` so `new` is not read as a key.
 const routes: RouteObject[] = [
   { index: true, element: <Navigate to="/issues" replace /> },
   { path: '/login', element: <C1Login /> },
@@ -31,6 +33,7 @@ const routes: RouteObject[] = [
     element: <ConsoleLayout />,
     children: [
       { path: '/issues', element: <C3IssueList /> },
+      { path: '/issues/new', element: <C19IssueCreate /> },
       { path: '/issues/:issueKey', element: <C4IssueDetail /> },
       { path: '/me', element: <C6MyInfo /> },
       { path: '/companies', element: <AdminOnly><C8CompanyList /></AdminOnly> },
