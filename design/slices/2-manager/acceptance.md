@@ -55,7 +55,7 @@
 | S2-AC-17 | If 그 이메일이 이미 이 고객사 구성원 목록의 행이면(소속이거나 걸려 있는 요청), then the system shall 409 `ALREADY_LISTED`로 답하고 아무것도 바꾸지 않는다. 이메일은 관리자 초대처럼 앞뒤 공백을 떼고 대소문자를 가리지 않고 견준다. (MGR-3) |
 | S2-AC-18 | If 고객사가 `ARCHIVED`이면, then the system shall 초대를 400 `COMPANY_NOT_ACTIVE`로 답한다. `SUSPENDED`인 고객사에는 초대할 수 있다. (PROJ-3) |
 | S2-AC-19 | If 이메일이나 이름이 관리자 초대의 입력 규칙에 맞지 않으면, then the system shall 계정이 있는지 보기 전에 400으로 답한다. 담당자인지는 그보다 먼저 본다(소속이 아니면 틀린 입력이어도 404, 담당자가 아니면 403). (INVITE-1, COM-1, COM-2) |
-| S2-AC-53 | If 담당자가 넣은 이름에 줄바꿈이나 탭 같은 제어 문자가 있으면, then the system shall 400 `INVALID_FORMAT`으로 답한다. 관리자 초대의 규칙은 바꾸지 않는다. (5절 10) |
+| S2-AC-53 | If 담당자가 넣은 이름에 줄바꿈이나 탭 같은 제어 문자가 있으면, then the system shall 400 `INVALID_INPUT`으로 답하고 `fields`에 `name`의 `INVALID_FORMAT`을 준다(S2-AC-19의 꼴). 관리자 초대의 규칙은 바꾸지 않는다. (5절 10) |
 | S2-AC-20 | The system shall 담당자의 초대와 다시 보내기를 합쳐 한 계정에 60초 동안 20번까지 받는다. 넘으면 429와 `Retry-After`다. (COM-8, TM-35) |
 | S2-AC-21 | If 그 고객사의 수락 전 소속과 걸려 있는 소속 요청을 합쳐 100개이면, then the system shall 초대를 409 `TOO_MANY_PENDING`으로 답한다. (5절 3) |
 | S2-AC-22 | The system shall 담당자의 초대 요청에 역할과 고객사를 고르는 칸을 두지 않는다. 계정은 늘 고객이고 고객사는 경로의 그 고객사다. (MGR-3) |
@@ -83,7 +83,7 @@
 | S2-AC-34 | When 관리자가 요청을 승인하면, the system shall 그 계정을 그 고객사에 소속시키고 요청을 닫는다. 담당자의 구성원 목록에서 그 행은 같은 행 ID로 남고 계정의 실제 이름과 상태를 보인다. (MGR-3, MGR-6) |
 | S2-AC-35 | When 관리자가 요청을 거절하면, the system shall 요청을 닫는다. 담당자의 구성원 목록에서 그 행이 사라지고 계정은 바뀌지 않는다. (MGR-3, MGR-6) |
 | S2-AC-36 | If 요청의 계정이 고객이 아니거나 고객사가 `ARCHIVED`이면, then the system shall 승인을 400으로 답한다(`NOT_A_CUSTOMER`, `COMPANY_NOT_ACTIVE`). 거절은 된다. 정지된 고객의 요청은 승인할 수 있다(콘솔의 소속 더하기가 계정의 상태를 보지 않는 것과 같다). (MGR-6, PROJ-3) |
-| S2-AC-37 | If 이미 닫힌 요청에 같은 처리를 다시 하면, then the system shall 그대로 200으로 답한다. 반대 처리를 하거나 담당자가 거둔 요청이면 409 `REQUEST_CLOSED`다. 같은 때 온 승인과 거절은 하나만 된다(이 경우는 테스트를 두지 않았다. 동시 요청을 보내는 공용 도움이 없다. 요청 행을 잠그는 것으로 지킨다, `design.md` 5절). (PROJ-4와 같은 꼴) |
+| S2-AC-37 | If 이미 닫힌 요청에 같은 처리를 다시 하면, then the system shall 그대로 200으로 답한다. 반대 처리를 하거나 담당자가 거둔 요청이면 409 `REQUEST_CLOSED`다. 같은 때 온 승인과 거절은 하나만 된다. (PROJ-4와 같은 꼴) |
 | S2-AC-38 | When 관리자가 콘솔의 소속 더하기로 그 계정을 그 고객사에 소속시키면, the system shall 걸려 있던 요청을 승인된 것으로 닫는다. (MGR-6) |
 | S2-AC-39 | When 소속 요청이 생기면, the system shall `ACTIVE` 관리자 모두의 콘솔 알림함에 항목을 넣는다. 메일은 보내지 않는다. (5절 5) |
 | S2-AC-40 | The system shall 요청이 생기고, 승인되고, 거절되고, 거둬져도 요청의 대상 계정에게는 메일과 알림을 보내지 않는다. (MGR-3, 5절 5) |
