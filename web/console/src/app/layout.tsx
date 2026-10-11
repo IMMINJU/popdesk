@@ -1,23 +1,25 @@
 // The signed-in frame: checks the session, draws the side menu (AppShell), and
 // lets screens mark `main` busy while they load (screens.md 2절, 4절 공통 머리).
-import { Alert, AppShell, Button, EmptyState, LockIcon, SearchOffIcon, type NavItem } from '@popdesk/ui';
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { Alert, AppShell, Button, EmptyState, LockIcon, NavItemLabel, SearchOffIcon, type NavItem } from '@popdesk/ui';
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { api } from '../api';
 import { BusyContext } from './busy';
 import { useDocumentTitle, useFocusWhenReady } from './hooks';
 import { t } from './locale';
 import { TEXT } from './messages';
+import { NavCountContext } from './navCount';
 import { useLiveNavigate } from './navigate';
 import { photoUrl } from './photos';
 import { call } from './result';
 import { useSession, useToLogin, type Me } from './sessionContext';
 
-function menu(me: Me): { href: string; label: string }[] {
-  const items = [{ href: '/issues', label: '문의' }];
+/** `requests`: the open membership requests of all companies, shown on 고객사 (S2-AC-48). */
+function menu(me: Me, requests: number): Omit<NavItem, 'current'>[] {
+  const items: Omit<NavItem, 'current'>[] = [{ href: '/issues', label: '문의' }];
   if (me.role === 'ADMIN') {
     items.push(
-      { href: '/companies', label: '고객사' },
+      { href: '/companies', label: '고객사', count: requests, countLabel: `소속 요청 ${String(requests)}건` },
       { href: '/members', label: '구성원' },
       { href: '/audit-log', label: t('auditLog.title') },
       { href: '/system', label: '시스템 상태' },
@@ -40,6 +42,25 @@ export function ConsoleLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [requests, setRequests] = useState(0);
+  const [counted, setCounted] = useState(0);
+  const admin = me?.role === 'ADMIN';
+
+  // The sum for 고객사: when the frame opens and each time a screen closed a request.
+  // Only an admin may ask. A failed answer says nothing; the number is just not drawn.
+  useEffect(() => {
+    if (!admin) return undefined;
+    let live = true;
+    void call(api.GET('/api/console/membership-requests', { params: { query: { size: 1 } } })).then((result) => {
+      if (live) setRequests(result.ok ? result.data.totalElements : 0);
+    });
+    return () => {
+      live = false;
+    };
+  }, [admin, counted]);
+  const recount = useCallback(() => {
+    setCounted((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -93,7 +114,7 @@ export function ConsoleLayout() {
   }
   if (!me) return null;
 
-  const nav: NavItem[] = menu(me).map((item) => ({ ...item, current: isCurrent(location.pathname, item.href) }));
+  const nav: NavItem[] = menu(me, admin ? requests : 0).map((item) => ({ ...item, current: isCurrent(location.pathname, item.href) }));
   return (
     <BusyContext value={setBusy}>
       <AppShell
@@ -125,11 +146,13 @@ export function ConsoleLayout() {
         )}
         renderLink={(item) => (
           <Link to={item.href} aria-current={item.current ? 'page' : undefined}>
-            {item.label}
+            <NavItemLabel item={item} />
           </Link>
         )}
       >
-        <Outlet />
+        <NavCountContext value={recount}>
+          <Outlet />
+        </NavCountContext>
       </AppShell>
     </BusyContext>
   );

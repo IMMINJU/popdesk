@@ -7,7 +7,7 @@ export { codePoints, formatBytes } from './format';
 export { ACCOUNT_STATUS_WORDS, ISSUE_STATUS_WORDS, PRIORITY_WORDS, PROJECT_STATUS_WORDS } from './words';
 
 export { Alert, type AlertProps, type AlertTone } from './components/Alert';
-export { AppShell, type AppShellProps, type NavItem } from './components/AppShell';
+export { AppShell, NavItemLabel, type AppShellProps, type NavItem } from './components/AppShell';
 export { AttachmentList, type AttachmentItem, type AttachmentListProps } from './components/AttachmentList';
 export { Avatar, type AvatarProps } from './components/Avatar';
 export { Badge, type BadgeProps, type BadgeTone } from './components/Badge';

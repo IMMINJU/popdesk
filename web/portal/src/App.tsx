@@ -16,7 +16,7 @@ import { P9PasswordForgot } from './screens/P9PasswordForgot';
 // First-slice screens (design/slices/0-first/screens.md 3절). `/` opens the issue
 // list; signed-in screens sit in PortalLayout. Slice 1a adds P-9 and P-10 (signed
 // out; P-10 takes its token after `#`, like the invitation) and P-6 (signed in).
-// Slice 2 adds P-8 (signed in; managers only, which the screen itself checks).
+// Slice 2 adds P-8 (signed in; managers only, which the server's answers decide).
 const routes: RouteObject[] = [
   { index: true, element: <Navigate to="/issues" replace /> },
   { path: '/login', element: <P1Login /> },

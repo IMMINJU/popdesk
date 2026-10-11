@@ -96,7 +96,7 @@ b59c176e1cf43085226410b159c3e257e748707d12fd9b493766224eaf59ea6e  server/src/tes
 10957d4c36d2489167312ad25aaee10bd811381ecebb507f502975fb2a33d46d  server/src/test/java/io/popdesk/boundary/CompanyBoundaryTest.java
 73a3ddba7b154dc78a3a2708276faf7eb92ee1bc9d60a9bcf9c3155331dc4cd2  server/src/test/java/io/popdesk/boundary/CompanyWorld.java
 e36b8708bbbfcfb3150fe5c663ee1f2318962e544030a96cb3dbf61b9747e3c5  server/src/test/java/io/popdesk/boundary/GatedMailTest.java
-c4fa50c3acdeed135e65364bb28007c893d29659abacb9228191cf0155ab2bf0  server/src/test/java/io/popdesk/boundary/Membership.java
+16d0401b7fc8fb8b6ed5f7beab340a8c4c9574faad6a449e47a99015743de6cd  server/src/test/java/io/popdesk/boundary/Membership.java
 a3512014acc7b16edd8eaa3f57b823cfb532f733acc43e9dfa893550a8766282  server/src/test/java/io/popdesk/boundary/PhotoBoundaryTest.java
 2db2ba53fcc8e4e66713ccd9e5822290c5cfe0b769d85c902d92c1707fbed49c  server/src/test/java/io/popdesk/boundary/QueuedMailBoundaryTest.java
 544b453c8f5f44c10a65333655679869a7e8ea799f680967d3d2df21ef196e66  server/src/test/java/io/popdesk/boundary/SmtpGate.java
@@ -168,7 +168,7 @@ df2390bc30f37d00a39e505a47946cc56b5a27ceff000f329f374f85777246b5  server/src/tes
 2dcb4c439508a4a3353ee391f4f09d45e00dc26f1b2eba4abd5a0ab272ace61b  server/src/test/java/io/popdesk/issue/IssueSteps.java
 efb1c84606d08abadf0ce80d5cf17d689861c86cd879434ab96880f8c41d3b9a  server/src/test/java/io/popdesk/issue/IssueTables.java
 e43b49f2c386df1c7bbd9b71b26605ea7de3e8ab1b54a4a514e4d7348fc28046  server/src/test/java/io/popdesk/issue/IssueVersionTest.java
-4472abbb4dcb67735d384f80d0e28321f67cef1924c8bcb5845a4cab76b529ee  server/src/test/java/io/popdesk/issue/Membership.java
+074924af411aa2a8666f8d87800b45a31b67a090570cacbb0d0d79ffe94170ed  server/src/test/java/io/popdesk/issue/Membership.java
 f1b362115571ab49d3dd3e01b830bcff1508cade6f44ad5601ae4ca1419e31c8  server/src/test/java/io/popdesk/issue/PortalIssueContractTest.java
 415ca80348457f5add8b101e1c231d1752cdba75719e78e30afca44193e462ed  server/src/test/java/io/popdesk/issue/PortalIssueFieldsTest.java
 a4aac1c0ad70fe9a18e0e8d522e4a0fd71e57a4c7330fe26704bd897b16661f5  server/src/test/java/io/popdesk/issue/StatementLog.java
