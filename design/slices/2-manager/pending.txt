@@ -27,3 +27,7 @@ server io/popdesk/manager/MemberDecidedCasesTest.java
 server io/popdesk/manager/MembershipRequestMailTest.java
 server io/popdesk/manager/MembershipRequestTest.java
 server io/popdesk/deploy/ManagerUpgradeTest.java
+# 감사 종류가 23에서 29로 늘어 테스트 쪽이 고친 1b의 테스트 셋. 구현(종류의 말 여섯)이 들어가면 통과한다.
+web src/app/auditWords.words.test.ts
+web src/screens/C12AuditLog.filters.test.tsx
+web src/screens/C12AuditLog.test.tsx
