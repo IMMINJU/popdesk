@@ -1,0 +1,37 @@
+package io.popdesk.notification.ops;
+
+import io.popdesk.notification.AdminInbox;
+import io.popdesk.notification.Recipients;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+/** {@link AdminInbox} on the table {@code notification}. */
+@Service
+class AdminInboxService implements AdminInbox {
+
+    /** The inbox item's {@code kind}, as the contract names it. */
+    static final String MEMBERSHIP_REQUESTED = "MEMBERSHIP_REQUESTED";
+
+    private final OpsRepository ops;
+    private final Recipients recipients;
+    private final Clock clock;
+
+    AdminInboxService(OpsRepository ops, Recipients recipients, Clock clock) {
+        this.ops = ops;
+        this.recipients = recipients;
+        this.clock = clock;
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void membershipRequested(String companyCode) {
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        for (long admin : recipients.activeAdmins()) {
+            ops.insertInbox(admin, MEMBERSHIP_REQUESTED, companyCode, now);
+        }
+    }
+}

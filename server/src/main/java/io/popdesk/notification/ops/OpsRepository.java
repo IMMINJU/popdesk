@@ -16,8 +16,11 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class OpsRepository {
 
-    /** An inbox item. {@code kind} is an {@code OpsAlerts.Kind} name. */
-    public record InboxRow(long id, String kind, Instant createdAt, Instant readAt) {}
+    /**
+     * An inbox item. {@code kind} is an {@code OpsAlerts.Kind} name or {@code MEMBERSHIP_REQUESTED};
+     * {@code companyCode} is the company such an item is about, null for the other kinds.
+     */
+    public record InboxRow(long id, String kind, String companyCode, Instant createdAt, Instant readAt) {}
 
     /** A cleanup job's row. */
     public record CleanupRow(String job, Instant lastRunAt, long deletedCount) {}
@@ -54,13 +57,18 @@ public class OpsRepository {
     // Inbox
 
     void insertInbox(long accountId, String kind, Instant now) {
-        jdbc.sql("insert into notification (tenant_id, account_id, kind, created_at) values (1, ?, ?, ?)")
-                .params(accountId, kind, Timestamp.from(now)).update();
+        insertInbox(accountId, kind, null, now);
+    }
+
+    void insertInbox(long accountId, String kind, String companyCode, Instant now) {
+        jdbc.sql("insert into notification (tenant_id, account_id, kind, company_code, created_at) "
+                        + "values (1, ?, ?, ?, ?)")
+                .params(accountId, kind, companyCode, Timestamp.from(now)).update();
     }
 
     /** The account's items, newest first. */
     List<InboxRow> listInbox(long accountId, long offset, int limit) {
-        return jdbc.sql("select id, kind, created_at, read_at from notification where account_id = ? "
+        return jdbc.sql("select id, kind, company_code, created_at, read_at from notification where account_id = ? "
                         + "order by id desc offset ? limit ?")
                 .params(accountId, offset, limit).query(OpsRepository::inbox).list();
     }
@@ -106,8 +114,8 @@ public class OpsRepository {
     }
 
     private static InboxRow inbox(ResultSet rs, int n) throws SQLException {
-        return new InboxRow(rs.getLong("id"), rs.getString("kind"), instant(rs.getTimestamp("created_at")),
-                instant(rs.getTimestamp("read_at")));
+        return new InboxRow(rs.getLong("id"), rs.getString("kind"), rs.getString("company_code"),
+                instant(rs.getTimestamp("created_at")), instant(rs.getTimestamp("read_at")));
     }
 
     private static CleanupRow cleanup(ResultSet rs, int n) throws SQLException {

@@ -63,8 +63,8 @@ class ConsoleNotificationController {
     }
 
     private static Notification notification(InboxRow row) {
-        return new Notification(row.id(), NotificationKind.valueOf(row.kind()), null, utc(row.createdAt()),
-                utc(row.readAt()));
+        return new Notification(row.id(), NotificationKind.valueOf(row.kind()), row.companyCode(),
+                utc(row.createdAt()), utc(row.readAt()));
     }
 
     private static OffsetDateTime utc(Instant at) {
