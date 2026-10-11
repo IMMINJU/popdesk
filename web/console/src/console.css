@@ -157,6 +157,24 @@
   min-width: 0;
 }
 
+/* A table cell of two lines: a name over an email, an account over a note. */
+.pd-two-lines {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1) 0;
+}
+
+.pd-two-lines > .pd-muted {
+  font-size: var(--text-xs);
+  line-height: var(--text-xs-line);
+}
+
+.pd-count-link {
+  display: inline-flex;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
 .pd-row-actions {
   display: inline-flex;
   align-items: center;

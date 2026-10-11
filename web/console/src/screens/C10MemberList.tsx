@@ -352,7 +352,7 @@ interface ShownLink {
 
 export function C10MemberList() {
   const page = usePageParam();
-  const [, setParams] = useSearchParams();
+  const [searchParams, setParams] = useSearchParams();
   const { me } = useSession();
   const toast = useToast();
   const live = useLive();
@@ -364,8 +364,9 @@ export function C10MemberList() {
   // Filters. `query` is what the box holds, `q` what the list was asked for.
   const [role, setRole] = useState('');
   const [status, setStatus] = useState('');
-  const [query, setQuery] = useState('');
-  const [q, setQ] = useState('');
+  // A link from another screen may open the list on one account (`?q=`, C-9 소속 요청); it is read once.
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
+  const [q, setQ] = useState(() => (searchParams.get('q') ?? '').trim());
 
   // Row actions
   const [opened, setOpened] = useState<{ action: AskedAction | 'rename'; account: Account } | null>(null);

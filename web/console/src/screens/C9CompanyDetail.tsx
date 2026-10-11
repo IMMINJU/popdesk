@@ -1,30 +1,35 @@
 // C-9 고객사 상세 (관리자, screens.md 4절, 1a screens.md 2절). Info with 고치기,
 // status (멈춤, 다시 사용, 보관), 소속 고객 with 더하기·빼기, and 배정 상담원 with
-// 상담원 배정 and 빼기 (PROJ-1~4).
+// 상담원 배정 and 빼기 (PROJ-1~4). Slice 2 adds the manager mark of a customer and
+// the open membership requests with 승인·거절 (2-manager screens.md 2절, MGR-1, MGR-6).
 import {
   Alert,
   Avatar,
+  Badge,
   Button,
   ConfirmDialog,
   DataTable,
   Dialog,
   EmptyState,
   RadioGroup,
+  RelativeTime,
   Skeleton,
   StatusBadge,
   TextField,
+  type AccountStatus,
   type DataTableColumn,
 } from '@popdesk/ui';
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
-import { useParams } from 'react-router';
+import { Link, useLocation, useParams } from 'react-router';
 import { api, type Schemas } from '../api';
 import { AccountFinder } from '../app/AccountFinder';
 import { FieldSummary, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
-import { useFieldErrors, useLive, useLoad } from '../app/hooks';
+import { useFieldErrors, useFocusWhenReady, useLive, useLoad } from '../app/hooks';
 import { InviteDialog } from '../app/InviteDialog';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
 import { TEXT } from '../app/messages';
+import { useNavCountRefresh } from '../app/navCount';
 import { photoUrl } from '../app/photos';
 import { call, type Failure, type Result } from '../app/result';
 import { useToast } from '../app/toastContext';
@@ -32,8 +37,15 @@ import { useToast } from '../app/toastContext';
 type Company = Schemas['Company'];
 type Member = Schemas['CompanyMember'];
 type Account = Schemas['Account'];
+type MembershipRequest = Schemas['PendingMembership'];
 
 const LIST_SIZE = 100;
+
+/** C-8's 소속 요청 number links here: the screen opens on the requests. */
+const REQUESTS_HASH = '#membership-requests';
+
+const ROLE_WORDS: Record<Account['role'], string> = { CUSTOMER: '고객', AGENT: '상담원', ADMIN: '관리자' };
+const REQUEST_CLOSED_TEXT = '이미 처리된 요청입니다';
 
 const SUSPENDED_BAND = '멈춘 고객사입니다. 새 문의를 받지 않습니다.';
 const ARCHIVED_BAND = '보관된 고객사입니다. 되돌릴 수 없습니다.';
@@ -41,6 +53,7 @@ const ARCHIVED_BAND = '보관된 고객사입니다. 되돌릴 수 없습니다.
 const COMPANY_ERRORS: Record<string, string> = {
   COMPANY_ARCHIVED: '보관된 고객사라 바꿀 수 없습니다.',
   COMPANY_NOT_ACTIVE: '보관된 고객사에는 더할 수 없습니다.',
+  NOT_A_CUSTOMER: '상담 쪽 계정은 고객사에 소속시킬 수 없습니다.',
   NOT_FOUND: '고객사나 계정을 찾을 수 없습니다.',
 };
 
@@ -261,6 +274,62 @@ function AddCustomerDialog(props: { code: string; members: readonly Member[]; on
   );
 }
 
+/** Another admin closed the request the other way, or its manager took it back (S2-AC-37). */
+function isClosed(failure: Failure): boolean {
+  return failure.kind === 'rejected' && failure.code === 'REQUEST_CLOSED';
+}
+
+/** 소속 요청 거절. Mounted anew for every opening, so a late answer finds nothing to change (S2-AC-49). */
+function RejectDialog(props: { request: MembershipRequest; onClose: () => void; onChanged: () => void }) {
+  const toast = useToast();
+  const live = useLive();
+  const [pending, setPending] = useState(false);
+  const [failure, setFailure] = useState<Failure | null>(null);
+  const { request } = props;
+
+  const reject = async () => {
+    if (pending) return;
+    setPending(true);
+    setFailure(null);
+    const result = await call(api.POST('/api/console/membership-requests/{id}/reject', { params: { path: { id: request.id } } }));
+    const closed = !result.ok && isClosed(result.failure);
+    if (result.ok || closed) props.onChanged();
+    if (!live()) return;
+    setPending(false);
+    if (result.ok || closed) {
+      toast(closed ? REQUEST_CLOSED_TEXT : '요청을 거절했습니다', closed ? 'info' : 'success');
+      props.onClose();
+      return;
+    }
+    setFailure(result.failure);
+  };
+
+  return (
+    <ConfirmDialog
+      open
+      tone="danger"
+      title="소속 요청 거절"
+      message={
+        <>
+          <p>이 요청을 거절할까요? 요청한 담당자의 목록에서 이 사람이 사라집니다.</p>
+          <p className="pd-muted">
+            {request.name}({request.email})
+          </p>
+          <SaveFailure failure={failure} known={COMPANY_ERRORS} />
+        </>
+      }
+      confirmLabel="거절"
+      cancelLabel={TEXT.cancel}
+      pending={pending}
+      pendingLabel={TEXT.sending}
+      onConfirm={() => {
+        void reject();
+      }}
+      onCancel={props.onClose}
+    />
+  );
+}
+
 /** 소속 빼기·배정 빼기 (S1A-AC-52, 55). Mounted anew for every opening (S1A-AC-58). */
 function RemoveDialog(props: { code: string; kind: 'customer' | 'agent'; member: Member; onClose: () => void; onRemoved: () => void }) {
   const toast = useToast();
@@ -299,6 +368,7 @@ function RemoveDialog(props: { code: string; kind: 'customer' | 'agent'; member:
           <p>
             {member.name} 님은 이 고객사의 문의를 더 보지 못합니다.{kind === 'customer' && ' 자기가 올린 문의는 계속 봅니다.'}
           </p>
+          {kind === 'customer' && member.manager && <p>이 사람은 담당자입니다. 빼면 담당자 표시도 사라집니다.</p>}
           <SaveFailure failure={failure} known={COMPANY_ERRORS} />
         </>
       }
@@ -479,10 +549,16 @@ interface Detail {
   company: Company;
   customers: Member[];
   agents: Member[];
+  /** The open membership requests of this company, oldest first. Empty when the company has none. */
+  requests: MembershipRequest[];
 }
 
 /** What is open on top of the screen. */
-type Opened = { what: 'archive' } | { what: 'add-customer' } | { what: 'remove'; kind: 'customer' | 'agent'; member: Member };
+type Opened =
+  | { what: 'archive' }
+  | { what: 'add-customer' }
+  | { what: 'remove'; kind: 'customer' | 'agent'; member: Member }
+  | { what: 'reject'; request: MembershipRequest };
 
 export function C9CompanyDetail() {
   const code = useParams().code ?? '';
@@ -494,6 +570,8 @@ function CompanyDetail(props: { code: string }) {
   const { code } = props;
   const toast = useToast();
   const live = useLive();
+  const location = useLocation();
+  const recount = useNavCountRefresh();
   const [assigning, setAssigning] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -504,6 +582,9 @@ function CompanyDetail(props: { code: string }) {
   const [failure, setFailure] = useState<Failure | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const agentsHeading = useRef<HTMLHeadingElement>(null);
+  const requestsHeading = useRef<HTMLHeadingElement>(null);
+  // 승인 and 담당자 지정·해제 do not ask first: one at a time.
+  const sending = useRef(false);
 
   const load = useLoad(async (): Promise<Result<Detail>> => {
     const path = { params: { path: { code } } };
@@ -516,11 +597,24 @@ function CompanyDetail(props: { code: string }) {
     if (!company.ok) return company;
     if (!customers.ok) return customers;
     if (!agents.ok) return agents;
-    return { ok: true, data: { company: company.data, customers: customers.data.items, agents: agents.data.items }, response: company.response };
+    // A company without open requests is not asked for them (2-manager screens.md 5절).
+    let requests: MembershipRequest[] = [];
+    if (company.data.pendingMembershipRequests > 0) {
+      const asked = await call(api.GET('/api/console/membership-requests', { params: { query: { companyCode: code, size: LIST_SIZE } } }));
+      if (!asked.ok) return asked;
+      requests = asked.data.items;
+    }
+    return {
+      ok: true,
+      data: { company: company.data, customers: customers.data.items, agents: agents.data.items, requests },
+      response: company.response,
+    };
   }, code);
 
   const firstLoad = load.status === 'loading' && load.data === undefined;
   useMainBusy(firstLoad);
+  // Coming from C-8's number: focus goes to the requests, which also scrolls there.
+  useFocusWhenReady(requestsHeading, location.hash === REQUESTS_HASH && (load.data?.requests.length ?? 0) > 0);
 
   if (load.status === 'failed' && load.failure?.kind === 'notFound') {
     return <NotFound listHref="/companies" listLabel="고객사 목록으로" />;
@@ -576,35 +670,162 @@ function CompanyDetail(props: { code: string }) {
     else setFailure(result.failure);
   };
 
-  const removeColumn = (kind: 'customer' | 'agent'): DataTableColumn<Member> => ({
-    key: 'actions',
-    header: <span className="pd-sr-only">동작</span>,
-    align: 'end',
-    cell: (m) => (
-      <Button
-        variant="quiet"
-        size="sm"
-        describedBy={`member-${String(m.accountId)}`}
-        onClick={() => {
-          open({ what: 'remove', kind, member: m });
-        }}
-      >
-        빼기
-      </Button>
-    ),
-  });
+  // 담당자로 지정 and 담당자 해제 do not ask first (2-manager screens.md C-9).
+  const setManager = async (m: Member, manager: boolean) => {
+    if (sending.current) return;
+    sending.current = true;
+    setFailure(null);
+    const path = { params: { path: { code, accountId: m.accountId } } };
+    const result = manager
+      ? await call(api.PUT('/api/console/companies/{code}/customers/{accountId}/manager', path))
+      : await call(api.DELETE('/api/console/companies/{code}/customers/{accountId}/manager', path));
+    sending.current = false;
+    if (!live()) return;
+    // A 400 or a 404 often means the list is old.
+    if (result.ok || result.failure.kind === 'rejected' || result.failure.kind === 'notFound') reload();
+    if (result.ok) toast(manager ? '담당자로 지정했습니다' : '담당자에서 해제했습니다');
+    else setFailure(result.failure);
+  };
+
+  // 승인 does not ask first. The customer table gets the account and the side menu's number falls.
+  const approve = async (r: MembershipRequest) => {
+    if (sending.current) return;
+    sending.current = true;
+    setFailure(null);
+    const result = await call(api.POST('/api/console/membership-requests/{id}/approve', { params: { path: { id: r.id } } }));
+    sending.current = false;
+    const closed = !result.ok && isClosed(result.failure);
+    if (result.ok || closed) recount();
+    if (!live()) return;
+    if (result.ok || result.failure.kind === 'rejected' || result.failure.kind === 'notFound') reload();
+    if (result.ok) toast('소속시켰습니다');
+    else if (closed) toast(REQUEST_CLOSED_TEXT, 'info');
+    else setFailure(result.failure);
+  };
+
+  const removeButton = (kind: 'customer' | 'agent', m: Member) => (
+    <Button
+      variant="quiet"
+      size="sm"
+      describedBy={`member-${String(m.accountId)}`}
+      onClick={() => {
+        open({ what: 'remove', kind, member: m });
+      }}
+    >
+      빼기
+    </Button>
+  );
 
   const customerColumns: DataTableColumn<Member>[] = [
     { key: 'name', header: '이름', cell: memberCell },
     { key: 'email', header: '이메일', cell: (m) => m.email },
     { key: 'status', header: '계정 상태', cell: (m) => <StatusBadge kind="account" status={m.status} /> },
-    removeColumn('customer'),
+    { key: 'manager', header: '담당자', cell: (m) => (m.manager ? <Badge tone="accent">담당자</Badge> : null) },
+    {
+      key: 'actions',
+      header: <span className="pd-sr-only">동작</span>,
+      align: 'end',
+      cell: (m) => (
+        <span className="pd-row-actions">
+          {/* An archived company takes no new manager; the mark can still be taken away (S2-AC-06). */}
+          {(m.manager || !archived) && (
+            <Button
+              variant="quiet"
+              size="sm"
+              describedBy={`member-${String(m.accountId)}`}
+              onClick={() => {
+                void setManager(m, !m.manager);
+              }}
+            >
+              {m.manager ? '담당자 해제' : '담당자로 지정'}
+            </Button>
+          )}
+          {removeButton('customer', m)}
+        </span>
+      ),
+    },
+  ];
+
+  /** An account whose invitation was cancelled is `SUSPENDED` in the API; the badge says 초대 취소됨 as C-10 does. */
+  const accountStatus = (r: MembershipRequest): AccountStatus =>
+    r.account.status === 'SUSPENDED' && r.account.invitationCancelled ? 'INVITE_CANCELLED' : r.account.status;
+
+  const requestColumns: DataTableColumn<MembershipRequest>[] = [
+    {
+      key: 'requestedBy',
+      header: '요청한 사람',
+      cell: (r) => (
+        <span className="pd-two-lines">
+          <span>{r.requestedBy.name}</span>
+          <span className="pd-muted">{r.requestedBy.email}</span>
+        </span>
+      ),
+    },
+    {
+      key: 'typed',
+      header: '넣은 이름과 이메일',
+      cell: (r) => (
+        <span className="pd-two-lines">
+          <span id={`request-${String(r.id)}`}>{r.name}</span>
+          <span className="pd-muted">{r.email}</span>
+        </span>
+      ),
+    },
+    {
+      key: 'account',
+      header: '계정',
+      cell: (r) => (
+        <span className="pd-two-lines">
+          <span className="pd-inline">
+            <Link to={`/members?q=${encodeURIComponent(r.email)}`}>{r.account.name}</Link>
+            <span>{ROLE_WORDS[r.account.role]}</span>
+            <StatusBadge kind="account" status={accountStatus(r)} />
+          </span>
+          {r.account.role !== 'CUSTOMER' && <span className="pd-muted">상담 쪽 계정은 고객사에 소속시킬 수 없습니다</span>}
+          {r.account.role === 'CUSTOMER' && r.account.invitationCancelled && (
+            <span className="pd-muted">승인한 뒤 구성원 목록에서 초대를 다시 보내세요</span>
+          )}
+        </span>
+      ),
+    },
+    { key: 'requestedAt', header: '요청한 시각', cell: (r) => <RelativeTime dateTime={r.requestedAt} focusable={false} /> },
+    {
+      key: 'actions',
+      header: <span className="pd-sr-only">동작</span>,
+      align: 'end',
+      cell: (r) => (
+        <span className="pd-row-actions">
+          {r.account.role === 'CUSTOMER' && !archived && (
+            <Button
+              variant="secondary"
+              size="sm"
+              describedBy={`request-${String(r.id)}`}
+              onClick={() => {
+                void approve(r);
+              }}
+            >
+              승인
+            </Button>
+          )}
+          <Button
+            variant="quiet"
+            size="sm"
+            describedBy={`request-${String(r.id)}`}
+            onClick={() => {
+              open({ what: 'reject', request: r });
+            }}
+          >
+            거절
+          </Button>
+        </span>
+      ),
+    },
   ];
 
   const agentColumns: DataTableColumn<Member>[] = [
     { key: 'name', header: '이름', cell: memberCell },
     { key: 'email', header: '이메일', cell: (m) => m.email },
-    removeColumn('agent'),
+    { key: 'actions', header: <span className="pd-sr-only">동작</span>, align: 'end', cell: (m) => removeButton('agent', m) },
   ];
 
   return (
@@ -729,6 +950,22 @@ function CompanyDetail(props: { code: string }) {
         />
       </section>
 
+      {/* Drawn only while a request is open (2-manager screens.md C-9). */}
+      {detail.requests.length > 0 && (
+        <section className="pd-section" aria-labelledby="membership-requests-title">
+          <h2 id="membership-requests-title" ref={requestsHeading} className="pd-section-title" tabIndex={-1}>
+            소속 요청
+          </h2>
+          <DataTable
+            caption={`소속 요청, ${String(detail.requests.length)}건`}
+            columns={requestColumns}
+            rows={detail.requests}
+            rowKey={(r) => String(r.id)}
+            density="compact"
+          />
+        </section>
+      )}
+
       <section className="pd-section" aria-labelledby="agents-title">
         <div className="pd-section-head">
           <h2 id="agents-title" ref={agentsHeading} className="pd-section-title" tabIndex={-1}>
@@ -784,6 +1021,17 @@ function CompanyDetail(props: { code: string }) {
       )}
       {opened?.what === 'remove' && (
         <RemoveDialog key={openings} code={company.code} kind={opened.kind} member={opened.member} onClose={close} onRemoved={reload} />
+      )}
+      {opened?.what === 'reject' && (
+        <RejectDialog
+          key={openings}
+          request={opened.request}
+          onClose={close}
+          onChanged={() => {
+            recount();
+            reload();
+          }}
+        />
       )}
     </div>
   );

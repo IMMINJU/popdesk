@@ -1,6 +1,6 @@
 // C-8 고객사 목록 (관리자, screens.md 4절). List and 만들기 (PROJ-1). Archived
 // companies stay hidden until 보관된 고객사 보기 is on (1a screens.md 2절).
-import { Button, Checkbox, ConfirmDialog, DataTable, Dialog, EmptyState, StatusBadge, TextField, type DataTableColumn } from '@popdesk/ui';
+import { Badge, Button, Checkbox, ConfirmDialog, DataTable, Dialog, EmptyState, StatusBadge, TextField, type DataTableColumn } from '@popdesk/ui';
 import { useLayoutEffect, useRef, useState, type SubmitEvent } from 'react';
 import { Link } from 'react-router';
 import { api, type Schemas } from '../api';
@@ -22,6 +22,21 @@ const columns: DataTableColumn<Company>[] = [
   { key: 'name', header: '이름', cell: (c) => <Link to={`/companies/${encodeURIComponent(c.code)}`}>{c.name}</Link> },
   { key: 'legalName', header: '회사명', cell: (c) => c.legalName },
   { key: 'status', header: '상태', cell: (c) => <StatusBadge kind="project" status={c.status} /> },
+  {
+    key: 'requests',
+    header: '소속 요청',
+    // The cell holds the number alone; the link's name says what it counts. Nothing open: an empty cell, no link.
+    cell: (c) =>
+      c.pendingMembershipRequests > 0 ? (
+        <Link
+          className="pd-count-link"
+          to={`/companies/${encodeURIComponent(c.code)}#membership-requests`}
+          aria-label={`${c.name} 소속 요청 ${String(c.pendingMembershipRequests)}건`}
+        >
+          <Badge tone="accent">{c.pendingMembershipRequests}</Badge>
+        </Link>
+      ) : null,
+  },
 ];
 
 const FORM_ID = 'create-company';
