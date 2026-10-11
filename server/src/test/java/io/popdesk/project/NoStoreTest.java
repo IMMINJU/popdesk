@@ -48,6 +48,13 @@ class NoStoreTest extends BareAppTest {
     private static final Set<String> PHOTO_READS = Set.of("/api/portal/photos/{accountId}",
             "/api/console/photos/{accountId}");
 
+    /**
+     * The query a read cannot be sent without: the audit log export answers 400 without its
+     * {@code format} (S1B-AC-23).
+     */
+    private static final Map<String, String> REQUIRED_QUERY = Map.of("/api/console/audit-log/export",
+            "?format=JSONL");
+
     @Test
     @DisplayName("S0-AC-101 the invitation response has Cache-Control no-store")
     void invitationResponse() {
@@ -153,7 +160,7 @@ class NoStoreTest extends BareAppTest {
             if (PHOTO_READS.contains(op.path())) {
                 continue;
             }
-            String path = withValues(op.path(), values);
+            String path = withValues(op.path(), values) + REQUIRED_QUERY.getOrDefault(op.path(), "");
             if (op.path().startsWith("/api/portal/") || op.path().startsWith("/api/public/")) {
                 checkSuccess(failed, op.method() + " " + path + " on the portal",
                         customer.client().request(op.method(), path).send());
