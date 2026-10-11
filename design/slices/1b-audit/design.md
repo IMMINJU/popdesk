@@ -87,6 +87,7 @@
 - `failed`가 된 사본 행을 다시 보내는 API는 이 묶음에 없다(콘솔 계약의 시스템 상태는 읽기뿐이다. 다시 보내기는 OPS-3이 들어오는 묶음에서 한다). 그때까지 `failed`가 된 구간은 내보내기로 옮긴다고 문서에 적는다.
 - 바깥 사본은 웹훅 보내기와 같은 틀(`Sender`, 보내기 루프)을 쓴다. 리다이렉트를 따라가지 않는다(토큰이 다른 호스트로 가지 않게). 시간 제한은 웹훅과 같다. 2xx만 성공이다.
 - `POPDESK_SANDBOX=true`면 주소가 있어도 꺼진 것으로 본다(D-46).
+- `deploy/compose.yml`은 앱에 넘길 환경 변수를 키마다 적는다. `AUDIT_FORWARD_URL`, `AUDIT_FORWARD_TOKEN`과 두 키의 `_FILE`, `POPDESK_AUDIT_RETENTION`이 거기 없으면 더한다(compose 파일은 공개 계약이다). `outbox.audit_id`에는 외래 키를 두지 않고 `audit_log`에 트리거를 두지 않는다.
 - `AUDIT_FORWARD_TOKEN`은 `AUDIT_FORWARD_TOKEN_FILE`로도 받는다(D-46). 주소가 `http`인데 토큰이 있으면 뜰 때 경고를 남긴다(D-51의 경고와 같은 자리, 값은 빼고).
 - 밖에서 사슬을 확인하는 짧은 스크립트(`docs/integrate/audit-verify.py`)를 문서에 붙이고, 테스트 하나가 내보낸 파일을 이 스크립트로 확인한다. 서버의 정해진 JSON과 따로 짠 코드라 문서의 규칙만으로 확인이 되는지를 본다.
 - 문서: `docs/integrate/conventions.md`(해시 계산 규칙, 사본의 본문, 중복과 순서), `docs/operate/configuration.md`(키 둘, 보관 기간), `docs/operate/`(무결성 확인의 한계, 사본에 이름과 이메일이 나간다는 것).

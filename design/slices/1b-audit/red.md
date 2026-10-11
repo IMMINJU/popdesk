@@ -1,0 +1,141 @@
+# 실패 확인
+
+> 실패한 테스트는 이름만 적었다. 실패 메시지는 넣지 않았다. 숨긴 E2E는 여기 없다(레포 밖).
+
+- 단언 실패 119, 통과 0, 허용한 통과 10, 오류 0, 건너뜀 0
+- 판정: 통과
+
+## 처음부터 통과해도 된다고 허용한 테스트 (점검에서 이유를 본다)
+
+- `io.popdesk.audit.AuditChainTest.agentCannotRunTheIntegrityCheck`: S1B-AC-18 C-4 계약 껍데기가 보안 설정의 관리자 전용 목록에 /api/console/audit-log/**를 넣어 상담원이 이미 403을 받는다
+- `io.popdesk.audit.AuditForwardOffTest.noAddressNoQueueRow`: S1B-AC-31 사본 행을 넣는 코드가 아직 없고 시스템 상태의 auditForward가 C-4 고정값(꺼짐, 0)이다. 구현 뒤에도 그대로여야 한다. C-10 변이 테스트 대상
+- `io.popdesk.audit.AuditLogAccessTest.portalHasNoAuditLog`: S1B-AC-02 포털 계약에 이 경로가 없고 /api/portal/audit-log는 지금도 404다. 구현 뒤에도 그대로여야 한다
+- `io.popdesk.audit.AuditLogAccessTest.agentForbidden`: S1B-AC-02 C-4 계약 껍데기가 보안 설정의 관리자 전용 목록에 /api/console/audit-log/**를 넣어 상담원이 이미 403을 받는다
+- `io.popdesk.deploy.UpgradeSampleTablesTest.sampleFillsEveryTableOfThisImage`: S1B-AC-41 구현 전 이미지에는 새 표가 없어 견본이 모든 업무 표를 채운다. 구현이 표를 더하고 견본 생성기를 고치지 않으면 실패한다
+- `io.popdesk.start.AuditRetentionSettingTest.shortestPeriodAllowedStarts`: S1B-AC-20 P30D는 지금도 구현 뒤에도 떠야 한다. 경계를 <=로 잘못 막는 구현을 잡는 테스트다
+- `src/screens/adminOnly.1b.test.tsx.옆 메뉴와 관리자 전용 화면 (1b) > S1B-AC-35 메뉴(상담원): "감사 로그"는 없다(막아 두지 않고 없다)`: S1B-AC-35 상담원 메뉴는 지금도 "문의" 하나다. 구현 뒤에도 그대로여야 한다
+- `src/screens/adminOnly.1b.test.tsx.옆 메뉴와 관리자 전용 화면 (1b) > S1B-AC-35 C-12 상담원이 감사 로그 주소로 오면 화면 전체가 "권한이 없습니다"이고 목록을 부르지 않는다`: S1B-AC-35 C-4 껍데기가 경로를 AdminOnly 안에 두었다
+- `src/components/DataTable.expand.test.tsx.DataTable 줄 펼치기 > DataTable 줄 펼치기 없음: renderExpanded를 주지 않으면 버튼이 없다`: design 5절. 주지 않았을 때는 지금 마크업 그대로다. 구현이 버튼을 늘 그리는 것을 막는 테스트다
+- `src/components/TextField.date.test.tsx.TextField 날짜 > TextField date: 이름표로 찾는 날짜 칸이고, 넣은 날짜가 YYYY-MM-DD로 onChange에 나간다`: design 5절. C-4 껍데기가 type을 input에 그대로 넘긴다
+
+## 단언에서 실패한 테스트
+
+- `io.popdesk.audit.AuditChainTest.everyKindOfEntryKeepsTheChainValid`
+- `io.popdesk.audit.AuditChainTest.entriesAtOnceStayOneChain`
+- `io.popdesk.audit.AuditChainTest.rolledBackChangeLeavesNoEntryAndNoGap(Failure)[1]`
+- `io.popdesk.audit.AuditChainTest.rolledBackChangeLeavesNoEntryAndNoGap(Failure)[2]`
+- `io.popdesk.audit.AuditChainTest.hashIsComputedFromThePreviousHashAndTheCanonicalJson`
+- `io.popdesk.audit.AuditChangesTest.noEntryHoldsAPasswordTokenOrLink`
+- `io.popdesk.audit.AuditChangesTest.changedValuesHaveFromAndTo(Change)[1]`
+- `io.popdesk.audit.AuditChangesTest.changedValuesHaveFromAndTo(Change)[2]`
+- `io.popdesk.audit.AuditChangesTest.changedValuesHaveFromAndTo(Change)[3]`
+- `io.popdesk.audit.AuditChangesTest.changedValuesHaveFromAndTo(Change)[4]`
+- `io.popdesk.audit.AuditChangesTest.changedValuesHaveFromAndTo(Change)[5]`
+- `io.popdesk.audit.AuditChangesTest.changedValuesHaveFromAndTo(Change)[6]`
+- `io.popdesk.audit.AuditChangesTest.changedValuesHaveFromAndTo(Change)[7]`
+- `io.popdesk.audit.AuditExportLimitTest.thirdExportIsRefused`
+- `io.popdesk.audit.AuditExportTest.exportEntryIsNotInItsOwnFile`
+- `io.popdesk.audit.AuditExportTest.exportHasEveryEntryOfTheFilterInChainOrder(Format)[1]`
+- `io.popdesk.audit.AuditExportTest.exportHasEveryEntryOfTheFilterInChainOrder(Format)[2]`
+- `io.popdesk.audit.AuditExportTest.csvValueThatStartsLikeAFormulaGetsAnApostrophe(String)[1]`
+- `io.popdesk.audit.AuditExportTest.csvValueThatStartsLikeAFormulaGetsAnApostrophe(String)[2]`
+- `io.popdesk.audit.AuditExportTest.csvValueThatStartsLikeAFormulaGetsAnApostrophe(String)[3]`
+- `io.popdesk.audit.AuditExportTest.csvValueThatStartsLikeAFormulaGetsAnApostrophe(String)[4]`
+- `io.popdesk.audit.AuditExportTest.headLeavesNoEntry`
+- `io.popdesk.audit.AuditExportTest.chainComputesAgainFromAnUnfilteredJsonLinesFile`
+- `io.popdesk.audit.AuditExportTest.exportIsRecorded(Format)[1]`
+- `io.popdesk.audit.AuditExportTest.exportIsRecorded(Format)[2]`
+- `io.popdesk.audit.AuditForwardTest.entryIsPostedAsJson`
+- `io.popdesk.audit.AuditForwardTest.failingCopyIsQueuedThenListedAsFailed`
+- `io.popdesk.audit.AuditForwardTest.redirectIsNotFollowed`
+- `io.popdesk.audit.AuditForwardTest.copyFailingForADayIsGivenUpWithAnAlert`
+- `io.popdesk.audit.AuditForwardTest.addressAndTokenAreNotShown`
+- `io.popdesk.audit.AuditForwardTest.failedCopyIsSentAgain`
+- `io.popdesk.audit.AuditForwardTest.tokenIsSentAsBearer`
+- `io.popdesk.audit.AuditForwardTest.statusShowsTheCopyOnWithItsLastSuccess`
+- `io.popdesk.audit.AuditLogViewTest.noRequestChangesOrDeletesAnEntry`
+- `io.popdesk.audit.AuditLogViewTest.actorZeroIsTheSystem`
+- `io.popdesk.audit.AuditLogViewTest.periodTurnedAroundIsRejected`
+- `io.popdesk.audit.AuditLogViewTest.newestFirstInPages`
+- `io.popdesk.audit.AuditLogViewTest.unknownKindIsRejected`
+- `io.popdesk.audit.AuditLogViewTest.filtersByTargetAccount`
+- `io.popdesk.audit.AuditLogViewTest.filtersByTargetCode`
+- `io.popdesk.audit.AuditLogViewTest.filtersByActor`
+- `io.popdesk.audit.AuditLogViewTest.filtersByKinds`
+- `io.popdesk.audit.AuditLogViewTest.periodHasItsStartAndNotItsEnd`
+- `io.popdesk.audit.AuditRetentionTest.entryOverThePeriodBehindOneInsideItWaits`
+- `io.popdesk.audit.AuditRetentionTest.jobDeletesOldEntriesAndRecordsItsRun`
+- `io.popdesk.audit.AuditRetentionTest.firstEntryLeftKeepsThePreviousHashOfTheDeletedOne`
+- `io.popdesk.audit.AuditRetentionTest.chainGoesOnAfterEveryEntryWasDeleted`
+- `io.popdesk.audit.AuditRetentionTest.entryInsideThePeriodStays`
+- `io.popdesk.audit.AuditTamperTest.firstBrokenEntryIsGiven`
+- `io.popdesk.audit.AuditTamperTest.changedValueIsFound(Changed)[1]`
+- `io.popdesk.audit.AuditTamperTest.changedValueIsFound(Changed)[2]`
+- `io.popdesk.audit.AuditTamperTest.changedValueIsFound(Changed)[3]`
+- `io.popdesk.audit.AuditTamperTest.changedValueIsFound(Changed)[4]`
+- `io.popdesk.audit.AuditTamperTest.changedValueIsFound(Changed)[5]`
+- `io.popdesk.audit.AuditTamperTest.secondCheckWhileOneRunsIsRefused`
+- `io.popdesk.audit.AuditTamperTest.deletedLastEntryIsFound`
+- `io.popdesk.audit.AuditTamperTest.deletedMiddleEntryIsFound`
+- `io.popdesk.deploy.CommandAuditChainTest.commandEntriesJoinTheChainWhileTheAppRuns`
+- `io.popdesk.deploy.UpgradeAuditChainTest.sampleUpgradesToAValidChain`
+- `io.popdesk.deploy.UpgradeAuditChainTest.restoreCommandRowFromTheOldSchemaIsChained`
+- `io.popdesk.deploy.UpgradeAuditChainTest.rowsFromBeforeTheUpgradeAreChainedByTimeThenId`
+- `io.popdesk.deploy.UpgradeAuditChainTest.exportOfAHundredThousandEntriesWithASmallHeap`
+- `io.popdesk.deploy.UpgradeInterruptedTest.appKilledWhileComputingHashesFinishesOnTheNextStart`
+- `io.popdesk.start.AuditRetentionSettingTest.retentionTooShortOrNotADurationTakesNoRequests(String)[1]`
+- `io.popdesk.start.AuditRetentionSettingTest.retentionTooShortOrNotADurationTakesNoRequests(String)[2]`
+- `io.popdesk.start.AuditRetentionSettingTest.retentionTooShortOrNotADurationTakesNoRequests(String)[3]`
+- `io.popdesk.start.AuditRetentionSettingTest.retentionTooShortOrNotADurationTakesNoRequests(String)[4]`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 내보내기 > S1B-AC-23 C-12 내보내기 처음: 버튼 둘과 안내문. 필터가 없으면 사슬 안내는 없다`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 내보내기 > S1B-AC-23 C-12 "CSV로 내보내기": 먼저 HEAD로 묻고, 200이면 띠 없이 내려받고 표를 다시 불러온다`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 내보내기 > S1B-AC-23 C-12 "JSON Lines로 내보내기": 먼저 HEAD로 묻고, 200이면 띠 없이 내려받고 표를 다시 불러온다`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 내보내기 > S1B-AC-23 C-12 내보내기(필터가 걸려 있음): 사슬 안내 한 줄을 더하고, 보기와 같은 필터를 보낸다`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 내보내기 > S1B-AC-28 C-12 내보내기 503: HEAD가 503이면 띠 "다른 내보내기가 돌고 있습니다…"를 보이고 내려받지 않는다`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 무결성 확인 > S1B-AC-37 C-12 무결성 확인: 도는 동안 버튼을 막고(aria-disabled) "확인하는 중…", 필터는 그대로 쓴다. 맞으면 건수와 한계 문구`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 무결성 확인 > S1B-AC-37 C-12 무결성 확인 끊긴 곳: 오류 띠에 그 항목의 시각과 종류, "이 항목 보기"`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 무결성 확인 > S1B-AC-42 C-12 무결성 확인 맨 끝이 없어짐: 오류 띠 "마지막 항목 뒤가 맞지 않습니다. 가장 최근 항목이 지워졌습니다."`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 무결성 확인 > S1B-AC-37 C-12 무결성 확인 409: "이미 확인이 돌고 있습니다…". 버튼은 다시 눌린다`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 무결성 확인 > S1B-AC-37 C-12 무결성 확인 5xx: 공통 오류 띠에 프록시 시간 제한 한 줄. 버튼은 다시 눌린다`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 무결성 확인 > S1B-AC-37 C-12 무결성 확인 연결 끊김: 공통 오류 띠에 프록시 시간 제한 한 줄. 버튼은 다시 눌린다`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 늦게 온 답 > S1B-AC-38 C-12 필터가 바뀐 뒤 온 목록: 앞 필터의 답이 늦게 와도 지금 필터의 줄을 덮지 않는다`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 늦게 온 답 > S1B-AC-38 C-12 떠난 뒤 온 목록 401: 주소를 /login으로 바꾸지 않는다`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 늦게 온 답 > S1B-AC-38 C-12 떠난 뒤 온 무결성 확인: 결과 띠를 보이지 않고, 돌아오면 버튼이 눌리는 처음 상태다`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 늦게 온 답 > S1B-AC-38 C-12 떠난 뒤 온 내보내기 HEAD 503: 띠를 보이지 않는다`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 늦게 온 답 > S1B-AC-38 C-12 필터가 바뀐 뒤 온 내보내기 HEAD 503: 띠를 보이지 않는다`
+- `src/screens/C12AuditLog.filters.test.tsx.C-12 감사 로그: 필터 > S1B-AC-03 C-12 종류 필터 묶음 "계정": 그 묶음의 종류를 모두 보낸다`
+- `src/screens/C12AuditLog.filters.test.tsx.C-12 감사 로그: 필터 > S1B-AC-03 C-12 종류 필터 묶음 "로그인 기록"`
+- `src/screens/C12AuditLog.filters.test.tsx.C-12 감사 로그: 필터 > S1B-AC-03 C-12 종류 필터 낱개 "고객사 만들기"`
+- `src/screens/C12AuditLog.filters.test.tsx.C-12 감사 로그: 필터 > S1B-AC-03 C-12 종류 필터 "로그인 기록 빼고": 로그인 기록 셋을 뺀 종류를 모두 보낸다`
+- `src/screens/C12AuditLog.filters.test.tsx.C-12 감사 로그: 필터 > S1B-AC-03 C-12 종류 필터 "전체": 맨 위 선택지이고, 고르면 action 없이 받는다`
+- `src/screens/C12AuditLog.filters.test.tsx.C-12 감사 로그: 필터 > S1B-AC-04 C-12 한 사람 필터: 이름·이메일로 계정을 찾아 고르면 그 계정 ID로 받는다`
+- `src/screens/C12AuditLog.filters.test.tsx.C-12 감사 로그: 필터 > S1B-AC-04 C-12 한 사람 필터 "시스템": 선택지에 "시스템"이 있고 고르면 계정 ID 0으로 받는다`
+- `src/screens/C12AuditLog.filters.test.tsx.C-12 감사 로그: 필터 > S1B-AC-05 C-12 대상 필터(계정): 표의 대상을 누르면 걸리고 필터 줄에 "대상: …"로 보인다. ×로 푼다`
+- `src/screens/C12AuditLog.filters.test.tsx.C-12 감사 로그: 필터 > S1B-AC-05 C-12 대상 필터(고객사): 표의 대상을 누르면 걸리고 필터 줄에 "대상: …"로 보인다. ×로 푼다`
+- `src/screens/C12AuditLog.filters.test.tsx.C-12 감사 로그: 필터 > S1B-AC-06 C-12 기간 필터: 부터는 그 날 0시, 까지는 그 날을 포함하게 다음 날 0시로 보낸다`
+- `src/screens/C12AuditLog.filters.test.tsx.C-12 감사 로그: 필터 > S1B-AC-06 C-12 기간 필터 거꾸로: 부터가 까지보다 뒤면 "까지" 칸 아래 오류를 보이고 보내지 않는다`
+- `src/screens/C12AuditLog.filters.test.tsx.C-12 감사 로그: 필터 > S1B-AC-03 C-12 400 UNKNOWN_VALUE: 오류 띠와 "조건 지우기". 지우면 필터 없이 다시 받는다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-01 C-12 처음: 필터 없이 1쪽 20건을 받아 받은 순서로 보인다. 칸은 시각, 한 사람, 일, 대상, 바뀐 값이고 로그인 기록도 나온다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 일의 종류(로그인 기록): 종류마다 한국어 말로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 일의 종류(계정): 종류마다 한국어 말로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 일의 종류(초대): 종류마다 한국어 말로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 일의 종류(고객사): 종류마다 한국어 말로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 일의 종류(소속·배정): 종류마다 한국어 말로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 일의 종류(운영 명령): 종류마다 한국어 말로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 일의 종류(내보내기): 종류마다 한국어 말로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 모르는 종류: 이름을 그대로 code 글꼴로 보이고, 모르는 칸과 값도 그대로 보인다. 대상이 없으면 빈칸`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 바뀐 값: "칸: 전 → 뒤", 전이나 뒤가 없으면 "없음", 전·뒤 꼴이 아니면 "칸: 값", 바뀐 값이 없으면 빈칸`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-01 C-12 시스템이 한 일: 한 사람 칸에 "시스템"`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-01 C-12 줄 펼치기: 평소에는 접혀 있고, 펼치면 그 줄 아래에 항목 ID, 해시, 앞 해시. 필터가 바뀌면 접힌다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > C-12 결과 없음(필터 있음): "조건에 맞는 항목이 없습니다"와 "조건 지우기". 지우면 필터 없이 다시 받는다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > C-12 결과 없음(필터 없음): "감사 항목이 없습니다."이고 "조건 지우기"는 없다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > C-12 없는 쪽: "이 쪽에는 항목이 없습니다"와 "1쪽으로"`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > C-12 필터가 바뀜: 1쪽으로 돌아가고, 필터는 주소에 실려 그 주소로 다시 열면 같은 필터로 받는다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > C-12 axe: 필터, 동작 줄, 펼친 줄이 있는 표에 접근성 위반이 없다`
+- `src/screens/C18SystemStatus.1b.test.tsx.C-18 시스템 상태 (1b) > S1B-AC-33 C-18 감사 바깥 사본(꺼짐): 채널 표에 줄이 있고 "꺼짐"과 설정 방법 링크`
+- `src/screens/C18SystemStatus.1b.test.tsx.C-18 시스템 상태 (1b) > S1B-AC-33 C-18 감사 바깥 사본(켜짐): 메일·웹훅과 같은 칸에 켜짐, 마지막 성공 시각, 보낼 차례, 실패 수`
+- `src/screens/C18SystemStatus.1b.test.tsx.C-18 시스템 상태 (1b) > S1B-AC-33 C-18 `failed` 목록: 채널 칸에 "감사 바깥 사본", 그 줄에 감사 항목 ID. 접근성 위반이 없다`
+- `src/screens/adminOnly.1b.test.tsx.옆 메뉴와 관리자 전용 화면 (1b) > S1B-AC-35 메뉴(관리자): 고객사, 구성원, 감사 로그, 시스템 상태 차례이고 "감사 로그"는 /audit-log로 간다`
+- `src/components/DataTable.expand.test.tsx.DataTable 줄 펼치기 > DataTable 줄 펼치기: 줄마다 expandLabel 이름의 버튼(aria-expanded), 누르면 그 줄 아래에 펼친 내용, 다시 누르면 접힌다`
+- `src/components/DataTable.expand.test.tsx.DataTable 줄 펼치기 > DataTable 줄 펼치기 axe: 한 줄을 펼친 표에 접근성 위반이 없다`
+- `src/components/Select.group.test.tsx.Select 선택지 묶음 > Select group: 같은 group의 선택지는 그 이름의 묶음 안에, group이 없는 선택지는 묶음 밖에 그대로 있다. 묶인 선택지도 고를 수 있다`
