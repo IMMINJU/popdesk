@@ -26,7 +26,7 @@
 | ID | 기준 |
 |---|---|
 | S1B-AC-01 | When 관리자가 감사 로그를 요청하면, the system shall 항목을 최신순으로 COM-4로 쪽 나눠 준다. 항목에는 일의 종류, 한 사람, 대상, 바뀐 값, 시각, 해시가 있다. (AUDIT-2, AUDIT-3) |
-| S1B-AC-02 | If 상담원이나 고객이 감사 로그를 요청하면, then the system shall 403으로 답한다(고객의 포털에는 이 경로가 없다). (AUDIT-3, COM-2) |
+| S1B-AC-02 | If 상담원이 감사 로그를 요청하면, then the system shall 403으로 답한다. 고객은 닿지 못한다: 포털에는 이 경로가 없고(404), 고객의 세션은 콘솔에서 로그인하지 않은 것과 같다(401). (AUDIT-3, COM-2) |
 | S1B-AC-03 | When 일의 종류로 거르면, the system shall 그 종류의 항목만 준다. 여러 종류를 함께 줄 수 있다. 모르는 종류는 400 `UNKNOWN_VALUE`다. (AUDIT-3) |
 | S1B-AC-04 | When 한 사람(계정 ID)으로 거르면, the system shall 그 계정이 한 일만 준다. 시스템이 한 일은 계정 ID 0으로 거른다. (AUDIT-2, AUDIT-3) |
 | S1B-AC-05 | When 대상(종류와 ID)으로 거르면, the system shall 그 대상의 항목만 준다. (AUDIT-3) |

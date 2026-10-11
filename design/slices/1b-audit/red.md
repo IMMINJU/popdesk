@@ -2,16 +2,28 @@
 
 > 실패한 테스트는 이름만 적었다. 실패 메시지는 넣지 않았다. 숨긴 E2E는 여기 없다(레포 밖).
 
-- 단언 실패 119, 통과 0, 허용한 통과 10, 오류 0, 건너뜀 0
+- 단언 실패 138, 통과 0, 허용한 통과 22, 오류 0, 건너뜀 0
 - 판정: 통과
 
 ## 처음부터 통과해도 된다고 허용한 테스트 (점검에서 이유를 본다)
 
 - `io.popdesk.audit.AuditChainTest.agentCannotRunTheIntegrityCheck`: S1B-AC-18 C-4 계약 껍데기가 보안 설정의 관리자 전용 목록에 /api/console/audit-log/**를 넣어 상담원이 이미 403을 받는다
 - `io.popdesk.audit.AuditForwardOffTest.noAddressNoQueueRow`: S1B-AC-31 사본 행을 넣는 코드가 아직 없고 시스템 상태의 auditForward가 C-4 고정값(꺼짐, 0)이다. 구현 뒤에도 그대로여야 한다. C-10 변이 테스트 대상
+- `io.popdesk.audit.AuditForwardSandboxTest.sandboxSendsNoCopy`: S1B-AC-31 사본 코드가 아직 없고 auditForward가 C-4 고정값이다. 구현이 샌드박스를 보지 않으면 실패한다. C-10 변이 테스트 대상
 - `io.popdesk.audit.AuditLogAccessTest.portalHasNoAuditLog`: S1B-AC-02 포털 계약에 이 경로가 없고 /api/portal/audit-log는 지금도 404다. 구현 뒤에도 그대로여야 한다
+- `io.popdesk.audit.AuditLogAccessTest.neitherNobodyNorACustomerGetsThrough(Asking, Operation)[1]`: S1B-AC-02 S1B-AC-18 세션 없음 401, 포털 호스트 404, 다른 앱의 세션 쿠키 401은 첫 묶음의 바닥이 이미 한다. 관리자 전용 검사를 "상담원이면 막는다"로 만드는 구현을 잡는다
+- `io.popdesk.audit.AuditLogAccessTest.neitherNobodyNorACustomerGetsThrough(Asking, Operation)[2]`: S1B-AC-02 S1B-AC-18 세션 없음 401, 포털 호스트 404, 다른 앱의 세션 쿠키 401은 첫 묶음의 바닥이 이미 한다. 관리자 전용 검사를 "상담원이면 막는다"로 만드는 구현을 잡는다
+- `io.popdesk.audit.AuditLogAccessTest.neitherNobodyNorACustomerGetsThrough(Asking, Operation)[3]`: S1B-AC-02 S1B-AC-18 세션 없음 401, 포털 호스트 404, 다른 앱의 세션 쿠키 401은 첫 묶음의 바닥이 이미 한다. 관리자 전용 검사를 "상담원이면 막는다"로 만드는 구현을 잡는다
+- `io.popdesk.audit.AuditLogAccessTest.neitherNobodyNorACustomerGetsThrough(Asking, Operation)[4]`: S1B-AC-02 S1B-AC-18 세션 없음 401, 포털 호스트 404, 다른 앱의 세션 쿠키 401은 첫 묶음의 바닥이 이미 한다. 관리자 전용 검사를 "상담원이면 막는다"로 만드는 구현을 잡는다
+- `io.popdesk.audit.AuditLogAccessTest.neitherNobodyNorACustomerGetsThrough(Asking, Operation)[5]`: S1B-AC-02 S1B-AC-18 세션 없음 401, 포털 호스트 404, 다른 앱의 세션 쿠키 401은 첫 묶음의 바닥이 이미 한다. 관리자 전용 검사를 "상담원이면 막는다"로 만드는 구현을 잡는다
+- `io.popdesk.audit.AuditLogAccessTest.neitherNobodyNorACustomerGetsThrough(Asking, Operation)[6]`: S1B-AC-02 S1B-AC-18 세션 없음 401, 포털 호스트 404, 다른 앱의 세션 쿠키 401은 첫 묶음의 바닥이 이미 한다. 관리자 전용 검사를 "상담원이면 막는다"로 만드는 구현을 잡는다
+- `io.popdesk.audit.AuditLogAccessTest.neitherNobodyNorACustomerGetsThrough(Asking, Operation)[7]`: S1B-AC-02 S1B-AC-18 세션 없음 401, 포털 호스트 404, 다른 앱의 세션 쿠키 401은 첫 묶음의 바닥이 이미 한다. 관리자 전용 검사를 "상담원이면 막는다"로 만드는 구현을 잡는다
+- `io.popdesk.audit.AuditLogAccessTest.neitherNobodyNorACustomerGetsThrough(Asking, Operation)[8]`: S1B-AC-02 S1B-AC-18 세션 없음 401, 포털 호스트 404, 다른 앱의 세션 쿠키 401은 첫 묶음의 바닥이 이미 한다. 관리자 전용 검사를 "상담원이면 막는다"로 만드는 구현을 잡는다
+- `io.popdesk.audit.AuditLogAccessTest.neitherNobodyNorACustomerGetsThrough(Asking, Operation)[9]`: S1B-AC-02 S1B-AC-18 세션 없음 401, 포털 호스트 404, 다른 앱의 세션 쿠키 401은 첫 묶음의 바닥이 이미 한다. 관리자 전용 검사를 "상담원이면 막는다"로 만드는 구현을 잡는다
+- `io.popdesk.audit.AuditLogAccessTest.neitherNobodyNorACustomerGetsThrough(Asking, Operation)[10]`: S1B-AC-02 S1B-AC-18 세션 없음 401, 포털 호스트 404, 다른 앱의 세션 쿠키 401은 첫 묶음의 바닥이 이미 한다. 관리자 전용 검사를 "상담원이면 막는다"로 만드는 구현을 잡는다
+- `io.popdesk.audit.AuditLogAccessTest.neitherNobodyNorACustomerGetsThrough(Asking, Operation)[11]`: S1B-AC-02 S1B-AC-18 세션 없음 401, 포털 호스트 404, 다른 앱의 세션 쿠키 401은 첫 묶음의 바닥이 이미 한다. 관리자 전용 검사를 "상담원이면 막는다"로 만드는 구현을 잡는다
+- `io.popdesk.audit.AuditLogAccessTest.neitherNobodyNorACustomerGetsThrough(Asking, Operation)[12]`: S1B-AC-02 S1B-AC-18 세션 없음 401, 포털 호스트 404, 다른 앱의 세션 쿠키 401은 첫 묶음의 바닥이 이미 한다. 관리자 전용 검사를 "상담원이면 막는다"로 만드는 구현을 잡는다
 - `io.popdesk.audit.AuditLogAccessTest.agentForbidden`: S1B-AC-02 C-4 계약 껍데기가 보안 설정의 관리자 전용 목록에 /api/console/audit-log/**를 넣어 상담원이 이미 403을 받는다
-- `io.popdesk.deploy.UpgradeSampleTablesTest.sampleFillsEveryTableOfThisImage`: S1B-AC-41 구현 전 이미지에는 새 표가 없어 견본이 모든 업무 표를 채운다. 구현이 표를 더하고 견본 생성기를 고치지 않으면 실패한다
 - `io.popdesk.start.AuditRetentionSettingTest.shortestPeriodAllowedStarts`: S1B-AC-20 P30D는 지금도 구현 뒤에도 떠야 한다. 경계를 <=로 잘못 막는 구현을 잡는 테스트다
 - `src/screens/adminOnly.1b.test.tsx.옆 메뉴와 관리자 전용 화면 (1b) > S1B-AC-35 메뉴(상담원): "감사 로그"는 없다(막아 두지 않고 없다)`: S1B-AC-35 상담원 메뉴는 지금도 "문의" 하나다. 구현 뒤에도 그대로여야 한다
 - `src/screens/adminOnly.1b.test.tsx.옆 메뉴와 관리자 전용 화면 (1b) > S1B-AC-35 C-12 상담원이 감사 로그 주소로 오면 화면 전체가 "권한이 없습니다"이고 목록을 부르지 않는다`: S1B-AC-35 C-4 껍데기가 경로를 AdminOnly 안에 두었다
@@ -35,8 +47,14 @@
 - `io.popdesk.audit.AuditChangesTest.changedValuesHaveFromAndTo(Change)[7]`
 - `io.popdesk.audit.AuditExportLimitTest.thirdExportIsRefused`
 - `io.popdesk.audit.AuditExportTest.exportEntryIsNotInItsOwnFile`
-- `io.popdesk.audit.AuditExportTest.exportHasEveryEntryOfTheFilterInChainOrder(Format)[1]`
-- `io.popdesk.audit.AuditExportTest.exportHasEveryEntryOfTheFilterInChainOrder(Format)[2]`
+- `io.popdesk.audit.AuditExportTest.exportHasEveryEntryOfTheFilterInChainOrder(Narrowed)[1]`
+- `io.popdesk.audit.AuditExportTest.exportHasEveryEntryOfTheFilterInChainOrder(Narrowed)[2]`
+- `io.popdesk.audit.AuditExportTest.exportHasEveryEntryOfTheFilterInChainOrder(Narrowed)[3]`
+- `io.popdesk.audit.AuditExportTest.exportHasEveryEntryOfTheFilterInChainOrder(Narrowed)[4]`
+- `io.popdesk.audit.AuditExportTest.exportHasEveryEntryOfTheFilterInChainOrder(Narrowed)[5]`
+- `io.popdesk.audit.AuditExportTest.exportHasEveryEntryOfTheFilterInChainOrder(Narrowed)[6]`
+- `io.popdesk.audit.AuditExportTest.exportHasEveryEntryOfTheFilterInChainOrder(Narrowed)[7]`
+- `io.popdesk.audit.AuditExportTest.exportHasEveryEntryOfTheFilterInChainOrder(Narrowed)[8]`
 - `io.popdesk.audit.AuditExportTest.csvValueThatStartsLikeAFormulaGetsAnApostrophe(String)[1]`
 - `io.popdesk.audit.AuditExportTest.csvValueThatStartsLikeAFormulaGetsAnApostrophe(String)[2]`
 - `io.popdesk.audit.AuditExportTest.csvValueThatStartsLikeAFormulaGetsAnApostrophe(String)[3]`
@@ -50,8 +68,9 @@
 - `io.popdesk.audit.AuditForwardTest.redirectIsNotFollowed`
 - `io.popdesk.audit.AuditForwardTest.copyFailingForADayIsGivenUpWithAnAlert`
 - `io.popdesk.audit.AuditForwardTest.addressAndTokenAreNotShown`
+- `io.popdesk.audit.AuditForwardTest.everyEntryOfAnAccountIsPosted`
+- `io.popdesk.audit.AuditForwardTest.entryOfARequestThatFailedAtCommitIsNotPosted`
 - `io.popdesk.audit.AuditForwardTest.failedCopyIsSentAgain`
-- `io.popdesk.audit.AuditForwardTest.tokenIsSentAsBearer`
 - `io.popdesk.audit.AuditForwardTest.statusShowsTheCopyOnWithItsLastSuccess`
 - `io.popdesk.audit.AuditLogViewTest.noRequestChangesOrDeletesAnEntry`
 - `io.popdesk.audit.AuditLogViewTest.actorZeroIsTheSystem`
@@ -69,14 +88,19 @@
 - `io.popdesk.audit.AuditRetentionTest.chainGoesOnAfterEveryEntryWasDeleted`
 - `io.popdesk.audit.AuditRetentionTest.entryInsideThePeriodStays`
 - `io.popdesk.audit.AuditTamperTest.firstBrokenEntryIsGiven`
+- `io.popdesk.audit.AuditTamperTest.changedLastEntryWithAFittingHashIsFoundAtTheHead`
 - `io.popdesk.audit.AuditTamperTest.changedValueIsFound(Changed)[1]`
 - `io.popdesk.audit.AuditTamperTest.changedValueIsFound(Changed)[2]`
 - `io.popdesk.audit.AuditTamperTest.changedValueIsFound(Changed)[3]`
 - `io.popdesk.audit.AuditTamperTest.changedValueIsFound(Changed)[4]`
 - `io.popdesk.audit.AuditTamperTest.changedValueIsFound(Changed)[5]`
+- `io.popdesk.audit.AuditTamperTest.changedMiddleEntryWithAFittingHashBreaksTheNextEntry`
 - `io.popdesk.audit.AuditTamperTest.secondCheckWhileOneRunsIsRefused`
 - `io.popdesk.audit.AuditTamperTest.deletedLastEntryIsFound`
 - `io.popdesk.audit.AuditTamperTest.deletedMiddleEntryIsFound`
+- `io.popdesk.audit.AuditTamperTest.firstEntryLeftAfterRetentionIsChecked(AtTheFront)[1]`
+- `io.popdesk.audit.AuditTamperTest.firstEntryLeftAfterRetentionIsChecked(AtTheFront)[2]`
+- `io.popdesk.deploy.CommandAuditChainTest.restoredBackupKeepsItsChainAndTheRestoreEntryFollowsIt`
 - `io.popdesk.deploy.CommandAuditChainTest.commandEntriesJoinTheChainWhileTheAppRuns`
 - `io.popdesk.deploy.UpgradeAuditChainTest.sampleUpgradesToAValidChain`
 - `io.popdesk.deploy.UpgradeAuditChainTest.restoreCommandRowFromTheOldSchemaIsChained`
@@ -94,6 +118,7 @@
 - `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 내보내기 > S1B-AC-28 C-12 내보내기 503: HEAD가 503이면 띠 "다른 내보내기가 돌고 있습니다…"를 보이고 내려받지 않는다`
 - `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 무결성 확인 > S1B-AC-37 C-12 무결성 확인: 도는 동안 버튼을 막고(aria-disabled) "확인하는 중…", 필터는 그대로 쓴다. 맞으면 건수와 한계 문구`
 - `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 무결성 확인 > S1B-AC-37 C-12 무결성 확인 끊긴 곳: 오류 띠에 그 항목의 시각과 종류, "이 항목 보기"`
+- `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 무결성 확인 > S1B-AC-37 C-12 "이 항목 보기": 다른 필터를 지우고 기간을 그 항목의 날 하루로 걸어(부터 그 날 0시, 까지 다음 날 0시) 1쪽을 받는다`
 - `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 무결성 확인 > S1B-AC-42 C-12 무결성 확인 맨 끝이 없어짐: 오류 띠 "마지막 항목 뒤가 맞지 않습니다. 가장 최근 항목이 지워졌습니다."`
 - `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 무결성 확인 > S1B-AC-37 C-12 무결성 확인 409: "이미 확인이 돌고 있습니다…". 버튼은 다시 눌린다`
 - `src/screens/C12AuditLog.actions.test.tsx.C-12 감사 로그: 무결성 확인 > S1B-AC-37 C-12 무결성 확인 5xx: 공통 오류 띠에 프록시 시간 제한 한 줄. 버튼은 다시 눌린다`
@@ -123,6 +148,12 @@
 - `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 일의 종류(소속·배정): 종류마다 한국어 말로 보인다`
 - `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 일의 종류(운영 명령): 종류마다 한국어 말로 보인다`
 - `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 일의 종류(내보내기): 종류마다 한국어 말로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 대상 칸(소속): 대상의 종류에 맞는 글자로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 대상 칸(배정): 대상의 종류에 맞는 글자로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 대상 칸(백업): 대상의 종류에 맞는 글자로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 대상 칸(복원): 대상의 종류에 맞는 글자로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 대상 칸(내보내기): 대상의 종류에 맞는 글자로 보인다`
+- `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 소속·배정의 대상을 누르면 고객사와 계정이 함께 걸린다(targetCode와 targetAccountId)`
 - `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 모르는 종류: 이름을 그대로 code 글꼴로 보이고, 모르는 칸과 값도 그대로 보인다. 대상이 없으면 빈칸`
 - `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-36 C-12 바뀐 값: "칸: 전 → 뒤", 전이나 뒤가 없으면 "없음", 전·뒤 꼴이 아니면 "칸: 값", 바뀐 값이 없으면 빈칸`
 - `src/screens/C12AuditLog.test.tsx.C-12 감사 로그: 표와 상태 > S1B-AC-01 C-12 시스템이 한 일: 한 사람 칸에 "시스템"`
