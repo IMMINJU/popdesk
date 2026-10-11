@@ -10,6 +10,7 @@ import io.popdesk.support.ConnectedAppTest;
 import io.popdesk.support.DbInspector.Column;
 import io.popdesk.support.Fixtures;
 import io.popdesk.support.Fixtures.Issue;
+import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.ReceivedMail;
 import io.popdesk.support.Unique;
 import io.popdesk.support.Wait;
@@ -34,7 +35,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The trigger fails every update of the invitation table while a test holds it; the mail behind
  * the broken row is a notification about a comment, which writes nothing there. The table is found
- * by its shape: the one table with a column whose name holds {@code token}.
+ * by what an invitation does: the one table with a column whose name holds {@code token} that gets a
+ * row when a person is invited. Other tables may hold tokens too (a password reset).
  */
 class SendLoopBrokenRowTest extends ConnectedAppTest {
 
@@ -56,7 +58,7 @@ class SendLoopBrokenRowTest extends ConnectedAppTest {
         Issue issue = fixtures.fileIssue(s.customer(), s.code());
         String invited = Unique.email("broken");
 
-        try (BrokenInvitationMail broken = new BrokenInvitationMail()) {
+        try (BrokenInvitationMail broken = new BrokenInvitationMail(s)) {
             Row row = inviteWithoutWaitingForMail(s, invited);
             fixtures.comment(s.agent(), issue.key(), Unique.text("An answer"));
 
@@ -79,7 +81,7 @@ class SendLoopBrokenRowTest extends ConnectedAppTest {
         Scene s = steps.scene();
         String invited = Unique.email("broken");
 
-        try (BrokenInvitationMail broken = new BrokenInvitationMail()) {
+        try (BrokenInvitationMail broken = new BrokenInvitationMail(s)) {
             Instant firstFailure = clock.instant();
             Row queued = inviteWithoutWaitingForMail(s, invited);
             Row afterFirst = Wait.until("the first attempt of " + queued.table() + "[" + queued.key()
@@ -131,8 +133,8 @@ class SendLoopBrokenRowTest extends ConnectedAppTest {
 
         private final String drop;
 
-        BrokenInvitationMail() {
-            String table = invitationTable();
+        BrokenInvitationMail(Scene s) {
+            String table = invitationTable(s);
             String name = "test_" + UUID.randomUUID().toString().replace("-", "");
             db.schemaFixture("create or replace function " + FUNCTION + "() returns trigger language plpgsql as $f$\n"
                     + "begin\n"
@@ -149,12 +151,19 @@ class SendLoopBrokenRowTest extends ConnectedAppTest {
         }
     }
 
-    private String invitationTable() {
-        List<String> found = db.tables().stream()
-                .filter(t -> !t.startsWith("spring_session") && !t.equals("flyway_schema_history"))
+    /**
+     * The table an invitation adds a row to that has a token column. Invites one more customer to see
+     * it, and waits for that mail so that no other invitation mail is in the queue when the trigger
+     * comes.
+     */
+    private String invitationTable(Scene s) {
+        Snapshot before = rows.snapshot();
+        fixtures.invite(s.admin(), Role.CUSTOMER, s.code());
+        List<String> found = rows.added(before).stream().map(Row::table).distinct()
                 .filter(t -> db.columns(t).stream().map(Column::name).anyMatch(c -> c.contains("token")))
                 .toList();
-        assertThat(found).as("tables with a token column (the invitation table)").hasSize(1);
+        assertThat(found).as("tables with a token column that an invitation adds a row to (the invitation table)")
+                .hasSize(1);
         return found.getFirst();
     }
 }
