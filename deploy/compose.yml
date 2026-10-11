@@ -46,6 +46,11 @@ services:
       MAIL_FROM:
       NOTIFY_WEBHOOK_URL:
       NOTIFY_WEBHOOK_URL_FILE:
+      POPDESK_AUDIT_RETENTION:
+      AUDIT_FORWARD_URL:
+      AUDIT_FORWARD_URL_FILE:
+      AUDIT_FORWARD_TOKEN:
+      AUDIT_FORWARD_TOKEN_FILE:
       # JVM options of the operator's own, for example a larger heap (-Xmx768m).
       JDK_JAVA_OPTIONS:
     volumes:
