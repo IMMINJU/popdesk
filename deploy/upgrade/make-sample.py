@@ -12,15 +12,17 @@ expects). Exit code 0 when all of this worked; 3 when something failed.
 import argparse
 import json
 import random
+import struct
 import sys
 import time
+import zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from popdesk_stack import (  # noqa: E402
     ADMIN_EMAIL, ADMIN_PASSWORD, CONSOLE_HOST, PEOPLE_PASSWORD, PORTAL_HOST, HarnessError, Project, image_id,
-    log, read_audit, read_issues, read_outbox, sha256)
+    log, read_audit, read_issues, read_outbox, read_password_resets, read_photos, sha256)
 
 # Low, so a few small uploads pass 80% and raise the quota alert (ops_alert, notification rows).
 QUOTA = "1MB"
@@ -46,8 +48,20 @@ def content(seed, size):
     return random.Random(seed).randbytes(size)
 
 
+def png(seed, width, height):
+    """A PNG of noise, 8 bits a channel, RGB."""
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+    noise = random.Random(seed)
+    rows = b"".join(b"\x00" + noise.randbytes(width * 3) for _ in range(height))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+
+
 def fill(project):
-    """Fills the installation; returns the attachments that must read back the same."""
+    """Fills the installation; returns the admin's client, the attachments that must read back the same,
+    and the accounts that have a profile photo."""
     admin = project.api(CONSOLE_HOST)
     admin.sign_in(ADMIN_EMAIL, ADMIN_PASSWORD)
     admin_id = admin.json("GET", "/api/console/me")["id"]
@@ -57,7 +71,8 @@ def fill(project):
 
     agent, agent_id = join(project, admin, "AGENT", "agent@sample.popdesk.test", "Sample Agent")
     admin.request("PUT", f"/api/console/companies/ACME/agents/{agent_id}", expect=200)
-    customer, _ = join(project, admin, "CUSTOMER", "customer@sample.popdesk.test", "Sample Customer", ["ACME"])
+    customer, customer_id = join(project, admin, "CUSTOMER", "customer@sample.popdesk.test", "Sample Customer",
+                                 ["ACME"])
     other, _ = join(project, admin, "CUSTOMER", "other@sample.popdesk.test", "Other Customer", ["BETA"])
     # An invitation nobody accepted.
     admin.json("POST", "/api/console/invitations", {"email": "pending@sample.popdesk.test", "name": "Pending",
@@ -79,6 +94,11 @@ def fill(project):
     agent.json("POST", f"/api/console/issues/{first}/comments", {"content": "We are looking at it."}, expect=201)
     agent.json("POST", f"/api/console/issues/{first}/comments", {"content": "Internal: check the driver.",
                                                                     "internal": True}, expect=201)
+
+    # A profile photo larger than the app stores, so what it keeps is its own scaled copy (account_photo).
+    customer.upload("/api/portal/me/photo", "file", "photo.png", png(7, 300, 200))
+    # A password reset link nobody used (password_reset). Its email is one of the mail rows waited for below.
+    other.json("POST", "/api/public/password-reset/request", {"email": "other@sample.popdesk.test"}, expect=202)
 
     kept = []
 
@@ -117,7 +137,7 @@ def fill(project):
         "(select max(c.id) from comment c where c.issue_id = i.id and not c.internal), 'failed', 25, "
         "now(), now() - interval '24 hours', now(), 'SMTP_REFUSED', now() - interval '24 hours' "
         f"from issue i join company co on co.id = i.company_id where co.code || '-' || i.number = '{first}'")
-    return admin, kept
+    return admin, kept, [customer_id]
 
 
 def check_every_table_has_rows(project):
@@ -147,7 +167,7 @@ def main():
         project.up()
         if not project.wait_healthy("app", 600):
             raise HarnessError("The app did not become healthy:\n" + project.logs("app")[-4000:])
-        admin, kept = fill(project)
+        admin, kept, with_photo = fill(project)
         check_every_table_has_rows(project)
 
         expected = {
@@ -155,9 +175,13 @@ def main():
             "attachments": kept,
             "outbox": read_outbox(project),
             "audit": read_audit(project),
+            "photos": read_photos(admin, with_photo),
+            "passwordResets": read_password_resets(project),
         }
         if not expected["outbox"]:
             raise HarnessError("The sample has no failed queue row.")
+        if not expected["passwordResets"]:
+            raise HarnessError("The sample has no password reset link.")
 
         project.compose("exec", "-T", "app", "popdesk", "backup", "/tmp/sample.dump")
         project.compose("cp", "app:/tmp/sample.dump", str(out / "sample.dump"))

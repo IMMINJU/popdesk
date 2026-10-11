@@ -6,6 +6,7 @@
 
 Restores DIR/sample.dump into a new, empty database with `popdesk restore`, starts IMAGE on it, waits
 until it is healthy (migrations done), and runs the sample check against DIR/sample.expected.json.
+A sample of an older version expects less; what it does not name is not checked.
 Each --compose-file is added after deploy/compose.yml. Writes WORK/result.json and WORK/app.log.
 
 Exit codes: 0 the app started and every check passed; 1 the app started and a check failed; 2 the app
@@ -22,7 +23,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from popdesk_stack import (  # noqa: E402
     ADMIN_EMAIL, ADMIN_PASSWORD, CONSOLE_HOST, FAILED_ROWS_KEPT_DAYS, ApiError, Project, log, read_audit,
-    read_issues, read_outbox, sha256)
+    read_issues, read_outbox, read_password_resets, read_photos, sha256)
+
+# The checks every sample has, and those only a sample made after 0.1.0 has (profile photos and
+# password reset links). A later check runs when sample.expected.json names it.
+CHECKS = ("issues", "attachments", "outbox", "audit")
+LATER_CHECKS = ("photos", "passwordResets")
 
 # The app's health check gives a start period of 3 minutes and then 6 tries 10 seconds apart; a long
 # migration on a large sample can take longer, so the harness waits longer than that.
@@ -77,6 +83,37 @@ def check_audit(project, expected):
     return ok
 
 
+def check_photos(console, expected):
+    """Every profile photo of the sample is served with the bytes it had."""
+    wanted = expected["photos"]
+    try:
+        actual = read_photos(console, [photo["accountId"] for photo in wanted])
+    except ApiError as e:
+        log(f"photos: {e}")
+        return False
+    if actual != wanted:
+        log(f"photos: expected {wanted}, found {actual}")
+        return False
+    return True
+
+
+def check_password_resets(project, expected):
+    """Every reset link of the sample is still there, unchanged. The app deletes a link once it has
+    expired, so one past its time may be gone."""
+    actual = {row["accountId"]: row for row in read_password_resets(project)}
+    now = datetime.now(timezone.utc)
+    ok = True
+    for row in expected["passwordResets"]:
+        found = actual.get(row["accountId"])
+        if found == row:
+            continue
+        if found is None and datetime.fromisoformat(row["expiresAt"]) < now:
+            continue
+        log(f"passwordResets: expected {row}, found {found}")
+        ok = False
+    return ok
+
+
 def run_checks(project, expected):
     checks = {}
     console = project.api(CONSOLE_HOST)
@@ -87,7 +124,11 @@ def run_checks(project, expected):
         log(f"Signing in as the sample's admin failed: {e}")
         signed_in = False
     for name, check, target in (("issues", check_issues, console), ("attachments", check_attachments, console),
-                                ("outbox", check_outbox, project), ("audit", check_audit, project)):
+                                ("outbox", check_outbox, project), ("audit", check_audit, project),
+                                ("photos", check_photos, console),
+                                ("passwordResets", check_password_resets, project)):
+        if name in LATER_CHECKS and name not in expected:
+            continue
         if target is console and not signed_in:
             checks[name] = False
             continue
@@ -110,7 +151,7 @@ def main():
     sample = Path(args.sample).resolve()
     work = Path(args.work).resolve()
     work.mkdir(parents=True, exist_ok=True)
-    result = {"started": False, "checks": {"issues": False, "attachments": False, "outbox": False, "audit": False}}
+    result = {"started": False, "checks": {name: False for name in CHECKS}}
 
     project = Project(args.project, args.image, work, extra_files=args.compose_file)
     code = 3

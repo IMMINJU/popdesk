@@ -249,6 +249,22 @@ def read_outbox(project):
         "from outbox where state = 'failed'")
 
 
+def read_photos(console, account_ids):
+    """The stored profile photo of each account, as the console serves it to an admin."""
+    photos = []
+    for account_id in account_ids:
+        _, data = console.request("GET", f"/api/console/photos/{account_id}", expect=200)
+        photos.append({"accountId": account_id, "sha256": sha256(data)})
+    return photos
+
+
+def read_password_resets(project):
+    """Password reset links: whose, and from when to when. Never the token hash."""
+    return project.sql_json(
+        "select coalesce(json_agg(json_build_object('accountId', account_id, 'createdAt', created_at, "
+        "'expiresAt', expires_at) order by account_id), '[]') from password_reset")
+
+
 def read_audit(project):
     return project.sql_json(
         "select coalesce(json_agg(json_build_object('id', id, 'action', action, 'row', row_to_json(a)::text) "

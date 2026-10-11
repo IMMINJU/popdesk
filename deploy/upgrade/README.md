@@ -8,13 +8,13 @@ Checks that a new image upgrades a database made by an older one (ADR D-24, proc
 python deploy/upgrade/make-sample.py --image IMAGE --out DIR --project NAME
 ```
 
-Starts IMAGE on an empty database and fills every business table through the API, with SQL only for two states the API cannot reach on demand (an attachment in `purging`, a send queue row in `failed`). It includes a 255-character file name. Then it runs `popdesk backup` and writes:
+Starts IMAGE on an empty database and fills every business table through the API, with SQL only for two states the API cannot reach on demand (an attachment in `purging`, a send queue row in `failed`). It includes a 255-character file name, a profile photo, and a password reset link nobody used. Then it runs `popdesk backup` and writes:
 
 | File | Content |
 |---|---|
 | `DIR/sample.dump` | the dump |
 | `DIR/sample.image` | the image ID (`sha256:...`) that made it |
-| `DIR/sample.expected.json` | what the sample check expects: issue keys, attachment hashes, failed queue rows, audit rows |
+| `DIR/sample.expected.json` | what the sample check expects: issue keys, attachment hashes, failed queue rows, audit rows, profile photo hashes (`photos`), password reset links (`passwordResets`, without the token hash) |
 
 Exit code 0 when it worked, 3 when it did not. It also fails when a business table is left empty, so a new table without sample data is noticed.
 
@@ -24,7 +24,9 @@ Exit code 0 when it worked, 3 when it did not. It also fails when a business tab
 python deploy/upgrade/upgrade-test.py --sample DIR --image IMAGE --work WORK --project NAME [--compose-file FILE ...]
 ```
 
-Restores `DIR/sample.dump` with `popdesk restore` into a new database, starts IMAGE on it, waits until it is healthy, and checks the sample through the API (issues, attachment contents, as the sample's admin) and SQL (failed queue rows, audit rows). Writes `WORK/result.json` and `WORK/app.log`.
+Restores `DIR/sample.dump` with `popdesk restore` into a new database, starts IMAGE on it, waits until it is healthy, and checks the sample through the API (issues, attachment contents, profile photos, as the sample's admin) and SQL (failed queue rows, audit rows, password reset links). Writes `WORK/result.json` and `WORK/app.log`.
+
+The checks `issues`, `attachments`, `outbox`, and `audit` always run. `photos` and `passwordResets` run only when `sample.expected.json` names them: the 0.1.0 sample was made before those tables existed, so with it `result.json` has the four checks only.
 
 | Exit code | Meaning |
 |---|---|
@@ -33,7 +35,7 @@ Restores `DIR/sample.dump` with `popdesk restore` into a new database, starts IM
 | 2 | the app did not start or did not finish migrating |
 | 3 | the harness itself failed |
 
-A failed queue row is deleted by the app 7 days after it failed, so the outbox check lets such an old row be gone. With a sample older than a week the outbox check therefore proves little; see the release steps below.
+A failed queue row is deleted by the app 7 days after it failed, so the outbox check lets such an old row be gone. A password reset link is deleted once it has expired (after 1 hour), so that check lets an expired link be gone too. With a sample older than a week the outbox check therefore proves little; see the release steps below.
 
 ## At a release
 
