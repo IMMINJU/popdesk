@@ -38,6 +38,11 @@ function errorBody(error: unknown): { code: string; message: string; fields?: Fi
   return { code: '', message: '' };
 }
 
+/** The error body is the app's own (it has a `code`), not the page of a proxy in front (S1A-AC-65). */
+export function isAppError(error: unknown): boolean {
+  return errorBody(error).code !== '';
+}
+
 /** Seconds from `Retry-After`: a number of seconds or an HTTP date. Default 60. */
 export function retryAfter(response: Response): number {
   const header = response.headers.get('Retry-After');

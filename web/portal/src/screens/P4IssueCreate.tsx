@@ -1,6 +1,7 @@
 // P-4 문의 등록 (screens.md 3절). The issue is made first; then the picked files
 // go up one by one (7절). A file that fails does not undo the issue: P-5 shows
-// which files did not go up.
+// which files did not go up. A company that is not ACTIVE takes no new issue
+// (PROJ-3), and one issue takes up to 20 files (S1A-AC-65).
 import {
   Alert,
   Button,
@@ -19,6 +20,7 @@ import {
   type UploadItem,
 } from '@popdesk/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SubmitEvent } from 'react';
+import { Link } from 'react-router';
 import { api, type Schemas } from '../api';
 import { ATTACHMENT_LIMITS, REJECT_TEXT, uploadAttachment, uploadFailureText, type UploadFailure } from '../app/attachments';
 import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
@@ -27,12 +29,15 @@ import { useCooldown, useFieldErrors, useLeaveGuard, useLoad } from '../app/hook
 import { LoadFailed, PageTitle } from '../app/layout';
 import { TEXT } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
-import { call, type Failure, type Result } from '../app/result';
+import { call, isAppError, type Failure, type Result } from '../app/result';
 import { useToast } from '../app/toastContext';
 
 type Company = Schemas['Company'];
 
 const NOT_ACTIVE_TEXT = '이 고객사에는 지금 문의를 올릴 수 없습니다.';
+const NO_NEW_ISSUES_TEXT = '새 문의를 받지 않습니다';
+const MAX_FILES = 20;
+const TOO_MANY_FILES_TEXT = `한 번에 ${String(MAX_FILES)}개까지 붙일 수 있습니다`;
 const NOT_MEMBER_TEXT = '이 고객사에 문의를 올릴 수 없습니다.';
 const COMPANY_ID = 'issue-company';
 
@@ -63,6 +68,7 @@ export function P4IssueCreate() {
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [band, setBand] = useState<string | null>(null);
+  const [tooManyFiles, setTooManyFiles] = useState(false);
   const cooldown = useCooldown();
   const companyRef = useRef<HTMLSelectElement>(null);
   const focusCompany = useRef(false);
@@ -90,8 +96,10 @@ export function P4IssueCreate() {
   });
 
   const companies = load.data;
+  const open = companies?.filter((c) => c.status === 'ACTIVE') ?? [];
   const only = companies?.length === 1 ? companies[0] : undefined;
-  const chosen = only ? only.code : companyCode;
+  // With one company that takes issues there is nothing to choose.
+  const chosen = only ? only.code : companyCode !== '' ? companyCode : open.length === 1 ? (open[0]?.code ?? '') : '';
 
   const sendFiles = async (key: string): Promise<UploadFailure[]> => {
     const failures: UploadFailure[] = [];
@@ -113,10 +121,17 @@ export function P4IssueCreate() {
     cooldown.clearEnded();
     fields.clear();
     setPending(true);
+    // A 413 from the app carries an error body; a proxy in front answers with its own page.
+    const seen = { appError: false };
     const result = await call(
-      api.POST('/api/portal/issues', {
-        body: { companyCode: chosen, title, content, priority, private: isPrivate },
-      }),
+      api
+        .POST('/api/portal/issues', {
+          body: { companyCode: chosen, title, content, priority, private: isPrivate },
+        })
+        .then((answer) => {
+          seen.appError = isAppError(answer.error);
+          return answer;
+        }),
     );
     if (result.ok) {
       const key = result.data.key;
@@ -137,6 +152,8 @@ export function P4IssueCreate() {
     } else if (f.kind === 'rejected' && f.code === 'COMPANY_NOT_ACTIVE') {
       setBand(NOT_ACTIVE_TEXT);
       focusCompany.current = true;
+    } else if (f.kind === 'tooLarge' && seen.appError) {
+      setBand(TOO_MANY_FILES_TEXT);
     } else if (f.kind === 'notFound') {
       // Left the company in the meantime: ask for the list again.
       setBand(NOT_MEMBER_TEXT);
@@ -154,10 +171,13 @@ export function P4IssueCreate() {
       nextUpload.current += 1;
       rows.push({ id: `u${String(nextUpload.current)}`, name: file.name, size: file.size, state: 'rejected', error: REJECT_TEXT[reason] });
     }
-    for (const file of accepted) {
+    // The 21st file is not added (S1A-AC-65).
+    const room = Math.max(0, MAX_FILES - uploads.filter((u) => u.state === 'selected').length);
+    for (const file of accepted.slice(0, room)) {
       nextUpload.current += 1;
       rows.push({ id: `u${String(nextUpload.current)}`, name: file.name, size: file.size, state: 'selected', file });
     }
+    setTooManyFiles(accepted.length > room);
     setUploads((current) => [...current, ...rows]);
   };
 
@@ -172,6 +192,16 @@ export function P4IssueCreate() {
     );
   } else if (companies?.length === 0) {
     body = <EmptyState icon={<InboxIcon size={20} />} title={TEXT.noMembership} />;
+  } else if (companies && open.length === 0) {
+    // Every company is 멈춤 or 보관: no form, so no 올리기 button (screens.md P-4).
+    body = (
+      <EmptyState
+        icon={<InboxIcon size={20} />}
+        title={`소속된 고객사가 ${NO_NEW_ISSUES_TEXT}`}
+        description="멈췄거나 보관된 고객사입니다. 이미 올린 문의는 그대로 볼 수 있습니다."
+        action={<Link to="/issues">문의 목록으로</Link>}
+      />
+    );
   } else {
     let companyField: ReactNode;
     if (!companies) {
@@ -200,9 +230,12 @@ export function P4IssueCreate() {
           id={COMPANY_ID}
           label="고객사"
           placeholder="고객사를 고르세요"
-          options={companies.map((c) => ({ value: c.code, label: c.name }))}
-          value={companyCode}
+          options={companies.map((c) =>
+            c.status === 'ACTIVE' ? { value: c.code, label: c.name } : { value: c.code, label: `${c.name} (${NO_NEW_ISSUES_TEXT})`, disabled: true },
+          )}
+          value={chosen}
           onChange={setCompanyCode}
+          {...(open.length < companies.length ? { helpText: `멈췄거나 보관된 고객사는 ${NO_NEW_ISSUES_TEXT}.` } : {})}
           {...(fields.errors.companyCode ? { error: fields.errors.companyCode } : {})}
         />
       );
@@ -248,15 +281,17 @@ export function P4IssueCreate() {
           />
         </div>
         <Checkbox label="비공개" description="같은 회사 동료에게 보이지 않습니다" checked={isPrivate} onChange={setPrivate} />
+        {tooManyFiles && <Alert tone="warning">{TOO_MANY_FILES_TEXT}</Alert>}
         <FileUpload
           label="첨부"
           items={uploads}
           onSelect={onSelect}
           onRemove={(id) => {
+            setTooManyFiles(false);
             setUploads((current) => current.filter((u) => u.id !== id));
           }}
           limits={ATTACHMENT_LIMITS}
-          helpText="파일 하나 10MB, 모두 합해 50MB까지. 문의를 올린 뒤 하나씩 올립니다."
+          helpText={`파일 하나 10MB, 모두 합해 50MB, ${String(MAX_FILES)}개까지. 문의를 올린 뒤 하나씩 올립니다.`}
           removeLabel="빼기"
           dropHint="또는 여기로 끌어 놓으세요"
         />
