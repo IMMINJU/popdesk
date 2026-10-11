@@ -23,7 +23,7 @@ web src/screens/P8Members.actions.test.tsx
 web src/screens/P8Members.late.test.tsx
 web src/screens/P8Members.test.tsx
 server io/popdesk/manager/ManagerAuditTest.java
-server io/popdesk/manager/MemberDecidedCasesTest.java
+server io/popdesk/manager/ManagerConcurrencyTest.java
 server io/popdesk/manager/MembershipRequestMailTest.java
 server io/popdesk/manager/MembershipRequestTest.java
 server io/popdesk/deploy/ManagerUpgradeTest.java
