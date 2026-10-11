@@ -222,6 +222,21 @@ export function useFieldErrors<F extends string>(specs: Record<F, FieldSpec>): F
   return { errors, summary, applyFields, setError, clear };
 }
 
+/**
+ * Tells whether the screen is still there. An answer that comes after the
+ * screen has gone is dropped (S1A-AC-58), the way useToLogin drops a late 401.
+ */
+export function useLive(): () => boolean {
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  return useCallback(() => mounted.current, []);
+}
+
 /** Focuses `ref` once, when `ready` first turns true (screens.md 2절 접근성: focus to h1). */
 export function useFocusWhenReady(ref: { current: HTMLElement | null }, ready: boolean) {
   const done = useRef(false);

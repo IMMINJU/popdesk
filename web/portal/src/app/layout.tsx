@@ -6,8 +6,10 @@ import { Link, Outlet } from 'react-router';
 import { api } from '../api';
 import { BusyContext } from './busy';
 import { useDocumentTitle, useFocusWhenReady } from './hooks';
+import { useT } from './locale';
 import { TEXT } from './messages';
 import { useLiveNavigate } from './navigate';
+import { photoUrl } from './photos';
 import { call } from './result';
 import { useSession, useToLogin } from './sessionContext';
 
@@ -15,6 +17,7 @@ export function PortalLayout() {
   const { me, setMe } = useSession();
   const toLogin = useToLogin();
   const navigate = useLiveNavigate();
+  const t = useT();
   const [problem, setProblem] = useState(false);
   const [busy, setBusy] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -79,6 +82,12 @@ export function PortalLayout() {
         displayName={TEXT.displayName}
         nav={[]}
         userName={me.name}
+        userPhotoUrl={photoUrl(me.id, me.photoUpdatedAt)}
+        renderUserLink={(children) => (
+          <Link className="pd-shell-user-link" to="/me" aria-label={`${me.name}, ${t('myInfo.title')}`}>
+            {children}
+          </Link>
+        )}
         onLogout={() => {
           void logout();
         }}

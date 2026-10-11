@@ -1,6 +1,55 @@
-// Screen titles of slice 1a (design/slices/1a-people/screens.md 1절). Both apps share them.
-export const en = {
+// English for the keys of `ko.ts`; a missing key fails the type check.
+import type { ko } from './ko';
+
+export const en: Record<keyof typeof ko, string> = {
   'passwordForgot.title': 'Forgot password',
+  'passwordForgot.lead': 'Enter the email of your account and we send a link to set a new password.',
+  'passwordForgot.email': 'Email',
+  'passwordForgot.submit': 'Send reset email',
+  'passwordForgot.sent': 'If that address has an account, we sent an email. Open the link in it within 1 hour.',
+  'passwordForgot.toLogin': 'Back to sign in',
+
   'passwordReset.title': 'Reset password',
+  'passwordReset.password': 'New password',
+  'passwordReset.passwordShow': 'Show new password',
+  'passwordReset.passwordHide': 'Hide new password',
+  'passwordReset.confirm': 'New password again',
+  'passwordReset.confirmShow': 'Show the repeated password',
+  'passwordReset.confirmHide': 'Hide the repeated password',
+  'passwordReset.rules': '10 to 72 characters. Not only spaces, and not the same as your email.',
+  'passwordReset.mismatch': 'The two passwords are different.',
+  'passwordReset.submit': 'Change password',
+  'passwordReset.invalidTitle': 'This reset link cannot be used',
+  'passwordReset.invalid': 'The link has expired or was already used.',
+  'passwordReset.retry': 'Request again',
+  'passwordReset.done': 'Password changed. Sign in with the new password.',
+
   'myInfo.title': 'My info',
-} as const;
+  'myInfo.profile': 'Profile',
+  'myInfo.name': 'Name',
+  'myInfo.email': 'Email',
+  'myInfo.emailHelp': 'The email cannot be changed.',
+  'myInfo.language': 'Language',
+  'myInfo.languageKo': '한국어',
+  'myInfo.languageEn': 'English',
+  'myInfo.save': 'Save',
+  'myInfo.saved': 'Saved.',
+  'myInfo.memberCompanies': 'Your companies',
+  'myInfo.noMemberCompanies': 'You belong to no company.',
+  'myInfo.assignedCompanies': 'Assigned companies',
+  'myInfo.noAssignedCompanies': 'No company is assigned to you.',
+  'myInfo.photo': 'Photo',
+  'myInfo.photoHelp': 'PNG, JPEG or WebP, up to 2MB',
+  'myInfo.photoUpload': 'Upload photo',
+  'myInfo.photoChange': 'Change',
+  'myInfo.photoRemove': 'Remove',
+  'myInfo.photoTooLarge': 'The photo is over 2MB. Upload a smaller file.',
+  'myInfo.photoUnsupported': 'Only PNG, JPEG and WebP photos can be uploaded. Check that the file is not damaged.',
+  'myInfo.photoTooManyPixels': 'The photo has too many pixels. Upload a smaller one.',
+  'myInfo.password': 'Password',
+  'myInfo.currentPassword': 'Current password',
+  'myInfo.currentPasswordShow': 'Show current password',
+  'myInfo.currentPasswordHide': 'Hide current password',
+  'myInfo.currentPasswordWrong': 'The current password is wrong.',
+  'myInfo.passwordChanged': 'Password changed. Other devices have to sign in again.',
+};

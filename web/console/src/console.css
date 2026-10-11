@@ -252,6 +252,30 @@
   width: 100%;
 }
 
+.pd-auth-links {
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* My info */
+
+.pd-me {
+  gap: var(--space-8);
+}
+
+.pd-me .pd-form {
+  width: min(400px, 100%);
+}
+
+.pd-me .pd-form-actions {
+  justify-content: flex-start;
+}
+
+.pd-me-companies {
+  list-style: none;
+  padding: 0;
+}
+
 .pd-bare-main {
   display: block;
   padding: var(--space-8);

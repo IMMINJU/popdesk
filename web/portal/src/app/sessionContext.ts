@@ -63,5 +63,6 @@ export function safeNext(next: string | null): string {
   // Control characters could turn into something else in the address bar.
   if (Array.from(next).some((c) => (c.codePointAt(0) ?? 0) < 0x20)) return '/issues';
   if (next === '/login' || next.startsWith('/login?') || next.startsWith('/invite')) return '/issues';
+  if (next.startsWith('/forgot-password') || next.startsWith('/reset-password')) return '/issues';
   return next;
 }

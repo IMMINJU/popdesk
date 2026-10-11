@@ -1,7 +1,7 @@
 // P-1 로그인 (screens.md 3절). Sign-in goes to `next` or P-3.
 import { Alert, Button, PasswordField, TextField } from '@popdesk/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type SubmitEvent } from 'react';
-import { useLocation, useSearchParams } from 'react-router';
+import { Link, useLocation, useSearchParams } from 'react-router';
 import { api } from '../api';
 import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
 import { useCooldown, useDocumentTitle, useFieldErrors } from '../app/hooks';
@@ -139,6 +139,9 @@ export function P1Login() {
             로그인
           </Button>
         </form>
+        <p className="pd-auth-links">
+          <Link to="/forgot-password">비밀번호를 잊었나요?</Link>
+        </p>
       </div>
     </main>
   );
