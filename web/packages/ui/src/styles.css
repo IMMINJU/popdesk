@@ -1993,6 +1993,25 @@ textarea {
   color: var(--accent);
 }
 
+/* The number after a menu label, e.g. open membership requests on 고객사. */
+.pd-shell-nav-count {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.pd-shell-nav a[aria-current='page'] .pd-shell-nav-count {
+  background: var(--surface);
+}
+
 .pd-shell-user {
   display: flex;
   align-items: center;
@@ -2130,7 +2149,6 @@ textarea {
   z-index: var(--z-dropdown);
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-4);
   height: 56px;
   padding: 0 var(--page-gutter);
@@ -2140,6 +2158,11 @@ textarea {
 
 [data-theme='dark'] .pd-shell[data-app='portal'] .pd-shell-head {
   border-bottom: 1px solid var(--border);
+}
+
+/* The menu stands right after the name; the user goes to the far end. */
+.pd-shell[data-app='portal'] .pd-shell-user {
+  margin-left: auto;
 }
 
 .pd-shell[data-app='portal'] .pd-shell-nav ul {
@@ -2160,7 +2183,25 @@ textarea {
 
 @media (max-width: 639.98px) {
   .pd-shell[data-app='portal'] .pd-shell-head {
+    flex-wrap: wrap;
+    row-gap: 0;
+    height: auto;
+    min-height: 56px;
     padding: 0 var(--page-gutter-mobile);
+  }
+
+  .pd-shell[data-app='portal'] .pd-shell-top,
+  .pd-shell[data-app='portal'] .pd-shell-user {
+    display: flex;
+    align-items: center;
+    min-height: 56px;
+  }
+
+  /* The menu is not folded: its two links go to a second row under the bar. */
+  .pd-shell[data-app='portal'] .pd-shell-nav {
+    order: 1;
+    flex-basis: 100%;
+    padding-bottom: var(--space-2);
   }
 
   .pd-shell[data-app='portal'] .pd-shell-main {

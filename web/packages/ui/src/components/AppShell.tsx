@@ -25,7 +25,7 @@ export interface AppShellProps {
   app: 'portal' | 'console';
   /** "popdesk" until branding (BRAND). */
   displayName: string;
-  /** Console: 문의, and for admins 고객사·구성원·시스템 상태. Portal has none in the first slice. */
+  /** Console: 문의, and for admins 고객사·구성원·시스템 상태. Portal: 문의 and 우리 회사 사람 for a company manager, else none. */
   nav: readonly NavItem[];
   userName: string;
   /** The user's photo. Absent or `null` shows the initials (S1A-AC-60). */
@@ -55,6 +55,26 @@ export interface AppShellProps {
   /** Pending log out: the button shows the spinner. */
   logoutPending?: boolean;
   mainRef?: Ref<HTMLElement>;
+}
+
+/**
+ * What a menu link holds: the label and, for a `count` above 0, the number after it.
+ * The number is for the eye; a screen reader gets `countLabel` in the link's name
+ * ("고객사 소속 요청 3건"). An app that draws its own links (`renderLink`) puts this inside them.
+ */
+export function NavItemLabel(props: { item: NavItem }) {
+  const { label, count, countLabel } = props.item;
+  if (count === undefined || count <= 0) return <>{label}</>;
+  return (
+    <>
+      {label}
+      <span className="pd-shell-nav-count" aria-hidden="true">
+        {count}
+      </span>
+      {/* The space stays outside the hidden span, or the name reads "고객사소속 요청 3건". */}{' '}
+      <span className="pd-sr-only">{countLabel ?? String(count)}</span>
+    </>
+  );
 }
 
 /** `bp-narrow` (tokens.md 6절): the console's side menu is folded. */
@@ -119,7 +139,7 @@ export function AppShell({ mainRef, ...props }: AppShellProps) {
                 <Fragment>{props.renderLink(item)}</Fragment>
               ) : (
                 <a href={item.href} aria-current={item.current ? 'page' : undefined}>
-                  {item.label}
+                  <NavItemLabel item={item} />
                 </a>
               )}
             </li>
