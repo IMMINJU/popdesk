@@ -14,6 +14,11 @@ export interface NavItem {
    * Absent or 0 draws nothing.
    */
   count?: number;
+  /**
+   * What the number counts, with the number, e.g. "소속 요청 3건". It joins the link's accessible
+   * name after the label. Needed whenever `count` is drawn.
+   */
+  countLabel?: string;
 }
 
 export interface AppShellProps {
