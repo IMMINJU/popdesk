@@ -14,7 +14,10 @@
 --                1,000,000, so every issue key changes; and every text value shaped like an issue
 --                key ({company code}-{number}) gets a "9" at the end.
 --   outbox       one row is deleted from each table whose name holds "outbox" or "queue".
---   audit        one row is deleted from each table whose name holds "audit".
+--   audit        one row is deleted from each table whose name holds "audit" and that has more than
+--                one row. A table with a single row keeps it: slice 1b keeps the head of the hash
+--                chain in such a table, and without it nobody can sign in, so the other checks
+--                would fail for that reason and not for their own.
 --
 -- A part that finds no table to change raises an error, so the app does not finish migrating and
 -- the harness exits with 2: the test's assumption about table names is then wrong, not the harness.
@@ -97,8 +100,12 @@ BEGIN
         WHERE table_schema = current_schema() AND table_type = 'BASE TABLE'
           AND table_name LIKE '%audit%'
     LOOP
-        audit_tables := audit_tables + 1;
-        EXECUTE format('DELETE FROM %I WHERE ctid = (SELECT ctid FROM %I LIMIT 1)', t.table_name, t.table_name);
+        EXECUTE format('DELETE FROM %I WHERE ctid = (SELECT ctid FROM %I LIMIT 1) AND (SELECT count(*) FROM %I) > 1',
+                       t.table_name, t.table_name, t.table_name);
+        GET DIAGNOSTICS changed = ROW_COUNT;
+        IF changed > 0 THEN
+            audit_tables := audit_tables + 1;
+        END IF;
     END LOOP;
     IF audit_tables = 0 THEN
         RAISE EXCEPTION 'V999: no audit table';

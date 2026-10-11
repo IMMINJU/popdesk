@@ -45,6 +45,7 @@ aac1e7301b6e54ee6410e171da1ad4307c81a31b90ce2e3ca123f6d1df82aafe  server/src/tes
 92d408603201a7de7963f13c527ea182f3d675970387718ae03289b43af3e191  server/src/test/java/io/popdesk/audit/AuditLogAccessTest.java
 ed1bce8aefea9baa436c265d9d740bd745f92faaca957bbc8ecf51d6fc057371  server/src/test/java/io/popdesk/audit/AuditLogViewTest.java
 0d7b7398371f3caa443cbdbfccd33a016108fed81b959178392aee4ce95810c1  server/src/test/java/io/popdesk/audit/AuditRetentionTest.java
+df78c931a11a93507a71c492760a6d24230147cbda994745c64e9c4eaa96c134  server/src/test/java/io/popdesk/audit/AuditRetryTest.java
 51a259064cf75a5bbc1ae1b04a4bb74672bf3b74f268f0be4c71261ff26783e1  server/src/test/java/io/popdesk/audit/AuditSteps.java
 a9b5d2b3974e8325e884d8016eb2117f83ffad13dee82c0c5d7115c74ef3a4fd  server/src/test/java/io/popdesk/audit/AuditTamperTest.java
 617f2350a7692359f68e6a2c2680dad836e7f991cd331ab4aac02d5131bae9fe  server/src/test/java/io/popdesk/audit/ChainSteps.java
@@ -147,6 +148,10 @@ e1b3395553f0d8e0c1285a685972557535ee2c2fd581b7a835a02a7ebdd8e9c3  server/src/tes
 ba63c49cf719dbab7a67e2d5e5d1e3b6f77040a201c88bfff30a68216aa728de  server/src/test/java/io/popdesk/e2e/support/TestHostsResolverProvider.java
 d0d80b4d646f3f47f936d58719e104310d35f571738181d69881e0ddb3aae943  server/src/test/java/io/popdesk/helpdesk/account/IpRateLimitTest.java
 e96e457f6a0c7fed5601c5a9b52bb539796d00ae32acb2e1e71e9d66440df3c6  server/src/test/java/io/popdesk/helpdesk/attachment/AttachmentIdTest.java
+9236453a3a8553d29ae81a81f8efd94246c63ffedc9558becebdc75b675c4cc6  server/src/test/java/io/popdesk/helpdesk/audit/AuditExportLinesTest.java
+e1d08cbd94d049b3b2dd74c30da15a37399e6dd68318d84dd59cb2e5f8f3c503  server/src/test/java/io/popdesk/helpdesk/audit/AuditInsertPlaceTest.java
+f4de80d0f25bd2de23c99b4cc5050ce86d54d7590e14d59e8731712c3008e420  server/src/test/java/io/popdesk/helpdesk/audit/AuditValuesTest.java
+5564884d48fbbba93be3f96f3ed8d37e747c61712f190224898a2d28bbdc32c8  server/src/test/java/io/popdesk/helpdesk/audit/AuditVerifyScriptTest.java
 2fff15b4c150c092c5f4c0fce02261cb3546c5201ef56d9973d781732c5aa250  server/src/test/java/io/popdesk/helpdesk/photo/PhotoImagesTest.java
 a25b585084d6ecb8775306e38510b925b7ce027fcc36a0a8d220adc5eb487b75  server/src/test/java/io/popdesk/issue/CommentTest.java
 1b2e05aa1b22ddade16b92b2f10fc0ac5cb48562181c428678b4458a7fc376ba  server/src/test/java/io/popdesk/issue/Concurrently.java
@@ -313,7 +318,7 @@ fb7adf275a484d382bec5dd1cecbc0ce4b4b786b872dae3df5aa88b9017db561  server/src/tes
 55086b741c85d6dea09cf37eb7c5a64a9a8e64844b09347042e15e30c666c896  server/src/test/resources/deploy/mail-tls/mail-trust.p12
 79ba7d6bd1027c4da1d4aac6f973e86728c85a910ebc36739078abcf11aaeb05  server/src/test/resources/deploy/smtps.compose.yml
 19c7e85b52069a3071de7cece0478ae82abef631e43b2ebb4bb9495ece1a6943  server/src/test/resources/deploy/upgrade/v999.compose.yml
-3e60014560d8911f11a5e5b54eee75e20c0abc8ddefff185a86ca312aef50401  server/src/test/resources/deploy/upgrade/v999/V999__break_sample_data.sql
+3dcbdc0d7aa1267c93cb5d39a4e5ea39eee482a3f8d74638d4223d9fa8fd5fc8  server/src/test/resources/deploy/upgrade/v999/V999__break_sample_data.sql
 c21c03551d9d7645a77126be92fc86ab5404145b3e36779d7c727b0ad3dde47c  server/src/test/resources/e2e/Caddyfile
 8d450533008fae85421ceb289443a2c7ece0d9fb1cb2de5d02dcd1445ca828bc  server/src/test/resources/e2e/hook_receiver.py
 7034cd09a1ff3fe0e647106205203fa36ab7b34099d30848df4d5f52479de6ce  server/src/test/resources/notify/__snapshots__/en-customer-comment.json
