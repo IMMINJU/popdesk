@@ -16,7 +16,12 @@ import { useSession, useToLogin, type Me } from './sessionContext';
 function menu(me: Me): { href: string; label: string }[] {
   const items = [{ href: '/issues', label: '문의' }];
   if (me.role === 'ADMIN') {
-    items.push({ href: '/companies', label: '고객사' }, { href: '/members', label: '구성원' }, { href: '/system', label: '시스템 상태' });
+    items.push(
+      { href: '/companies', label: '고객사' },
+      { href: '/members', label: '구성원' },
+      { href: '/audit-log', label: t('auditLog.title') },
+      { href: '/system', label: '시스템 상태' },
+    );
   }
   return items;
 }

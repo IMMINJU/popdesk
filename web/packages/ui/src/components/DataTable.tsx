@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { ChevronDownIcon } from '../icons';
 
 export interface DataTableColumn<Row> {
   key: string;
@@ -35,8 +36,9 @@ export interface DataTableProps<Row> {
   density?: 'compact' | 'comfortable';
   /**
    * 줄 펼치기: what a row shows under itself when opened, e.g. the hashes of an
-   * audit entry. Without it the table draws as before. Shell only for now: the
-   * button and the opened row come in C-9.
+   * audit entry. Each row then starts with a button, and the opened content is
+   * the next `tr`. The table keeps which rows are open; a screen folds them all
+   * by giving the table a new `key`. Without it the table draws as before.
    */
   renderExpanded?: (row: Row) => ReactNode;
   /** Name of a row's 펼치기 button, e.g. "항목 12 자세히". Used with `renderExpanded`. */
@@ -49,7 +51,16 @@ export interface DataTableProps<Row> {
  */
 export function DataTable<Row>(props: DataTableProps<Row>) {
   const status = props.status ?? 'ready';
-  const span = props.columns.length;
+  const { renderExpanded } = props;
+  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
+  const span = props.columns.length + (renderExpanded ? 1 : 0);
+  const toggle = (key: string) => {
+    setOpened((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  };
   // Sticky columns sit at the sum of the widths before them.
   const offsets: (string | undefined)[] = [];
   let left: string[] = [];
@@ -68,6 +79,7 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
         <caption className={props.captionHidden === false ? 'pd-table-caption' : 'pd-sr-only'}>{props.caption}</caption>
         <thead>
           <tr>
+            {renderExpanded && <td className="pd-table-expand-cell" />}
             {props.columns.map((c, i) => (
               <th key={c.key} scope="col" {...cellProps(c, i)}>
                 {c.header}
@@ -79,6 +91,7 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
           {status === 'loading' &&
             Array.from({ length: props.skeletonRows ?? 5 }, (_, r) => (
               <tr key={r} className="pd-table-skeleton" aria-hidden="true">
+                {renderExpanded && <td className="pd-table-expand-cell" />}
                 {props.columns.map((c, i) => (
                   <td key={c.key} {...cellProps(c, i)}>
                     <span className="pd-skeleton-item pd-skeleton-pulse" style={{ width: `${String(40 + ((r * 7 + i * 13) % 50))}%` }} />
@@ -101,15 +114,42 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
             </tr>
           )}
           {status === 'ready' &&
-            props.rows.map((row) => (
-              <tr key={props.rowKey(row)}>
-                {props.columns.map((c, i) => (
-                  <td key={c.key} {...cellProps(c, i)}>
-                    {c.cell(row)}
+            props.rows.map((row) => {
+              const key = props.rowKey(row);
+              const cells = props.columns.map((c, i) => (
+                <td key={c.key} {...cellProps(c, i)}>
+                  {c.cell(row)}
+                </td>
+              ));
+              if (!renderExpanded) return <tr key={key}>{cells}</tr>;
+              const open = opened.has(key);
+              // A fragment needs the key; the two rows stay next to each other.
+              return [
+                <tr key={key}>
+                  <td className="pd-table-expand-cell">
+                    <button
+                      type="button"
+                      className="pd-table-expand"
+                      aria-expanded={open}
+                      aria-label={props.expandLabel?.(row)}
+                      onClick={() => {
+                        toggle(key);
+                      }}
+                    >
+                      <span aria-hidden="true">
+                        <ChevronDownIcon />
+                      </span>
+                    </button>
                   </td>
-                ))}
-              </tr>
-            ))}
+                  {cells}
+                </tr>,
+                open && (
+                  <tr key={`${key}-expanded`} className="pd-table-expanded">
+                    <td colSpan={span}>{renderExpanded(row)}</td>
+                  </tr>
+                ),
+              ];
+            })}
         </tbody>
       </table>
     </div>

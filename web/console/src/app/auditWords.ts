@@ -1,0 +1,147 @@
+// Korean words for the audit log (1b screens.md C-12): the kinds of action and
+// their groups, what an action was done to, and the changed values. A name the
+// screen does not know shows as the server gave it.
+import { ACCOUNT_STATUS_WORDS, PROJECT_STATUS_WORDS } from '@popdesk/ui';
+
+export interface KindGroup {
+  /** The value of the group's choice in the 종류 filter. No kind has this name. */
+  key: string;
+  name: string;
+  kinds: Readonly<Record<string, string>>;
+}
+
+export const KIND_GROUPS: readonly KindGroup[] = [
+  { key: 'SIGN_IN', name: '로그인 기록', kinds: { SIGN_IN_SUCCEEDED: '로그인', SIGN_IN_FAILED: '로그인 실패', ACCOUNT_LOCKED: '로그인 잠김' } },
+  {
+    key: 'ACCOUNT',
+    name: '계정',
+    kinds: {
+      FIRST_ADMIN_CREATED: '첫 관리자 만들기',
+      ACCOUNT_NAME_CHANGED: '이름 고치기',
+      ACCOUNT_ROLE_CHANGED: '역할 바꾸기',
+      ACCOUNT_SUSPENDED: '계정 정지',
+      ACCOUNT_REACTIVATED: '정지 풀기',
+      ACCOUNT_PASSWORD_RESET: '비밀번호 초기화',
+      PASSWORD_CHANGED: '비밀번호 바꾸기',
+      PASSWORD_RESET_COMPLETED: '비밀번호 재설정',
+    },
+  },
+  {
+    key: 'INVITATION',
+    name: '초대',
+    kinds: {
+      INVITATION_CREATED: '초대',
+      INVITATION_RESENT: '초대 다시 보내기',
+      INVITATION_CANCELLED: '초대 취소',
+      INVITATION_LINK_CREATED: '초대 링크 복사',
+    },
+  },
+  {
+    key: 'COMPANY',
+    name: '고객사',
+    kinds: { COMPANY_CREATED: '고객사 만들기', COMPANY_UPDATED: '고객사 고치기', COMPANY_STATUS_CHANGED: '고객사 상태 바꾸기' },
+  },
+  {
+    key: 'MEMBERSHIP',
+    name: '소속·배정',
+    kinds: { CUSTOMER_ADDED: '소속 더하기', CUSTOMER_REMOVED: '소속 빼기', AGENT_ASSIGNED: '배정 더하기', AGENT_UNASSIGNED: '배정 빼기' },
+  },
+  { key: 'OPERATION', name: '운영 명령', kinds: { ADMIN_PASSWORD_RESET: '관리자 비밀번호 복구', BACKUP_CREATED: '백업', DATABASE_RESTORED: '복원' } },
+  { key: 'EXPORT', name: '내보내기', kinds: { AUDIT_EXPORTED: '감사 로그 내보내기' } },
+];
+
+/** The 종류 choice "로그인 기록 빼고": every kind outside the first group. */
+export const NOT_SIGN_IN = 'NOT_SIGN_IN';
+
+const KIND_WORDS: Readonly<Record<string, string>> = Object.assign({}, ...KIND_GROUPS.map((g) => g.kinds)) as Record<string, string>;
+
+/** The word for a kind of action; undefined for a name the screen does not know. */
+export function kindWord(action: string): string | undefined {
+  return Object.hasOwn(KIND_WORDS, action) ? KIND_WORDS[action] : undefined;
+}
+
+/**
+ * The kinds a 종류 choice asks the server for: none for 전체, a group's kinds,
+ * all but the sign-in kinds, or the one kind. A value from an old address goes
+ * out as it is and the server answers 400.
+ */
+export function kindsOfChoice(choice: string): string[] {
+  if (choice === '') return [];
+  if (choice === NOT_SIGN_IN) return KIND_GROUPS.slice(1).flatMap((g) => Object.keys(g.kinds));
+  const group = KIND_GROUPS.find((g) => g.key === choice);
+  return group ? Object.keys(group.kinds) : [choice];
+}
+
+/** What an action was done to, as the keys of the stored target that name it. */
+export interface Target {
+  type: string;
+  accountId?: number;
+  code?: string;
+}
+
+/** Reads a stored target (a free JSON object); null when it names nothing. */
+export function targetOf(stored: Readonly<Record<string, unknown>> | null): Target | null {
+  if (stored === null || typeof stored.type !== 'string') return null;
+  return {
+    type: stored.type,
+    ...(typeof stored.accountId === 'number' ? { accountId: stored.accountId } : {}),
+    ...(typeof stored.code === 'string' ? { code: stored.code } : {}),
+  };
+}
+
+/** "계정 12", "고객사 ACME", "고객사 ACME · 계정 12", "데이터베이스", "감사 로그". */
+export function targetWord(target: Target): string {
+  const account = target.accountId === undefined ? null : `계정 ${String(target.accountId)}`;
+  const company = target.code === undefined ? null : `고객사 ${target.code}`;
+  if (company !== null || account !== null) return [company, account].filter((part) => part !== null).join(' · ');
+  if (target.type === 'DATABASE') return '데이터베이스';
+  if (target.type === 'AUDIT_LOG') return '감사 로그';
+  return target.type;
+}
+
+// Field names as the screens that change them call them (C-8, C-9, C-10, 초대).
+const FIELD_WORDS: Readonly<Record<string, string>> = {
+  name: '이름',
+  email: '이메일',
+  role: '역할',
+  status: '상태',
+  code: '코드',
+  legalName: '회사명',
+  companyCodes: '고객사',
+  member: '소속',
+  assigned: '배정',
+  file: '파일',
+  format: '형식',
+  count: '건수',
+  filter: '조건',
+};
+
+const ROLE_WORDS: Readonly<Record<string, string>> = { CUSTOMER: '고객', AGENT: '상담원', ADMIN: '관리자' };
+
+function word(words: Readonly<Record<string, string>>, name: string): string {
+  return Object.hasOwn(words, name) ? (words[name] ?? name) : name;
+}
+
+function valueWord(action: string, field: string, value: unknown): string {
+  if (value === null || value === undefined) return '없음';
+  if (typeof value === 'boolean') return value ? '예' : '아니오';
+  if (Array.isArray(value)) return value.map((item) => valueWord(action, '', item)).join(', ');
+  if (typeof value === 'object') return JSON.stringify(value);
+  const text = typeof value === 'string' ? value : JSON.stringify(value);
+  if (field === 'role') return word(ROLE_WORDS, text);
+  // 정지 is an account's word and 멈춤 a company's for the same stored name.
+  if (field === 'status') return word(action.startsWith('COMPANY_') ? PROJECT_STATUS_WORDS : ACCOUNT_STATUS_WORDS, text);
+  return text;
+}
+
+function isFromTo(value: unknown): value is { from: unknown; to: unknown } {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 2 && 'from' in value && 'to' in value;
+}
+
+/** One line for each changed field: "역할: 상담원 → 관리자", or "칸: 값" for a value that is not from and to. */
+export function changeLines(action: string, changes: Readonly<Record<string, unknown>> | null): string[] {
+  return Object.entries(changes ?? {}).map(([field, value]) => {
+    const shown = isFromTo(value) ? `${valueWord(action, field, value.from)} → ${valueWord(action, field, value.to)}` : valueWord(action, field, value);
+    return `${word(FIELD_WORDS, field)}: ${shown}`;
+  });
+}

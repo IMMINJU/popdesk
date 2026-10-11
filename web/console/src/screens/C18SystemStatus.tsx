@@ -1,5 +1,6 @@
-// C-18 시스템 상태 (관리자, screens.md 4절). Read only in the first slice: the
-// two channels and the `failed` rows (OPS-3 part, S0-AC-81). No secret values.
+// C-18 시스템 상태 (관리자, screens.md 4절, 1b screens.md 2절). Read only: the
+// channels (mail, webhook, the outside copy of the audit log) and the `failed`
+// rows (OPS-3 part, S0-AC-81, S1B-AC-33). No secret values.
 import { Badge, DataTable, EmptyState, RelativeTime, type DataTableColumn } from '@popdesk/ui';
 import { useRef } from 'react';
 import { Link } from 'react-router';
@@ -18,8 +19,10 @@ type FailedDelivery = Schemas['FailedDelivery'];
 const CONFIG_DOC = 'https://github.com/IMMINJU/popdesk/blob/main/docs/operate/configuration.md';
 
 interface ChannelRow {
-  key: 'mail' | 'webhook';
+  key: 'mail' | 'webhook' | 'auditForward';
   name: string;
+  /** What the state says while the channel is not set up. */
+  off: string;
   hint: string;
   status: ChannelStatus;
 }
@@ -34,7 +37,7 @@ const channelColumns: DataTableColumn<ChannelRow>[] = [
         <span className="pd-on">켜짐</span>
       ) : (
         <span className="pd-inline">
-          <Badge tone="neutral">설정 없음</Badge>
+          <Badge tone="neutral">{c.off}</Badge>
           <a href={CONFIG_DOC} target="_blank" rel="noopener noreferrer">
             {c.hint}
           </a>
@@ -50,14 +53,23 @@ const channelColumns: DataTableColumn<ChannelRow>[] = [
   { key: 'failed', header: '실패 수', cell: (c) => c.status.failed.toLocaleString('ko'), align: 'end' },
 ];
 
+const FORWARD = '감사 바깥 사본';
+const CHANNEL_WORDS: Record<FailedDelivery['channel'], string> = { MAIL: '메일', WEBHOOK: '웹훅', AUDIT_FORWARD: FORWARD };
+
 const failedColumns: DataTableColumn<FailedDelivery>[] = [
-  { key: 'channel', header: '채널', cell: (f) => (f.channel === 'MAIL' ? '메일' : '웹훅') },
+  { key: 'channel', header: '채널', cell: (f) => CHANNEL_WORDS[f.channel] },
   { key: 'created', header: '만든 시각', cell: (f) => <RelativeTime dateTime={f.createdAt} focusable={false} /> },
   { key: 'error', header: '마지막 오류 종류', cell: (f) => <code className="pd-code">{f.lastErrorKind}</code> },
   {
     key: 'recipient',
     header: '받는 계정 ID',
     cell: (f) => (f.recipientAccountId === null ? <span className="pd-muted">없음</span> : String(f.recipientAccountId)),
+    align: 'end',
+  },
+  {
+    key: 'auditEntry',
+    header: '감사 항목 ID',
+    cell: (f) => (f.auditEntryId === null ? <span className="pd-muted">없음</span> : String(f.auditEntryId)),
     align: 'end',
   },
 ];
@@ -91,8 +103,9 @@ export function C18SystemStatus() {
   const data = load.data;
   const channels: ChannelRow[] = data
     ? [
-        { key: 'mail', name: '메일 보내기', hint: '메일 서버 설정 방법', status: data.status.mail },
-        { key: 'webhook', name: '웹훅', hint: '웹훅 설정 방법', status: data.status.webhook },
+        { key: 'mail', name: '메일 보내기', off: '설정 없음', hint: '메일 서버 설정 방법', status: data.status.mail },
+        { key: 'webhook', name: '웹훅', off: '설정 없음', hint: '웹훅 설정 방법', status: data.status.webhook },
+        { key: 'auditForward', name: FORWARD, off: '꺼짐', hint: `${FORWARD} 설정 방법`, status: data.status.auditForward },
       ]
     : [];
   const failed = data?.failed;
@@ -120,7 +133,7 @@ export function C18SystemStatus() {
             rows={channels}
             rowKey={(c) => c.key}
             status={firstLoad ? 'loading' : 'ready'}
-            skeletonRows={load.slow ? 2 : 0}
+            skeletonRows={load.slow ? 3 : 0}
             density="compact"
           />
         )}

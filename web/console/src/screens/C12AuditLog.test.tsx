@@ -184,7 +184,7 @@ describe('C-12 감사 로그: 표와 상태', () => {
     expect(text(detail)).toContain(SUSPENDED.hash);
     expect(text(detail)).toContain(SUSPENDED.prevHash);
     expect(text(detail)).toContain(String(SUSPENDED.id));
-    expect(pageText(), '펼치지 않은 줄의 해시').not.toContain(SIGNED_IN.hash);
+    expect(pageText(), '펼치지 않은 줄의 앞 해시').not.toContain(SIGNED_IN.prevHash);
 
     await user.selectOptions(await kindSelect(), '계정');
     await listedKinds(Object.keys(KIND_GROUPS[1]?.kinds ?? {}));

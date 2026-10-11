@@ -18,6 +18,7 @@ import {
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import { useParams } from 'react-router';
 import { api, type Schemas } from '../api';
+import { AccountFinder } from '../app/AccountFinder';
 import { FieldSummary, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { useFieldErrors, useLive, useLoad } from '../app/hooks';
@@ -33,7 +34,6 @@ type Member = Schemas['CompanyMember'];
 type Account = Schemas['Account'];
 
 const LIST_SIZE = 100;
-const SEARCH_DELAY_MS = 300;
 
 const SUSPENDED_BAND = '멈춘 고객사입니다. 새 문의를 받지 않습니다.';
 const ARCHIVED_BAND = '보관된 고객사입니다. 되돌릴 수 없습니다.';
@@ -172,45 +172,18 @@ function AssignDialog(props: { open: boolean; code: string; assigned: readonly M
 }
 
 /**
- * 소속 더하기 (S1A-AC-50): finds customer accounts by name or email. The screen
- * mounts it anew for every opening, so an answer that comes after it closed
- * changes nothing (S1A-AC-58).
+ * 소속 더하기 (S1A-AC-50): finds customer accounts by name or email
+ * (AccountFinder). The screen mounts it anew for every opening, so an answer
+ * that comes after it closed changes nothing (S1A-AC-58).
  */
 function AddCustomerDialog(props: { code: string; members: readonly Member[]; onClose: () => void; onAdded: () => void; onStale: () => void }) {
   const toast = useToast();
   const live = useLive();
-  const [query, setQuery] = useState('');
-  const [found, setFound] = useState<{ q: string; items: Account[] } | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [missing, setMissing] = useState(false);
   const memberIds = new Set(props.members.map((m) => m.accountId));
-  const q = query.trim();
-
-  // Nothing is listed until something is typed; the search waits for the typing to stop.
-  useEffect(() => {
-    if (q === '') return undefined;
-    let current = true;
-    const timer = setTimeout(() => {
-      void call(api.GET('/api/console/accounts', { params: { query: { role: 'CUSTOMER', q, size: 20 } } })).then((result) => {
-        if (!current) return;
-        if (result.ok) {
-          setFound({ q, items: result.data.items });
-          setChosen(null);
-        } else {
-          setFound({ q, items: [] });
-          setFailure(result.failure);
-        }
-      });
-    }, SEARCH_DELAY_MS);
-    return () => {
-      current = false;
-      clearTimeout(timer);
-    };
-  }, [q]);
-
-  const results = q !== '' && found?.q === q ? found.items.filter((a) => a.role === 'CUSTOMER') : null;
 
   const add = async () => {
     if (pending) return;
@@ -262,32 +235,27 @@ function AddCustomerDialog(props: { code: string; members: readonly Member[]; on
     >
       <div className="pd-form">
         <SaveFailure failure={failure} known={COMPANY_ERRORS} />
-        <TextField label="이름·이메일로 찾기" type="search" value={query} onChange={setQuery} maxLength={100} spellCheck={false} />
-        {results === null ? (
-          <p className="pd-muted">{q === '' ? '이름이나 이메일의 일부를 넣으면 고객 계정을 찾습니다.' : '찾는 중…'}</p>
-        ) : results.length === 0 ? (
-          <p className="pd-muted">맞는 고객 계정이 없습니다.</p>
-        ) : (
-          <RadioGroup
-            legend="더할 고객"
-            options={results.map((a) => {
-              const member = memberIds.has(a.id);
-              const note = member ? '소속됨' : a.status === 'INVITED' ? '수락 전' : a.status === 'SUSPENDED' ? '정지' : undefined;
-              return {
-                value: String(a.id),
-                label: `${a.name} · ${a.email}`,
-                ...(note === undefined ? {} : { description: note }),
-                ...(member ? { disabled: true } : {}),
-              };
-            })}
-            value={chosen}
-            onChange={(v) => {
-              setChosen(v);
-              setMissing(false);
-            }}
-            {...(missing ? { error: '더할 고객을 고르세요.' } : {})}
-          />
-        )}
+        <AccountFinder
+          legend="더할 고객"
+          role="CUSTOMER"
+          value={chosen}
+          onChange={(v) => {
+            setChosen(v);
+            setMissing(false);
+          }}
+          describe={(a) => {
+            const member = memberIds.has(a.id);
+            const note = member ? '소속됨' : a.status === 'INVITED' ? '수락 전' : a.status === 'SUSPENDED' ? '정지' : undefined;
+            return { ...(note === undefined ? {} : { description: note }), ...(member ? { disabled: true } : {}) };
+          }}
+          idleText="이름이나 이메일의 일부를 넣으면 고객 계정을 찾습니다."
+          emptyText="맞는 고객 계정이 없습니다."
+          {...(missing ? { error: '더할 고객을 고르세요.' } : {})}
+          onFound={() => {
+            setChosen(null);
+          }}
+          onFailure={setFailure}
+        />
       </div>
     </Dialog>
   );
