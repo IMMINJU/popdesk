@@ -18,7 +18,7 @@
 
 ## 1. 로그인과 계정 (AUTH, ACCT)
 
-→ AUTH-1~5·7, ACCT-1~6·8은 `../slices/1a-people/rules.md`로 옮김. 아래 둘은 뒤 묶음의 것이다(AUTH-6은 11번, ACCT-7은 3번).
+→ AUTH-1~5·7, ACCT-1~6·8은 `../archive/1a-people/rules.md`로 옮김. 아래 둘은 뒤 묶음의 것이다(AUTH-6은 11번, ACCT-7은 3번).
 
 | ID | 규칙 |
 |---|---|
@@ -27,11 +27,11 @@
 
 ## 2. 초대 (INVITE)
 
-→ `../slices/1a-people/rules.md`로 옮김. INVITE-5의 담당자·멘션 부분은 3번·4번 묶음에서, 고객사 담당자의 초대는 2번 묶음(MGR)에서 채운다.
+→ `../archive/1a-people/rules.md`로 옮김. INVITE-5의 담당자·멘션 부분은 3번·4번 묶음에서, 고객사 담당자의 초대는 2번 묶음(MGR)에서 채운다.
 
 ## 3. 고객사 (PROJ)
 
-→ `../slices/1a-people/rules.md`로 옮김.
+→ `../archive/1a-people/rules.md`로 옮김.
 
 ## 4. 문의 (ISSUE)
 
