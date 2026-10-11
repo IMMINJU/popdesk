@@ -3,5 +3,52 @@
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
 # 서버 줄은 구현 탭마다 묶는다. 탭이 병합되면 그 묶음을 지운다.
-# 1a: 새 operation 24개가 경계 테스트 목록(BoundaryList)에 아직 없다. C-5 테스트 쪽이 목록에 넣으면 지운다.
-server io/popdesk/boundary/BoundaryListTest.java
+# 1a 묶음의 새 테스트(C-5). 구현 탭이 합쳐질 때마다 그 탭의 줄을 지운다.
+server io/popdesk/attachment/FilingFileCountTest.java
+server io/popdesk/auth/OwnPasswordTest.java
+server io/popdesk/auth/OwnProfileTest.java
+server io/popdesk/auth/PasswordResetCleanupTest.java
+server io/popdesk/auth/PasswordResetConfirmTest.java
+server io/popdesk/auth/PasswordResetRequestTest.java
+server io/popdesk/auth/PasswordResetTokenTest.java
+server io/popdesk/auth/RetryAfterTest.java
+server io/popdesk/auth/SessionEndingTest.java
+server io/popdesk/auth/SignInDuringPasswordChangeTest.java
+server io/popdesk/auth/SuspendedDuringRequestTest.java
+server io/popdesk/boundary/CancelledInvitationMailTest.java
+server io/popdesk/boundary/PhotoBoundaryTest.java
+server io/popdesk/deploy/PhotoLoadTest.java
+server io/popdesk/deploy/ScreenFilesCacheTest.java
+server io/popdesk/deploy/UpgradeFrom010Test.java
+server io/popdesk/ops/PeopleAuditTest.java
+server io/popdesk/ops/TextInputTest.java
+server io/popdesk/photo/PhotoAccessTest.java
+server io/popdesk/photo/PhotoResponseTest.java
+server io/popdesk/photo/PhotoUploadTest.java
+server io/popdesk/project/AccountAdminTest.java
+server io/popdesk/project/AccountListFilterTest.java
+server io/popdesk/project/CompanyNotActiveTest.java
+server io/popdesk/project/CompanyUpdateTest.java
+server io/popdesk/project/InvitationResendCancelTest.java
+server io/popdesk/project/LastAdminTest.java
+server io/popdesk/project/MembershipTest.java
+server io/popdesk/project/PeopleMailTest.java
+web src/app/csrfRetry.1a.test.tsx
+web src/app/header.1a.test.tsx
+web src/app/safeNext.1a.test.ts
+web src/components/PhotoField.test.tsx
+web src/components/StatusBadge.cancelled.test.tsx
+web src/screens/C10MemberList.1a.test.tsx
+web src/screens/C16PasswordForgot.test.tsx
+web src/screens/C17PasswordReset.test.tsx
+web src/screens/C1Login.1a.test.tsx
+web src/screens/C4IssueDetail.1a.test.tsx
+web src/screens/C6MyInfo.test.tsx
+web src/screens/C8CompanyList.test.tsx
+web src/screens/C9CompanyDetail.1a.test.tsx
+web src/screens/P10PasswordReset.test.tsx
+web src/screens/P1Login.1a.test.tsx
+web src/screens/P4IssueCreate.1a.test.tsx
+web src/screens/P5IssueDetail.1a.test.tsx
+web src/screens/P6MyInfo.test.tsx
+web src/screens/P9PasswordForgot.test.tsx

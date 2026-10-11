@@ -1,0 +1,436 @@
+# 실패 확인
+
+> 실패한 테스트는 이름만 적었다. 실패 메시지는 넣지 않았다(첫 묶음 red.md가 24만 자였다).
+- 단언 실패 364, 통과 0, 허용한 통과 61, 오류 0, 건너뜀 0
+- 판정: 통과
+
+## 처음부터 통과해도 된다고 허용한 테스트 (점검에서 이유를 본다)
+
+- `io.popdesk.attachment.FilingFileCountTest.twentyFiles`: S1A-AC-65 상한 바로 안쪽. 지금은 파일 수 상한이 없어 20개를 받는다. 구현이 20개까지 막지 않게 두는 테스트다
+- `io.popdesk.attachment.FilingManyFilesTest.tenFiles`: 첫 묶음의 잠긴 테스트. 30개 테스트를 20개로 고친 파일이라 함께 돌렸다. 이미 구현된 동작이다
+- `io.popdesk.attachment.FilingManyFilesTest.twentyFiles`: 첫 묶음의 잠긴 테스트. 30개 테스트를 20개로 고친 파일이라 함께 돌렸다. 이미 구현된 동작이다
+- `io.popdesk.attachment.FilingManyFilesTest.twoHundredFiles`: 첫 묶음의 잠긴 테스트. 30개 테스트를 20개로 고친 파일이라 함께 돌렸다. 이미 구현된 동작이다
+- `io.popdesk.auth.CsrfAfterSignInTest.tokenFromBeforeSignInIsRefused`: S1A-AC-69 첫 묶음 앱이 로그인 때 이미 CSRF 토큰을 새로 낸다. 테스트가 없던 동작이다(서버 PIT). C-10 변이 테스트로 본다
+- `io.popdesk.auth.TrustedProxyPrefixTest.addressInsideTheRangeIsTrusted`: S1A-AC-73 첫 묶음 앱이 8비트 단위가 아닌 대역을 이미 맞게 가른다. 테스트가 없던 줄이다(서버 PIT). C-10 변이 테스트로 본다
+- `io.popdesk.auth.TrustedProxyPrefixTest.addressOutsideTheRangeIsNotTrusted`: S1A-AC-73 첫 묶음 앱이 8비트 단위가 아닌 대역을 이미 맞게 가른다. 테스트가 없던 줄이다(서버 PIT). C-10 변이 테스트로 본다
+- `io.popdesk.boundary.AgentCannotManageAccountsTest.agentCannotChangeAnInvitation(String)[1]`: S1A-AC-77 첫 묶음의 보안 설정이 계정·초대 경로를 상담원에게 이미 403으로 막는다
+- `io.popdesk.boundary.AgentCannotManageAccountsTest.agentCannotChangeAnInvitation(String)[2]`: S1A-AC-77 첫 묶음의 보안 설정이 계정·초대 경로를 상담원에게 이미 403으로 막는다
+- `io.popdesk.boundary.AgentCannotManageAccountsTest.agentCannotChangeAnAccount(String)[1]`: S1A-AC-77 첫 묶음의 보안 설정이 계정·초대 경로를 상담원에게 이미 403으로 막는다
+- `io.popdesk.boundary.AgentCannotManageAccountsTest.agentCannotChangeAnAccount(String)[2]`: S1A-AC-77 첫 묶음의 보안 설정이 계정·초대 경로를 상담원에게 이미 403으로 막는다
+- `io.popdesk.boundary.AgentCannotManageAccountsTest.agentCannotChangeAnAccount(String)[3]`: S1A-AC-77 첫 묶음의 보안 설정이 계정·초대 경로를 상담원에게 이미 403으로 막는다
+- `io.popdesk.boundary.AgentCannotManageAccountsTest.agentCannotChangeAnAccount(String)[4]`: S1A-AC-77 첫 묶음의 보안 설정이 계정·초대 경로를 상담원에게 이미 403으로 막는다
+- `io.popdesk.boundary.AgentCannotManageAccountsTest.agentCannotChangeAnAccount(String)[5]`: S1A-AC-77 첫 묶음의 보안 설정이 계정·초대 경로를 상담원에게 이미 403으로 막는다
+- `io.popdesk.boundary.BoundaryListTest.everyNamedTestExists`: S1A-AC-77 경계 목록 관문. 계약 파일과 테스트 이름만 읽는다. 목록(BoundaryList)에 1a의 operation을 넣어 함께 돌렸다
+- `io.popdesk.boundary.BoundaryListTest.everyListedOperationIsInTheContract`: S1A-AC-77 경계 목록 관문. 계약 파일과 테스트 이름만 읽는다. 목록(BoundaryList)에 1a의 operation을 넣어 함께 돌렸다
+- `io.popdesk.boundary.BoundaryListTest.eachOperationHasTestsOrReason`: S1A-AC-77 경계 목록 관문. 계약 파일과 테스트 이름만 읽는다. 목록(BoundaryList)에 1a의 operation을 넣어 함께 돌렸다
+- `io.popdesk.boundary.BoundaryListTest.everyContractOperationIsListed`: S1A-AC-77 경계 목록 관문. 계약 파일과 테스트 이름만 읽는다. 목록(BoundaryList)에 1a의 operation을 넣어 함께 돌렸다
+- `io.popdesk.ops.AlertResolvedTest.resolvedQuotaAlertStopsRepeating`: S1A-AC-68 첫 묶음 앱이 실패 행이 없거나 첨부가 80% 아래면 경보를 이미 푼다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.AlertResolvedTest.failedAlertIsRaisedAgainAfterResolved`: S1A-AC-68 첫 묶음 앱이 실패 행이 없거나 첨부가 80% 아래면 경보를 이미 푼다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.AlertResolvedTest.resolvedFailedAlertStopsRepeating`: S1A-AC-68 첫 묶음 앱이 실패 행이 없거나 첨부가 80% 아래면 경보를 이미 푼다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[1]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[2]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[3]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[4]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[5]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[6]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.RequestBodyErrorTest.wrongTypeOrUnknownValue(String, String, String)[7]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.RequestBodyErrorTest.notJson(String)[1]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.RequestBodyErrorTest.notJson(String)[2]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.RequestBodyErrorTest.notJson(String)[3]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.RequestBodyErrorTest.notJson(String)[4]`: S1A-AC-74 첫 묶음 앱이 읽을 수 없는 본문에 이미 그렇게 답한다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.SignInAuditTargetTest.targetIsTheAccount(String)[1]`: S1A-AC-64 첫 묶음 앱이 로그인 감사 행의 대상을 이미 적는다. 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.SignInAuditTargetTest.targetIsTheAccount(String)[2]`: S1A-AC-64 첫 묶음 앱이 로그인 감사 행의 대상을 이미 적는다. 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.SignInAuditTargetTest.targetIsTheAccount(String)[3]`: S1A-AC-64 첫 묶음 앱이 로그인 감사 행의 대상을 이미 적는다. 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.ops.TextInputTest.surrogatePairIsStored`: S1A-AC-67 짝이 맞는 서로게이트는 지금도 저장된다. 구현이 짝 맞는 글자까지 막지 않게 두는 테스트다
+- `io.popdesk.project.CompanyUpdateTest.unknownStatus`: S1A-AC-44 C-4 계약 껍데기의 요청 타입이 enum이라 모르는 값은 501보다 먼저 400이 된다
+- `io.popdesk.project.InvitationEmailLengthTest.hundredAndOneCharacters`: S1A-AC-72 첫 묶음 앱이 초대 이메일을 이미 100자로 막는다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.project.InvitationEmailLengthTest.hundredCharacters`: S1A-AC-72 첫 묶음 앱이 초대 이메일을 이미 100자로 막는다. 기준과 테스트가 없던 동작이다(서버 PIT)
+- `io.popdesk.project.MembershipTest.agentsCannotChangeMembers(String)[1]`: S1A-AC-56 첫 묶음의 보안 설정이 소속·배정 경로를 상담원에게 이미 403으로 막는다
+- `io.popdesk.project.MembershipTest.agentsCannotChangeMembers(String)[2]`: S1A-AC-56 첫 묶음의 보안 설정이 소속·배정 경로를 상담원에게 이미 403으로 막는다
+- `io.popdesk.project.MembershipTest.agentsCannotChangeMembers(String)[3]`: S1A-AC-56 첫 묶음의 보안 설정이 소속·배정 경로를 상담원에게 이미 403으로 막는다
+- `io.popdesk.start.SetupRequiredContentTypeTest.setupRequiredSaysJson`: S1A-AC-70 첫 묶음 앱의 503에 이미 Content-Type이 붙는다. 테스트가 없던 동작이다(서버 PIT)
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 데이터 있음: 줄에서 C-9 고객사 상세로 가는 링크`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 빈 목록: "첫 고객사를 만드세요. 고객사를 만들어야 고객을 초대할 수 있습니다."와 "고객사 만들기"`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 처음 불러옴: 300ms가 넘으면 aria-hidden 표 뼈대, main은 aria-busy`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 만들기: 대화상자에 이름·코드·회사명, 코드 칸에 "나중에 바꿀 수 없습니다" 안내, 열면 첫 칸에 포커스`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 만들기: 코드는 입력하면 대문자로 바꿔 보이고, 대문자로 보낸 뒤 C-9로 가서 토스트`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 만들기 저장 중: 만들기 버튼은 막히고 닫기는 된다`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 만들기 400 fields: 이름·회사명 빈 값, 코드 모양을 칸 아래에, 포커스는 첫 틀린 칸`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 만들기 409: 코드 칸 아래 "이미 쓰는 코드입니다.", 포커스는 코드 칸, 입력은 그대로`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 대화상자 키보드: 포커스가 대화상자 안을 돈다`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 대화상자 Esc: 쓴 값이 없으면 닫고 포커스를 "고객사 만들기"로 돌린다`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 대화상자 Esc: 쓰던 값이 있으면 닫기 전에 묻는다`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 쪽 넘기기: 1쪽뿐이면 숨기고, 여러 쪽이면 2쪽을 page=2로 부르고 알린다`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 403 만들기: "이 작업을 할 권한이 없습니다." 띠, 입력은 그대로`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 접근성: 처음 포커스는 h1(tabindex=-1), 화면 제목을 document.title에`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > C-8 axe: 목록과 열린 만들기 대화상자에 접근성 위반이 없다`: 첫 묶음의 잠긴 테스트. 보관 숨기기에 맞춰 한 테스트를 고친 파일이라 함께 돌렸다. 나머지는 이미 구현된 동작이다
+- `src/screens/P4IssueCreate.1a.test.tsx.P-4 문의 등록 (1a) > S1A-AC-65 P-4 앞단의 413(JSON이 아닌 본문): "20개까지"가 아니라 "파일이 서버 앞단의 크기 상한에 걸렸습니다"를 보인다`: S1A-AC-65 본문이 JSON이 아닌 413은 지금처럼 앞단 상한 문구다. 구현이 이 가름을 깨지 않게 두는 테스트다
+- `src/components/Avatar.photo.test.tsx.Avatar 사진 > S1A-AC-60 Avatar 사진 있음: 그 주소의 그림을 그리고 머리글자는 없다. 이름이 대체 글자다`: S1A-AC-60 첫 묶음 C-9가 사진 주소를 받으면 그림을 그리게 해 두었고, C-4 껍데기가 null을 받게 넓혔다
+- `src/components/Avatar.photo.test.tsx.Avatar 사진 > S1A-AC-60 Avatar 사진 없음: 사진 주소가 null이면 그림을 청하지 않고 머리글자를 그린다`: S1A-AC-60 첫 묶음 C-9가 사진 주소를 받으면 그림을 그리게 해 두었고, C-4 껍데기가 null을 받게 넓혔다
+
+## 단언에서 실패한 테스트
+
+- `io.popdesk.attachment.FilingFileCountTest.filedFilesCountTowardTheUploadLimit`
+- `io.popdesk.attachment.FilingFileCountTest.twentyOneFiles`
+- `io.popdesk.auth.OwnPasswordTest.wrongCurrentPasswordIsRefused`
+- `io.popdesk.auth.OwnPasswordTest.newPasswordAgainstTheRulesIsRefused(Refused)[1]`
+- `io.popdesk.auth.OwnPasswordTest.newPasswordAgainstTheRulesIsRefused(Refused)[2]`
+- `io.popdesk.auth.OwnPasswordTest.newPasswordAgainstTheRulesIsRefused(Refused)[3]`
+- `io.popdesk.auth.OwnPasswordTest.newPasswordAgainstTheRulesIsRefused(Refused)[4]`
+- `io.popdesk.auth.OwnPasswordTest.passwordIsChanged(App)[1]`
+- `io.popdesk.auth.OwnPasswordTest.passwordIsChanged(App)[2]`
+- `io.popdesk.auth.OwnPasswordTest.fiveWrongCurrentPasswordsBlockForFifteenMinutes`
+- `io.popdesk.auth.OwnProfileTest.nameIsSaved(App)[1]`
+- `io.popdesk.auth.OwnProfileTest.nameIsSaved(App)[2]`
+- `io.popdesk.auth.OwnProfileTest.customerSeesOwnDetailsAndCompanies`
+- `io.popdesk.auth.OwnProfileTest.agentSeesOwnDetailsAndAssignedCompanies`
+- `io.popdesk.auth.OwnProfileTest.valueOutsideTheRulesIsRefused(String, String, String)[1]`
+- `io.popdesk.auth.OwnProfileTest.valueOutsideTheRulesIsRefused(String, String, String)[2]`
+- `io.popdesk.auth.OwnProfileTest.valueOutsideTheRulesIsRefused(String, String, String)[3]`
+- `io.popdesk.auth.OwnProfileTest.languageIsSavedAndUsedForMail(App)[1]`
+- `io.popdesk.auth.OwnProfileTest.languageIsSavedAndUsedForMail(App)[2]`
+- `io.popdesk.auth.PasswordResetCleanupTest.usedAndExpiredTokensAreCleanedUp`
+- `io.popdesk.auth.PasswordResetConfirmTest.tokenSetsThePasswordAndLiftsTheLock`
+- `io.popdesk.auth.PasswordResetConfirmTest.resetTokenIsNoInvitationToken`
+- `io.popdesk.auth.PasswordResetConfirmTest.tokenThatDoesNotCountIsRefusedAlike(Invalid)[1]`
+- `io.popdesk.auth.PasswordResetConfirmTest.tokenThatDoesNotCountIsRefusedAlike(Invalid)[2]`
+- `io.popdesk.auth.PasswordResetConfirmTest.tokenThatDoesNotCountIsRefusedAlike(Invalid)[3]`
+- `io.popdesk.auth.PasswordResetConfirmTest.tokenThatDoesNotCountIsRefusedAlike(Invalid)[4]`
+- `io.popdesk.auth.PasswordResetConfirmTest.tokenThatDoesNotCountIsRefusedAlike(Invalid)[5]`
+- `io.popdesk.auth.PasswordResetConfirmTest.tokenThatDoesNotCountIsRefusedAlike(Invalid)[6]`
+- `io.popdesk.auth.PasswordResetConfirmTest.tokenThatDoesNotCountIsRefusedAlike(Invalid)[7]`
+- `io.popdesk.auth.PasswordResetConfirmTest.resetEndsEverySession(Reset)[1]`
+- `io.popdesk.auth.PasswordResetConfirmTest.resetEndsEverySession(Reset)[2]`
+- `io.popdesk.auth.PasswordResetConfirmTest.refusedPasswordKeepsTheToken(Refused)[1]`
+- `io.popdesk.auth.PasswordResetConfirmTest.refusedPasswordKeepsTheToken(Refused)[2]`
+- `io.popdesk.auth.PasswordResetConfirmTest.refusedPasswordKeepsTheToken(Refused)[3]`
+- `io.popdesk.auth.PasswordResetConfirmTest.refusedPasswordKeepsTheToken(Refused)[4]`
+- `io.popdesk.auth.PasswordResetRequestTest.requestAloneChangesNothing`
+- `io.popdesk.auth.PasswordResetRequestTest.answerDoesNotTellWhetherAMailGoesOut(Silent)[1]`
+- `io.popdesk.auth.PasswordResetRequestTest.answerDoesNotTellWhetherAMailGoesOut(Silent)[2]`
+- `io.popdesk.auth.PasswordResetRequestTest.answerDoesNotTellWhetherAMailGoesOut(Silent)[3]`
+- `io.popdesk.auth.PasswordResetRequestTest.answerDoesNotTellWhetherAMailGoesOut(Silent)[4]`
+- `io.popdesk.auth.PasswordResetRequestTest.answerDoesNotTellWhetherAMailGoesOut(Silent)[5]`
+- `io.popdesk.auth.PasswordResetRequestTest.secondRequestWithinFifteenMinutesSendsNothing`
+- `io.popdesk.auth.PasswordResetRequestTest.mailLinksToTheAccountsApp`
+- `io.popdesk.auth.PasswordResetRequestTest.secondRequestAfterFifteenMinutesSendsANewLink`
+- `io.popdesk.auth.PasswordResetRequestTest.linkIgnoresRequestHeaders(Misleading)[1]`
+- `io.popdesk.auth.PasswordResetRequestTest.linkIgnoresRequestHeaders(Misleading)[2]`
+- `io.popdesk.auth.PasswordResetRequestTest.linkIgnoresRequestHeaders(Misleading)[3]`
+- `io.popdesk.auth.PasswordResetRequestTest.noMailUnlessActiveAccountOfThatApp(Silent)[1]`
+- `io.popdesk.auth.PasswordResetRequestTest.noMailUnlessActiveAccountOfThatApp(Silent)[2]`
+- `io.popdesk.auth.PasswordResetRequestTest.noMailUnlessActiveAccountOfThatApp(Silent)[3]`
+- `io.popdesk.auth.PasswordResetRequestTest.noMailUnlessActiveAccountOfThatApp(Silent)[4]`
+- `io.popdesk.auth.PasswordResetRequestTest.noMailUnlessActiveAccountOfThatApp(Silent)[5]`
+- `io.popdesk.auth.PasswordResetTokenTest.noStoreAndNothingInTheLog`
+- `io.popdesk.auth.PasswordResetTokenTest.databaseKeepsOnlyTheHash`
+- `io.popdesk.auth.PasswordResetTokenTest.tokenIs32BytesInTheFragment`
+- `io.popdesk.auth.RetryAfterTest.retryAfterIsTheRestOfTheWindow(Limited)[1]`
+- `io.popdesk.auth.RetryAfterTest.retryAfterIsTheRestOfTheWindow(Limited)[2]`
+- `io.popdesk.auth.SessionEndingTest.suspensionEndsEverySession(Role)[1]`
+- `io.popdesk.auth.SessionEndingTest.suspensionEndsEverySession(Role)[2]`
+- `io.popdesk.auth.SessionEndingTest.roleChangeEndsEverySession(RoleChange)[1]`
+- `io.popdesk.auth.SessionEndingTest.roleChangeEndsEverySession(RoleChange)[2]`
+- `io.popdesk.auth.SessionEndingTest.ownPasswordChangeKeepsOnlyThisSession(App)[1]`
+- `io.popdesk.auth.SessionEndingTest.ownPasswordChangeKeepsOnlyThisSession(App)[2]`
+- `io.popdesk.auth.SignInDuringPasswordChangeTest.sessionOfASignInFromBeforeTheChangeIsRefused`
+- `io.popdesk.auth.SuspendedDuringRequestTest.runningRequestDoesNotBringTheSessionBack`
+- `io.popdesk.boundary.CancelledInvitationMailTest.queuedMailOfCancelledInvitationIsNotSent`
+- `io.popdesk.boundary.PhotoBoundaryTest.ownAccountAnswersHoldNothingOfB`
+- `io.popdesk.boundary.PhotoBoundaryTest.customerOfAGetsNoPhotoOfB`
+- `io.popdesk.ops.PeopleAuditTest.resetRequestLeavesNoRow`
+- `io.popdesk.ops.PeopleAuditTest.valuesWithoutSecrets(Action)[1]`
+- `io.popdesk.ops.PeopleAuditTest.valuesWithoutSecrets(Action)[2]`
+- `io.popdesk.ops.PeopleAuditTest.valuesWithoutSecrets(Action)[3]`
+- `io.popdesk.ops.PeopleAuditTest.valuesWithoutSecrets(Action)[4]`
+- `io.popdesk.ops.PeopleAuditTest.valuesWithoutSecrets(Action)[5]`
+- `io.popdesk.ops.PeopleAuditTest.valuesWithoutSecrets(Action)[6]`
+- `io.popdesk.ops.PeopleAuditTest.valuesWithoutSecrets(Action)[7]`
+- `io.popdesk.ops.PeopleAuditTest.valuesWithoutSecrets(Action)[8]`
+- `io.popdesk.ops.PeopleAuditTest.valuesWithoutSecrets(Action)[9]`
+- `io.popdesk.ops.PeopleAuditTest.valuesWithoutSecrets(Action)[10]`
+- `io.popdesk.ops.PeopleAuditTest.valuesWithoutSecrets(Action)[11]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[1]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[2]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[3]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[4]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[5]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[6]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[7]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[8]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[9]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[10]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[11]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[12]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[13]`
+- `io.popdesk.ops.PeopleAuditTest.oneRowPerAction(Action)[14]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[1]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[2]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[3]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[4]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[5]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[6]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[7]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[8]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[9]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[10]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[11]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[12]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[13]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[14]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[15]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[16]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[17]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[18]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[19]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[20]`
+- `io.popdesk.ops.TextInputTest.unstorableCharacterIsRefused(String, String)[21]`
+- `io.popdesk.photo.PhotoAccessTest.customerGetsOwnAndColleaguesPhoto`
+- `io.popdesk.photo.PhotoAccessTest.staffGetPhotosOfAccountsTheySee`
+- `io.popdesk.photo.PhotoAccessTest.otherPhotosAreLikeNoAccount`
+- `io.popdesk.photo.PhotoAccessTest.portalAnswersHoldNoStaffPhoto`
+- `io.popdesk.photo.PhotoResponseTest.replacedPhotoHasANewETag`
+- `io.popdesk.photo.PhotoResponseTest.rightIsCheckedBeforeNotModified(App)[1]`
+- `io.popdesk.photo.PhotoResponseTest.rightIsCheckedBeforeNotModified(App)[2]`
+- `io.popdesk.photo.PhotoResponseTest.headersAndNotModified(App)[1]`
+- `io.popdesk.photo.PhotoResponseTest.headersAndNotModified(App)[2]`
+- `io.popdesk.photo.PhotoUploadTest.keepsNoMetadataOrOriginalBytes(Supplier, String, String)[1]`
+- `io.popdesk.photo.PhotoUploadTest.keepsNoMetadataOrOriginalBytes(Supplier, String, String)[2]`
+- `io.popdesk.photo.PhotoUploadTest.keepsNoMetadataOrOriginalBytes(Supplier, String, String)[3]`
+- `io.popdesk.photo.PhotoUploadTest.judgedBySizeAndContent(Supplier, String, String, int, String)[1]`
+- `io.popdesk.photo.PhotoUploadTest.judgedBySizeAndContent(Supplier, String, String, int, String)[2]`
+- `io.popdesk.photo.PhotoUploadTest.judgedBySizeAndContent(Supplier, String, String, int, String)[3]`
+- `io.popdesk.photo.PhotoUploadTest.judgedBySizeAndContent(Supplier, String, String, int, String)[4]`
+- `io.popdesk.photo.PhotoUploadTest.judgedBySizeAndContent(Supplier, String, String, int, String)[5]`
+- `io.popdesk.photo.PhotoUploadTest.judgedBySizeAndContent(Supplier, String, String, int, String)[6]`
+- `io.popdesk.photo.PhotoUploadTest.judgedBySizeAndContent(Supplier, String, String, int, String)[7]`
+- `io.popdesk.photo.PhotoUploadTest.deleteRemovesThePhoto`
+- `io.popdesk.photo.PhotoUploadTest.pixelLimit(Supplier, int, int, boolean)[1]`
+- `io.popdesk.photo.PhotoUploadTest.pixelLimit(Supplier, int, int, boolean)[2]`
+- `io.popdesk.photo.PhotoUploadTest.pixelLimit(Supplier, int, int, boolean)[3]`
+- `io.popdesk.photo.PhotoUploadTest.pixelLimit(Supplier, int, int, boolean)[4]`
+- `io.popdesk.photo.PhotoUploadTest.pixelLimit(Supplier, int, int, boolean)[5]`
+- `io.popdesk.photo.PhotoUploadTest.pixelLimit(Supplier, int, int, boolean)[6]`
+- `io.popdesk.photo.PhotoUploadTest.pixelLimit(Supplier, int, int, boolean)[7]`
+- `io.popdesk.photo.PhotoUploadTest.pixelLimit(Supplier, int, int, boolean)[8]`
+- `io.popdesk.photo.PhotoUploadTest.secondUploadReplacesTheFirst`
+- `io.popdesk.photo.PhotoUploadTest.storesAScaledPng(Supplier, String, String, int, int, App)[1]`
+- `io.popdesk.photo.PhotoUploadTest.storesAScaledPng(Supplier, String, String, int, int, App)[2]`
+- `io.popdesk.photo.PhotoUploadTest.storesAScaledPng(Supplier, String, String, int, int, App)[3]`
+- `io.popdesk.photo.PhotoUploadTest.storesAScaledPng(Supplier, String, String, int, int, App)[4]`
+- `io.popdesk.photo.PhotoUploadTest.storesAScaledPng(Supplier, String, String, int, int, App)[5]`
+- `io.popdesk.photo.PhotoUploadTest.eleventhUploadInAMinuteIsLimited`
+- `io.popdesk.project.AccountAdminTest.resetLinkInResponseWithoutSmtp`
+- `io.popdesk.project.AccountAdminTest.suspends(Role)[1]`
+- `io.popdesk.project.AccountAdminTest.suspends(Role)[2]`
+- `io.popdesk.project.AccountAdminTest.suspends(Role)[3]`
+- `io.popdesk.project.AccountAdminTest.reactivates`
+- `io.popdesk.project.AccountAdminTest.resetEndsTheOldPassword`
+- `io.popdesk.project.AccountAdminTest.nameLength`
+- `io.popdesk.project.AccountAdminTest.cannotReactivateBeforeAcceptance(String)[1]`
+- `io.popdesk.project.AccountAdminTest.cannotReactivateBeforeAcceptance(String)[2]`
+- `io.popdesk.project.AccountAdminTest.notOnOwnAccount(String)[1]`
+- `io.popdesk.project.AccountAdminTest.notOnOwnAccount(String)[2]`
+- `io.popdesk.project.AccountAdminTest.resetLiftsTheLock`
+- `io.popdesk.project.AccountAdminTest.cannotSuspendBeforeAcceptance(String)[1]`
+- `io.popdesk.project.AccountAdminTest.cannotSuspendBeforeAcceptance(String)[2]`
+- `io.popdesk.project.AccountAdminTest.cannotResetUnlessActive(String)[1]`
+- `io.popdesk.project.AccountAdminTest.cannotResetUnlessActive(String)[2]`
+- `io.popdesk.project.AccountAdminTest.cannotResetUnlessActive(String)[3]`
+- `io.popdesk.project.AccountAdminTest.renames(boolean)[1]`
+- `io.popdesk.project.AccountAdminTest.renames(boolean)[2]`
+- `io.popdesk.project.AccountAdminTest.roleChangeKeepsAssignments`
+- `io.popdesk.project.AccountAdminTest.customerRoleIsFixed(Role, Role)[1]`
+- `io.popdesk.project.AccountAdminTest.customerRoleIsFixed(Role, Role)[2]`
+- `io.popdesk.project.AccountAdminTest.customerRoleIsFixed(Role, Role)[3]`
+- `io.popdesk.project.AccountAdminTest.customerRoleIsFixed(Role, Role)[4]`
+- `io.popdesk.project.AccountListFilterTest.wildcardsAreOrdinaryCharacters(String, String, String, String)[1]`
+- `io.popdesk.project.AccountListFilterTest.wildcardsAreOrdinaryCharacters(String, String, String, String)[2]`
+- `io.popdesk.project.AccountListFilterTest.searchByNameOrEmail`
+- `io.popdesk.project.AccountListFilterTest.searchTextLimits`
+- `io.popdesk.project.AccountListFilterTest.filtersCombineAndPage`
+- `io.popdesk.project.AccountListFilterTest.unknownStatus`
+- `io.popdesk.project.AccountListFilterTest.statusFilter(String)[1]`
+- `io.popdesk.project.AccountListFilterTest.statusFilter(String)[2]`
+- `io.popdesk.project.AccountListFilterTest.statusFilter(String)[3]`
+- `io.popdesk.project.CompanyNotActiveTest.archivedKeepsItsNames(String)[1]`
+- `io.popdesk.project.CompanyNotActiveTest.archivedKeepsItsNames(String)[2]`
+- `io.popdesk.project.CompanyNotActiveTest.archivedLetsMembersGo`
+- `io.popdesk.project.CompanyNotActiveTest.archivedTakesNoNewMembers(String)[1]`
+- `io.popdesk.project.CompanyNotActiveTest.archivedTakesNoNewMembers(String)[2]`
+- `io.popdesk.project.CompanyNotActiveTest.suspendedTakesNewMembers`
+- `io.popdesk.project.CompanyNotActiveTest.noNewIssues(String)[1]`
+- `io.popdesk.project.CompanyNotActiveTest.noNewIssues(String)[2]`
+- `io.popdesk.project.CompanyNotActiveTest.existingIssuesGoOn(String)[1]`
+- `io.popdesk.project.CompanyNotActiveTest.existingIssuesGoOn(String)[2]`
+- `io.popdesk.project.CompanyUpdateTest.archivedIsFinal(String)[1]`
+- `io.popdesk.project.CompanyUpdateTest.archivedIsFinal(String)[2]`
+- `io.popdesk.project.CompanyUpdateTest.agentsCannotChangeACompany(String)[1]`
+- `io.popdesk.project.CompanyUpdateTest.agentsCannotChangeACompany(String)[2]`
+- `io.popdesk.project.CompanyUpdateTest.changesStatus(String, String)[1]`
+- `io.popdesk.project.CompanyUpdateTest.changesStatus(String, String)[2]`
+- `io.popdesk.project.CompanyUpdateTest.changesStatus(String, String)[3]`
+- `io.popdesk.project.CompanyUpdateTest.changesStatus(String, String)[4]`
+- `io.popdesk.project.CompanyUpdateTest.changesStatus(String, String)[5]`
+- `io.popdesk.project.CompanyUpdateTest.changesStatus(String, String)[6]`
+- `io.popdesk.project.CompanyUpdateTest.updatesOneField(String)[1]`
+- `io.popdesk.project.CompanyUpdateTest.updatesOneField(String)[2]`
+- `io.popdesk.project.CompanyUpdateTest.statusInListsAndDetail(String)[1]`
+- `io.popdesk.project.CompanyUpdateTest.statusInListsAndDetail(String)[2]`
+- `io.popdesk.project.CompanyUpdateTest.codeCannotChange`
+- `io.popdesk.project.InvitationResendCancelTest.cancelEndsTheLink`
+- `io.popdesk.project.InvitationResendCancelTest.resendRevivesACancelledInvitation`
+- `io.popdesk.project.InvitationResendCancelTest.cancelledStaysInThePendingList`
+- `io.popdesk.project.InvitationResendCancelTest.resentLinkExpires`
+- `io.popdesk.project.InvitationResendCancelTest.notAfterAcceptance(String, String)[1]`
+- `io.popdesk.project.InvitationResendCancelTest.notAfterAcceptance(String, String)[2]`
+- `io.popdesk.project.InvitationResendCancelTest.notAfterAcceptance(String, String)[3]`
+- `io.popdesk.project.InvitationResendCancelTest.notAfterAcceptance(String, String)[4]`
+- `io.popdesk.project.InvitationResendCancelTest.resendReplacesTheLink`
+- `io.popdesk.project.LastAdminTest.twoAdminsTakeEachOtherDown(String)[1]`
+- `io.popdesk.project.LastAdminTest.twoAdminsTakeEachOtherDown(String)[2]`
+- `io.popdesk.project.MembershipTest.addedCustomerSeesTheCompany`
+- `io.popdesk.project.MembershipTest.invitedCustomerCanBeAdded`
+- `io.popdesk.project.MembershipTest.removedCustomerCannotWriteToOwnIssue(String)[1]`
+- `io.popdesk.project.MembershipTest.removedCustomerCannotWriteToOwnIssue(String)[2]`
+- `io.popdesk.project.MembershipTest.removedCustomerCannotWriteToOwnIssue(String)[3]`
+- `io.popdesk.project.MembershipTest.unknownCompanyOrAccount`
+- `io.popdesk.project.MembershipTest.removedCustomerLosesTheCompany`
+- `io.popdesk.project.MembershipTest.unassignedAgentLosesTheCompany`
+- `io.popdesk.project.MembershipTest.removedCustomerStillReadsOwnIssue`
+- `io.popdesk.project.MembershipTest.onlyCustomersBelong(Role)[1]`
+- `io.popdesk.project.MembershipTest.onlyCustomersBelong(Role)[2]`
+- `io.popdesk.project.MembershipTest.removedCustomerCannotFileThere`
+- `io.popdesk.project.PeopleMailTest.resetSendsTheResetMail`
+- `io.popdesk.project.PeopleMailTest.suspendedAccountGetsNoMail`
+- `io.popdesk.project.PeopleMailTest.resendSendsANewInvitationMail`
+- `io.popdesk.project.PeopleMailTest.noResetLinkInResponseWithSmtp`
+- `src/app/csrfRetry.1a.test.tsx.403 CSRF_TOKEN_INVALID (1a) > S1A-AC-57 C-4 댓글: 토큰을 새로 받아 같은 요청을 한 번 다시 보내고, 성공하면 오류를 보이지 않는다`
+- `src/app/csrfRetry.1a.test.tsx.403 CSRF_TOKEN_INVALID (1a) > S1A-AC-57 C-4 댓글: 다시 보낸 것도 403이면 더 보내지 않고 새로고침 안내를 보인다. 쓰던 글은 남는다`
+- `src/app/header.1a.test.tsx.콘솔 화면 머리 (1a) > S1A-AC-60 화면 머리 사진 있음: 이름 앞에 내 사진, 이름을 누르면 C-6 내 정보로 간다`
+- `src/app/header.1a.test.tsx.콘솔 화면 머리 (1a) > S1A-AC-60 화면 머리 사진 없음: 사진을 청하지 않고 머리글자를 그린다. 상담원도 내 정보로 간다`
+- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 찾기 → /issues`
+- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 찾기와 쿼리 → /issues`
+- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 재설정 → /issues`
+- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 재설정과 토큰 조각 → /issues`
+- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 재설정 아래 → /issues`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-29 C-10 필터: 역할과 상태를 고르면 그 값으로 목록을 다시 받는다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-29 C-10 검색: 입력을 멈추고 300ms 뒤에 한 번만 보낸다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > C-10 검색 결과 없음: "조건에 맞는 구성원이 없습니다"와 조건 지우기. 지우면 검색 칸을 비우고 전체를 다시 받는다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-42 S1A-AC-60 C-10 줄: 이름 앞에 사진이나 머리글자, 상태 배지는 사용 중·수락 전·초대 취소됨·정지`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-33 C-10 줄 메뉴 ACTIVE 상담원`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-33 C-10 줄 메뉴 ACTIVE 고객(역할 바꾸기는 상담 쪽만)`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-33 C-10 줄 메뉴 정지`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-33 C-10 줄 메뉴 수락 전(SMTP 있음)`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-33 C-10 줄 메뉴 수락 전(SMTP 없음)`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-33 C-10 줄 메뉴 초대 취소됨`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-33 C-10 줄 메뉴 나 자신(역할 바꾸기와 정지는 없다)`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-30 C-10 이름 고치기: 대화상자에 지금 이름, 저장하면 PATCH로 보내고 줄의 이름이 바뀐다. 수락 전 계정도 된다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-34 C-10 정지: 확인 대화상자의 문구, 확인하면 줄의 배지가 "정지"로 바뀐다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-35 C-10 정지 풀기: 누르면 풀고 줄의 배지가 "사용 중"으로 바뀐다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-31 C-10 역할 바꾸기: 확인 대화상자에 바뀔 역할과 "다시 로그인해야 합니다", 확인하면 그 역할을 보내고 줄이 바뀐다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-36 C-10 비밀번호 초기화(SMTP 있음): 확인 대화상자의 문구, 확인하면 토스트 "재설정 메일을 보냈습니다."`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-37 C-10 비밀번호 초기화(SMTP 없음): 재설정 링크를 대화상자에 한 번 보이고 닫으면 다시 볼 수 없다고 적는다. 닫으면 화면에 남지 않는다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-39 C-10 초대 취소: 확인 대화상자의 문구, 확인하면 줄의 배지가 "초대 취소됨"으로 바뀐다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-38 S1A-AC-40 C-10 초대 다시 보내기(SMTP 없음): 취소된 초대를 다시 보내면 새 링크를 한 번 보이고 줄은 "수락 전"으로 돌아간다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > C-10 정지 400: 대화상자를 닫지 않고 오류 띠를 보이며 줄의 배지는 그대로다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-58 C-10 닫힌 뒤 온 답(이름 고치기): A의 요청 중에 취소한 뒤 온 실패는 버린다. B로 열면 오류 없이 처음부터 묻는다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-58 C-10 닫힌 뒤 온 답(정지): A의 요청 중에 취소한 뒤 온 실패는 버린다. B로 열면 오류 없이 처음부터 묻는다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-58 C-10 닫힌 뒤 온 답(역할 바꾸기): A의 요청 중에 취소한 뒤 온 실패는 버린다. B로 열면 오류 없이 처음부터 묻는다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-58 C-10 닫힌 뒤 온 답(비밀번호 초기화): A의 요청 중에 취소한 뒤 온 실패는 버린다. B로 열면 오류 없이 처음부터 묻는다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-58 C-10 닫힌 뒤 온 답(초대 취소): A의 요청 중에 취소한 뒤 온 실패는 버린다. B로 열면 오류 없이 처음부터 묻는다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > S1A-AC-58 C-10 닫힌 뒤 온 재설정 링크: A의 초기화 중에 취소한 뒤 링크가 와도, B로 열면 A의 링크 없이 확인부터 묻는다`
+- `src/screens/C10MemberList.1a.test.tsx.C-10 구성원 목록 (1a) > C-10 axe (1a): 필터, 줄 메뉴가 있는 목록, 열린 정지 확인 대화상자에 접근성 위반이 없다`
+- `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > C-16 처음: 이메일 칸 하나, "재설정 메일 받기" 버튼, 로그인으로 돌아가는 링크. 서버를 부르지 않는다`
+- `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > S1A-AC-59 C-16 보낸 뒤(202) 계정이 있는 주소: 칸을 지우고 같은 안내와 로그인 링크를 보인다`
+- `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > S1A-AC-59 C-16 보낸 뒤(202) 계정이 없는 주소: 칸을 지우고 같은 안내와 로그인 링크를 보인다`
+- `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > C-16 이메일 꼴이 아님: 칸 아래 오류를 보이고 보내지 않는다`
+- `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > C-16 429: "요청이 많습니다. N초 뒤 다시 하세요." 띠와 버튼 막힘, 쓴 주소는 남는다`
+- `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > S1A-AC-58 C-16 떠난 뒤 온 답: 보내는 중에 로그인으로 돌아가면, 뒤에 온 202의 안내를 로그인 화면에 보이지 않는다`
+- `src/screens/C16PasswordForgot.test.tsx.C-16 비밀번호 찾기 > C-16 axe: 이메일 꼴 오류가 난 화면에 접근성 위반이 없다`
+- `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > C-17 처음: 새 비밀번호 칸과 한 번 더 칸, 규칙 안내(10~72자), "비밀번호 바꾸기". 주소창에서 #token을 지우고 토큰을 미리 확인하지 않는다`
+- `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > S1A-AC-09 C-17 성공: 토큰을 본문으로만 보내고, 로그인시키지 않고 로그인 화면으로 가며 토스트를 보인다`
+- `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > C-17 두 칸이 다름: 서버에 보내지 않고 둘째 칸에 오류를 보인다`
+- `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > S1A-AC-11 C-17 400 INVALID_INPUT(TOO_SHORT): 규칙 오류를 칸 아래에 보이고, 같은 토큰으로 다시 낼 수 있다`
+- `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > S1A-AC-11 C-17 400 INVALID_INPUT(SAME_AS_EMAIL): 규칙 오류를 칸 아래에 보이고, 같은 토큰으로 다시 낼 수 있다`
+- `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > S1A-AC-10 C-17 400 링크 무효: 화면 전체를 "링크가 만료됐거나 이미 썼습니다." 안내로 바꾸고 "다시 요청하기"는 비밀번호 찾기로 간다`
+- `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > S1A-AC-10 C-17 토큰 없이 옴: 서버에 묻지 않고 링크 무효와 같은 안내를 보인다`
+- `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > S1A-AC-58 C-17 떠난 뒤 온 답: 화면을 떠난 뒤 온 성공은 주소를 /login으로 바꾸지 않는다`
+- `src/screens/C17PasswordReset.test.tsx.C-17 비밀번호 재설정 > C-17 axe: 두 칸이 다른 오류가 난 화면에 접근성 위반이 없다`
+- `src/screens/C1Login.1a.test.tsx.C-1 로그인 (1a) > C-1 "비밀번호를 잊었나요?": 로그인 화면의 링크가 C-16 비밀번호 찾기로 간다`
+- `src/screens/C4IssueDetail.1a.test.tsx.C-4 문의 상세 (1a) > S1A-AC-60 C-4 사람 표시: 댓글과 첨부 줄에 그 사람의 사진을 쓰고, 사진이 없는 사람은 머리글자다`
+- `src/screens/C6MyInfo.test.tsx.C-6 내 정보 > S1A-AC-19 C-6 프로필 처음: 이름 칸, 읽기만 하는 이메일, 언어 고르기, "저장". 상담원에게는 배정된 고객사 목록을 읽기만으로 보인다`
+- `src/screens/C6MyInfo.test.tsx.C-6 내 정보 > S1A-AC-16 C-6 프로필 저장 성공: 이름을 보내고 토스트를 보이며 화면 머리의 이름이 바로 바뀐다`
+- `src/screens/C6MyInfo.test.tsx.C-6 내 정보 > S1A-AC-16 C-6 프로필 언어: 언어를 바꿔 저장하면 화면 문구가 바로 그 언어로 바뀐다`
+- `src/screens/C6MyInfo.test.tsx.C-6 내 정보 > S1A-AC-60 C-6 사진 없음: 머리글자와 "사진 올리기", 받는 형식과 크기 안내. 사진을 청하지 않는다`
+- `src/screens/C6MyInfo.test.tsx.C-6 내 정보 > S1A-AC-24 C-6 사진 있음: 사진, "바꾸기", "지우기". 지우기는 묻지 않고 지우고 머리글자로 돌아간다`
+- `src/screens/C6MyInfo.test.tsx.C-6 내 정보 > S1A-AC-20 C-6 사진 올리는 중과 성공: 고르면 바로 part `file`로 올리고 그동안 칸을 막으며, 끝나면 새 시각의 사진을 그린다`
+- `src/screens/C6MyInfo.test.tsx.C-6 내 정보 > S1A-AC-22 S1A-AC-23 C-6 사진 오류: 413, UNSUPPORTED_IMAGE, IMAGE_TOO_LARGE마다 사진 구역의 오류 띠에 서로 다른 까닭을 보이고 앞 사진은 그대로 둔다`
+- `src/screens/C6MyInfo.test.tsx.C-6 내 정보 > S1A-AC-17 C-6 비밀번호 성공: 지금·새 비밀번호를 보내고 세 칸을 비우며 토스트를 보인다. 이 화면의 세션은 이어진다`
+- `src/screens/C6MyInfo.test.tsx.C-6 내 정보 > S1A-AC-18 C-6 비밀번호 400 CURRENT_PASSWORD_WRONG: 지금 비밀번호 칸 아래 오류. 다른 칸은 지우지 않는다`
+- `src/screens/C6MyInfo.test.tsx.C-6 내 정보 > S1A-AC-18 C-6 비밀번호 429: 다섯 번 틀린 뒤의 막힘도 "요청이 많습니다. N초 뒤 다시 하세요." 띠로 보이고 버튼을 막는다`
+- `src/screens/C6MyInfo.test.tsx.C-6 내 정보 > S1A-AC-58 C-6 떠난 뒤 온 답: 비밀번호를 바꾸는 중에 다른 화면으로 가면, 뒤에 온 성공의 토스트를 그 화면에 보이지 않는다`
+- `src/screens/C6MyInfo.test.tsx.C-6 내 정보 > C-6 axe: 사진이 있는 내 정보 화면에 접근성 위반이 없다`
+- `src/screens/C8CompanyList.test.tsx.C-8 고객사 목록 > S1A-AC-49 C-8 데이터 있음: 표에 코드, 이름, 회사명, 상태 배지(사용 중·멈춤·보관)와 위에 "고객사 만들기". 보관된 고객사는 "보관된 고객사 보기"를 켜야 나온다`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > S1A-AC-43 C-9 고치기: 이름과 회사명 칸, 코드는 읽기만이고 "코드는 바꿀 수 없습니다". 저장하면 코드 없이 보내고 화면이 새 이름을 보인다`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > S1A-AC-44 C-9 상태 ACTIVE: "멈춤"·"보관" 버튼. 멈추면 띠 "멈춘 고객사입니다. 새 문의를 받지 않습니다."와 "다시 사용"·"보관"`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > S1A-AC-44 C-9 상태 SUSPENDED: "다시 사용"을 누르면 ACTIVE로 바꾸고 띠가 사라진다`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > S1A-AC-48 C-9 상태 ARCHIVED: 띠 "보관된 고객사입니다. 되돌릴 수 없습니다." 고치기와 소속·배정 더하기는 없고 빼기는 남는다`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > S1A-AC-44 C-9 보관 확인: 대화상자의 문구, 고객사 코드를 입력해야 확인 버튼이 눌린다. 확인하면 ARCHIVED로 바꾸고 보관 띠를 보인다`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > S1A-AC-50 C-9 소속 더하기: 고객 계정을 이름·이메일로 찾아 고른다. 이미 소속인 사람은 "소속됨"으로 나오고 고를 수 없다`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > S1A-AC-52 S1A-AC-55 C-9 소속 빼기: 확인 대화상자의 문구, 확인하면 빼고 줄이 사라진다`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > S1A-AC-52 S1A-AC-55 C-9 배정 빼기: 확인 대화상자의 문구, 확인하면 빼고 줄이 사라진다`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > S1A-AC-48 C-9 400 보관된 고객사: 다른 탭에서 보관된 뒤 고치면 오류 띠를 보이고 화면을 다시 불러온다`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > S1A-AC-58 C-9 닫힌 뒤 온 답(소속 빼기): A를 빼는 중에 취소한 뒤 온 실패는 버린다. B로 열면 오류 없이 B를 묻는다`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > S1A-AC-58 C-9 닫힌 뒤 온 답(배정 빼기): A를 빼는 중에 취소한 뒤 온 실패는 버린다. B로 열면 오류 없이 B를 묻는다`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > S1A-AC-58 C-9 대상이 바뀐 뒤 온 답: ACME를 멈추는 중에 BETA로 가면, 뒤에 온 ACME의 답을 BETA 화면에 보이지 않는다`
+- `src/screens/C9CompanyDetail.1a.test.tsx.C-9 고객사 상세 (1a) > C-9 axe (1a): 빼기가 있는 두 목록과 열린 보관 확인 대화상자에 접근성 위반이 없다`
+- `src/app/csrfRetry.1a.test.tsx.403 CSRF_TOKEN_INVALID (1a) > S1A-AC-57 P-5 댓글: 토큰을 새로 받아 같은 요청을 한 번 다시 보내고, 성공하면 오류를 보이지 않는다`
+- `src/app/csrfRetry.1a.test.tsx.403 CSRF_TOKEN_INVALID (1a) > S1A-AC-57 P-5 댓글: 다시 보낸 것도 403이면 더 보내지 않고 새로고침 안내를 보인다. 쓰던 글은 남는다`
+- `src/app/header.1a.test.tsx.포털 화면 머리 (1a) > S1A-AC-60 화면 머리 사진 있음: 이름 앞에 내 사진, 이름을 누르면 P-6 내 정보로 간다`
+- `src/app/header.1a.test.tsx.포털 화면 머리 (1a) > S1A-AC-60 화면 머리 사진 없음: 사진을 청하지 않고 머리글자를 그린다`
+- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 찾기 → /issues`
+- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 찾기와 쿼리 → /issues`
+- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 재설정 → /issues`
+- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 재설정과 토큰 조각 → /issues`
+- `src/app/safeNext.1a.test.ts.C-1 safeNext (1a) > C-1 safeNext 막음: 비밀번호 재설정 아래 → /issues`
+- `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > P-10 처음: 새 비밀번호 칸과 한 번 더 칸, 규칙 안내(10~72자), "비밀번호 바꾸기". 주소창에서 #token을 지우고 토큰을 미리 확인하지 않는다`
+- `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > S1A-AC-09 P-10 성공: 토큰을 본문으로만 보내고, 로그인시키지 않고 로그인 화면으로 가며 토스트를 보인다`
+- `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > P-10 두 칸이 다름: 서버에 보내지 않고 둘째 칸에 오류를 보인다`
+- `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > S1A-AC-11 P-10 400 INVALID_INPUT(TOO_SHORT): 규칙 오류를 칸 아래에 보이고, 같은 토큰으로 다시 낼 수 있다`
+- `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > S1A-AC-11 P-10 400 INVALID_INPUT(SAME_AS_EMAIL): 규칙 오류를 칸 아래에 보이고, 같은 토큰으로 다시 낼 수 있다`
+- `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > S1A-AC-10 P-10 400 링크 무효: 화면 전체를 "링크가 만료됐거나 이미 썼습니다." 안내로 바꾸고 "다시 요청하기"는 비밀번호 찾기로 간다`
+- `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > S1A-AC-10 P-10 토큰 없이 옴: 서버에 묻지 않고 링크 무효와 같은 안내를 보인다`
+- `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > S1A-AC-58 P-10 떠난 뒤 온 답: 화면을 떠난 뒤 온 성공은 주소를 /login으로 바꾸지 않는다`
+- `src/screens/P10PasswordReset.test.tsx.P-10 비밀번호 재설정 > P-10 axe: 두 칸이 다른 오류가 난 화면에 접근성 위반이 없다`
+- `src/screens/P1Login.1a.test.tsx.P-1 로그인 (1a) > P-1 "비밀번호를 잊었나요?": 로그인 화면의 링크가 P-9 비밀번호 찾기로 간다`
+- `src/screens/P4IssueCreate.1a.test.tsx.P-4 문의 등록 (1a) > S1A-AC-46 P-4 고객사 고르기: 멈춘·보관된 고객사는 고를 수 없게 보이고 "새 문의를 받지 않습니다"를 적는다`
+- `src/screens/P4IssueCreate.1a.test.tsx.P-4 문의 등록 (1a) > S1A-AC-46 P-4 소속 고객사가 모두 멈춤·보관: 등록 버튼 대신 "새 문의를 받지 않습니다" 안내를 보인다`
+- `src/screens/P4IssueCreate.1a.test.tsx.P-4 문의 등록 (1a) > S1A-AC-65 P-4 파일 21개째: 20개까지는 받고, 21개째는 더하지 않고 "한 번에 20개까지 붙일 수 있습니다"를 보인다`
+- `src/screens/P4IssueCreate.1a.test.tsx.P-4 문의 등록 (1a) > S1A-AC-65 P-4 앱의 413(JSON 본문): 같은 문구 "한 번에 20개까지 붙일 수 있습니다"를 띠로 보이고 입력은 지우지 않는다`
+- `src/screens/P5IssueDetail.1a.test.tsx.P-5 문의 상세 (1a) > S1A-AC-60 P-5 사람 표시: 고객의 댓글과 첨부 줄에는 그 사람의 사진, 상담 쪽은 사진 없이 "지원팀", 사진이 없는 사람은 머리글자`
+- `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > S1A-AC-19 P-6 프로필 처음: 이름 칸, 읽기만 하는 이메일, 언어 고르기, "저장". 소속 고객사 목록을 상태와 관계없이 읽기만으로 보인다`
+- `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > S1A-AC-16 P-6 프로필 저장 성공: 이름을 보내고 토스트를 보이며 화면 머리의 이름이 바로 바뀐다`
+- `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > S1A-AC-16 P-6 프로필 언어: 언어를 바꿔 저장하면 화면 문구가 바로 그 언어로 바뀐다`
+- `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > S1A-AC-60 P-6 사진 없음: 머리글자와 "사진 올리기", 받는 형식과 크기 안내. 사진을 청하지 않는다`
+- `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > S1A-AC-24 P-6 사진 있음: 사진, "바꾸기", "지우기". 지우기는 묻지 않고 지우고 머리글자로 돌아간다`
+- `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > S1A-AC-20 P-6 사진 올리는 중과 성공: 고르면 바로 part `file`로 올리고 그동안 칸을 막으며, 끝나면 새 시각의 사진을 그린다`
+- `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > S1A-AC-22 S1A-AC-23 P-6 사진 오류: 413, UNSUPPORTED_IMAGE, IMAGE_TOO_LARGE마다 사진 구역의 오류 띠에 서로 다른 까닭을 보이고 앞 사진은 그대로 둔다`
+- `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > S1A-AC-17 P-6 비밀번호 성공: 지금·새 비밀번호를 보내고 세 칸을 비우며 토스트를 보인다. 이 화면의 세션은 이어진다`
+- `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > S1A-AC-18 P-6 비밀번호 400 CURRENT_PASSWORD_WRONG: 지금 비밀번호 칸 아래 오류. 다른 칸은 지우지 않는다`
+- `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > S1A-AC-18 P-6 비밀번호 429: 다섯 번 틀린 뒤의 막힘도 "요청이 많습니다. N초 뒤 다시 하세요." 띠로 보이고 버튼을 막는다`
+- `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > S1A-AC-58 P-6 떠난 뒤 온 답: 비밀번호를 바꾸는 중에 다른 화면으로 가면, 뒤에 온 성공의 토스트를 그 화면에 보이지 않는다`
+- `src/screens/P6MyInfo.test.tsx.P-6 내 정보 > P-6 axe: 사진이 있는 내 정보 화면에 접근성 위반이 없다`
+- `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > P-9 처음: 이메일 칸 하나, "재설정 메일 받기" 버튼, 로그인으로 돌아가는 링크. 서버를 부르지 않는다`
+- `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > S1A-AC-59 P-9 보낸 뒤(202) 계정이 있는 주소: 칸을 지우고 같은 안내와 로그인 링크를 보인다`
+- `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > S1A-AC-59 P-9 보낸 뒤(202) 계정이 없는 주소: 칸을 지우고 같은 안내와 로그인 링크를 보인다`
+- `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > P-9 이메일 꼴이 아님: 칸 아래 오류를 보이고 보내지 않는다`
+- `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > P-9 429: "요청이 많습니다. N초 뒤 다시 하세요." 띠와 버튼 막힘, 쓴 주소는 남는다`
+- `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > S1A-AC-58 P-9 떠난 뒤 온 답: 보내는 중에 로그인으로 돌아가면, 뒤에 온 202의 안내를 로그인 화면에 보이지 않는다`
+- `src/screens/P9PasswordForgot.test.tsx.P-9 비밀번호 찾기 > P-9 axe: 이메일 꼴 오류가 난 화면에 접근성 위반이 없다`
+- `src/components/PhotoField.test.tsx.PhotoField > S1A-AC-60 PhotoField 사진 없음: 머리글자와 "사진 올리기" 파일 칸, 형식·크기 안내. 지우기는 없고, 고른 파일은 onUpload로 나간다`
+- `src/components/PhotoField.test.tsx.PhotoField > S1A-AC-24 PhotoField 사진 있음: 사진, "바꾸기" 파일 칸, "지우기"는 묻지 않고 onRemove`
+- `src/components/PhotoField.test.tsx.PhotoField > S1A-AC-20 PhotoField 올리는 중: 파일 칸과 지우기를 막고, 그동안 누른 지우기는 나가지 않는다`
+- `src/components/PhotoField.test.tsx.PhotoField > S1A-AC-22 PhotoField 오류: 까닭은 role="alert"로 읽히고 앞 사진은 그대로다`
+- `src/components/PhotoField.test.tsx.PhotoField > PhotoField axe: 사진 없음·사진 있음·올리는 중·오류에 접근성 위반이 없다`
+- `src/components/StatusBadge.cancelled.test.tsx.StatusBadge 1a > S1A-AC-42 StatusBadge 초대 취소됨: 글자는 "초대 취소됨", 점은 수락 전처럼 속이 비고 사용 중·정지는 속이 찬다`

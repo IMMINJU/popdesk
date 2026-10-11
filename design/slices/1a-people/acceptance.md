@@ -165,7 +165,8 @@
 | S1A-AC-72 | If 초대하는 이메일이 100자를 넘으면, then the system shall 400과 그 칸의 `TOO_LONG`으로 답한다. 100자는 받는다. (ACCT-1, PIT 질문 7) |
 | S1A-AC-73 | The system shall 믿는 프록시 대역의 접두어가 8비트 단위가 아닐 때(`172.16.0.0/12`)도 대역 안팎을 맞게 가른다. (S0-AC-18, PIT E) |
 | S1A-AC-74 | If 요청 본문이 JSON이 아니면, then the system shall 400 `INVALID_INPUT`을 `fields` 없이 준다. If 칸의 타입이 맞지 않으면, then 그 칸의 `INVALID_FORMAT`을, 정해진 값 밖이면 `UNKNOWN_VALUE`를 준다. (COM-3, D-44, PIT E) |
-| S1A-AC-75 | The system shall 첨부 크기의 1MB를 1,048,576바이트로 센다. 문서와 화면 문구도 같은 뜻으로 쓴다. (S0-AC-57, PIT 질문 10) |
+
+첨부 크기의 1MB는 1,048,576바이트다(S1A-AC-75였던 것). 첫 묶음의 잠긴 `AttachmentLimitsTest`와 `FilingAttachmentLimitTest`가 이미 그 경계를 봐서 새 기준으로 두지 않고, `conventions.md`와 화면 문구에 같은 뜻으로 적는다.
 
 ### 3.12 함께 붙일 관문
 
@@ -174,8 +175,9 @@
 | S1A-AC-76 | 고객사 경계 부정 테스트. A사·B사 픽스처로, the system shall 이 묶음의 모든 새 엔드포인트에서 A사 고객에게 B사 고객의 이름, 이메일, 사진을 주지 않는다. (RULE-01, TM-01) |
 | S1A-AC-77 | 이 묶음의 모든 엔드포인트는 경계 테스트 목록에 있다. 경계와 상관없는 것(비밀번호 찾기, 내 정보)은 이유와 함께 올린다. (S0-AC-93) |
 | S1A-AC-78 | The system shall 이 묶음의 메일(비밀번호 재설정)과 응답 어디에도 다른 계정이 있는지를 드러내지 않는다. 응답 본문과 상태 코드가 계정 유무와 관계없이 같은지 보는 테스트를 둔다. (AUTH-2, AUTH-7, TM-10) |
-| S1A-AC-79 | When 이 묶음의 엔드포인트를 더하거나 바꾸면, the system shall 계약 파일 둘과 클라이언트 둘이 커밋된 것과 같아야 한다. (S0-AC-91) |
 | S1A-AC-80 | 업그레이드 테스트. When v0.1.0 견본 덤프를 이 묶음의 이미지로 올리면, the system shall 마이그레이션이 끝나고 견본 데이터 확인이 통과한다. 처음으로 실제 마이그레이션이 도는 묶음이다. (S0-AC-95, D-24) |
+
+계약 파일 둘과 클라이언트 둘이 커밋된 것과 같아야 한다는 것(S1A-AC-79였던 것)은 첫 묶음의 관문(S0-AC-91, 잠긴 `OpenApiFilesTest`와 `deploy.ContractClientsTest`)이 그대로 본다. 새 기준으로 두지 않는다.
 
 ### 3.13 사전 부검에서 더한 것
 
