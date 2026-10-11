@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.web.console;
 
 import io.popdesk.Paged;
+import io.popdesk.PatchText;
 import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
@@ -64,16 +65,16 @@ class ConsoleAccountController {
     }
 
     @Operation(operationId = "updateAccount", summary = "Change an account's name",
-            description = "A `name` left out or sent as `null` keeps its value. Also for an account that has not "
-                    + "accepted its invitation yet (S1A-AC-30).")
+            description = "Also for an account that has not accepted its invitation yet (S1A-AC-30).")
     @ApiResponse(responseCode = "200", description = "Saved.")
-    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `name` empty (`REQUIRED`) or over 50.")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `name` empty or over 50, or `null` "
+            + "(`REQUIRED`).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY)
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @PatchMapping("/api/console/accounts/{accountId}")
     Account updateAccount(@PathVariable long accountId, @RequestBody UpdateAccountRequest request) {
-        return account(accounts.rename(CurrentAccount.get(), accountId, request.name()));
+        return account(accounts.rename(CurrentAccount.get(), accountId, PatchText.of("name", request.name())));
     }
 
     @Operation(operationId = "changeAccountRole", summary = "Make an agent an admin, or an admin an agent",

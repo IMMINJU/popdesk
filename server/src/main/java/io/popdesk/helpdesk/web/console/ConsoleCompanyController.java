@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.web.console;
 
 import io.popdesk.Paged;
+import io.popdesk.PatchText;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.CurrentAccount;
 import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
@@ -133,19 +134,19 @@ class ConsoleCompanyController {
     }
 
     @Operation(operationId = "updateCompany", summary = "Change a company's name or legal name",
-            description = "A field left out or sent as `null` keeps its value. The code never changes "
-                    + "(S1A-AC-43).")
+            description = "A field left out keeps its value. The code never changes (S1A-AC-43).")
     @ApiResponse(responseCode = "200", description = "Saved.")
-    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `name` or `legalName` empty (`REQUIRED`) or "
-            + "over 100; `code` sent (`NOT_ALLOWED`). `COMPANY_ARCHIVED`: the company is `ARCHIVED` (S1A-AC-48).")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `name` or `legalName` empty or over 100, or "
+            + "`null` (`REQUIRED`); `code` sent (`NOT_ALLOWED`). `COMPANY_ARCHIVED`: the company is `ARCHIVED` "
+            + "(S1A-AC-48).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @PatchMapping("/{code}")
     Company updateCompany(@PathVariable String code, @RequestBody UpdateCompanyRequest request) {
         CurrentAccount admin = CurrentAccount.get();
-        return company(companies.update(admin.viewer(), admin.actor(), code, request.name(), request.legalName(),
-                request.code() != null));
+        return company(companies.update(admin.viewer(), admin.actor(), code, PatchText.of("name", request.name()),
+                PatchText.of("legalName", request.legalName()), request.code() != null));
     }
 
     @Operation(operationId = "changeCompanyStatus", summary = "Change a company's status",

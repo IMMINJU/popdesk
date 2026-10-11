@@ -3,7 +3,7 @@ package io.popdesk.helpdesk.account;
 import io.popdesk.ApiError;
 import io.popdesk.ApiErrors;
 import io.popdesk.ApiException;
-import io.popdesk.TextInput;
+import io.popdesk.PatchText;
 import io.popdesk.Transactions;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
@@ -72,14 +72,17 @@ public class OwnAccountService {
     }
 
     /**
-     * Changes the caller's name, language, or both (S1A-AC-16); a null value keeps what the account has.
+     * Changes the caller's name, language, or both (S1A-AC-16); a field left out keeps what the account
+     * has, and one sent as null is {@code REQUIRED} (ADR D-44).
      * A 400 lists every invalid field and saves nothing.
      */
-    public Own update(CurrentAccount me, String name, String locale) {
+    public Own update(CurrentAccount me, PatchText name, PatchText sentLocale) {
         List<ApiError.FieldError> errors = new ArrayList<>();
-        String cleanName = name == null ? null : TextInput.required("name", name, InvitationService.NAME_MAX, errors);
-        if (locale != null && !LOCALES.contains(locale)) {
-            errors.add(new ApiError.FieldError("locale", locale.isEmpty() ? "REQUIRED" : "UNKNOWN_VALUE"));
+        String cleanName = name.required("name", InvitationService.NAME_MAX, errors);
+        String locale = sentLocale.value();
+        if (sentLocale.sent() && (locale == null || !LOCALES.contains(locale))) {
+            errors.add(new ApiError.FieldError("locale",
+                    locale == null || locale.isEmpty() ? "REQUIRED" : "UNKNOWN_VALUE"));
         }
         if (!errors.isEmpty()) {
             throw ApiException.invalid(errors);

@@ -234,5 +234,4 @@ Decided in ADR D-44.
 - A list field without items is `[]`, never `null`.
 - In update requests (`PATCH`):
   - A field left out of the request keeps its current value.
-  - A field sent as `null` is cleared, when the field may be empty.
-  - A field that cannot be empty (for example a name) keeps its current value when it is sent as `null`, the same as when it is left out. An empty string for such a field is 400 with field code `REQUIRED`.
+  - A field sent as `null` is cleared. This works only for fields that may be empty; sending `null` for a required field is 400.

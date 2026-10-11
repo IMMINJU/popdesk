@@ -4,6 +4,7 @@ import io.popdesk.ApiError;
 import io.popdesk.ApiException;
 import io.popdesk.PageRequest;
 import io.popdesk.Paged;
+import io.popdesk.PatchText;
 import io.popdesk.TextInput;
 import io.popdesk.Transactions;
 import io.popdesk.helpdesk.AccountStatus;
@@ -79,15 +80,15 @@ public class AccountService {
     }
 
     /**
-     * Changes an account's name, also before it accepted its invitation (S1A-AC-30). A null name, or the
-     * name the account has, changes nothing and is not audited.
+     * Changes an account's name, also before it accepted its invitation (S1A-AC-30). A name left out, or the
+     * name the account has, changes nothing and is not audited; one sent as null is {@code REQUIRED}
+     * (ADR D-44).
      */
-    public AccountRow rename(CurrentAccount admin, long accountId, String name) {
+    public AccountRow rename(CurrentAccount admin, long accountId, PatchText name) {
         return transactions.run(() -> {
             AccountRow account = accounts.lockById(accountId).orElseThrow(ApiException::notFound);
             List<ApiError.FieldError> errors = new ArrayList<>();
-            String cleanName = name == null ? null
-                    : TextInput.required("name", name, InvitationService.NAME_MAX, errors);
+            String cleanName = name.required("name", InvitationService.NAME_MAX, errors);
             if (!errors.isEmpty()) {
                 throw ApiException.invalid(errors);
             }

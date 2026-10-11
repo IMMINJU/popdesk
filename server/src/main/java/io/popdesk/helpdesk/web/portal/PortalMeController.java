@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.web.portal;
 
+import io.popdesk.PatchText;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
 import io.popdesk.helpdesk.account.CurrentAccount;
 import io.popdesk.helpdesk.account.OwnAccountService;
@@ -41,16 +42,17 @@ class PortalMeController {
     }
 
     @Operation(operationId = "updateMe", summary = "Change the caller's name or language",
-            description = "A field left out or sent as `null` keeps its value. Later email to the account uses "
-                    + "the new language (S1A-AC-16).")
+            description = "A field left out keeps its value. Later email to the account uses the new language "
+                    + "(S1A-AC-16).")
     @ApiResponse(responseCode = "200", description = "Saved.")
-    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `name` empty (`REQUIRED`) or over 50; "
-            + "`locale` empty (`REQUIRED`), or not `ko` or `en` (`UNKNOWN_VALUE`).")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `name` empty or over 50, or `null` "
+            + "(`REQUIRED`); `locale` not `ko` or `en` (`UNKNOWN_VALUE`), or `null` (`REQUIRED`).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
     @PatchMapping("/api/portal/me")
     Me updateMe(@RequestBody UpdateMeRequest request) {
-        return me(own.update(CurrentAccount.get(), request.name(), request.locale()));
+        return me(own.update(CurrentAccount.get(), PatchText.of("name", request.name()),
+                PatchText.of("locale", request.locale())));
     }
 
     @Operation(operationId = "changeMyPassword", summary = "Change the caller's password",

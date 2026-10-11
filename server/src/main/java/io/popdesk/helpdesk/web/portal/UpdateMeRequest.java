@@ -1,9 +1,13 @@
 package io.popdesk.helpdesk.web.portal;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import tools.jackson.databind.JsonNode;
 
-/** A field left out keeps its value (ADR D-44). Neither field can be cleared. */
+/**
+ * A field left out keeps its value (ADR D-44). Neither field can be cleared, so {@code null} is refused;
+ * the fields are read as JSON to tell {@code null} from a field left out.
+ */
 public record UpdateMeRequest(
-        @Schema(description = "1 to 50 characters.") String name,
-        @Schema(description = "Language of the screens and of the account's email.", allowableValues = {"ko", "en"})
-                String locale) {}
+        @Schema(type = "string", description = "1 to 50 characters.") JsonNode name,
+        @Schema(type = "string", description = "Language of the account's email. The screens are in Korean for now.",
+                allowableValues = {"ko", "en"}) JsonNode locale) {}

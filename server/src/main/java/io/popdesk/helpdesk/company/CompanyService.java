@@ -4,6 +4,7 @@ import io.popdesk.ApiError;
 import io.popdesk.ApiException;
 import io.popdesk.PageRequest;
 import io.popdesk.Paged;
+import io.popdesk.PatchText;
 import io.popdesk.TextInput;
 import io.popdesk.Transactions;
 import io.popdesk.helpdesk.CompanyStatus;
@@ -113,21 +114,22 @@ public class CompanyService {
     }
 
     /**
-     * Changes the name, the legal name, or both (S1A-AC-43); a null value keeps what the company has. The
+     * Changes the name, the legal name, or both (S1A-AC-43); a field left out keeps what the company has, and
+     * one sent as null is {@code REQUIRED} (ADR D-44). The
      * code never changes: a request that sends one ({@code codeSent}) is 400. A 400 lists every invalid
      * field and saves nothing. Values the company already has are not audited.
      */
-    public CompanyRow update(Viewer viewer, AuditLog.Actor admin, String code, String name, String legalName,
-            boolean codeSent) {
+    public CompanyRow update(Viewer viewer, AuditLog.Actor admin, String code, PatchText name,
+            PatchText legalName, boolean codeSent) {
         return transactions.run(() -> {
             CompanyRow company = companies.lockByCode(viewer, code).orElseThrow(ApiException::notFound);
             List<ApiError.FieldError> errors = new ArrayList<>();
             if (codeSent) {
                 errors.add(new ApiError.FieldError("code", "NOT_ALLOWED"));
             }
-            String newName = name == null ? company.name() : TextInput.required("name", name, NAME_MAX, errors);
-            String newLegalName = legalName == null ? company.legalName()
-                    : TextInput.required("legalName", legalName, NAME_MAX, errors);
+            String newName = name.sent() ? name.required("name", NAME_MAX, errors) : company.name();
+            String newLegalName = legalName.sent() ? legalName.required("legalName", NAME_MAX, errors)
+                    : company.legalName();
             if (!errors.isEmpty()) {
                 throw ApiException.invalid(errors);
             }

@@ -157,7 +157,7 @@ export interface paths {
         head?: never;
         /**
          * Change the caller's name or language
-         * @description A field left out or sent as `null` keeps its value. Later email to the account uses the new language (S1A-AC-16).
+         * @description A field left out keeps its value. Later email to the account uses the new language (S1A-AC-16).
          */
         patch: operations["updateMe"];
         trace?: never;
@@ -599,7 +599,7 @@ export interface components {
         };
         UpdateMeRequest: {
             /**
-             * @description Language of the screens and of the account's email.
+             * @description Language of the account's email. The screens are in Korean for now.
              * @enum {string}
              */
             locale?: "ko" | "en";
@@ -1307,7 +1307,7 @@ export interface operations {
                     "application/json": components["schemas"]["Me"];
                 };
             };
-            /** @description `INVALID_INPUT`: `name` empty (`REQUIRED`) or over 50; `locale` empty (`REQUIRED`), or not `ko` or `en` (`UNKNOWN_VALUE`). */
+            /** @description `INVALID_INPUT`: `name` empty or over 50, or `null` (`REQUIRED`); `locale` not `ko` or `en` (`UNKNOWN_VALUE`), or `null` (`REQUIRED`). */
             400: {
                 headers: {
                     [name: string]: unknown;
