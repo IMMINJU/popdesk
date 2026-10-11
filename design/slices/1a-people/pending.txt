@@ -4,17 +4,6 @@
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
 # 서버 줄은 구현 탭마다 묶는다. 탭이 병합되면 그 묶음을 지운다.
 # 1a 묶음의 새 테스트(C-5). 구현 탭이 합쳐질 때마다 그 탭의 줄을 지운다.
-# deploy/UpgradeHarnessTest: V5가 표 둘을 더해 견본 생성기(make-sample.py)가 "빈 표가 있다"로 실패한다. s1a-i-photo가 생성기를 고치면 지운다.
-server io/popdesk/attachment/FilingFileCountTest.java
-server io/popdesk/boundary/PhotoBoundaryTest.java
-server io/popdesk/deploy/PhotoLoadTest.java
-server io/popdesk/deploy/ScreenFilesCacheTest.java
-server io/popdesk/deploy/UpgradeFrom010Test.java
-server io/popdesk/deploy/UpgradeHarnessTest.java
-server io/popdesk/ops/TextInputTest.java
-server io/popdesk/photo/PhotoAccessTest.java
-server io/popdesk/photo/PhotoResponseTest.java
-server io/popdesk/photo/PhotoUploadTest.java
 web src/app/csrfRetry.1a.test.tsx
 web src/app/header.1a.test.tsx
 web src/app/safeNext.1a.test.ts
