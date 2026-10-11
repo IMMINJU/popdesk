@@ -20,6 +20,7 @@ import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.NewIssue;
 import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
+import io.popdesk.support.Unique;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -168,6 +169,26 @@ class MembershipTest extends BareAppTest {
         s.admin().client().delete(customerOf(s.a().code(), s.leaver().accountId())).expect(200);
 
         s.colleague().client().get(portalIssue(s.ofColleague())).expect(200);
+    }
+
+    @Test
+    @DisplayName("S1A-AC-52 a customer taken out of a company gets 404 NOT_FOUND when filing an issue there, as for "
+            + "a company they never belonged to, and nothing is filed")
+    void removedCustomerCannotFileThere() {
+        Scene s = scene();
+        Company never = fixtures.createCompany(s.admin());
+        String title = Unique.text("Filed after leaving");
+        PeopleSteps.removeCustomer(s.admin(), s.a().code(), s.leaver().accountId());
+
+        ApiResponse left = s.leaver().client().post("/api/portal/issues")
+                .json(Map.of("companyCode", s.a().code(), "title", title, "content", "Steps to reproduce.")).send();
+        ApiResponse neverIn = s.leaver().client().post("/api/portal/issues")
+                .json(Map.of("companyCode", never.code(), "title", title, "content", "Steps to reproduce.")).send();
+
+        assertError(left, 404, "NOT_FOUND");
+        assertError(neverIn, 404, "NOT_FOUND");
+        assertThat(allValues(s.admin().client(), "/api/console/issues", "title")).doesNotContain(title);
+        fixtures.fileIssue(s.leaver(), s.b().code());
     }
 
     // S1A-AC-53

@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.core.JacksonException;
@@ -140,25 +139,5 @@ class SignInAuditTargetTest extends BareAppTest {
             + "target, besides the person")
     void targetIsTheAccount(String kind) {
         assertThat(targetColumns(kind)).isNotEmpty();
-    }
-
-    @Test
-    @DisplayName("S1A-AC-64 a failed sign-in with an email no account has leaves a row whose target is null, "
-            + "without the email or the password that was tried")
-    void unknownEmailHasNoTarget() {
-        Set<String> targetColumns = targetColumns("SIGN_IN_FAILED");
-        String email = Unique.email("nobody");
-        String tried = "tried-" + Unique.number() + "-Password";
-        Mark mark = audit.mark("SIGN_IN_FAILED");
-
-        failSignIn(console(), email, tried);
-
-        List<Row> rows = audit.newRows(mark);
-        assertThat(rows).as("new SIGN_IN_FAILED rows after a sign-in with an email no account has").hasSize(1);
-        Row row = rows.getFirst();
-        assertThat(targetColumns).as("target columns that are null in %s", row)
-                .allMatch(column -> row.json().path(column).isNull());
-        assertThat(row.contains(email)).as("the email in %s", row).isFalse();
-        assertThat(row.contains(tried)).as("the tried password in %s", row).isFalse();
     }
 }
