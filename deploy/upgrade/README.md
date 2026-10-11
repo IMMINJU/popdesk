@@ -8,7 +8,7 @@ Checks that a new image upgrades a database made by an older one (ADR D-24, proc
 python deploy/upgrade/make-sample.py --image IMAGE --out DIR --project NAME
 ```
 
-Starts IMAGE on an empty database and fills every business table through the API, with SQL only for two states the API cannot reach on demand (an attachment in `purging`, a send queue row in `failed`). It includes a 255-character file name, a profile photo, a password reset link nobody used, and a suspended account (`suspended@sample.popdesk.test`, from the 0.2.0 sample on). Then it runs `popdesk backup` and writes:
+Starts IMAGE on an empty database and fills every business table through the API, with SQL only for two states the API cannot reach on demand (an attachment in `purging`, a send queue row in `failed`). It includes a 255-character file name, a profile photo, a password reset link nobody used, a suspended account (`suspended@sample.popdesk.test`, from the 0.2.0 sample on), and, from the first sample after 0.2.0 on, a customer manager (`customer@sample.popdesk.test` in `ACME`) with a membership request that waits for an admin (for `other@sample.popdesk.test`). Then it runs `popdesk backup` and writes:
 
 | File | Content |
 |---|---|

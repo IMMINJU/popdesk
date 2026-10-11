@@ -80,6 +80,11 @@ def fill(project):
     # An invitation nobody accepted.
     admin.json("POST", "/api/console/invitations", {"email": "pending@sample.popdesk.test", "name": "Pending",
                                                     "role": "CUSTOMER", "companyCodes": ["ACME"]}, expect=201)
+    # A customer manager (company_member.manager), and a membership request that waits for an admin
+    # (membership_request): the manager of ACME invites an email that already has an account elsewhere.
+    admin.request("PUT", f"/api/console/companies/ACME/customers/{customer_id}/manager", expect=200)
+    customer.json("POST", "/api/portal/companies/ACME/members",
+                  {"email": "other@sample.popdesk.test", "name": "Other, as ACME typed it"}, expect=204)
 
     keys = []
     for title in ("Printer does not print", "Invoice is missing", "Sign-in page is slow"):
