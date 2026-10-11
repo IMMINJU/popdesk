@@ -83,6 +83,8 @@
 - 동시 수 2는 프로필 사진과 같은 꼴이다(`Semaphore`, 503과 `Retry-After`) [소스: `PhotoService`]. 응답은 `Cache-Control: no-store`. 자리를 먼저 잡고 그 뒤에 `AUDIT_EXPORTED`를 남긴다. 거절된 내보내기는 항목을 남기지 않는다(C-5의 `AuditExportLimitTest`가 이 순서에 기댄다).
 - CSV의 수식 막기에서 탭과 줄바꿈으로 시작하는 값은 API로 넣을 길이 없다(이름 입력이 앞뒤 공백을 지운다). 이 둘은 구현 쪽 단위 테스트가 본다.
 - 화면은 받기 전에 같은 주소를 `HEAD`로 먼저 부른다(첨부와 같다) [소스: `attachments.ts`]. `HEAD`는 감사 항목을 남기지 않는다.
+- 사본의 본문은 감사 로그 항목, 내보내기 JSON Lines 한 줄과 칸 이름이 같다: `id`, `seq`, `prevHash`, `hash`, `action`, `actor`, `target`, `changes`, `occurredAt`. `Content-Type`은 `application/json`이다.
+- `failed`가 된 사본 행을 다시 보내는 API는 이 묶음에 없다(콘솔 계약의 시스템 상태는 읽기뿐이다. 다시 보내기는 OPS-3이 들어오는 묶음에서 한다). 그때까지 `failed`가 된 구간은 내보내기로 옮긴다고 문서에 적는다.
 - 바깥 사본은 웹훅 보내기와 같은 틀(`Sender`, 보내기 루프)을 쓴다. 리다이렉트를 따라가지 않는다(토큰이 다른 호스트로 가지 않게). 시간 제한은 웹훅과 같다. 2xx만 성공이다.
 - `POPDESK_SANDBOX=true`면 주소가 있어도 꺼진 것으로 본다(D-46).
 - `AUDIT_FORWARD_TOKEN`은 `AUDIT_FORWARD_TOKEN_FILE`로도 받는다(D-46). 주소가 `http`인데 토큰이 있으면 뜰 때 경고를 남긴다(D-51의 경고와 같은 자리, 값은 빼고).

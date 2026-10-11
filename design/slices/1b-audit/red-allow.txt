@@ -8,3 +8,4 @@ src/components/DataTable.expand.test.tsx.DataTable 줄 펼치기 > DataTable 줄
 src/components/TextField.date.test.tsx.TextField 날짜 > TextField date: 이름표로 찾는 날짜 칸이고, 넣은 날짜가 YYYY-MM-DD로 onChange에 나간다 | design 5절. C-4 껍데기가 type을 input에 그대로 넘긴다
 io.popdesk.audit.AuditChainTest.agentCannotRunTheIntegrityCheck | S1B-AC-18 C-4 계약 껍데기가 보안 설정의 관리자 전용 목록에 /api/console/audit-log/**를 넣어 상담원이 이미 403을 받는다
 io.popdesk.start.AuditRetentionSettingTest.shortestPeriodAllowedStarts | S1B-AC-20 P30D는 지금도 구현 뒤에도 떠야 한다. 경계를 <=로 잘못 막는 구현을 잡는 테스트다
+io.popdesk.audit.AuditForwardOffTest.noAddressNoQueueRow | S1B-AC-31 사본 행을 넣는 코드가 아직 없고 시스템 상태의 auditForward가 C-4 고정값(꺼짐, 0)이다. 구현 뒤에도 그대로여야 한다. C-10 변이 테스트 대상
