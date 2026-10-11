@@ -1,0 +1,96 @@
+{
+  "issues": [
+    "ACME-1",
+    "ACME-2",
+    "ACME-3",
+    "BETA-1"
+  ],
+  "attachments": [
+    {
+      "issue": "ACME-1",
+      "id": "4e961d9f-8808-474b-aaa5-c5e67959d4dc",
+      "fileName": "screenshot.png",
+      "size": 20000,
+      "sha256": "6746bb57c0b14feb72784f4d9bacd640d5cc1c20e02f1348c1b4f405c81dc64c"
+    },
+    {
+      "issue": "ACME-2",
+      "id": "72bffb0f-5499-4917-8076-9b1ab85b992a",
+      "fileName": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.txt",
+      "size": 3000,
+      "sha256": "310ad9ab4a0349b3ea3c3d3fefcfaba857b1788cb2de7ace39d31723811b79ff"
+    },
+    {
+      "issue": "ACME-1",
+      "id": "bff66073-e2c5-402e-a101-fc7d62aaf598",
+      "fileName": "driver-log.txt",
+      "size": 5000,
+      "sha256": "beebeebedd0a8aded279eaa7a026033a18a7276f2f5b0164327bbdf01e25eef0"
+    },
+    {
+      "issue": "ACME-3",
+      "id": "98e5e4fd-e1f1-432b-b5f5-eb71795bd452",
+      "fileName": "large.bin",
+      "size": 820000,
+      "sha256": "06f845e16d8024fb14fc2a7a809a2fe4d8bf25dfc69b352b47053de97f4f6b3e"
+    }
+  ],
+  "outbox": [
+    {
+      "id": 6,
+      "channel": "MAIL",
+      "kind": "STAFF_COMMENT",
+      "state": "failed",
+      "attempts": 25,
+      "lastErrorKind": "SMTP_REFUSED",
+      "failedAt": "2026-10-10T08:20:43.743949+00:00"
+    }
+  ],
+  "audit": [
+    {
+      "id": 1,
+      "action": "FIRST_ADMIN_CREATED",
+      "row": "{\"id\":1,\"tenant_id\":1,\"action\":\"FIRST_ADMIN_CREATED\",\"actor\":{\"name\": null, \"email\": null, \"accountId\": 0},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 1},\"changes\":{\"name\": \"Admin\", \"role\": \"ADMIN\", \"email\": \"admin@sample.popdesk.test\"},\"occurred_at\":\"2026-10-10T08:20:40.265077+00:00\"}"
+    },
+    {
+      "id": 2,
+      "action": "SIGN_IN_SUCCEEDED",
+      "row": "{\"id\":2,\"tenant_id\":1,\"action\":\"SIGN_IN_SUCCEEDED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 1},\"changes\":null,\"occurred_at\":\"2026-10-10T08:20:40.519268+00:00\"}"
+    },
+    {
+      "id": 3,
+      "action": "COMPANY_CREATED",
+      "row": "{\"id\":3,\"tenant_id\":1,\"action\":\"COMPANY_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"code\": \"ACME\", \"type\": \"COMPANY\"},\"changes\":{\"code\": \"ACME\", \"name\": \"Acme\", \"status\": \"ACTIVE\", \"legalName\": \"Acme Ltd.\"},\"occurred_at\":\"2026-10-10T08:20:40.650691+00:00\"}"
+    },
+    {
+      "id": 4,
+      "action": "COMPANY_CREATED",
+      "row": "{\"id\":4,\"tenant_id\":1,\"action\":\"COMPANY_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"code\": \"BETA\", \"type\": \"COMPANY\"},\"changes\":{\"code\": \"BETA\", \"name\": \"Beta\", \"status\": \"ACTIVE\", \"legalName\": \"Beta Ltd.\"},\"occurred_at\":\"2026-10-10T08:20:40.68037+00:00\"}"
+    },
+    {
+      "id": 5,
+      "action": "INVITATION_CREATED",
+      "row": "{\"id\":5,\"tenant_id\":1,\"action\":\"INVITATION_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 2},\"changes\":{\"name\": \"Sample Agent\", \"role\": \"AGENT\", \"email\": \"agent@sample.popdesk.test\", \"companyCodes\": []},\"occurred_at\":\"2026-10-10T08:20:40.74875+00:00\"}"
+    },
+    {
+      "id": 6,
+      "action": "AGENT_ASSIGNED",
+      "row": "{\"id\":6,\"tenant_id\":1,\"action\":\"AGENT_ASSIGNED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"code\": \"ACME\", \"type\": \"COMPANY\", \"accountId\": 2},\"changes\":{\"assigned\": true},\"occurred_at\":\"2026-10-10T08:20:41.18776+00:00\"}"
+    },
+    {
+      "id": 7,
+      "action": "INVITATION_CREATED",
+      "row": "{\"id\":7,\"tenant_id\":1,\"action\":\"INVITATION_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 3},\"changes\":{\"name\": \"Sample Customer\", \"role\": \"CUSTOMER\", \"email\": \"customer@sample.popdesk.test\", \"companyCodes\": [\"ACME\"]},\"occurred_at\":\"2026-10-10T08:20:41.227398+00:00\"}"
+    },
+    {
+      "id": 8,
+      "action": "INVITATION_CREATED",
+      "row": "{\"id\":8,\"tenant_id\":1,\"action\":\"INVITATION_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 4},\"changes\":{\"name\": \"Other Customer\", \"role\": \"CUSTOMER\", \"email\": \"other@sample.popdesk.test\", \"companyCodes\": [\"BETA\"]},\"occurred_at\":\"2026-10-10T08:20:41.64536+00:00\"}"
+    },
+    {
+      "id": 9,
+      "action": "INVITATION_CREATED",
+      "row": "{\"id\":9,\"tenant_id\":1,\"action\":\"INVITATION_CREATED\",\"actor\":{\"name\": \"Admin\", \"email\": \"admin@sample.popdesk.test\", \"accountId\": 1},\"target\":{\"type\": \"ACCOUNT\", \"accountId\": 5},\"changes\":{\"name\": \"Pending\", \"role\": \"CUSTOMER\", \"email\": \"pending@sample.popdesk.test\", \"companyCodes\": [\"ACME\"]},\"occurred_at\":\"2026-10-10T08:20:41.97103+00:00\"}"
+    }
+  ]
+}
