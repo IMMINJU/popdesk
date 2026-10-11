@@ -157,7 +157,7 @@ c47a52fe3544277ae9c90f3480b011c4682b3469207e05e4fe47a912d49bb0e9  server/src/tes
 c2d564e52a2809c29e53bd12bfa89c387331ffa402e7d0661cd8db934856cfab  server/src/test/java/io/popdesk/notify/QueueTransactionTest.java
 032f445a5b3ac8f5d8d64bfdfa01e5978a31ed8ecd8ea8511cf0cb0d5d9c15b4  server/src/test/java/io/popdesk/notify/RetryTest.java
 c8bc4df4fef4454a7cae02e171316200e52c5dc2ef3abda95d8db1a96d4559d7  server/src/test/java/io/popdesk/notify/Rows.java
-2b76a407e102c59e67e3a8e645feebfad309f0622d7d7aa13674005037a52ee7  server/src/test/java/io/popdesk/notify/SendLoopBrokenRowTest.java
+7771faac3ea2cab52505ebbeba10504c2cb6a30440de0f332ac10e550a524860  server/src/test/java/io/popdesk/notify/SendLoopBrokenRowTest.java
 59a8d97c64fd7bccd82305f149e781e5eaf6e694e0101399f0c31609eb379c88  server/src/test/java/io/popdesk/notify/SendLoopTest.java
 3e79520ef3b1fd17a81af8079f30e0ca52f5ad285b96137036343b21626b02ea  server/src/test/java/io/popdesk/notify/SmtpGate.java
 9c12a309dc47493a7765692eb46b632aa102fd09960a826f4191e8f785524841  server/src/test/java/io/popdesk/notify/SmtpPlainAllowedTest.java
