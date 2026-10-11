@@ -7,3 +7,10 @@ server io/popdesk/audit/AuditChangesTest.java
 server io/popdesk/audit/AuditExportLimitTest.java
 server io/popdesk/audit/AuditExportTest.java
 server io/popdesk/audit/AuditLogViewTest.java
+web src/screens/C12AuditLog.test.tsx
+web src/screens/C12AuditLog.filters.test.tsx
+web src/screens/C12AuditLog.actions.test.tsx
+web src/screens/C18SystemStatus.1b.test.tsx
+web src/screens/adminOnly.1b.test.tsx
+web src/components/DataTable.expand.test.tsx
+web src/components/Select.group.test.tsx
