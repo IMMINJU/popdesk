@@ -188,6 +188,7 @@ A `page` past the last page returns an empty `items`. A `page` below 1 or a `siz
 - Lengths are counted in Unicode code points.
 - All string input is normalized to NFC before it is checked and stored.
 - One-line values (titles, names) have leading and trailing whitespace removed before they are checked and stored. Multi-line text (issue content, comments) is not trimmed.
+- Text with a NUL character (U+0000) or a surrogate without its pair (a code unit from U+D800 to U+DFFF that is not half of a high-low pair) is refused: 400 `INVALID_INPUT` with that field `INVALID_FORMAT`. Neither can be stored or shown. A surrogate pair, which is one character outside the basic plane such as an emoji, is taken as it is.
 
 ## Markdown content (COM-6)
 
