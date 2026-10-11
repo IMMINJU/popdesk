@@ -131,6 +131,78 @@
   min-height: 22px;
 }
 
+/* Lists: filters above a table, a person in a cell, the actions of a row */
+
+.pd-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.pd-filters > .pd-field {
+  width: 9rem;
+}
+
+.pd-filters > .pd-field[data-pd='TextField'] {
+  flex: 1;
+  min-width: 12rem;
+  max-width: 20rem;
+}
+
+.pd-person {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pd-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.pd-row-menu {
+  display: inline-flex;
+}
+
+.pd-row-menu-list {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+}
+
+.pd-row-menu-item {
+  height: 36px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pd-row-menu-item:hover,
+.pd-row-menu-item:focus-visible {
+  background: var(--accent-subtle);
+}
+
+.pd-row-menu-item[data-tone='danger'] {
+  color: var(--danger);
+}
+
 /* C-4 detail */
 
 .pd-detail {
@@ -208,6 +280,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+}
+
+.pd-detail-edit {
+  width: min(400px, 100%);
+}
+
+.pd-detail-edit .pd-form-actions {
+  justify-content: flex-start;
 }
 
 /* Login and invite accept: no side menu */

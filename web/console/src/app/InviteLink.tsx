@@ -1,4 +1,4 @@
-// An invitation link shown once (INVITE-6): a read-only field and 복사. When the
+// An invitation or reset link shown once (INVITE-6, S1A-AC-37): a read-only field and 복사. When the
 // clipboard is not available the field is selected for Ctrl+C. The link is
 // never logged or put in the address (MAIL-3).
 import { Alert, CopyField } from '@popdesk/ui';
@@ -8,7 +8,7 @@ import { useToast } from './toastContext';
 const ONCE = '이 링크는 지금만 보입니다. 대화상자를 닫으면 다시 볼 수 없습니다.';
 const BY_HAND = 'Ctrl+C로 복사하세요';
 
-export function InviteLink(props: { link: string; intro: string }) {
+export function InviteLink(props: { link: string; intro: string; label?: string }) {
   const toast = useToast();
   const [status, setStatus] = useState<'idle' | 'copied' | 'unavailable'>('idle');
 
@@ -30,7 +30,7 @@ export function InviteLink(props: { link: string; intro: string }) {
         {props.intro}
       </Alert>
       <CopyField
-        label="초대 링크"
+        label={props.label ?? '초대 링크'}
         value={props.link}
         status={status}
         copyLabel="복사"
