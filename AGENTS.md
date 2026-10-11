@@ -16,7 +16,8 @@ Order of authority when documents disagree: roadmap → ADR → canonical docs (
 - Tests come first and are locked. Never edit or delete a test to make your code pass. If a test looks wrong, stop and report.
 - The agent that writes a slice's tests does not implement it, and the reverse.
 - A test does not depend on test order or on state another test class set. JVM-wide options for tests go in the Surefire `argLine`.
-- Migrations only move forward. Never edit a merged migration.
+- Migrations only move forward. Never edit a merged migration. A change that adds a table also makes `deploy/upgrade/make-sample.py` fill it.
+- Do not bend the schema or production names to fit a test helper's guess. If a locked test breaks for that reason, stop and report.
 - Every business table has `tenant_id bigint NOT NULL`. Do not filter by it yet (ADR D-18).
 - Any query that returns customer data respects the customer-company boundary, with a negative test (company A cannot see company B).
 - Never put secrets, tokens, invitation links, or message content in logs. Email addresses only masked after the first character (PII-2).
