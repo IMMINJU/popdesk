@@ -79,7 +79,9 @@ class ConsoleAuditController {
                     + "same columns, `actor` as three columns and `target` and `changes` as JSON text; a value "
                     + "that starts with `=`, `+`, `-`, `@`, a tab, or a line break gets `'` in front "
                     + "(S1B-AC-25). The export itself is recorded as `AUDIT_EXPORTED` when it starts and is not "
-                    + "in its own file (S1B-AC-26). The response has `Cache-Control: no-store`.")
+                    + "in its own file (S1B-AC-26): its target is `{\"type\": \"AUDIT_LOG\"}` and its changes are "
+                    + "`format`, `count` (entries found when it started), and `filter` (an object with only the "
+                    + "filters that were sent; `{}` without any). The response has `Cache-Control: no-store`.")
     @ApiResponse(responseCode = "200", description = "The file.",
             headers = {
                 @Header(name = HttpHeaders.CONTENT_TYPE, description = "`text/csv; charset=UTF-8` for `CSV`, "
@@ -115,7 +117,8 @@ class ConsoleAuditController {
     @Operation(operationId = "headAuditLogExport", summary = "Headers of an audit log export",
             description = "Checks the same input as `exportAuditLog` and answers with the headers it would "
                     + "send, without the body. The console calls it before it starts the download. It records "
-                    + "nothing in the audit log.")
+                    + "nothing in the audit log and takes none of the 2 export places; it only answers 503 while "
+                    + "both are taken.")
     @ApiResponse(responseCode = "200", description = "The export would start.",
             headers = {
                 @Header(name = HttpHeaders.CONTENT_TYPE, description = "`text/csv; charset=UTF-8` for `CSV`, "
@@ -127,6 +130,10 @@ class ConsoleAuditController {
             + "has no body.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY)
+    @ApiResponse(responseCode = "503", description = "`SERVER_BUSY`: 2 exports are running; try again after "
+            + "`Retry-After` (S1B-AC-28). A `HEAD` response has no body.",
+            headers = @Header(name = HttpHeaders.RETRY_AFTER, description = "Seconds to wait before trying again.",
+                    schema = @Schema(type = "integer")))
     @RequestMapping(path = "/export", method = RequestMethod.HEAD)
     ResponseEntity<Void> headAuditLogExport(
             @Parameter(description = "The file format.") @RequestParam AuditExportFormat format,

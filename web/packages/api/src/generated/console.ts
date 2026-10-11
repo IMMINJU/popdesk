@@ -150,7 +150,7 @@ export interface paths {
         };
         /**
          * Export the audit log
-         * @description Every entry the filters of `listAuditEntries` find, in chain order (`seq`, lowest first), streamed as a file (S1B-AC-23, S1B-AC-27). `JSONL` has one JSON object per line with `id`, `seq`, `prevHash`, `hash`, `action`, `actor`, `target`, `changes`, `occurredAt`: everything needed to compute each hash again (S1B-AC-24). `CSV` has the same columns, `actor` as three columns and `target` and `changes` as JSON text; a value that starts with `=`, `+`, `-`, `@`, a tab, or a line break gets `'` in front (S1B-AC-25). The export itself is recorded as `AUDIT_EXPORTED` when it starts and is not in its own file (S1B-AC-26). The response has `Cache-Control: no-store`.
+         * @description Every entry the filters of `listAuditEntries` find, in chain order (`seq`, lowest first), streamed as a file (S1B-AC-23, S1B-AC-27). `JSONL` has one JSON object per line with `id`, `seq`, `prevHash`, `hash`, `action`, `actor`, `target`, `changes`, `occurredAt`: everything needed to compute each hash again (S1B-AC-24). `CSV` has the same columns, `actor` as three columns and `target` and `changes` as JSON text; a value that starts with `=`, `+`, `-`, `@`, a tab, or a line break gets `'` in front (S1B-AC-25). The export itself is recorded as `AUDIT_EXPORTED` when it starts and is not in its own file (S1B-AC-26): its target is `{"type": "AUDIT_LOG"}` and its changes are `format`, `count` (entries found when it started), and `filter` (an object with only the filters that were sent; `{}` without any). The response has `Cache-Control: no-store`.
          */
         get: operations["exportAuditLog"];
         put?: never;
@@ -159,7 +159,7 @@ export interface paths {
         options?: never;
         /**
          * Headers of an audit log export
-         * @description Checks the same input as `exportAuditLog` and answers with the headers it would send, without the body. The console calls it before it starts the download. It records nothing in the audit log.
+         * @description Checks the same input as `exportAuditLog` and answers with the headers it would send, without the body. The console calls it before it starts the download. It records nothing in the audit log and takes none of the 2 export places; it only answers 503 while both are taken.
          */
         head: operations["headAuditLogExport"];
         patch?: never;
@@ -947,7 +947,7 @@ export interface components {
              * @description The entry's place in the hash chain, from 1.
              */
             seq: number;
-            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`) and the keys that name it (`accountId`, `code`). */
+            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`) and the keys that name it (`accountId`, `code`). */
             target: {
                 [key: string]: unknown;
             } | null;
@@ -1799,7 +1799,7 @@ export interface operations {
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
-                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE";
+                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG";
                 /** @description Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account. */
                 targetAccountId?: number;
                 /** @description Only entries whose target names this customer company (`code` of the target). */
@@ -1867,7 +1867,7 @@ export interface operations {
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
-                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE";
+                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG";
                 /** @description Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account. */
                 targetAccountId?: number;
                 /** @description Only entries whose target names this customer company (`code` of the target). */
@@ -1947,7 +1947,7 @@ export interface operations {
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
-                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE";
+                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG";
                 /** @description Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account. */
                 targetAccountId?: number;
                 /** @description Only entries whose target names this customer company (`code` of the target). */
@@ -1995,6 +1995,17 @@ export interface operations {
             /** @description `FORBIDDEN`: admins only. */
             403: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `SERVER_BUSY`: 2 exports are running; try again after `Retry-After` (S1B-AC-28). A `HEAD` response has no body. */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again. */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {

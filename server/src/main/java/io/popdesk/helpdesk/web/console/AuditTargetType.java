@@ -4,5 +4,6 @@ package io.popdesk.helpdesk.web.console;
 public enum AuditTargetType {
     ACCOUNT,
     COMPANY,
-    DATABASE
+    DATABASE,
+    AUDIT_LOG
 }

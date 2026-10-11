@@ -14,8 +14,8 @@ public record AuditEntry(
         @Schema(description = "The kind of action: a value of the `action` filter. An entry someone changed in "
                 + "the database may hold another name, so this is a plain string.") String action,
         AuditActor actor,
-        @Schema(description = "What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`) "
-                + "and the keys that name it (`accountId`, `code`).", nullable = true) Map<String, Object> target,
+        @Schema(description = "What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, "
+                + "`DATABASE`, `AUDIT_LOG`) and the keys that name it (`accountId`, `code`).", nullable = true) Map<String, Object> target,
         @Schema(description = "What changed, as stored. A changed value is `{\"from\": ..., \"to\": ...}` under "
                 + "its field name; a value set for the first time is the value itself. Null when the action "
                 + "changes no value.", nullable = true) Map<String, Object> changes,
