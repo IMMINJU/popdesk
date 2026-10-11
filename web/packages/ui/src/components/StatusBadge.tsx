@@ -1,14 +1,16 @@
-import type { AccountStatus, Audience, IssueStatus, ProjectStatus } from '../types';
-import { ACCOUNT_STATUS_WORDS, ISSUE_STATUS_WORDS, PROJECT_STATUS_WORDS } from '../words';
+import type { AccountStatus, Audience, CompanyStatus, IssueStatus, ProjectStatus } from '../types';
+import { ACCOUNT_STATUS_WORDS, COMPANY_STATUS_WORDS, ISSUE_STATUS_WORDS, PROJECT_STATUS_WORDS } from '../words';
 
 /**
  * Dot and text. Issue status has two word sets: customer words
- * ("접수됨") and agent words ("접수"). Project and account status use
- * success, warning and neutral (tokens.md 1절).
+ * ("접수됨") and agent words ("접수"). Project, company and account status use
+ * success, warning and neutral (tokens.md 1절). `company` carries the slice 1a
+ * words (사용 중, 중지, 보관).
  */
 export type StatusBadgeProps =
   | { kind: 'issue'; status: IssueStatus; audience: Audience }
   | { kind: 'project'; status: ProjectStatus }
+  | { kind: 'company'; status: CompanyStatus }
   | { kind: 'account'; status: AccountStatus };
 
 /** Color group of the dot: issue values have their own, the rest use success, warning and neutral. */
@@ -22,6 +24,7 @@ function tone(props: StatusBadgeProps): string {
 function word(props: StatusBadgeProps): string {
   if (props.kind === 'issue') return ISSUE_STATUS_WORDS[props.status][props.audience];
   if (props.kind === 'project') return PROJECT_STATUS_WORDS[props.status];
+  if (props.kind === 'company') return COMPANY_STATUS_WORDS[props.status];
   return ACCOUNT_STATUS_WORDS[props.status];
 }
 

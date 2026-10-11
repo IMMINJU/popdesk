@@ -4,7 +4,7 @@
 export type * from './types';
 export * from './icons';
 export { codePoints, formatBytes } from './format';
-export { ACCOUNT_STATUS_WORDS, ISSUE_STATUS_WORDS, PRIORITY_WORDS, PROJECT_STATUS_WORDS } from './words';
+export { ACCOUNT_STATUS_WORDS, COMPANY_STATUS_WORDS, ISSUE_STATUS_WORDS, PRIORITY_WORDS, PROJECT_STATUS_WORDS } from './words';
 
 export { Alert, type AlertProps, type AlertTone } from './components/Alert';
 export { AppShell, type AppShellProps, type NavItem } from './components/AppShell';
@@ -34,6 +34,7 @@ export { MarkdownEditor, type MarkdownEditorProps, type MarkdownTool } from './c
 export { MarkdownView, type MarkdownViewProps } from './components/MarkdownView';
 export { Pagination, type PageLink, type PaginationProps } from './components/Pagination';
 export { PasswordField, type PasswordFieldProps } from './components/PasswordField';
+export { PhotoField, type PhotoFieldProps } from './components/PhotoField';
 export { PriorityLabel, type PriorityLabelProps } from './components/PriorityLabel';
 export { PriorityPicker, type PriorityPickerProps } from './components/PriorityPicker';
 export { ProgressBar, type ProgressBarProps } from './components/ProgressBar';

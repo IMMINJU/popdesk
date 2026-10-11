@@ -9,8 +9,8 @@ export interface AvatarProps {
    * Default `person`.
    */
   kind?: 'person' | 'support';
-  /** Photo URL. Photos come in slice 1 (ACCT-8, D-52); the first slice uses initials. */
-  photoUrl?: string;
+  /** Photo URL (ACCT-8, D-52). Absent or `null` shows the initials. */
+  photoUrl?: string | null;
   /** 작게, 보통. Default `md`. */
   size?: 'sm' | 'md';
   /** True when the name is written next to it, so it is not read twice (`alt=""`). */
