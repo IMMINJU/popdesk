@@ -66,7 +66,7 @@
 | S3-AC-12 | The system shall 내용의 마크다운 기호(`**`, `#`, 목록 표시, 인용 표시, 코드 울타리와 언어 이름)와 링크·이미지의 주소는 찾는 글자에 넣지 않고, 링크의 글자와 이미지의 설명, 코드 안의 글자는 넣는다. 글자로 적은 주소(자동 링크)와 내용 안의 HTML은 적힌 그대로 찾는다. (ISSUE-5, D-56, 5절 16) |
 | S3-AC-13 | The system shall 검색어의 `%`, `_`, `\`를 보통 글자로 다룬다. (COM-5, TM-32) |
 | S3-AC-14 | If `q`가 비었거나 100자를 넘으면, then the system shall 400과 `fields`로 답한다. 길이는 NFC로 맞춘 뒤 코드 포인트로 센다. (COM-5, conventions 글자 입력) |
-| S3-AC-15 | If 한 계정이 60초 안에 검색어가 든 목록 요청을 60번 넘게 보내면, then the system shall 429와 `Retry-After`로 답한다. 문의 목록과 계정 목록을 합쳐 센다. (COM-8) |
+| S3-AC-15 | If 한 계정이 60초 안에 검색어가 든 목록 요청을 60번 넘게 보내면, then the system shall 429와 `Retry-After`로 답한다. 문의 목록, 계정 목록, 올릴 수 있는 고객 목록(S3-AC-40)을 합쳐 센다. (COM-8) |
 | S3-AC-16 | When 문의의 제목이나 내용이 고쳐지면, the system shall 다음 검색부터 고친 글자로 찾는다. (ISSUE-6) |
 | S3-AC-17 | The system shall 문의 검색과 계정 검색(이름, 이메일)에 `pg_trgm` 색인을 둔다. 계정 검색의 결과는 지금과 같다. (D-13, 1a `verify.md`) |
 
