@@ -172,7 +172,7 @@ function InviteDialog(props: { company: Company; onClose: () => void; onInvited:
             {...(fields.errors.name ? { error: fields.errors.name } : {})}
           />
           {/* Both outcomes are told ahead, and never which one happened (S2-AC-15). */}
-          <p className="pd-muted">초대 메일이 가거나, 이미 계정이 있는 분이면 지원팀이 확인한 뒤 추가됩니다.</p>
+          <p className="pd-muted pd-invite-note">초대 메일이 가거나, 이미 계정이 있는 분이면 지원팀이 확인한 뒤 추가됩니다.</p>
         </form>
       </Dialog>
       <ConfirmDialog

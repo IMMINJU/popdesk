@@ -92,6 +92,11 @@
   word-break: keep-all;
 }
 
+/* The line under the invitation form breaks between words too. */
+.pd-invite-note {
+  word-break: keep-all;
+}
+
 /* 초대 alone, without the company choice, stays at the end of the row. */
 .pd-members-bar > .pd-button:only-child {
   margin-left: auto;
