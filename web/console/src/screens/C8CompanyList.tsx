@@ -1,5 +1,6 @@
-// C-8 고객사 목록 (관리자, screens.md 4절). List and 만들기 (PROJ-1).
-import { Button, ConfirmDialog, DataTable, Dialog, EmptyState, StatusBadge, TextField, type DataTableColumn } from '@popdesk/ui';
+// C-8 고객사 목록 (관리자, screens.md 4절). List and 만들기 (PROJ-1). Archived
+// companies stay hidden until 보관된 고객사 보기 is on (1a screens.md 2절).
+import { Button, Checkbox, ConfirmDialog, DataTable, Dialog, EmptyState, StatusBadge, TextField, type DataTableColumn } from '@popdesk/ui';
 import { useLayoutEffect, useRef, useState, type SubmitEvent } from 'react';
 import { Link } from 'react-router';
 import { api, type Schemas } from '../api';
@@ -170,6 +171,7 @@ export function C8CompanyList() {
   const page = usePageParam();
   const heading = useRef<HTMLHeadingElement>(null);
   const [creating, setCreating] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const load = useLoad(
     () => call(api.GET('/api/console/companies', { params: { query: { page, size: PAGE_SIZE } } })),
     String(page),
@@ -179,6 +181,9 @@ export function C8CompanyList() {
   const move = usePageMove(load.data, heading);
   const data = load.data;
   const outOfRange = data !== undefined && data.items.length === 0 && page > 1;
+  // The list API has no status filter, so the page is thinned here: a page can show fewer rows than its size.
+  const rows = (data?.items ?? []).filter((c) => showArchived || c.status !== 'ARCHIVED');
+  const onlyArchived = data !== undefined && data.items.length > 0 && rows.length === 0;
 
   return (
     <div className="pd-screen">
@@ -192,6 +197,7 @@ export function C8CompanyList() {
           고객사 만들기
         </Button>
       </div>
+      <Checkbox label="보관된 고객사 보기" checked={showArchived} onChange={setShowArchived} />
       {load.status === 'failed' && (
         <LoadFailed
           onRetry={() => {
@@ -203,7 +209,7 @@ export function C8CompanyList() {
         <DataTable
           caption={`고객사 목록, ${String(data?.totalElements ?? 0)}건`}
           columns={columns}
-          rows={data?.items ?? []}
+          rows={rows}
           rowKey={(c) => c.code}
           status={firstLoad ? 'loading' : 'ready'}
           skeletonRows={load.slow ? 8 : 0}
@@ -211,6 +217,8 @@ export function C8CompanyList() {
           empty={
             outOfRange ? (
               <EmptyState title="이 쪽에는 고객사가 없습니다" action={<Link to="/companies">1쪽으로</Link>} />
+            ) : onlyArchived ? (
+              <EmptyState title="이 쪽에는 보관된 고객사만 있습니다" description="위의 보관된 고객사 보기를 켜면 나옵니다." />
             ) : (
               <EmptyState title="첫 고객사를 만드세요. 고객사를 만들어야 고객을 초대할 수 있습니다." />
             )

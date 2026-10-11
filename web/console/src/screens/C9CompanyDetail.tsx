@@ -1,15 +1,30 @@
-// C-9 고객사 상세 (관리자, screens.md 4절). Info, 소속 고객 (read only), 배정
-// 상담원 with 상담원 배정 (PROJ-4). 배정 빼기 comes in slice 1.
-import { Alert, Button, DataTable, Dialog, EmptyState, RadioGroup, Skeleton, StatusBadge, type DataTableColumn } from '@popdesk/ui';
-import { useEffect, useRef, useState } from 'react';
+// C-9 고객사 상세 (관리자, screens.md 4절, 1a screens.md 2절). Info with 고치기,
+// status (멈춤, 다시 사용, 보관), 소속 고객 with 더하기·빼기, and 배정 상담원 with
+// 상담원 배정 and 빼기 (PROJ-1~4).
+import {
+  Alert,
+  Avatar,
+  Button,
+  ConfirmDialog,
+  DataTable,
+  Dialog,
+  EmptyState,
+  RadioGroup,
+  Skeleton,
+  StatusBadge,
+  TextField,
+  type DataTableColumn,
+} from '@popdesk/ui';
+import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import { useParams } from 'react-router';
 import { api, type Schemas } from '../api';
-import { SaveFailure } from '../app/bands';
+import { FieldSummary, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
-import { useLoad } from '../app/hooks';
+import { useFieldErrors, useLive, useLoad } from '../app/hooks';
 import { InviteDialog } from '../app/InviteDialog';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
 import { TEXT } from '../app/messages';
+import { photoUrl } from '../app/photos';
 import { call, type Failure, type Result } from '../app/result';
 import { useToast } from '../app/toastContext';
 
@@ -18,17 +33,30 @@ type Member = Schemas['CompanyMember'];
 type Account = Schemas['Account'];
 
 const LIST_SIZE = 100;
+const SEARCH_DELAY_MS = 300;
 
-const customerColumns: DataTableColumn<Member>[] = [
-  { key: 'name', header: '이름', cell: (m) => m.name },
-  { key: 'email', header: '이메일', cell: (m) => m.email },
-  { key: 'status', header: '계정 상태', cell: (m) => <StatusBadge kind="account" status={m.status} /> },
-];
+const SUSPENDED_BAND = '멈춘 고객사입니다. 새 문의를 받지 않습니다.';
+const ARCHIVED_BAND = '보관된 고객사입니다. 되돌릴 수 없습니다.';
 
-const agentColumns: DataTableColumn<Member>[] = [
-  { key: 'name', header: '이름', cell: (m) => m.name },
-  { key: 'email', header: '이메일', cell: (m) => m.email },
-];
+const COMPANY_ERRORS: Record<string, string> = {
+  COMPANY_ARCHIVED: '보관된 고객사라 바꿀 수 없습니다.',
+  COMPANY_NOT_ACTIVE: '보관된 고객사에는 더할 수 없습니다.',
+  NOT_FOUND: '고객사나 계정을 찾을 수 없습니다.',
+};
+
+/** Another tab changed the company: the screen is old, so it reads again (screens.md C-9 400). */
+function isStale(failure: Failure): boolean {
+  return failure.kind === 'rejected' && (failure.code === 'COMPANY_ARCHIVED' || failure.code === 'COMPANY_NOT_ACTIVE');
+}
+
+function memberCell(m: Member) {
+  return (
+    <span className="pd-person">
+      <Avatar name={m.name} photoUrl={photoUrl(m.accountId, m.photoUpdatedAt)} size="sm" decorative />
+      <span id={`member-${String(m.accountId)}`}>{m.name}</span>
+    </span>
+  );
+}
 
 function AssignDialog(props: { open: boolean; code: string; assigned: readonly Member[]; onClose: () => void; onAssigned: () => void }) {
   const toast = useToast();
@@ -116,7 +144,7 @@ function AssignDialog(props: { open: boolean; code: string; assigned: readonly M
         </>
       }
     >
-      <SaveFailure failure={failure} />
+      <SaveFailure failure={failure} known={COMPANY_ERRORS} />
       {candidates === null ? (
         <div aria-hidden="true">
           <Skeleton shape="line" count={3} />
@@ -143,16 +171,370 @@ function AssignDialog(props: { open: boolean; code: string; assigned: readonly M
   );
 }
 
+/**
+ * 소속 더하기 (S1A-AC-50): finds customer accounts by name or email. The screen
+ * mounts it anew for every opening, so an answer that comes after it closed
+ * changes nothing (S1A-AC-58).
+ */
+function AddCustomerDialog(props: { code: string; members: readonly Member[]; onClose: () => void; onAdded: () => void; onStale: () => void }) {
+  const toast = useToast();
+  const live = useLive();
+  const [query, setQuery] = useState('');
+  const [found, setFound] = useState<{ q: string; items: Account[] } | null>(null);
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [failure, setFailure] = useState<Failure | null>(null);
+  const [missing, setMissing] = useState(false);
+  const memberIds = new Set(props.members.map((m) => m.accountId));
+  const q = query.trim();
+
+  // Nothing is listed until something is typed; the search waits for the typing to stop.
+  useEffect(() => {
+    if (q === '') return undefined;
+    let current = true;
+    const timer = setTimeout(() => {
+      void call(api.GET('/api/console/accounts', { params: { query: { role: 'CUSTOMER', q, size: 20 } } })).then((result) => {
+        if (!current) return;
+        if (result.ok) {
+          setFound({ q, items: result.data.items });
+          setChosen(null);
+        } else {
+          setFound({ q, items: [] });
+          setFailure(result.failure);
+        }
+      });
+    }, SEARCH_DELAY_MS);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [q]);
+
+  const results = q !== '' && found?.q === q ? found.items.filter((a) => a.role === 'CUSTOMER') : null;
+
+  const add = async () => {
+    if (pending) return;
+    if (chosen === null) {
+      setMissing(true);
+      return;
+    }
+    setFailure(null);
+    setPending(true);
+    const result = await call(
+      api.PUT('/api/console/companies/{code}/customers/{accountId}', { params: { path: { code: props.code, accountId: Number(chosen) } } }),
+    );
+    if (result.ok) props.onAdded();
+    else if (isStale(result.failure)) props.onStale();
+    if (!live()) return;
+    setPending(false);
+    if (result.ok) {
+      toast(`${result.data.name} 님을 소속 고객에 더했습니다`);
+      props.onClose();
+      return;
+    }
+    setFailure(result.failure);
+  };
+
+  return (
+    <Dialog
+      open
+      title="소속 고객 더하기"
+      description="이미 있는 고객 계정을 이 고객사에 더합니다. 계정이 없으면 초대하세요."
+      closeLabel={TEXT.close}
+      pending={pending}
+      onClose={props.onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={props.onClose}>
+            {TEXT.cancel}
+          </Button>
+          <Button
+            pending={pending}
+            pendingLabel={TEXT.sending}
+            onClick={() => {
+              void add();
+            }}
+          >
+            더하기
+          </Button>
+        </>
+      }
+    >
+      <div className="pd-form">
+        <SaveFailure failure={failure} known={COMPANY_ERRORS} />
+        <TextField label="이름·이메일로 찾기" type="search" value={query} onChange={setQuery} maxLength={100} spellCheck={false} />
+        {results === null ? (
+          <p className="pd-muted">{q === '' ? '이름이나 이메일의 일부를 넣으면 고객 계정을 찾습니다.' : '찾는 중…'}</p>
+        ) : results.length === 0 ? (
+          <p className="pd-muted">맞는 고객 계정이 없습니다.</p>
+        ) : (
+          <RadioGroup
+            legend="더할 고객"
+            options={results.map((a) => {
+              const member = memberIds.has(a.id);
+              const note = member ? '소속됨' : a.status === 'INVITED' ? '수락 전' : a.status === 'SUSPENDED' ? '정지' : undefined;
+              return {
+                value: String(a.id),
+                label: `${a.name} · ${a.email}`,
+                ...(note === undefined ? {} : { description: note }),
+                ...(member ? { disabled: true } : {}),
+              };
+            })}
+            value={chosen}
+            onChange={(v) => {
+              setChosen(v);
+              setMissing(false);
+            }}
+            {...(missing ? { error: '더할 고객을 고르세요.' } : {})}
+          />
+        )}
+      </div>
+    </Dialog>
+  );
+}
+
+/** 소속 빼기·배정 빼기 (S1A-AC-52, 55). Mounted anew for every opening (S1A-AC-58). */
+function RemoveDialog(props: { code: string; kind: 'customer' | 'agent'; member: Member; onClose: () => void; onRemoved: () => void }) {
+  const toast = useToast();
+  const live = useLive();
+  const [pending, setPending] = useState(false);
+  const [failure, setFailure] = useState<Failure | null>(null);
+  const { member, kind } = props;
+
+  const remove = async () => {
+    if (pending) return;
+    setPending(true);
+    setFailure(null);
+    const path = { params: { path: { code: props.code, accountId: member.accountId } } };
+    const result =
+      kind === 'customer'
+        ? await call(api.DELETE('/api/console/companies/{code}/customers/{accountId}', path))
+        : await call(api.DELETE('/api/console/companies/{code}/agents/{accountId}', path));
+    if (result.ok) props.onRemoved();
+    if (!live()) return;
+    setPending(false);
+    if (result.ok) {
+      toast(kind === 'customer' ? `${member.name} 님을 소속 고객에서 뺐습니다` : `${member.name} 님을 배정에서 뺐습니다`);
+      props.onClose();
+      return;
+    }
+    setFailure(result.failure);
+  };
+
+  return (
+    <ConfirmDialog
+      open
+      tone="danger"
+      title={kind === 'customer' ? '소속 고객 빼기' : '배정 빼기'}
+      message={
+        <>
+          <p>
+            {member.name} 님은 이 고객사의 문의를 더 보지 못합니다.{kind === 'customer' && ' 자기가 올린 문의는 계속 봅니다.'}
+          </p>
+          <SaveFailure failure={failure} known={COMPANY_ERRORS} />
+        </>
+      }
+      confirmLabel="빼기"
+      cancelLabel={TEXT.cancel}
+      pending={pending}
+      pendingLabel={TEXT.sending}
+      onConfirm={() => {
+        void remove();
+      }}
+      onCancel={props.onClose}
+    />
+  );
+}
+
+/** 보관 확인: the confirm button works only once the company code is typed (S1A-AC-44). */
+function ArchiveDialog(props: { company: Company; onClose: () => void; onArchived: () => void; onStale: () => void }) {
+  const toast = useToast();
+  const live = useLive();
+  const [typed, setTyped] = useState('');
+  const [pending, setPending] = useState(false);
+  const [failure, setFailure] = useState<Failure | null>(null);
+  const { company } = props;
+  const matches = typed === company.code;
+
+  const archive = async () => {
+    if (pending || !matches) return;
+    setPending(true);
+    setFailure(null);
+    const result = await call(
+      api.PUT('/api/console/companies/{code}/status', { params: { path: { code: company.code } }, body: { status: 'ARCHIVED' } }),
+    );
+    if (result.ok) props.onArchived();
+    else if (isStale(result.failure)) props.onStale();
+    if (!live()) return;
+    setPending(false);
+    if (result.ok) {
+      toast(`고객사를 보관했습니다(${company.name})`);
+      props.onClose();
+      return;
+    }
+    setFailure(result.failure);
+  };
+
+  return (
+    <Dialog
+      open
+      role="alertdialog"
+      title="고객사 보관"
+      closable={false}
+      pending={pending}
+      onClose={props.onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={props.onClose}>
+            {TEXT.cancel}
+          </Button>
+          <Button
+            variant="danger"
+            pending={pending}
+            pendingLabel={TEXT.sending}
+            blocked={!matches}
+            onClick={() => {
+              void archive();
+            }}
+          >
+            보관
+          </Button>
+        </>
+      }
+    >
+      <form
+        className="pd-form"
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          void archive();
+        }}
+      >
+        <p>보관하면 되돌릴 수 없습니다. 새 문의, 소속·배정 더하기, 이름 고치기가 막힙니다.</p>
+        <SaveFailure failure={failure} known={COMPANY_ERRORS} />
+        <TextField
+          label="고객사 코드"
+          value={typed}
+          onChange={(v) => {
+            setTyped(v.toUpperCase());
+          }}
+          maxLength={10}
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          helpText={`보관하려면 이 고객사의 코드 ${company.code}를 넣으세요.`}
+        />
+      </form>
+    </Dialog>
+  );
+}
+
+/** 고치기 (S1A-AC-43): name and legal name. The code never changes. */
+function EditForm(props: { company: Company; onDone: () => void; onSaved: () => Promise<unknown>; onFailure: (failure: Failure) => void }) {
+  const toast = useToast();
+  const live = useLive();
+  const { company } = props;
+  const [name, setName] = useState(company.name);
+  const [legalName, setLegalName] = useState(company.legalName);
+  const [pending, setPending] = useState(false);
+  const [failure, setFailure] = useState<Failure | null>(null);
+  const fields = useFieldErrors({
+    name: { id: 'company-name', limits: { max: 100 } },
+    legalName: { id: 'company-legal-name', limits: { max: 100 } },
+  });
+
+  const submit = async (e: SubmitEvent) => {
+    e.preventDefault();
+    if (pending) return;
+    setFailure(null);
+    fields.clear();
+    setPending(true);
+    const result = await call(api.PATCH('/api/console/companies/{code}', { params: { path: { code: company.code } }, body: { name, legalName } }));
+    if (!live()) return;
+    if (result.ok) {
+      await props.onSaved();
+      if (!live()) return;
+      toast('고객사 정보를 고쳤습니다');
+      props.onDone();
+      return;
+    }
+    setPending(false);
+    const f = result.failure;
+    if (f.kind === 'invalid') fields.applyFields(f.fields, f.message);
+    else if (isStale(f)) props.onFailure(f);
+    else setFailure(f);
+  };
+
+  return (
+    <form
+      className="pd-form pd-detail-edit"
+      aria-label="고객사 정보 고치기"
+      noValidate
+      onSubmit={(e) => {
+        void submit(e);
+      }}
+    >
+      <FieldSummary summary={fields.summary} />
+      <SaveFailure failure={failure} known={COMPANY_ERRORS} />
+      <TextField label="코드" value={company.code} onChange={() => undefined} readOnly helpText="코드는 바꿀 수 없습니다" />
+      <TextField
+        id="company-name"
+        label="이름"
+        value={name}
+        onChange={setName}
+        maxLength={100}
+        helpText="콘솔과 포털에 보이는 이름입니다."
+        {...(fields.errors.name ? { error: fields.errors.name } : {})}
+      />
+      <TextField
+        id="company-legal-name"
+        label="회사명"
+        value={legalName}
+        onChange={setLegalName}
+        maxLength={100}
+        helpText="계약서에 쓰는 회사 이름입니다."
+        {...(fields.errors.legalName ? { error: fields.errors.legalName } : {})}
+      />
+      <div className="pd-form-actions">
+        <Button variant="secondary" onClick={props.onDone}>
+          {TEXT.cancel}
+        </Button>
+        <Button type="submit" pending={pending} pendingLabel={TEXT.sending}>
+          저장
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 interface Detail {
   company: Company;
   customers: Member[];
   agents: Member[];
 }
 
+/** What is open on top of the screen. */
+type Opened = { what: 'archive' } | { what: 'add-customer' } | { what: 'remove'; kind: 'customer' | 'agent'; member: Member };
+
 export function C9CompanyDetail() {
   const code = useParams().code ?? '';
+  // A new company is a new screen: nothing of the one before is kept, and its late answers are dropped (S1A-AC-58).
+  return <CompanyDetail key={code} code={code} />;
+}
+
+function CompanyDetail(props: { code: string }) {
+  const { code } = props;
+  const toast = useToast();
+  const live = useLive();
   const [assigning, setAssigning] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [opened, setOpened] = useState<Opened | null>(null);
+  // Counts openings: the key that makes every opening a new dialog.
+  const [openings, setOpenings] = useState(0);
+  const [statusPending, setStatusPending] = useState(false);
+  const [failure, setFailure] = useState<Failure | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const agentsHeading = useRef<HTMLHeadingElement>(null);
 
   const load = useLoad(async (): Promise<Result<Detail>> => {
@@ -200,39 +582,146 @@ export function C9CompanyDetail() {
   const { company } = detail;
   const archived = company.status === 'ARCHIVED';
 
+  const reload = () => {
+    void load.reload();
+  };
+
+  const open = (next: Opened) => {
+    setOpenings((n) => n + 1);
+    setOpened(next);
+  };
+  const close = () => {
+    setOpened(null);
+  };
+
+  // 멈춤 and 다시 사용 do not ask first (screens.md C-9).
+  const changeStatus = async (status: 'ACTIVE' | 'SUSPENDED') => {
+    if (statusPending) return;
+    setStatusPending(true);
+    setFailure(null);
+    const result = await call(api.PUT('/api/console/companies/{code}/status', { params: { path: { code } }, body: { status } }));
+    if (!live()) return;
+    if (result.ok || isStale(result.failure)) await load.reload();
+    if (!live()) return;
+    setStatusPending(false);
+    if (result.ok) toast(status === 'SUSPENDED' ? '고객사를 멈췄습니다' : '고객사를 다시 사용합니다');
+    else setFailure(result.failure);
+  };
+
+  const removeColumn = (kind: 'customer' | 'agent'): DataTableColumn<Member> => ({
+    key: 'actions',
+    header: <span className="pd-sr-only">동작</span>,
+    align: 'end',
+    cell: (m) => (
+      <Button
+        variant="quiet"
+        size="sm"
+        describedBy={`member-${String(m.accountId)}`}
+        onClick={() => {
+          open({ what: 'remove', kind, member: m });
+        }}
+      >
+        빼기
+      </Button>
+    ),
+  });
+
+  const customerColumns: DataTableColumn<Member>[] = [
+    { key: 'name', header: '이름', cell: memberCell },
+    { key: 'email', header: '이메일', cell: (m) => m.email },
+    { key: 'status', header: '계정 상태', cell: (m) => <StatusBadge kind="account" status={m.status} /> },
+    removeColumn('customer'),
+  ];
+
+  const agentColumns: DataTableColumn<Member>[] = [
+    { key: 'name', header: '이름', cell: memberCell },
+    { key: 'email', header: '이메일', cell: (m) => m.email },
+    removeColumn('agent'),
+  ];
+
   return (
     <div className="pd-screen pd-detail">
       <div className="pd-screen-head">
-        <PageTitle>{company.name}</PageTitle>
+        <PageTitle titleRef={heading}>{company.name}</PageTitle>
+        {!archived && (
+          <div className="pd-inline">
+            {!editing && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setFailure(null);
+                  setEditing(true);
+                }}
+              >
+                고치기
+              </Button>
+            )}
+            <Button
+              variant="secondary"
+              pending={statusPending}
+              pendingLabel={TEXT.sending}
+              onClick={() => {
+                void changeStatus(company.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE');
+              }}
+            >
+              {company.status === 'ACTIVE' ? '멈춤' : '다시 사용'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                open({ what: 'archive' });
+              }}
+            >
+              보관
+            </Button>
+          </div>
+        )}
       </div>
-      {load.status === 'failed' && (
-        <LoadFailed
-          onRetry={() => {
-            void load.reload();
+      {load.status === 'failed' && <LoadFailed onRetry={reload} />}
+      {company.status === 'SUSPENDED' && (
+        <Alert tone="warning" live="status">
+          {SUSPENDED_BAND}
+        </Alert>
+      )}
+      {archived && <Alert tone="info">{ARCHIVED_BAND}</Alert>}
+      <SaveFailure failure={failure} known={COMPANY_ERRORS} />
+      {editing && !archived ? (
+        <EditForm
+          company={company}
+          onDone={() => {
+            setEditing(false);
+            heading.current?.focus();
+          }}
+          onSaved={() => load.reload()}
+          onFailure={(f) => {
+            // Archived in another tab: the form goes and the screen shows what the company is now.
+            setFailure(f);
+            setEditing(false);
+            reload();
           }}
         />
+      ) : (
+        <dl className="pd-meta">
+          <div>
+            <dt>코드</dt>
+            <dd className="pd-key">{company.code}</dd>
+          </div>
+          <div>
+            <dt>이름</dt>
+            <dd>{company.name}</dd>
+          </div>
+          <div>
+            <dt>회사명</dt>
+            <dd>{company.legalName}</dd>
+          </div>
+          <div>
+            <dt>상태</dt>
+            <dd>
+              <StatusBadge kind="project" status={company.status} />
+            </dd>
+          </div>
+        </dl>
       )}
-      <dl className="pd-meta">
-        <div>
-          <dt>코드</dt>
-          <dd className="pd-key">{company.code}</dd>
-        </div>
-        <div>
-          <dt>이름</dt>
-          <dd>{company.name}</dd>
-        </div>
-        <div>
-          <dt>회사명</dt>
-          <dd>{company.legalName}</dd>
-        </div>
-        <div>
-          <dt>상태</dt>
-          <dd>
-            <StatusBadge kind="project" status={company.status} />
-          </dd>
-        </div>
-      </dl>
-      {archived && <Alert tone="info">보관한 고객사입니다. 고객을 초대하거나 상담원을 배정할 수 없습니다.</Alert>}
 
       <section className="pd-section" aria-labelledby="customers-title">
         <div className="pd-section-head">
@@ -240,15 +729,26 @@ export function C9CompanyDetail() {
             소속 고객
           </h2>
           {!archived && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setInviting(true);
-              }}
-            >
-              이 고객사로 고객 초대
-            </Button>
+            <div className="pd-inline">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  open({ what: 'add-customer' });
+                }}
+              >
+                고객 더하기
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setInviting(true);
+                }}
+              >
+                이 고객사로 고객 초대
+              </Button>
+            </div>
           )}
         </div>
         <DataTable
@@ -308,10 +808,15 @@ export function C9CompanyDetail() {
         onClose={() => {
           setInviting(false);
         }}
-        onInvited={() => {
-          void load.reload();
-        }}
+        onInvited={reload}
       />
+      {opened?.what === 'archive' && <ArchiveDialog key={openings} company={company} onClose={close} onArchived={reload} onStale={reload} />}
+      {opened?.what === 'add-customer' && (
+        <AddCustomerDialog key={openings} code={company.code} members={detail.customers} onClose={close} onAdded={reload} onStale={reload} />
+      )}
+      {opened?.what === 'remove' && (
+        <RemoveDialog key={openings} code={company.code} kind={opened.kind} member={opened.member} onClose={close} onRemoved={reload} />
+      )}
     </div>
   );
 }
