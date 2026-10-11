@@ -53,12 +53,12 @@
 | S1A-AC-07 | If 요청한 이메일이 `ACTIVE` 계정이 아니거나 반대쪽 앱의 계정이면, then the system shall 메일을 넣지 않는다. (AUTH-7) |
 | S1A-AC-08 | The system shall 재설정 토큰을 32바이트 난수로 만들고 DB에는 SHA-256 해시만 둔다. 토큰은 링크의 URL 조각(`#` 뒤)에만 둔다. (AUTH-7, INVITE-2, TM-11) |
 | S1A-AC-09 | When 링크를 연 사람이 AUTH-5에 맞는 새 비밀번호를 정하면, the system shall 비밀번호를 바꾸고 잠금을 푼다. 로그인시키지는 않는다. (AUTH-7, AUTH-3) |
-| S1A-AC-10 | If 토큰이 없거나, 1시간이 지났거나, 이미 썼거나, 새 요청으로 무효가 됐거나, 그 계정의 앱이 아닌 호스트로 왔으면, then the system shall 모두 같은 400으로 답하고 비밀번호를 바꾸지 않는다. (AUTH-7) |
+| S1A-AC-10 | If 토큰이 없거나, 1시간이 지났거나, 이미 썼거나, 새 요청으로 무효가 됐거나, 그 계정의 앱이 아닌 호스트로 왔으면, then the system shall 모두 같은 400으로 답하고 비밀번호를 바꾸지 않는다. 요청에 `token` 칸이 없거나 비어 있으면 무효인 토큰이 아니라 400 `INVALID_INPUT`(`token` `REQUIRED`)이다. (AUTH-7, C-5에서 정함) |
 | S1A-AC-11 | If 새 비밀번호가 AUTH-5에 맞지 않아 400이 나면, then the system shall 토큰을 쓰지 않은 것으로 둔다. (AUTH-7, S0-AC-36과 같게) |
 | S1A-AC-12 | When 같은 계정에 비밀번호 찾기를 다시 요청하면, the system shall 이전 링크를 무효로 한다. If 앞 메일을 넣은 지 15분이 안 됐으면, then 새 메일을 넣지 않고 이전 링크도 그대로 둔다. (AUTH-7) |
 | S1A-AC-13 | If 한 IP에서 60초 안에 비밀번호 찾기 요청이 20번을 넘으면, then the system shall 429와 `Retry-After`로 답한다. (AUTH-7, COM-8) |
 | S1A-AC-14 | The system shall 재설정 토큰을 담거나 받는 응답에 `Cache-Control: no-store`를 붙이고, 토큰과 링크를 로그와 감사 로그에 남기지 않는다. (AUTH-7, PII-2, S0-AC-101) |
-| S1A-AC-15 | The system shall 쓰거나 만료된 재설정 토큰을 정리 작업으로 지우고, 그 작업의 마지막 실행 시각과 지운 수를 남긴다. (features 13절 보관 표, OPS-2) |
+| S1A-AC-15 | The system shall 쓰거나 만료된 재설정 토큰을 정리 작업으로 지우고, 그 작업의 마지막 실행 시각과 지운 수를 남긴다. 이 정리는 다른 정리 작업에 얹지 않고 자기 기록 행을 따로 갖는다. (features 13절 보관 표, OPS-2) |
 
 ### 3.3 내 정보
 
@@ -66,7 +66,7 @@
 |---|---|
 | S1A-AC-16 | When 본인이 이름(1~50자)이나 언어(`ko`·`en`)를 바꾸면, the system shall 저장하고 다음 응답부터 새 값을 준다. 그 뒤 그 계정에 가는 메일은 새 언어다. (ACCT-1, ACCT-2, MAIL-1) |
 | S1A-AC-17 | When 본인이 지금 비밀번호와 AUTH-5에 맞는 새 비밀번호를 내면, the system shall 비밀번호를 바꾼다. (ACCT-2) |
-| S1A-AC-18 | If 지금 비밀번호가 틀리면, then the system shall 400 `CURRENT_PASSWORD_WRONG`으로 답하고 바꾸지 않는다. 다섯 번 연속 틀리면 로그인 잠금(S0-AC-23)과 같이 15분 동안 이 요청을 429와 `Retry-After`로 막는다. (ACCT-2, AUTH-3, 5절 1) |
+| S1A-AC-18 | If 지금 비밀번호가 틀리면, then the system shall 400 `CURRENT_PASSWORD_WRONG`으로 답하고 바꾸지 않는다. 다섯 번 연속 틀리면 로그인 잠금(S0-AC-23)과 같이 15분 동안 이 요청을 429와 `Retry-After`로 막는다(다섯째까지는 400이고 여섯째부터 429다. 막힌 동안 그 세션은 이어진다). (ACCT-2, AUTH-3, 5절 1) |
 | S1A-AC-19 | The system shall 내 정보 응답에 이름, 이메일, 언어, 역할, 사진을 바꾼 시각(없으면 `null`)을 주고, 고객에게는 소속 고객사를, 상담원에게는 배정된 고객사를 함께 준다. (screens P-6, C-6) |
 
 ### 3.4 프로필 사진
