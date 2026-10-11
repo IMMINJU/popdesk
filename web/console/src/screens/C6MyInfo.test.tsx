@@ -97,17 +97,32 @@ describe('C-6 내 정보', () => {
     expect(text(screen.getByRole('banner'))).not.toContain(ADMIN.name);
   });
 
-  test('S1A-AC-16 C-6 프로필 언어: 언어를 바꿔 저장하면 화면 문구가 바로 그 언어로 바뀐다', async () => {
+  test('S1A-AC-16 C-6 프로필 언어: 언어는 메일에만 쓰인다. en으로 저장하면 locale을 보내고 저장 토스트를 보이며, 화면 문구와 html lang은 한국어 그대로다', async () => {
     const { user } = renderAt('/me');
+    expect(text(await profile())).toContain('메일에 쓰는 언어입니다. 화면은 한국어로 보입니다.');
     await user.selectOptions(await language(), 'en');
     await user.click(await save());
 
     const [patch] = await sent('PATCH', '/api/console/me');
     expect(await patch?.body).toMatchObject({ locale: 'en' });
     await eventually(() => {
-      expect(document.documentElement.lang).toBe('en');
-      expect(text(screen.getByRole('heading', { level: 1 }))).not.toBe('내 정보');
+      expect(toasts().some((t) => matchText(t, /저장/)), '저장 토스트').toBe(true);
     });
+    await settle();
+    expect(document.documentElement.lang).toBe('ko');
+    expect(text(await heading1())).toBe('내 정보');
+    expect(await language()).toHaveValue('en');
+  });
+
+  test('S1A-AC-16 C-6 프로필 언어: 언어가 en인 계정으로 열어도 화면 문구와 html lang은 한국어이고, 언어 칸에는 en이 골라져 있다', async () => {
+    signInAs(ADMIN, { locale: 'en' });
+    renderAt('/me');
+
+    expect(await language()).toHaveValue('en');
+    await settle();
+    expect(document.documentElement.lang).toBe('ko');
+    expect(text(await heading1())).toBe('내 정보');
+    await save();
   });
 
   test('S1A-AC-60 C-6 사진 없음: 머리글자와 "사진 올리기", 받는 형식과 크기 안내. 사진을 청하지 않는다', async () => {

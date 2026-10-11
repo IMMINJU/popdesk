@@ -270,6 +270,23 @@ describe('C-10 구성원 목록 (1a)', () => {
     await closed();
   });
 
+  test.each([
+    ['상담원을 관리자로', LEE, '관리자로'],
+    ['관리자를 상담원으로', account({ id: 5, email: 'yoon@popdesk.test', name: '윤관리', role: 'ADMIN' }), '상담원으로'],
+  ])('S1A-AC-31 C-10 역할 바꾸기 문구 %s: 대화상자와 토스트에 조사를 맞춰 적고 "(으)로"는 보이지 않는다', async (_, who, word) => {
+    seed();
+    state.accounts = [...state.accounts.filter((a) => a.id !== who.id), who];
+    const { user } = renderAt('/members');
+    const box = await openRowAction(user, who.name, '역할 바꾸기');
+    expect(text(box)).toContain(word);
+    expect(text(box)).not.toContain('(으)로');
+    await user.click(confirmButton(box));
+
+    const toast = await statusWith(`${who.name} 님의 역할을`);
+    expect(text(toast)).toContain(word);
+    expect(text(toast)).not.toContain('(으)로');
+  });
+
   test('S1A-AC-35 C-10 정지 풀기: 누르면 풀고 줄의 배지가 "사용 중"으로 바뀐다', async () => {
     seed();
     const { user } = renderAt('/members');
