@@ -114,7 +114,13 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
   format: '형식',
   count: '건수',
   filter: '조건',
+  expiresAt: '만료',
+  lockedUntil: '잠금 풀림',
 };
+
+/** Fields that hold a time. */
+const TIME_FIELDS: ReadonlySet<string> = new Set(['expiresAt', 'lockedUntil']);
+const NONE = '없음';
 
 const ROLE_WORDS: Readonly<Record<string, string>> = { CUSTOMER: '고객', AGENT: '상담원', ADMIN: '관리자' };
 
@@ -122,12 +128,77 @@ function word(words: Readonly<Record<string, string>>, name: string): string {
   return Object.hasOwn(words, name) ? (words[name] ?? name) : name;
 }
 
+/** A stored time the way the other screens show an exact time, in the browser's time zone. Anything else stays as it is. */
+function timeWord(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return null;
+  return new Intl.DateTimeFormat(document.documentElement.lang || 'ko', { dateStyle: 'long', timeStyle: 'short' }).format(at);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function sameKinds(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((kind) => b.includes(kind));
+}
+
+/** The kinds an export was narrowed to, as the 종류 filter names them: a choice of the filter when they are one, else each kind. */
+function kindsWord(kinds: readonly string[]): string {
+  if (kinds.length > 1) {
+    if (sameKinds(kinds, kindsOfChoice(NOT_SIGN_IN))) return '로그인 기록 빼고';
+    const group = KIND_GROUPS.find((g) => sameKinds(kinds, Object.keys(g.kinds)));
+    if (group) return group.name;
+  }
+  return kinds.map((kind) => kindWord(kind) ?? kind).join(', ');
+}
+
+function actorWord(value: unknown): string {
+  if (value === 0) return '시스템';
+  return typeof value === 'number' ? `계정 ${String(value)}` : valueWord('', '', value);
+}
+
+/**
+ * The filters of an export (the query names of the list) in the words of the
+ * filter row: "종류: 계정, 부터: 2026년 10월 7일 오전 12:00". A key the screen does
+ * not know shows as it is.
+ */
+function filterWord(filter: Readonly<Record<string, unknown>>): string {
+  const parts: string[] = [];
+  const target = targetOf({
+    type: typeof filter.targetType === 'string' ? filter.targetType : null,
+    accountId: filter.targetAccountId,
+    code: filter.targetCode,
+  });
+  let targetShown = false;
+  for (const [key, value] of Object.entries(filter)) {
+    if (key === 'action' && Array.isArray(value) && value.every((kind) => typeof kind === 'string')) {
+      parts.push(`종류: ${kindsWord(value)}`);
+    } else if (key === 'actorAccountId') {
+      parts.push(`한 사람: ${actorWord(value)}`);
+    } else if (target && (key === 'targetType' || key === 'targetAccountId' || key === 'targetCode')) {
+      if (!targetShown) parts.push(`대상: ${targetWord(target)}`);
+      targetShown = true;
+    } else if (key === 'from' || key === 'to') {
+      parts.push(`${key === 'from' ? '부터' : '까지'}: ${timeWord(value) ?? valueWord('', '', value)}`);
+    } else {
+      parts.push(`${key}: ${valueWord('', '', value)}`);
+    }
+  }
+  return parts.join(', ');
+}
+
 function valueWord(action: string, field: string, value: unknown): string {
-  if (value === null || value === undefined) return '없음';
+  if (value === null || value === undefined) return NONE;
   if (typeof value === 'boolean') return value ? '예' : '아니오';
-  if (Array.isArray(value)) return value.map((item) => valueWord(action, '', item)).join(', ');
-  if (typeof value === 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return value.length === 0 ? NONE : value.map((item) => valueWord(action, '', item)).join(', ');
+  if (isRecord(value)) {
+    if (Object.keys(value).length === 0) return NONE;
+    return field === 'filter' ? filterWord(value) : JSON.stringify(value);
+  }
   const text = typeof value === 'string' ? value : JSON.stringify(value);
+  if (TIME_FIELDS.has(field)) return timeWord(value) ?? text;
   if (field === 'role') return word(ROLE_WORDS, text);
   // 정지 is an account's word and 멈춤 a company's for the same stored name.
   if (field === 'status') return word(action.startsWith('COMPANY_') ? PROJECT_STATUS_WORDS : ACCOUNT_STATUS_WORDS, text);
@@ -135,13 +206,14 @@ function valueWord(action: string, field: string, value: unknown): string {
 }
 
 function isFromTo(value: unknown): value is { from: unknown; to: unknown } {
-  return typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 2 && 'from' in value && 'to' in value;
+  return isRecord(value) && Object.keys(value).length === 2 && 'from' in value && 'to' in value;
 }
 
 /** One line for each changed field: "역할: 상담원 → 관리자", or "칸: 값" for a value that is not from and to. */
 export function changeLines(action: string, changes: Readonly<Record<string, unknown>> | null): string[] {
   return Object.entries(changes ?? {}).map(([field, value]) => {
-    const shown = isFromTo(value) ? `${valueWord(action, field, value.from)} → ${valueWord(action, field, value.to)}` : valueWord(action, field, value);
+    // An export's filter may hold just 부터 and 까지: it is not a change from one value to another.
+    const shown = field !== 'filter' && isFromTo(value) ? `${valueWord(action, field, value.from)} → ${valueWord(action, field, value.to)}` : valueWord(action, field, value);
     return `${word(FIELD_WORDS, field)}: ${shown}`;
   });
 }
