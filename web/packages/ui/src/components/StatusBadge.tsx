@@ -1,16 +1,14 @@
-import type { AccountStatus, Audience, CompanyStatus, IssueStatus, ProjectStatus } from '../types';
-import { ACCOUNT_STATUS_WORDS, COMPANY_STATUS_WORDS, ISSUE_STATUS_WORDS, PROJECT_STATUS_WORDS } from '../words';
+import type { AccountStatus, Audience, IssueStatus, ProjectStatus } from '../types';
+import { ACCOUNT_STATUS_WORDS, ISSUE_STATUS_WORDS, PROJECT_STATUS_WORDS } from '../words';
 
 /**
  * Dot and text. Issue status has two word sets: customer words
- * ("접수됨") and agent words ("접수"). Project, company and account status use
- * success, warning and neutral (tokens.md 1절). `company` carries the slice 1a
- * words (사용 중, 중지, 보관).
+ * ("접수됨") and agent words ("접수"). Project (customer company) and account
+ * status use success, warning and neutral (tokens.md 1절).
  */
 export type StatusBadgeProps =
   | { kind: 'issue'; status: IssueStatus; audience: Audience }
   | { kind: 'project'; status: ProjectStatus }
-  | { kind: 'company'; status: CompanyStatus }
   | { kind: 'account'; status: AccountStatus };
 
 /** Color group of the dot: issue values have their own, the rest use success, warning and neutral. */
@@ -24,13 +22,13 @@ function tone(props: StatusBadgeProps): string {
 function word(props: StatusBadgeProps): string {
   if (props.kind === 'issue') return ISSUE_STATUS_WORDS[props.status][props.audience];
   if (props.kind === 'project') return PROJECT_STATUS_WORDS[props.status];
-  if (props.kind === 'company') return COMPANY_STATUS_WORDS[props.status];
   return ACCOUNT_STATUS_WORDS[props.status];
 }
 
-/** Hollow dot for ended states (종료됨) and accounts not accepted yet (tokens.md 7절). */
+/** Hollow dot for ended states (종료됨, 초대 취소됨) and accounts not accepted yet (tokens.md 7절). */
 function hollow(props: StatusBadgeProps): boolean {
-  return (props.kind === 'issue' && props.status === 'CLOSED') || (props.kind === 'account' && props.status === 'INVITED');
+  if (props.kind === 'issue') return props.status === 'CLOSED';
+  return props.kind === 'account' && (props.status === 'INVITED' || props.status === 'INVITE_CANCELLED');
 }
 
 export function StatusBadge(props: StatusBadgeProps) {

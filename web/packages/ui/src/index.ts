@@ -4,7 +4,7 @@
 export type * from './types';
 export * from './icons';
 export { codePoints, formatBytes } from './format';
-export { ACCOUNT_STATUS_WORDS, COMPANY_STATUS_WORDS, ISSUE_STATUS_WORDS, PRIORITY_WORDS, PROJECT_STATUS_WORDS } from './words';
+export { ACCOUNT_STATUS_WORDS, ISSUE_STATUS_WORDS, PRIORITY_WORDS, PROJECT_STATUS_WORDS } from './words';
 
 export { Alert, type AlertProps, type AlertTone } from './components/Alert';
 export { AppShell, type AppShellProps, type NavItem } from './components/AppShell';

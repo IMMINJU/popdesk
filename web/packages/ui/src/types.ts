@@ -13,9 +13,6 @@ export type IssueStatus = 'RECEIVED' | 'CONFIRMED' | 'IN_PROGRESS' | 'RESOLVED' 
 
 export type ProjectStatus = 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
 
-/** Customer company (slice 1a): 사용 중, 중지, 보관. */
-export type CompanyStatus = 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
-
 /**
  * `INVITE_CANCELLED` is not an API status: screens map an account whose
  * invitation an admin cancelled (`cancelled: true`, S1A-AC-42) onto it.

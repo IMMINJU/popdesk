@@ -25,11 +25,6 @@ export const ProjectActive: Story = { args: { kind: 'project', status: 'ACTIVE' 
 export const ProjectSuspended: Story = { args: { kind: 'project', status: 'SUSPENDED' } };
 export const ProjectArchived: Story = { args: { kind: 'project', status: 'ARCHIVED' } };
 
-// 고객사 상태, 1a 묶음의 말(사용 중, 중지, 보관)
-export const CompanyActive: Story = { args: { kind: 'company', status: 'ACTIVE' } };
-export const CompanySuspended: Story = { args: { kind: 'company', status: 'SUSPENDED' } };
-export const CompanyArchived: Story = { args: { kind: 'company', status: 'ARCHIVED' } };
-
 // 계정 상태
 export const AccountActive: Story = { args: { kind: 'account', status: 'ACTIVE' } };
 export const AccountInvited: Story = { args: { kind: 'account', status: 'INVITED' } };

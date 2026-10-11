@@ -1,6 +1,6 @@
 // Korean words for the value types (tokens.md 1·7절). The components use them,
 // and screens use them where a value shows as plain text (a filter, a toast).
-import type { AccountStatus, Audience, CompanyStatus, IssueStatus, Priority, ProjectStatus } from './types';
+import type { AccountStatus, Audience, IssueStatus, Priority, ProjectStatus } from './types';
 
 export const PRIORITY_WORDS: Readonly<Record<Priority, string>> = { LOW: '낮음', NORMAL: '보통', HIGH: '높음', URGENT: '긴급' };
 
@@ -14,8 +14,6 @@ export const ISSUE_STATUS_WORDS: Readonly<Record<IssueStatus, Readonly<Record<Au
 };
 
 export const PROJECT_STATUS_WORDS: Readonly<Record<ProjectStatus, string>> = { ACTIVE: '사용 중', SUSPENDED: '멈춤', ARCHIVED: '보관' };
-
-export const COMPANY_STATUS_WORDS: Readonly<Record<CompanyStatus, string>> = { ACTIVE: '사용 중', SUSPENDED: '중지', ARCHIVED: '보관' };
 
 export const ACCOUNT_STATUS_WORDS: Readonly<Record<AccountStatus, string>> = {
   ACTIVE: '사용 중',
