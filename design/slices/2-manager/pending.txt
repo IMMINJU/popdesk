@@ -12,22 +12,8 @@ server io/popdesk/manager/MemberInviteTest.java
 server io/popdesk/manager/MemberListTest.java
 server io/popdesk/manager/MemberMailTest.java
 server io/popdesk/manager/MemberRemoveTest.java
-web src/app/layout.navCount.test.tsx
-web src/screens/C12AuditLog.kinds2.test.tsx
-web src/screens/C8CompanyList.requests.test.tsx
-web src/screens/C9CompanyDetail.manager.test.tsx
-web src/screens/C9CompanyDetail.requests.test.tsx
-web src/components/AppShell.navCount.test.tsx
-web src/screens/P6MyInfo.manager.test.tsx
-web src/screens/P8Members.actions.test.tsx
-web src/screens/P8Members.late.test.tsx
-web src/screens/P8Members.test.tsx
 server io/popdesk/manager/ManagerAuditTest.java
 server io/popdesk/manager/ManagerConcurrencyTest.java
 server io/popdesk/manager/MembershipRequestMailTest.java
 server io/popdesk/manager/MembershipRequestTest.java
 server io/popdesk/deploy/ManagerUpgradeTest.java
-# 감사 종류가 23에서 29로 늘어 테스트 쪽이 고친 1b의 테스트 셋. 구현(종류의 말 여섯)이 들어가면 통과한다.
-web src/app/auditWords.words.test.ts
-web src/screens/C12AuditLog.filters.test.tsx
-web src/screens/C12AuditLog.test.tsx
