@@ -1,0 +1,214 @@
+# 실패 확인
+
+> 실패한 테스트는 이름만 적었다. 실패 메시지는 넣지 않았다. 숨긴 E2E는 여기 없다(레포 밖).
+
+- 단언 실패 189, 통과 0, 허용한 통과 13, 오류 0, 건너뜀 0
+- 판정: 통과
+
+## 처음부터 통과해도 된다고 허용한 테스트 (점검에서 이유를 본다)
+
+- `io.popdesk.manager.ManagerMarkTest.agentsCannotMark`: S2-AC-02 보안 설정이 /api/console/companies/*/customers/**를 이미 상담원에게 403으로 막는다. 구현 뒤에도 그대로여야 한다
+- `io.popdesk.manager.MemberDecidedCasesTest.adminInvitationStillTakesTheName(String, String)[1]`: S2-AC-53 관리자 초대는 지금도 이름의 줄바꿈과 탭을 201로 받는다. 구현 뒤에도 바뀌지 않는다는 것을 지킨다
+- `io.popdesk.manager.MemberDecidedCasesTest.adminInvitationStillTakesTheName(String, String)[2]`: S2-AC-53 관리자 초대는 지금도 이름의 줄바꿈과 탭을 201로 받는다. 구현 뒤에도 바뀌지 않는다는 것을 지킨다
+- `io.popdesk.manager.MemberDecidedCasesTest.adminInvitationStillTakesTheName(String, String)[3]`: S2-AC-53 관리자 초대는 지금도 이름의 줄바꿈과 탭을 201로 받는다. 구현 뒤에도 바뀌지 않는다는 것을 지킨다
+- `io.popdesk.manager.MemberDecidedCasesTest.adminInvitationStillTakesTheName(String, String)[4]`: S2-AC-53 관리자 초대는 지금도 이름의 줄바꿈과 탭을 201로 받는다. 구현 뒤에도 바뀌지 않는다는 것을 지킨다
+- `io.popdesk.manager.MembershipRequestTest.agentCannotList`: S2-AC-33 보안 설정이 /api/console/membership-requests/**를 이미 상담원에게 403으로 막는다. 구현 뒤에도 그대로여야 한다
+- `src/app/layout.navCount.test.tsx.콘솔 옆 메뉴: 고객사의 소속 요청 수 (2번 묶음) > S2-AC-48 옆 메뉴(관리자): 걸려 있는 요청이 없으면 숫자가 없고 이름은 "고객사"뿐이다`: S2-AC-48 숫자를 아직 그리지 않는다. 구현 뒤에도 그대로여야 한다
+- `src/app/layout.navCount.test.tsx.콘솔 옆 메뉴: 고객사의 소속 요청 수 (2번 묶음) > S2-AC-48 옆 메뉴(상담원): "고객사" 항목도 숫자도 없다`: S2-AC-48 상담원에게는 원래 "고객사" 항목이 없다. 구현 뒤에도 그대로여야 한다
+- `src/components/AppShell.navCount.test.tsx.AppShell NavItem의 count (2번 묶음) > AppShell count를 주지 않으면: 숫자가 없고 링크의 이름은 글자뿐이다`: design.md 6절 숫자를 아직 그리지 않는다. 구현 뒤에도 그대로여야 한다
+- `src/components/AppShell.navCount.test.tsx.AppShell NavItem의 count (2번 묶음) > AppShell count를 0이면: 숫자가 없고 링크의 이름은 글자뿐이다`: design.md 6절 숫자를 아직 그리지 않는다. 구현 뒤에도 그대로여야 한다
+- `src/components/AppShell.navCount.test.tsx.AppShell NavItem의 count (2번 묶음) > AppShell 포털의 nav: app이 portal이어도 nav를 주면 항목이 링크로 보인다`: design.md 6절 `AppShell`은 `app`과 관계없이 `nav`를 그린다. 구현 뒤에도 그대로여야 한다
+- `src/components/RowMenu.shared.test.tsx.RowMenu (@popdesk/ui) > RowMenu 이름: 버튼과 열린 목록이 label을 접근 가능한 이름으로 갖고, 항목은 준 순서대로다`: design.md 6절 C-4 껍데기가 이미 옮겼다. 구현 뒤에도 그대로여야 한다
+- `src/components/RowMenu.shared.test.tsx.RowMenu (@popdesk/ui) > RowMenu axe: 닫혔을 때와 열렸을 때 접근성 위반이 없다`: design.md 6절 C-4 껍데기가 이미 옮겼다. 구현 뒤에도 그대로여야 한다
+
+## 단언에서 실패한 테스트
+
+- `io.popdesk.deploy.ManagerUpgradeTest.olderSampleGetsRowsWithoutManagers(String)[1]`
+- `io.popdesk.deploy.ManagerUpgradeTest.olderSampleGetsRowsWithoutManagers(String)[2]`
+- `io.popdesk.deploy.ManagerUpgradeTest.sampleHasAManagerAndAPendingRequest`
+- `io.popdesk.manager.ManagerAuditTest.chainHoldsWithTheNewKinds`
+- `io.popdesk.manager.ManagerAuditTest.eachActionLeavesAnEntry(Kind)[1]`
+- `io.popdesk.manager.ManagerAuditTest.eachActionLeavesAnEntry(Kind)[2]`
+- `io.popdesk.manager.ManagerAuditTest.eachActionLeavesAnEntry(Kind)[3]`
+- `io.popdesk.manager.ManagerAuditTest.eachActionLeavesAnEntry(Kind)[4]`
+- `io.popdesk.manager.ManagerAuditTest.eachActionLeavesAnEntry(Kind)[5]`
+- `io.popdesk.manager.ManagerAuditTest.eachActionLeavesAnEntry(Kind)[6]`
+- `io.popdesk.manager.ManagerAuditTest.eachActionLeavesAnEntry(Kind)[7]`
+- `io.popdesk.manager.ManagerAuditTest.eachActionLeavesAnEntry(Kind)[8]`
+- `io.popdesk.manager.ManagerAuditTest.eachActionLeavesAnEntry(Kind)[9]`
+- `io.popdesk.manager.ManagerAuditTest.eachActionLeavesAnEntry(Kind)[10]`
+- `io.popdesk.manager.ManagerAuditTest.nothingDoneLeavesNoEntry(String)[1]`
+- `io.popdesk.manager.ManagerAuditTest.nothingDoneLeavesNoEntry(String)[2]`
+- `io.popdesk.manager.ManagerAuditTest.nothingDoneLeavesNoEntry(String)[3]`
+- `io.popdesk.manager.ManagerAuditTest.nothingDoneLeavesNoEntry(String)[4]`
+- `io.popdesk.manager.ManagerIssueScopeTest.managerSeesNoMoreIssues`
+- `io.popdesk.manager.ManagerMarkTest.leavingDropsTheMark`
+- `io.popdesk.manager.ManagerMarkTest.invitedCustomerCanBeMarked`
+- `io.popdesk.manager.ManagerMarkTest.markAppliesFromTheNextRequest`
+- `io.popdesk.manager.ManagerMarkTest.severalManagers`
+- `io.popdesk.manager.ManagerMarkTest.onlyCustomersOfTheCompany(String)[1]`
+- `io.popdesk.manager.ManagerMarkTest.onlyCustomersOfTheCompany(String)[2]`
+- `io.popdesk.manager.ManagerMarkTest.onlyCustomersOfTheCompany(String)[3]`
+- `io.popdesk.manager.ManagerMarkTest.markIsPerCompany`
+- `io.popdesk.manager.ManagerMarkTest.markIsShown`
+- `io.popdesk.manager.ManagerMarkTest.archivedCompany`
+- `io.popdesk.manager.MemberAccessTest.onlyManagersOfTheCompany(Endpoint)[1]`
+- `io.popdesk.manager.MemberAccessTest.onlyManagersOfTheCompany(Endpoint)[2]`
+- `io.popdesk.manager.MemberAccessTest.onlyManagersOfTheCompany(Endpoint)[3]`
+- `io.popdesk.manager.MemberAccessTest.onlyManagersOfTheCompany(Endpoint)[4]`
+- `io.popdesk.manager.MemberAccessTest.appliesFromTheNextRequest(Endpoint, String, int, String)[1]`
+- `io.popdesk.manager.MemberAccessTest.appliesFromTheNextRequest(Endpoint, String, int, String)[2]`
+- `io.popdesk.manager.MemberAccessTest.appliesFromTheNextRequest(Endpoint, String, int, String)[3]`
+- `io.popdesk.manager.MemberAccessTest.appliesFromTheNextRequest(Endpoint, String, int, String)[4]`
+- `io.popdesk.manager.MemberAccessTest.appliesFromTheNextRequest(Endpoint, String, int, String)[5]`
+- `io.popdesk.manager.MemberAccessTest.appliesFromTheNextRequest(Endpoint, String, int, String)[6]`
+- `io.popdesk.manager.MemberAccessTest.appliesFromTheNextRequest(Endpoint, String, int, String)[7]`
+- `io.popdesk.manager.MemberAccessTest.appliesFromTheNextRequest(Endpoint, String, int, String)[8]`
+- `io.popdesk.manager.MemberAccessTest.rowsOfTheCompanyInThePathOnly(Endpoint, String)[1]`
+- `io.popdesk.manager.MemberAccessTest.rowsOfTheCompanyInThePathOnly(Endpoint, String)[2]`
+- `io.popdesk.manager.MemberAccessTest.rowsOfTheCompanyInThePathOnly(Endpoint, String)[3]`
+- `io.popdesk.manager.MemberAccessTest.rowsOfTheCompanyInThePathOnly(Endpoint, String)[4]`
+- `io.popdesk.manager.MemberAccessTest.rowsOfTheCompanyInThePathOnly(Endpoint, String)[5]`
+- `io.popdesk.manager.MemberAccessTest.rowsOfTheCompanyInThePathOnly(Endpoint, String)[6]`
+- `io.popdesk.manager.MemberAccessTest.rowsOfTheCompanyInThePathOnly(Endpoint, String)[7]`
+- `io.popdesk.manager.MemberAccessTest.rowsOfTheCompanyInThePathOnly(Endpoint, String)[8]`
+- `io.popdesk.manager.MemberDecidedCasesTest.cancelledInvitationIsNotResendable`
+- `io.popdesk.manager.MemberDecidedCasesTest.controlCharacterInTheNameIsRefused(String, String)[1]`
+- `io.popdesk.manager.MemberDecidedCasesTest.controlCharacterInTheNameIsRefused(String, String)[2]`
+- `io.popdesk.manager.MemberDecidedCasesTest.controlCharacterInTheNameIsRefused(String, String)[3]`
+- `io.popdesk.manager.MemberDecidedCasesTest.controlCharacterInTheNameIsRefused(String, String)[4]`
+- `io.popdesk.manager.MemberDecidedCasesTest.listedEmailWithSpacesAround(String)[1]`
+- `io.popdesk.manager.MemberDecidedCasesTest.listedEmailWithSpacesAround(String)[2]`
+- `io.popdesk.manager.MemberInviteRateLimitTest.limitIsPerManagerAndWindow`
+- `io.popdesk.manager.MemberInviteRateLimitTest.twentyFirstIsLimited`
+- `io.popdesk.manager.MemberInviteTest.invalidInputIsRefusedFirst(String, String, String, String, String)[1]`
+- `io.popdesk.manager.MemberInviteTest.invalidInputIsRefusedFirst(String, String, String, String, String)[2]`
+- `io.popdesk.manager.MemberInviteTest.invalidInputIsRefusedFirst(String, String, String, String, String)[3]`
+- `io.popdesk.manager.MemberInviteTest.invalidInputIsRefusedFirst(String, String, String, String, String)[4]`
+- `io.popdesk.manager.MemberInviteTest.invalidInputIsRefusedFirst(String, String, String, String, String)[5]`
+- `io.popdesk.manager.MemberInviteTest.invalidInputIsRefusedFirst(String, String, String, String, String)[6]`
+- `io.popdesk.manager.MemberInviteTest.invalidInputIsRefusedFirst(String, String, String, String, String)[7]`
+- `io.popdesk.manager.MemberInviteTest.invalidInputIsRefusedFirst(String, String, String, String, String)[8]`
+- `io.popdesk.manager.MemberInviteTest.noRoleOrCompanyChoice`
+- `io.popdesk.manager.MemberInviteTest.archivedCompanyTakesNoInvitation`
+- `io.popdesk.manager.MemberInviteTest.suspendedCompanyTakesInvitations`
+- `io.popdesk.manager.MemberInviteTest.atMostHundredPending`
+- `io.popdesk.manager.MemberInviteTest.emailAlreadyListed(String)[1]`
+- `io.popdesk.manager.MemberInviteTest.emailAlreadyListed(String)[2]`
+- `io.popdesk.manager.MemberInviteTest.emailAlreadyListed(String)[3]`
+- `io.popdesk.manager.MemberInviteTest.sameAnswerForNewAndExistingEmail(ExistingKind)[1]`
+- `io.popdesk.manager.MemberInviteTest.sameAnswerForNewAndExistingEmail(ExistingKind)[2]`
+- `io.popdesk.manager.MemberInviteTest.sameAnswerForNewAndExistingEmail(ExistingKind)[3]`
+- `io.popdesk.manager.MemberInviteTest.sameAnswerForNewAndExistingEmail(ExistingKind)[4]`
+- `io.popdesk.manager.MemberInviteTest.sameAnswerForNewAndExistingEmail(ExistingKind)[5]`
+- `io.popdesk.manager.MemberInviteTest.noLinkWithoutSmtp`
+- `io.popdesk.manager.MemberListTest.requestRowLooksLikeANewAccountRow(ExistingKind)[1]`
+- `io.popdesk.manager.MemberListTest.requestRowLooksLikeANewAccountRow(ExistingKind)[2]`
+- `io.popdesk.manager.MemberListTest.requestRowLooksLikeANewAccountRow(ExistingKind)[3]`
+- `io.popdesk.manager.MemberListTest.requestRowLooksLikeANewAccountRow(ExistingKind)[4]`
+- `io.popdesk.manager.MemberListTest.requestRowLooksLikeANewAccountRow(ExistingKind)[5]`
+- `io.popdesk.manager.MemberListTest.listOfACompanyThatIsNotActive(String)[1]`
+- `io.popdesk.manager.MemberListTest.listOfACompanyThatIsNotActive(String)[2]`
+- `io.popdesk.manager.MemberListTest.rowLeavesOutAccountData`
+- `io.popdesk.manager.MemberListTest.pagesMixMembersAndRequests`
+- `io.popdesk.manager.MemberListTest.rowsInEmailOrder`
+- `io.popdesk.manager.MemberMailTest.sendingAgainOnARequestRowDoesNothing`
+- `io.popdesk.manager.MemberMailTest.sendingAgainReplacesTheLink`
+- `io.popdesk.manager.MemberMailTest.newEmailIsInvitedByMail`
+- `io.popdesk.manager.MemberMailTest.existingEmailBecomesARequest(ExistingKind)[1]`
+- `io.popdesk.manager.MemberMailTest.existingEmailBecomesARequest(ExistingKind)[2]`
+- `io.popdesk.manager.MemberMailTest.existingEmailBecomesARequest(ExistingKind)[3]`
+- `io.popdesk.manager.MemberMailTest.existingEmailBecomesARequest(ExistingKind)[4]`
+- `io.popdesk.manager.MemberMailTest.existingEmailBecomesARequest(ExistingKind)[5]`
+- `io.popdesk.manager.MemberRemoveTest.removingAPendingMemberOfThisCompanyOnlyCancelsTheInvitation`
+- `io.popdesk.manager.MemberRemoveTest.removingAPendingMemberOfTwoCompaniesKeepsTheInvitation`
+- `io.popdesk.manager.MemberRemoveTest.sameAnswerForEveryKindOfRow`
+- `io.popdesk.manager.MemberRemoveTest.notOneselfNorAnotherManager`
+- `io.popdesk.manager.MemberRemoveTest.removingARequestRowWithdrawsIt`
+- `io.popdesk.manager.MemberRemoveTest.notResendable(String)[1]`
+- `io.popdesk.manager.MemberRemoveTest.notResendable(String)[2]`
+- `io.popdesk.manager.MemberRemoveTest.notResendable(String)[3]`
+- `io.popdesk.manager.MemberRemoveTest.removedMemberKeepsTheRest`
+- `io.popdesk.manager.MembershipRequestMailTest.targetAccountHearsNothing`
+- `io.popdesk.manager.MembershipRequestMailTest.requestIsAnInboxItemForActiveAdmins`
+- `io.popdesk.manager.MembershipRequestTest.approvingDoesNotBringBackACancelledInvitation`
+- `io.popdesk.manager.MembershipRequestTest.requestThatCannotBeApproved(String, String)[1]`
+- `io.popdesk.manager.MembershipRequestTest.requestThatCannotBeApproved(String, String)[2]`
+- `io.popdesk.manager.MembershipRequestTest.requestThatCannotBeApproved(String, String)[3]`
+- `io.popdesk.manager.MembershipRequestTest.pendingRequestsOldestFirst`
+- `io.popdesk.manager.MembershipRequestTest.addingTheCustomerClosesTheRequest(String)[1]`
+- `io.popdesk.manager.MembershipRequestTest.addingTheCustomerClosesTheRequest(String)[2]`
+- `io.popdesk.manager.MembershipRequestTest.rejectingClosesTheRequest`
+- `io.popdesk.manager.MembershipRequestTest.approvingMakesTheAccountAMember`
+- `io.popdesk.manager.MembershipRequestTest.pendingCountIsForAdminsOnly`
+- `io.popdesk.manager.MembershipRequestTest.closedRequest(String, String, int, String)[1]`
+- `io.popdesk.manager.MembershipRequestTest.closedRequest(String, String, int, String)[2]`
+- `io.popdesk.manager.MembershipRequestTest.closedRequest(String, String, int, String)[3]`
+- `io.popdesk.manager.MembershipRequestTest.closedRequest(String, String, int, String)[4]`
+- `io.popdesk.manager.MembershipRequestTest.closedRequest(String, String, int, String)[5]`
+- `io.popdesk.manager.MembershipRequestTest.closedRequest(String, String, int, String)[6]`
+- `src/app/layout.navCount.test.tsx.콘솔 옆 메뉴: 고객사의 소속 요청 수 (2번 묶음) > S2-AC-48 옆 메뉴(관리자): "고객사"에 걸려 있는 요청의 합이 붙고, 링크의 이름은 "고객사 소속 요청 3건"`
+- `src/screens/C12AuditLog.kinds2.test.tsx.C-12 감사 로그 (2번 묶음) > C-12 일의 종류 MANAGER_MARKED의 말: "담당자 지정"`
+- `src/screens/C12AuditLog.kinds2.test.tsx.C-12 감사 로그 (2번 묶음) > C-12 일의 종류 MANAGER_UNMARKED의 말: "담당자 해제"`
+- `src/screens/C12AuditLog.kinds2.test.tsx.C-12 감사 로그 (2번 묶음) > C-12 일의 종류 MEMBERSHIP_REQUESTED의 말: "소속 요청"`
+- `src/screens/C12AuditLog.kinds2.test.tsx.C-12 감사 로그 (2번 묶음) > C-12 일의 종류 MEMBERSHIP_REQUEST_WITHDRAWN의 말: "소속 요청 거둠"`
+- `src/screens/C12AuditLog.kinds2.test.tsx.C-12 감사 로그 (2번 묶음) > C-12 일의 종류 MEMBERSHIP_REQUEST_APPROVED의 말: "소속 요청 승인"`
+- `src/screens/C12AuditLog.kinds2.test.tsx.C-12 감사 로그 (2번 묶음) > C-12 일의 종류 MEMBERSHIP_REQUEST_REJECTED의 말: "소속 요청 거절"`
+- `src/screens/C12AuditLog.kinds2.test.tsx.C-12 감사 로그 (2번 묶음) > C-12 종류 필터의 묶음 "소속·배정": 있던 종류 넷과 새 종류 여섯을 모두 보낸다`
+- `src/screens/C8CompanyList.requests.test.tsx.C-8 고객사 목록 (2번 묶음) > S2-AC-48 C-8 "소속 요청" 칸: 수가 있으면 배지, 0이면 빈칸. 누르면 그 고객사 상세의 소속 요청 구역으로 간다`
+- `src/screens/C9CompanyDetail.manager.test.tsx.C-9 고객사 상세: 소속 고객의 담당자 (2번 묶음) > S2-AC-48 C-9 소속 고객 표: 담당자 칸에 담당자이면 "담당자" 배지, 아니면 빈칸`
+- `src/screens/C9CompanyDetail.manager.test.tsx.C-9 고객사 상세: 소속 고객의 담당자 (2번 묶음) > S2-AC-48 C-9 줄 메뉴 "담당자로 지정": 확인 없이 바로 하고 토스트 "담당자로 지정했습니다"`
+- `src/screens/C9CompanyDetail.manager.test.tsx.C-9 고객사 상세: 소속 고객의 담당자 (2번 묶음) > S2-AC-48 C-9 줄 메뉴 "담당자 해제": 확인 없이 바로 하고 토스트 "담당자에서 해제했습니다"`
+- `src/screens/C9CompanyDetail.manager.test.tsx.C-9 고객사 상세: 소속 고객의 담당자 (2번 묶음) > S2-AC-06 S2-AC-48 C-9 보관된 고객사: "담당자 해제"는 있고 "담당자로 지정"은 없다`
+- `src/screens/C9CompanyDetail.manager.test.tsx.C-9 고객사 상세: 소속 고객의 담당자 (2번 묶음) > S2-AC-48 C-9 담당자를 소속에서 뺄 때: 확인 문구에 "이 사람은 담당자입니다. 빼면 담당자 표시도 사라집니다"를 더한다. 담당자가 아니면 없다`
+- `src/screens/C9CompanyDetail.requests.test.tsx.C-9 고객사 상세: 소속 요청 구역 (2번 묶음) > S2-AC-48 C-9 소속 요청 구역: 칸 다섯. 요청한 사람, 담당자가 넣은 이름과 이메일, 계정(이름·역할·상태, 구성원 목록으로 가는 링크), 요청한 시각, "승인"·"거절"`
+- `src/screens/C9CompanyDetail.requests.test.tsx.C-9 고객사 상세: 소속 요청 구역 (2번 묶음) > S2-AC-48 C-9 승인: 확인 없이 바로. 행이 사라지고 소속 고객 표를 다시 불러와 그 계정이 생긴다. 토스트 "소속시켰습니다". 요청이 없으면 구역도 없다`
+- `src/screens/C9CompanyDetail.requests.test.tsx.C-9 고객사 상세: 소속 요청 구역 (2번 묶음) > S2-AC-48 C-9 거절: 확인 대화상자의 문구, 확인하면 행이 사라지고 토스트 "요청을 거절했습니다"`
+- `src/screens/C9CompanyDetail.requests.test.tsx.C-9 고객사 상세: 소속 요청 구역 (2번 묶음) > S2-AC-48 C-9 소속 요청 계정이 상담원: "승인" 버튼이 없고 "거절"은 있다`
+- `src/screens/C9CompanyDetail.requests.test.tsx.C-9 고객사 상세: 소속 요청 구역 (2번 묶음) > S2-AC-48 C-9 소속 요청 계정이 관리자: "승인" 버튼이 없고 "거절"은 있다`
+- `src/screens/C9CompanyDetail.requests.test.tsx.C-9 고객사 상세: 소속 요청 구역 (2번 묶음) > S2-AC-48 C-9 소속 요청 보관된 고객사: "승인" 버튼이 없고 "거절"은 있다`
+- `src/screens/C9CompanyDetail.requests.test.tsx.C-9 고객사 상세: 소속 요청 구역 (2번 묶음) > S2-AC-48 C-9 소속 요청 수락 전이고 초대가 취소된 계정(상태 INVITED): "승인"은 되고 안내 한 줄은 초대가 취소됐을 때만`
+- `src/screens/C9CompanyDetail.requests.test.tsx.C-9 고객사 상세: 소속 요청 구역 (2번 묶음) > S2-AC-48 C-9 소속 요청 수락 전이고 초대가 취소된 계정(상태 SUSPENDED): "승인"은 되고 안내 한 줄은 초대가 취소됐을 때만`
+- `src/screens/C9CompanyDetail.requests.test.tsx.C-9 고객사 상세: 소속 요청 구역 (2번 묶음) > S2-AC-48 C-9 소속 요청 수락 전이고 초대가 살아 있는 계정: "승인"은 되고 안내 한 줄은 초대가 취소됐을 때만`
+- `src/screens/C9CompanyDetail.requests.test.tsx.C-9 고객사 상세: 소속 요청 구역 (2번 묶음) > S2-AC-48 C-9 승인이 409 REQUEST_CLOSED: 토스트 "이미 처리된 요청입니다"와 함께 다시 불러온다`
+- `src/screens/C9CompanyDetail.requests.test.tsx.C-9 고객사 상세: 소속 요청 구역 (2번 묶음) > S2-AC-49 C-9 떠난 뒤 온 답: ACME의 요청을 승인하는 중에 BETA로 가면, 뒤에 온 답의 토스트를 BETA 화면에 보이지 않는다`
+- `src/screens/C9CompanyDetail.requests.test.tsx.C-9 고객사 상세: 소속 요청 구역 (2번 묶음) > C-9 axe (2번 묶음): 소속 요청 구역과 열린 거절 확인 대화상자에 접근성 위반이 없다`
+- `src/screens/P6MyInfo.manager.test.tsx.P-6 내 정보 (2번 묶음) > S2-AC-07 P-6 소속 고객사: 내가 담당자인 고객사 옆에만 "담당자" 배지`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 줄 메뉴의 동작 > S2-AC-29 S2-AC-47 P-8 초대 다시 보내기: 확인 없이 바로 보내고 토스트 "초대를 다시 보냈습니다"`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 줄 메뉴의 동작 > S2-AC-31 P-8 초대 다시 보내기: 400 INVITATION_NOT_RESENDABLE이면 까닭을 가르지 않는 토스트`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 줄 메뉴의 동작 > S2-AC-31 P-8 초대 다시 보내기: 429이면 공통 상태`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 줄 메뉴의 동작 > S2-AC-24 S2-AC-25 S2-AC-47 P-8 초대 취소: 확인 대화상자의 문구, 확인하면 DELETE …/members/{id}를 부르고 행이 사라진다`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 줄 메뉴의 동작 > S2-AC-24 S2-AC-25 S2-AC-47 P-8 소속에서 빼기: 확인 대화상자의 문구, 확인하면 DELETE …/members/{id}를 부르고 행이 사라진다`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 줄 메뉴의 동작 > S2-AC-28 P-8 소속에서 빼기가 404(다른 사람이 먼저 뺌): 토스트와 함께 목록을 다시 불러온다`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 줄 메뉴의 동작 > S2-AC-28 P-8 소속에서 빼기가 400 MEMBER_IS_MANAGER(보는 사이 담당자가 됨): 토스트와 함께 목록을 다시 불러온다`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 초대 대화상자 > S2-AC-22 P-8 초대 처음: 제목 "에이크미에 초대", 칸은 이메일과 이름 둘뿐(역할·고객사 칸 없음), 아래의 안내 한 줄. 빈 채로 누르면 빈 칸에 오류`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 초대 대화상자 > P-8 초대 보내는 중: 버튼을 막고 "보내는 중"`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 초대 대화상자 > S2-AC-22 S2-AC-46 P-8 초대 성공: 이메일과 이름만 보내고, 닫히고, 토스트 "요청을 처리했습니다"(새 이메일이든 있는 이메일이든 같다), 목록을 다시 불러온다`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 초대 대화상자 > P-8 초대 400(칸 오류): 문구는 콘솔 초대 대화상자와 같다: 이메일 칸 아래에 오류`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 초대 대화상자 > P-8 초대 409 ALREADY_LISTED: 이메일 칸 아래에 오류`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 초대 대화상자 > P-8 초대 409 TOO_MANY_PENDING: 대화상자 안의 Alert, 넣은 값은 그대로`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 초대 대화상자 > P-8 초대 400 COMPANY_NOT_ACTIVE: 대화상자 안의 Alert, 넣은 값은 그대로`
+- `src/screens/P8Members.actions.test.tsx.P-8 우리 회사 사람: 초대 대화상자 > P-8 초대 429: 대화상자 안의 Alert, 넣은 값은 그대로`
+- `src/screens/P8Members.late.test.tsx.P-8 우리 회사 사람: 늦게 온 답 > S2-AC-49 P-8 목록: 화면을 떠난 뒤 온 목록의 401은 주소를 /login으로 바꾸지 않는다`
+- `src/screens/P8Members.late.test.tsx.P-8 우리 회사 사람: 늦게 온 답 > S2-AC-49 P-8 목록: 고객사를 바꾼 뒤 온 앞 고객사의 목록은 표에 넣지 않는다`
+- `src/screens/P8Members.late.test.tsx.P-8 우리 회사 사람: 늦게 온 답 > S2-AC-49 P-8 초대: 보내는 중에 닫고 고객사를 바꾼 뒤 온 답은 버린다. 다시 열면 오류 없이 새 고객사의 빈 대화상자다`
+- `src/screens/P8Members.late.test.tsx.P-8 우리 회사 사람: 늦게 온 답 > S2-AC-49 P-8 빼기: 빼는 중에 닫고 고객사를 바꾼 뒤 온 답은 버린다. 토스트도 없고 표도 그대로다`
+- `src/screens/P8Members.late.test.tsx.P-8 우리 회사 사람: 늦게 온 답 > S2-AC-11 P-8 보는 중에 담당자 지정이 풀림: 다음 요청이 403이면 화면 전체가 403 상태가 된다`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 포털 메뉴 > S2-AC-45 포털 메뉴: 담당자인 고객사가 하나라도 있으면 메뉴에 "문의"와 "우리 회사 사람"이 있다`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 포털 메뉴 > S2-AC-45 포털 메뉴: 담당자인 고객사가 없으면 길이 없고, 주소로 오면 403 상태`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 고객사 고르기 > P-8 고객사 고르기(담당자인 고객사가 하나): 고르기 없이 제목 옆에 고객사 이름`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 고객사 고르기 > P-8 고객사 고르기(둘 이상): Select에 내가 담당자인 고객사만 나오고, 고른 고객사가 주소의 쿼리에 실린다`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 고객사 고르기 > S2-AC-45 P-8 쿼리의 고객사가 소속이지만 담당자가 아닌 곳이면 403 상태`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 고객사 고르기 > S2-AC-45 P-8 쿼리의 고객사가 소속이 아닌 곳이면 404 상태`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 고객사 고르기 > P-8 멈춘 고객사: 띠 "이 고객사는 멈춰 있습니다", "초대" 버튼은 있다`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 고객사 고르기 > P-8 보관된 고객사: 띠 "이 고객사는 보관되어 초대할 수 없습니다", "초대" 버튼이 없다`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 표 > S2-AC-08 S2-AC-10 P-8 표: 칸 다섯, 내 행의 "(나)", 상태 배지의 말, "담당자" 배지. 사진과 시각은 없다`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 표 > P-8 표 없는 쪽: "이 쪽에는 항목이 없습니다"와 "1쪽으로"`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 표 > P-8 표 고객사를 바꿈: 1쪽으로 돌아가고 그 고객사의 표를 다시 불러온다`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 줄 메뉴 > S2-AC-47 P-8 줄 메뉴: 내 행에는 메뉴가 없다`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 줄 메뉴 > S2-AC-47 P-8 줄 메뉴: 다른 담당자의 행에는 메뉴가 없다`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 줄 메뉴 > S2-AC-47 P-8 줄 메뉴: 수락 전 행에는 "초대 다시 보내기"와 "초대 취소"`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 줄 메뉴 > S2-AC-47 P-8 줄 메뉴: 사용 중인 행에는 "소속에서 빼기"`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 줄 메뉴 > S2-AC-47 P-8 줄 메뉴: 정지된 행에는 "소속에서 빼기"`
+- `src/screens/P8Members.test.tsx.P-8 우리 회사 사람: 줄 메뉴 > P-8 axe: 표와 열린 초대 대화상자에 접근성 위반이 없다`
+- `src/components/AppShell.navCount.test.tsx.AppShell NavItem의 count (2번 묶음) > AppShell count와 countLabel: 링크 안에 숫자가 보이고, 링크의 이름은 글자 뒤에 countLabel이 붙는다. 보이는 숫자는 aria-hidden`

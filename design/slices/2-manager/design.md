@@ -28,6 +28,8 @@
 | `MEMBERSHIP_REQUESTED` | `{type: COMPANY, code, accountId}`(요청의 대상 계정) | `{email, name}`(담당자가 넣은 값) |
 | `MEMBERSHIP_REQUEST_WITHDRAWN`, `…_APPROVED`, `…_REJECTED` | 같다 | `{email}` |
 
+승인하면 `MEMBERSHIP_REQUEST_APPROVED`와 `CUSTOMER_ADDED`가 하나씩 남는다(소속이 생긴 일이라 "소속 더하기"로 걸러도 나와야 한다). 관리자가 소속 더하기로 요청을 닫은 경우(S2-AC-38)도 같은 둘이다. 닫힌 요청에 같은 처리를 다시 하면 아무것도 남지 않는다(S2-AC-42).
+
 대상의 종류를 새로 만들지 않는다. 감사 로그 화면의 대상 필터(고객사, 계정)가 그대로 듣는다.
 
 ## 1. 데이터 (마이그레이션 V8)
