@@ -66,8 +66,8 @@
 |---|---|
 | S1A-AC-16 | When 본인이 이름(1~50자)이나 언어(`ko`·`en`)를 바꾸면, the system shall 저장하고 다음 응답부터 새 값을 준다. 그 뒤 그 계정에 가는 메일은 새 언어다. (ACCT-1, ACCT-2, MAIL-1) |
 | S1A-AC-17 | When 본인이 지금 비밀번호와 AUTH-5에 맞는 새 비밀번호를 내면, the system shall 비밀번호를 바꾼다. (ACCT-2) |
-| S1A-AC-18 | If 지금 비밀번호가 틀리면, then the system shall 400 `CURRENT_PASSWORD_WRONG`으로 답하고 바꾸지 않는다. 다섯 번 연속 틀리면 로그인 잠금(S0-AC-23)과 같이 15분 동안 이 요청을 막는다. (ACCT-2, AUTH-3, 5절 1) |
-| S1A-AC-19 | The system shall 내 정보 응답에 이름, 이메일, 언어, 역할, 사진이 있는지를 주고, 고객에게는 소속 고객사를, 상담원에게는 배정된 고객사를 함께 준다. (screens P-6, C-6) |
+| S1A-AC-18 | If 지금 비밀번호가 틀리면, then the system shall 400 `CURRENT_PASSWORD_WRONG`으로 답하고 바꾸지 않는다. 다섯 번 연속 틀리면 로그인 잠금(S0-AC-23)과 같이 15분 동안 이 요청을 429와 `Retry-After`로 막는다. (ACCT-2, AUTH-3, 5절 1) |
+| S1A-AC-19 | The system shall 내 정보 응답에 이름, 이메일, 언어, 역할, 사진을 바꾼 시각(없으면 `null`)을 주고, 고객에게는 소속 고객사를, 상담원에게는 배정된 고객사를 함께 준다. (screens P-6, C-6) |
 
 ### 3.4 프로필 사진
 
@@ -92,16 +92,16 @@
 | S1A-AC-31 | When 관리자가 `AGENT`를 `ADMIN`으로, `ADMIN`을 `AGENT`로 바꾸면, the system shall 역할을 바꾼다. 상담원 배정은 지우지 않고 둔다. (ACCT-3, 5절 3) |
 | S1A-AC-32 | If 고객 역할로 바꾸거나 고객의 역할을 바꾸려 하면, then the system shall 400으로 답한다. (ACCT-3) |
 | S1A-AC-33 | If 관리자가 자기 자신을 정지하거나 자기 역할을 바꾸려 하면, then the system shall 400으로 답한다. (ACCT-3) |
-| S1A-AC-34 | When 관리자가 `ACTIVE` 계정을 정지하면, the system shall 상태를 `SUSPENDED`로 바꾼다. 정지된 계정은 로그인할 수 없고 메일을 받지 않는다. (ACCT-3, S0-AC-22, S0-AC-69) |
-| S1A-AC-35 | When 관리자가 정지를 풀면, the system shall 상태를 `ACTIVE`로 바꾼다. If 그 계정이 초대를 수락한 적이 없으면, then 400이다(다시 보내기를 쓴다). (ACCT-3, INVITE-3, 5절 4) |
-| S1A-AC-36 | When 관리자가 `ACTIVE` 계정의 비밀번호를 초기화하면, the system shall 지금 비밀번호를 못 쓰게 하고, 잠금을 풀고, 비밀번호 찾기와 같은 재설정 메일을 넣는다. (ACCT-3, AUTH-3, AUTH-7, 5절 5) |
+| S1A-AC-34 | When 관리자가 `ACTIVE` 계정을 정지하면, the system shall 상태를 `SUSPENDED`로 바꾼다. 정지된 계정은 로그인할 수 없고 메일을 받지 않는다. 이미 정지된 계정을 다시 정지하면 200이다. If 수락 전이거나 초대가 취소된 계정을 정지하려 하면, then 400 `ACCOUNT_NOT_ACTIVE`다(초대 취소를 쓴다). (ACCT-3, S0-AC-22, S0-AC-69, C-4에서 정함) |
+| S1A-AC-35 | When 관리자가 정지를 풀면, the system shall 상태를 `ACTIVE`로 바꾼다. 이미 `ACTIVE`면 200이다. If 그 계정이 초대를 수락한 적이 없으면, then 400이다(다시 보내기를 쓴다). (ACCT-3, INVITE-3, 5절 4) |
+| S1A-AC-36 | When 관리자가 `ACTIVE` 계정의 비밀번호를 초기화하면, the system shall 지금 비밀번호를 못 쓰게 하고, 잠금을 풀고, 비밀번호 찾기와 같은 재설정 메일을 넣는다. If 계정이 `ACTIVE`가 아니면, then 400 `ACCOUNT_NOT_ACTIVE`다. (ACCT-3, AUTH-3, AUTH-7, 5절 5, C-4에서 정함) |
 | S1A-AC-37 | Where SMTP 설정이 없으면, the system shall 비밀번호 초기화 응답에 재설정 링크를 한 번만 준다(`Cache-Control: no-store`). SMTP 설정이 있으면 응답에 링크가 없다. (INVITE-6과 같게, 5절 5) |
 
 ### 3.6 초대 다시 보내기와 취소
 
 | ID | 기준 |
 |---|---|
-| S1A-AC-38 | When 관리자가 수락 전 계정에 초대를 다시 보내면, the system shall 새 토큰을 만들어 이전 링크를 무효로 하고 초대 메일을 넣는다. 만료는 그때부터 7일이다. (INVITE-3, INVITE-2) |
+| S1A-AC-38 | When 관리자가 수락 전 계정에 초대를 다시 보내면, the system shall 새 토큰을 만들어 이전 링크를 무효로 하고 초대 메일을 넣는다. 만료는 그때부터 7일이다. SMTP 설정이 없으면 초대할 때처럼 링크를 응답에 한 번 준다. (INVITE-3, INVITE-2, INVITE-6, C-4에서 정함) |
 | S1A-AC-39 | When 관리자가 수락 전 계정의 초대를 취소하면, the system shall 계정을 `SUSPENDED`로 바꾸고 링크를 무효로 한다. 대기에 남은 초대 메일은 나가지 않는다. (INVITE-3, S0-AC-69) |
 | S1A-AC-40 | When 취소된 초대를 다시 보내면, the system shall 계정을 `INVITED`로 되돌리고 새 초대 메일을 넣는다. (INVITE-3) |
 | S1A-AC-41 | If 수락한 적이 있는 계정에 다시 보내기나 취소를 하려 하면, then the system shall 400으로 답한다. (INVITE-3) |
@@ -112,7 +112,7 @@
 | ID | 기준 |
 |---|---|
 | S1A-AC-43 | When 관리자가 고객사의 이름이나 회사명을 고치면, the system shall 저장한다. 코드는 고칠 수 없다(요청에 코드가 있으면 400). (PROJ-1) |
-| S1A-AC-44 | When 관리자가 고객사 상태를 `ACTIVE`↔`SUSPENDED`로, 또는 둘 가운데 하나에서 `ARCHIVED`로 바꾸면, the system shall 상태를 바꾼다. (PROJ-2) |
+| S1A-AC-44 | When 관리자가 고객사 상태를 `ACTIVE`↔`SUSPENDED`로, 또는 둘 가운데 하나에서 `ARCHIVED`로 바꾸면, the system shall 상태를 바꾼다. 지금과 같은 상태로 바꾸는 요청은 200이다. (PROJ-2) |
 | S1A-AC-45 | If `ARCHIVED` 고객사의 상태를 바꾸려 하면, then the system shall 400으로 답한다. (PROJ-2) |
 | S1A-AC-46 | If `ACTIVE`가 아닌 고객사에 새 문의를 올리면, then the system shall 400 `COMPANY_NOT_ACTIVE`로 답한다. (PROJ-3) |
 | S1A-AC-47 | While 고객사가 `ACTIVE`가 아니어도, the system shall 이미 있는 문의의 보기, 댓글, 첨부를 그대로 받는다. (PROJ-3) |
@@ -189,7 +189,7 @@
 | S1A-AC-84 | If 재설정 링크를 받은 뒤 계정이 정지되면, then the system shall 그 링크를 무효인 토큰과 같은 400으로 답한다. (S1A 부검 2) |
 | S1A-AC-85 | The system shall 비밀번호 찾기 요청만으로는 그 계정의 비밀번호, 세션, 잠금을 바꾸지 않는다. (S1A 부검 2) |
 | S1A-AC-86 | While 정지된 계정의 요청이 처리되는 중에 세션이 지워져도, the system shall 그 계정의 그 뒤 요청을 모두 401로 답한다. 지워진 세션이 다시 저장되지 않는다. (S1A 부검 3) |
-| S1A-AC-87 | The system shall 사진 응답에 저장한 형식의 `Content-Type`, `X-Content-Type-Options: nosniff`, `Cache-Control: private`를 붙인다. (S1A 부검 4) |
+| S1A-AC-87 | The system shall 사진 응답에 저장한 형식의 `Content-Type`, `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-cache`, `ETag`를 붙인다. `If-None-Match`가 맞으면 304다. 권한 검사는 304를 줄 때도 한다. 모든 GET에 `no-store`를 바라는 S0-AC-101에서 사진만 예외다. (S1A 부검 4) |
 | S1A-AC-88 | When 2MB 사진 여럿을 같은 때 올려도, the system shall 운영과 같은 힙(`-Xmx384m`)에서 죽지 않고 모두 201이나 503(`Retry-After`)으로 답한다. (S1A 부검 4, S0-AC-64와 같게) |
 | S1A-AC-89 | The system shall 계정 검색어의 `%`와 `_`를 글자 그대로 찾는다. (S1A 부검 5) |
 | S1A-AC-90 | When v0.1.0에서 올라온 설치에서, the system shall 이미 있던 `ACTIVE`·`SUSPENDED` 계정을 수락한 계정으로, `INVITED` 계정을 수락 전으로 다룬다. (S1A 부검 6, S1A-AC-35) |
@@ -200,6 +200,18 @@
 - 기준 하나에 테스트는 동작 하나꼴로 쓴다. 입력만 다른 경우는 매개변수 테스트 하나로 묶는다.
 - 도움 클래스는 패키지마다 복사하지 않고 `support/`의 것을 쓴다. 첫 묶음에서 복사된 것(`SmtpGate`, `Membership`, `AccountStatus` 등)은 잠겨 있어 그대로 두고, 새 테스트는 한 벌만 쓴다.
 - 잠긴 `AttachmentQuotaTest`가 테스트 순서에 기댄다. 이 묶음 테스트 단계에서 순서에 기대지 않는 새 클래스로 바꿀지 정한다.
+
+## 4-1. 센 검증을 받는 기준
+
+`process.md` "검증의 세기"대로, 아래 기준만 C-7의 일부러 틀린 구현, 숨긴 E2E, 변이 테스트를 받는다. 나머지는 테스트와 잠금, 자동 관문만 받는다.
+
+| 까닭 | 기준 |
+|---|---|
+| 세션과 비밀번호 | S1A-AC-01~04, 05~14, 17, 18, 36, 37, 69, 82~86, 91 |
+| 권한과 마지막 관리자 | S1A-AC-29, 32, 33, 56, 81 |
+| 고객사 경계 | S1A-AC-25~27, 50, 52~55, 76~78 |
+| 개인정보(사진, 감사 값) | S1A-AC-21, 23, 62~64, 87, 88 |
+| 마이그레이션 | S1A-AC-80, 90 |
 
 ## 5. 메인이 추천해 넣었고 사용자가 그대로 두기로 한 것 (2026-10-11)
 
