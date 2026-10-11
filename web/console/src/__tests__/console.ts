@@ -48,7 +48,7 @@ export const OTHER_AGENT_PERSON: Person = { accountId: 3, name: '정상담', rol
 export const CUSTOMER_PERSON: Person = { accountId: 11, name: '김고객', role: 'CUSTOMER', photoUpdatedAt: null };
 
 export function company(over: Partial<Company> = {}): Company {
-  return { code: 'ACME', name: '에이크미', legalName: '에이크미 주식회사', status: 'ACTIVE', createdAt: T0, ...over };
+  return { code: 'ACME', name: '에이크미', legalName: '에이크미 주식회사', status: 'ACTIVE', createdAt: T0, pendingMembershipRequests: 0, ...over };
 }
 
 export const ACME = company();
@@ -105,7 +105,7 @@ export function account(over: Partial<Account> = {}): Account {
 }
 
 export function member(over: Partial<CompanyMember> = {}): CompanyMember {
-  return { accountId: 11, email: 'kim@acme.test', name: '김고객', status: 'ACTIVE', photoUpdatedAt: null, ...over };
+  return { accountId: 11, email: 'kim@acme.test', name: '김고객', status: 'ACTIVE', photoUpdatedAt: null, manager: false, ...over };
 }
 
 export function invitation(over: Partial<PendingInvitation> = {}): PendingInvitation {

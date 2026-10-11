@@ -64,8 +64,8 @@ describe('P-6 내 정보', () => {
   test('S1A-AC-19 P-6 프로필 처음: 이름 칸, 읽기만 하는 이메일, 언어 고르기, "저장". 소속 고객사 목록을 상태와 관계없이 읽기만으로 보인다', async () => {
     signInWith({
       companies: [
-        { code: 'ACME', name: '에이크미', status: 'ACTIVE' },
-        { code: 'BETA', name: '베타상사', status: 'SUSPENDED' },
+        { code: 'ACME', name: '에이크미', status: 'ACTIVE', manager: false },
+        { code: 'BETA', name: '베타상사', status: 'SUSPENDED', manager: false },
       ],
     });
     renderAt('/me');

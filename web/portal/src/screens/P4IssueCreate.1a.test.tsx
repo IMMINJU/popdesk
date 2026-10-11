@@ -18,8 +18,8 @@ import {
   type Company,
 } from '../__tests__/portal';
 
-const SUSPENDED: Company = { code: 'BETA', name: '베타상사', status: 'SUSPENDED' };
-const ARCHIVED: Company = { code: 'OLD', name: '올드', status: 'ARCHIVED' };
+const SUSPENDED: Company = { code: 'BETA', name: '베타상사', status: 'SUSPENDED', manager: false };
+const ARCHIVED: Company = { code: 'OLD', name: '올드', status: 'ARCHIVED', manager: false };
 const NOT_ACTIVE_TEXT = '새 문의를 받지 않습니다';
 const TOO_MANY_TEXT = '한 번에 20개까지 붙일 수 있습니다';
 const PROXY_LIMIT_TEXT = '파일이 서버 앞단의 크기 상한에 걸렸습니다';

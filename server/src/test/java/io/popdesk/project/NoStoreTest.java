@@ -145,6 +145,9 @@ class NoStoreTest extends BareAppTest {
         Session admin = fixtures.signInAdmin();
         Company company = fixtures.createCompany(admin);
         Session customer = fixtures.customer(admin, company.code());
+        // The members of a company are read by its manager only (S2-AC-09), so the customer is one (S2-AC-01).
+        admin.client().put("/api/console/companies/" + company.code() + "/customers/" + customer.accountId()
+                + "/manager").send().expectStatus(200);
         fixtures.agent(admin, company.code());
         Issue issue = fixtures.fileIssue(customer, company.code());
         Attachment file = fixtures.attach(customer, issue.key(), File.text("nostore-" + Unique.number() + ".txt",
