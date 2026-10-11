@@ -33,7 +33,9 @@ public class AccountRateLimit {
         /** Uploading an attachment (S0-AC-65), also one filed with a new issue (S1A-AC-66). */
         ATTACHMENT(30),
         /** Uploading a profile photo (S1A-AC-28). */
-        PHOTO(10);
+        PHOTO(10),
+        /** A customer manager inviting to a company or sending an invitation again, together (S2-AC-20). */
+        MEMBER_INVITATION(20);
 
         final int limit;
 

@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -54,7 +55,7 @@ public class InvitationService implements InvitationLinks {
     /** How long a link works (INVITE-2). */
     static final Duration VALIDITY = Duration.ofDays(7);
     static final int EMAIL_MAX = 100;
-    static final int NAME_MAX = 50;
+    public static final int NAME_MAX = 50;
 
     private static final Pattern EMAIL = Pattern.compile("[^\\s@]+@[^\\s@]+\\.[^\\s@]+");
 
@@ -96,7 +97,7 @@ public class InvitationService implements InvitationLinks {
      */
     public Invited invite(CurrentAccount admin, String email, String name, Role role, List<String> companyCodes) {
         List<ApiError.FieldError> errors = new ArrayList<>();
-        String cleanEmail = email(email, errors);
+        String cleanEmail = cleanEmail(email, errors);
         String cleanName = TextInput.required("name", name, NAME_MAX, errors);
         if (role == null) {
             errors.add(new ApiError.FieldError("role", "REQUIRED"));
@@ -118,24 +119,49 @@ public class InvitationService implements InvitationLinks {
             if (found.size() != wanted.size() || found.stream().anyMatch(c -> c.status() != CompanyStatus.ACTIVE)) {
                 throw ApiException.invalid("companyCodes", "UNKNOWN_VALUE");
             }
-            Instant now = now();
-            long accountId = accounts.insertInvited(cleanEmail, cleanName, role, locale, now).orElseThrow(() ->
+            long accountId = create(admin.actor(), cleanEmail, cleanName, role, found, token).orElseThrow(() ->
                     ApiException.conflict("EMAIL_TAKEN", "An account has this email."));
-            accounts.insertInvitation(accountId, Tokens.hash(token), now, now.plus(VALIDITY));
-            for (CompanyRow company : found) {
-                companies.insertMember(company.id(), accountId, now);
-            }
-            mail.queue(MailKind.INVITATION, accountId, null, null);
-            Map<String, Object> changes = new LinkedHashMap<>();
-            changes.put("email", cleanEmail);
-            changes.put("name", cleanName);
-            changes.put("role", role.name());
-            changes.put("companyCodes", found.stream().map(CompanyRow::code).sorted().toList());
-            audit.record(admin.actor(), AuditAction.INVITATION_CREATED, accountTarget(accountId), changes);
             return new Invited(accountId, mail.enabled() ? null : address.invitationLink(appOf(role), token));
         });
         log.info("Account {} invited as {}.", invited.accountId(), role);
         return invited;
+    }
+
+    /**
+     * Invites a customer to one company for a customer manager (S2-AC-13), in the caller's transaction:
+     * the same account, token, membership, mail, and audit row as {@link #invite} makes, by
+     * {@code manager}. The email and the name are already checked. Empty when an account has the
+     * email, ignoring case; nothing is written then. The caller never gets the link (S2-AC-23) and
+     * writes the log line, which must not tell this case from the other (S2-AC-15).
+     *
+     * @return the new account
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Optional<Long> inviteCustomer(AuditLog.Actor manager, String cleanEmail, String cleanName,
+            CompanyRow company) {
+        return create(manager, cleanEmail, cleanName, Role.CUSTOMER, List.of(company), Tokens.create());
+    }
+
+    /** The rows of an invitation; empty, with nothing written, when an account has the email. */
+    private Optional<Long> create(AuditLog.Actor actor, String cleanEmail, String cleanName, Role role,
+            List<CompanyRow> found, String token) {
+        Instant now = now();
+        Long accountId = accounts.insertInvited(cleanEmail, cleanName, role, locale, now).orElse(null);
+        if (accountId == null) {
+            return Optional.empty();
+        }
+        accounts.insertInvitation(accountId, Tokens.hash(token), now, now.plus(VALIDITY));
+        for (CompanyRow company : found) {
+            companies.insertMember(company.id(), accountId, now);
+        }
+        mail.queue(MailKind.INVITATION, accountId, null, null);
+        Map<String, Object> changes = new LinkedHashMap<>();
+        changes.put("email", cleanEmail);
+        changes.put("name", cleanName);
+        changes.put("role", role.name());
+        changes.put("companyCodes", found.stream().map(CompanyRow::code).sorted().toList());
+        audit.record(actor, AuditAction.INVITATION_CREATED, accountTarget(accountId), changes);
+        return Optional.of(accountId);
     }
 
     /**
@@ -196,22 +222,75 @@ public class InvitationService implements InvitationLinks {
         String token = Tokens.create();
         Invited invited = transactions.run(() -> {
             InvitationState state = lockNeverAccepted(accountId);
-            Instant now = now();
-            Instant expiresAt = now.plus(VALIDITY);
-            accounts.updateInvitationToken(accountId, Tokens.hash(token), expiresAt);
-            Map<String, Object> changes = new LinkedHashMap<>();
-            changes.put("expiresAt", expiresAt);
-            if (state.status() != AccountStatus.INVITED) {
-                accounts.updateInvitationCancelled(accountId, null);
-                accounts.updateStatus(accountId, AccountStatus.INVITED, now);
-                changes.put("status", AccountService.change(state.status().name(), AccountStatus.INVITED.name()));
-            }
-            mail.queue(MailKind.INVITATION, accountId, null, null);
-            audit.record(admin.actor(), AuditAction.INVITATION_RESENT, accountTarget(accountId), changes);
+            sendAgain(admin.actor(), accountId, state, token);
             return new Invited(accountId, mail.enabled() ? null : address.invitationLink(appOf(state.role()), token));
         });
         log.info("The invitation of account {} was sent again.", accountId);
         return invited;
+    }
+
+    /**
+     * Sends the invitation of an {@code INVITED} account again for a customer manager (S2-AC-29), in the
+     * caller's transaction: what {@link #resend} does, by {@code manager}, with or without SMTP. False,
+     * with nothing written, when the account accepted before or is not {@code INVITED}, also one whose
+     * invitation an admin cancelled: a manager does not open that again (S2-AC-31).
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public boolean resendOpen(AuditLog.Actor manager, long accountId) {
+        InvitationState state = lockOpen(accountId);
+        if (state == null) {
+            return false;
+        }
+        sendAgain(manager, accountId, state, Tokens.create());
+        log.info("The invitation of account {} was sent again.", accountId);
+        return true;
+    }
+
+    /**
+     * Cancels the invitation of an {@code INVITED} account for a customer manager who took its last
+     * membership away (S2-AC-25), in the caller's transaction: what {@link #cancel} does, by
+     * {@code manager}. False, with nothing written, when the account accepted before or is not
+     * {@code INVITED}.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public boolean cancelOpen(AuditLog.Actor manager, long accountId) {
+        if (lockOpen(accountId) == null) {
+            return false;
+        }
+        cancelled(manager, accountId);
+        log.info("The invitation of account {} was cancelled.", accountId);
+        return true;
+    }
+
+    /** The invitation of an {@code INVITED} account that never accepted, with both rows locked, or null. */
+    private InvitationState lockOpen(long accountId) {
+        InvitationState state = accounts.lockInvitationState(accountId).orElse(null);
+        return state == null || state.accepted() || state.status() != AccountStatus.INVITED ? null : state;
+    }
+
+    /** A new token, the invitation email, and the audit row; a cancelled invitation is open again. */
+    private void sendAgain(AuditLog.Actor actor, long accountId, InvitationState state, String token) {
+        Instant now = now();
+        Instant expiresAt = now.plus(VALIDITY);
+        accounts.updateInvitationToken(accountId, Tokens.hash(token), expiresAt);
+        Map<String, Object> changes = new LinkedHashMap<>();
+        changes.put("expiresAt", expiresAt);
+        if (state.status() != AccountStatus.INVITED) {
+            accounts.updateInvitationCancelled(accountId, null);
+            accounts.updateStatus(accountId, AccountStatus.INVITED, now);
+            changes.put("status", AccountService.change(state.status().name(), AccountStatus.INVITED.name()));
+        }
+        mail.queue(MailKind.INVITATION, accountId, null, null);
+        audit.record(actor, AuditAction.INVITATION_RESENT, accountTarget(accountId), changes);
+    }
+
+    /** The account becomes {@code SUSPENDED} and its invitation cancelled, with the audit row. */
+    private void cancelled(AuditLog.Actor actor, long accountId) {
+        Instant now = now();
+        accounts.updateInvitationCancelled(accountId, now);
+        accounts.updateStatus(accountId, AccountStatus.SUSPENDED, now);
+        audit.record(actor, AuditAction.INVITATION_CANCELLED, accountTarget(accountId), Map.of("status",
+                AccountService.change(AccountStatus.INVITED.name(), AccountStatus.SUSPENDED.name())));
     }
 
     /**
@@ -226,11 +305,7 @@ public class InvitationService implements InvitationLinks {
             if (state.status() != AccountStatus.INVITED) {
                 return false;
             }
-            Instant now = now();
-            accounts.updateInvitationCancelled(accountId, now);
-            accounts.updateStatus(accountId, AccountStatus.SUSPENDED, now);
-            audit.record(admin.actor(), AuditAction.INVITATION_CANCELLED, accountTarget(accountId), Map.of("status",
-                    AccountService.change(AccountStatus.INVITED.name(), AccountStatus.SUSPENDED.name())));
+            cancelled(admin.actor(), accountId);
             return true;
         });
         if (cancelled) {
@@ -296,7 +371,11 @@ public class InvitationService implements InvitationLinks {
         return target;
     }
 
-    private static String email(String received, List<ApiError.FieldError> errors) {
+    /**
+     * Checks an email as received (INVITE-1): returns it trimmed, or null when it is invalid (and
+     * {@code errors} has its entry).
+     */
+    public static String cleanEmail(String received, List<ApiError.FieldError> errors) {
         if (received == null || received.isBlank()) {
             errors.add(new ApiError.FieldError("email", "REQUIRED"));
             return null;
