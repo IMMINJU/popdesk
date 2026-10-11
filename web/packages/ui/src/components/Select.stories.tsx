@@ -32,7 +32,6 @@ export const SingleReadOnly: Story = {
 };
 /**
  * 묶음: options that carry the same `group` belong under that name (C-12 종류 필터).
- * Shell only: `group` is taken but the options are not shown grouped yet (C-9 fills it in).
  */
 export const Grouped: Story = {
   args: {

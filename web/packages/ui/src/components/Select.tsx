@@ -7,8 +7,8 @@ import { FieldError, FieldHelp } from './fieldParts';
 export interface SelectOption extends Option {
   /**
    * 묶음 이름, e.g. "계정". Options with the same `group` are shown together under
-   * it. Shell only for now: the grouping is drawn in C-9. A choice that stands
-   * for a whole group (C-12 "로그인 기록") is a plain option without `group`.
+   * it (`optgroup`), where the first of them stands. A choice that stands for a
+   * whole group (C-12 "로그인 기록") is a plain option without `group`.
    */
   group?: string;
 }
@@ -32,6 +32,14 @@ export interface SelectProps {
   loading?: boolean;
   required?: boolean;
   ref?: Ref<HTMLSelectElement>;
+}
+
+function choice(o: SelectOption) {
+  return (
+    <option key={o.value} value={o.value} disabled={o.disabled}>
+      {o.label}
+    </option>
+  );
 }
 
 /** Native select with `appearance: none` and a drawn arrow (tokens.md 7절). */
@@ -65,11 +73,16 @@ export function Select({ ref, ...props }: SelectProps) {
           aria-describedby={describedBy(props.helpText && helpId, props.error && errorId)}
         >
           {props.placeholder !== undefined && !props.readOnly && <option value="">{props.placeholder}</option>}
-          {options.map((o) => (
-            <option key={o.value} value={o.value} disabled={o.disabled}>
-              {o.label}
-            </option>
-          ))}
+          {options.map((o, i) => {
+            if (o.group === undefined) return choice(o);
+            // The group is drawn once, at its first option.
+            if (options.findIndex((other) => other.group === o.group) !== i) return null;
+            return (
+              <optgroup key={`group-${o.group}`} label={o.group}>
+                {options.filter((other) => other.group === o.group).map(choice)}
+              </optgroup>
+            );
+          })}
         </select>
         {props.loading && <span className="pd-select-skeleton pd-skeleton-pulse" aria-hidden="true" />}
         <span className="pd-select-arrow" aria-hidden="true">

@@ -962,6 +962,51 @@ textarea {
   background: var(--bg);
 }
 
+.pd-table .pd-table-expand-cell {
+  width: var(--button-height-sm);
+  padding-right: 0;
+  border-bottom: 0;
+}
+
+.pd-table thead .pd-table-expand-cell {
+  border-bottom: 1px solid var(--border);
+}
+
+.pd-table-expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--button-height-sm);
+  height: var(--button-height-sm);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pd-table-expand:hover {
+  background: var(--sunken);
+  color: var(--text);
+}
+
+.pd-table-expand > span {
+  display: inline-flex;
+  transform: rotate(-90deg);
+  transition: transform var(--duration-fast) var(--easing);
+}
+
+.pd-table-expand[aria-expanded='true'] > span {
+  transform: none;
+}
+
+.pd-table .pd-table-expanded td {
+  height: auto;
+  padding: var(--space-2) var(--space-3) var(--space-4) calc(var(--button-height-sm) + var(--space-6));
+  background: var(--surface);
+}
+
 .pd-table-skeleton .pd-skeleton-item {
   display: block;
   height: 10px;
