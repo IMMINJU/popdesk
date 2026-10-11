@@ -6,7 +6,7 @@ Instructions for AI coding agents working on popdesk. Keep this file short; deta
 
 - `design/roadmap.md`: scope, out of scope, slice order
 - `design/process.md`: how a slice is built, the three paths, where artifacts go
-- `design/adr.md`: decisions; do not contradict one without a new ADR
+- `design/adr.md`: decisions. Read the rows the slice documents cite (by ID), not the whole file; do not contradict one without a new ADR
 - `design/slices/`: the slice in progress (acceptance criteria, tasks)
 
 Order of authority when documents disagree: roadmap → ADR → canonical docs (OpenAPI, conventions, permission model, threat model) → slice in progress → `design/spec/` drafts. If they disagree, stop and report; do not guess.
