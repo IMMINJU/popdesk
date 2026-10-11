@@ -288,10 +288,6 @@
           "email" : {
             "type" : "string"
           },
-          "hasPhoto" : {
-            "description" : "Whether the account has a profile photo (`getPhoto`).",
-            "type" : "boolean"
-          },
           "id" : {
             "format" : "int64",
             "type" : "integer"
@@ -304,13 +300,18 @@
           "name" : {
             "type" : "string"
           },
+          "photoUpdatedAt" : {
+            "description" : "When the profile photo last changed; null without a photo (`getPhoto`).",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
           "role" : {
             "description" : "Always `CUSTOMER` on the portal.",
             "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
             "type" : "string"
           }
         },
-        "required" : [ "companies", "email", "hasPhoto", "id", "locale", "name", "role" ],
+        "required" : [ "companies", "email", "id", "locale", "name", "photoUpdatedAt", "role" ],
         "type" : "object"
       },
       "PagedAttachment" : {
@@ -434,15 +435,11 @@
         "type" : "object"
       },
       "Person" : {
-        "description" : "A customer, or the support team. For `SUPPORT_TEAM` `accountId`, `name`, and `hasPhoto` are all null.",
+        "description" : "A customer, or the support team. For `SUPPORT_TEAM` `accountId`, `name`, and `photoUpdatedAt` are all null.",
         "properties" : {
           "accountId" : {
             "format" : "int64",
             "type" : [ "integer", "null" ]
-          },
-          "hasPhoto" : {
-            "description" : "Whether the customer has a profile photo (`getPhoto`). Always null for `SUPPORT_TEAM`: the portal never shows a staff photo (S1A-AC-26).",
-            "type" : [ "boolean", "null" ]
           },
           "kind" : {
             "enum" : [ "CUSTOMER", "SUPPORT_TEAM" ],
@@ -450,9 +447,14 @@
           },
           "name" : {
             "type" : [ "string", "null" ]
+          },
+          "photoUpdatedAt" : {
+            "description" : "When the customer's profile photo last changed; null without a photo (`getPhoto`). Always null for `SUPPORT_TEAM`: the portal never shows a staff photo (S1A-AC-26).",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
           }
         },
-        "required" : [ "accountId", "hasPhoto", "kind", "name" ],
+        "required" : [ "accountId", "kind", "name", "photoUpdatedAt" ],
         "type" : "object"
       },
       "RequestPasswordResetRequest" : {
@@ -1487,6 +1489,16 @@
               }
             },
             "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: the current password was wrong five times in a row, so this request is refused for 15 minutes. `Retry-After` says when to try again (S1A-AC-18)."
           }
         },
         "summary" : "Change the caller's password",
@@ -1622,7 +1634,7 @@
     },
     "/api/portal/photos/{accountId}" : {
       "get" : {
-        "description" : "The caller's own photo, or that of a customer of a company the caller belongs to (S1A-AC-25). Never a staff photo (S1A-AC-26). Always PNG, with `X-Content-Type-Options: nosniff` and `Cache-Control: private` (S1A-AC-87).",
+        "description" : "The caller's own photo, or that of a customer of a company the caller belongs to (S1A-AC-25). Never a staff photo (S1A-AC-26). Always PNG, with `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-cache`, and an `ETag` (S1A-AC-87): the browser asks again every time, so the caller's right to see the photo is checked again, and gets 304 while the photo is the same.",
         "operationId" : "getPhoto",
         "parameters" : [ {
           "in" : "path",
@@ -1631,6 +1643,14 @@
           "schema" : {
             "format" : "int64",
             "type" : "integer"
+          }
+        }, {
+          "description" : "The `ETag` of the copy the caller has.",
+          "in" : "header",
+          "name" : "If-None-Match",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -1643,7 +1663,18 @@
                 }
               }
             },
-            "description" : "The photo."
+            "description" : "The photo, with its `ETag`."
+          },
+          "304" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "The photo still has the `ETag` sent in `If-None-Match`. No body."
           },
           "401" : {
             "content" : {

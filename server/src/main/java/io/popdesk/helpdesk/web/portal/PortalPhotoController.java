@@ -2,11 +2,14 @@ package io.popdesk.helpdesk.web.portal;
 
 import io.popdesk.NotImplementedException;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.jspecify.annotations.Nullable;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -58,14 +62,21 @@ class PortalPhotoController {
     @Operation(operationId = "getPhoto", summary = "Profile photo of a customer",
             description = "The caller's own photo, or that of a customer of a company the caller belongs to "
                     + "(S1A-AC-25). Never a staff photo (S1A-AC-26). Always PNG, with "
-                    + "`X-Content-Type-Options: nosniff` and `Cache-Control: private` (S1A-AC-87).")
-    @ApiResponse(responseCode = "200", description = "The photo.", content = @Content(
+                    + "`X-Content-Type-Options: nosniff`, `Cache-Control: private, no-cache`, and an `ETag` "
+                    + "(S1A-AC-87): the browser asks again every time, so the caller's right to see the photo is "
+                    + "checked again, and gets 304 while the photo is the same.")
+    @ApiResponse(responseCode = "200", description = "The photo, with its `ETag`.", content = @Content(
             mediaType = MediaType.IMAGE_PNG_VALUE, schema = @Schema(type = "string", format = "binary")))
+    @ApiResponse(responseCode = "304", description = "The photo still has the `ETag` sent in `If-None-Match`. No "
+            + "body.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such account, a customer of another company, "
             + "an agent or admin, or an account without a photo. One body for all.")
     @GetMapping("/api/portal/photos/{accountId}")
-    ResponseEntity<Resource> getPhoto(@PathVariable long accountId) {
+    ResponseEntity<Resource> getPhoto(
+            @PathVariable long accountId,
+            @Parameter(description = "The `ETag` of the copy the caller has.")
+                    @RequestHeader(name = HttpHeaders.IF_NONE_MATCH, required = false) @Nullable String ifNoneMatch) {
         throw new NotImplementedException();
     }
 }

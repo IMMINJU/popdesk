@@ -215,7 +215,7 @@ export interface paths {
         };
         /**
          * Profile photo of a customer
-         * @description The caller's own photo, or that of a customer of a company the caller belongs to (S1A-AC-25). Never a staff photo (S1A-AC-26). Always PNG, with `X-Content-Type-Options: nosniff` and `Cache-Control: private` (S1A-AC-87).
+         * @description The caller's own photo, or that of a customer of a company the caller belongs to (S1A-AC-25). Never a staff photo (S1A-AC-26). Always PNG, with `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-cache`, and an `ETag` (S1A-AC-87): the browser asks again every time, so the caller's right to see the photo is checked again, and gets 304 while the photo is the same.
          */
         get: operations["getPhoto"];
         put?: never;
@@ -482,8 +482,6 @@ export interface components {
             /** @description The companies the customer belongs to, whatever their status, in code order. */
             companies: components["schemas"]["Company"][];
             email: string;
-            /** @description Whether the account has a profile photo (`getPhoto`). */
-            hasPhoto: boolean;
             /** Format: int64 */
             id: number;
             /**
@@ -492,6 +490,11 @@ export interface components {
              */
             locale: "ko" | "en";
             name: string;
+            /**
+             * Format: date-time
+             * @description When the profile photo last changed; null without a photo (`getPhoto`).
+             */
+            photoUpdatedAt: string | null;
             /**
              * @description Always `CUSTOMER` on the portal.
              * @enum {string}
@@ -566,15 +569,18 @@ export interface components {
             /** Format: int32 */
             totalPages: number;
         };
-        /** @description A customer, or the support team. For `SUPPORT_TEAM` `accountId`, `name`, and `hasPhoto` are all null. */
+        /** @description A customer, or the support team. For `SUPPORT_TEAM` `accountId`, `name`, and `photoUpdatedAt` are all null. */
         Person: {
             /** Format: int64 */
             accountId: number | null;
-            /** @description Whether the customer has a profile photo (`getPhoto`). Always null for `SUPPORT_TEAM`: the portal never shows a staff photo (S1A-AC-26). */
-            hasPhoto: boolean | null;
             /** @enum {string} */
             kind: "CUSTOMER" | "SUPPORT_TEAM";
             name: string | null;
+            /**
+             * Format: date-time
+             * @description When the customer's profile photo last changed; null without a photo (`getPhoto`). Always null for `SUPPORT_TEAM`: the portal never shows a staff photo (S1A-AC-26).
+             */
+            photoUpdatedAt: string | null;
         };
         RequestPasswordResetRequest: {
             /** @description Leading and trailing whitespace and case are ignored. */
@@ -1377,6 +1383,15 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            /** @description `RATE_LIMITED`: the current password was wrong five times in a row, so this request is refused for 15 minutes. `Retry-After` says when to try again (S1A-AC-18). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     uploadMyPhoto: {
@@ -1499,7 +1514,10 @@ export interface operations {
     getPhoto: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The `ETag` of the copy the caller has. */
+                "If-None-Match"?: string;
+            };
             path: {
                 accountId: number;
             };
@@ -1507,13 +1525,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The photo. */
+            /** @description The photo, with its `ETag`. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "image/png": string;
+                };
+            };
+            /** @description The photo still has the `ETag` sent in `If-None-Match`. No body. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
             /** @description `UNAUTHENTICATED`. */

@@ -93,6 +93,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 400 | `OWN_ACCOUNT` | An admin tries to suspend their own account or change their own role |
 | 400 | `CUSTOMER_ROLE_FIXED` | A role change to `CUSTOMER`, or of a customer's account. Only `AGENT` and `ADMIN` change into each other |
 | 400 | `LAST_ADMIN` | The suspension or role change would leave no `ACTIVE` admin |
+| 400 | `ACCOUNT_NOT_ACTIVE` | The account is not `ACTIVE`, so its password cannot be reset by an admin; or it never accepted its invitation, so it cannot be suspended (cancel the invitation instead) |
 | 400 | `INVITATION_NOT_ACCEPTED` | The account never accepted its invitation, so its suspension cannot be lifted. Send the invitation again instead |
 | 400 | `INVITATION_ALREADY_ACCEPTED` | The account accepted its invitation before, so the invitation cannot be sent again or cancelled |
 | 400 | `COMPANY_ARCHIVED` | The customer company is `ARCHIVED`: its status, name, and legal name no longer change |

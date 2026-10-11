@@ -72,7 +72,7 @@ export interface paths {
         put?: never;
         /**
          * Lift an account's suspension
-         * @description Makes a `SUSPENDED` account `ACTIVE` (S1A-AC-35).
+         * @description Makes a `SUSPENDED` account `ACTIVE` (S1A-AC-35). For an account that is already `ACTIVE` it is 200 too.
          */
         post: operations["reactivateAccount"];
         delete?: never;
@@ -112,7 +112,7 @@ export interface paths {
         put?: never;
         /**
          * Suspend an account
-         * @description Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, S1A-AC-34). A suspended account cannot sign in and gets no email.
+         * @description Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, S1A-AC-34). A suspended account cannot sign in and gets no email. Suspending an account that is already `SUSPENDED` is 200 too.
          */
         post: operations["suspendAccount"];
         delete?: never;
@@ -264,7 +264,7 @@ export interface paths {
         get?: never;
         /**
          * Change a company's status
-         * @description `ACTIVE` to `SUSPENDED` and back, or either to `ARCHIVED` (S1A-AC-44). Nothing new can be filed in a company that is not `ACTIVE`; what is there stays readable (S1A-AC-46, S1A-AC-47).
+         * @description `ACTIVE` to `SUSPENDED` and back, or either to `ARCHIVED` (S1A-AC-44). The status the company already has is 200 too, for `ACTIVE` and `SUSPENDED`. Nothing new can be filed in a company that is not `ACTIVE`; what is there stays readable (S1A-AC-46, S1A-AC-47).
          */
         put: operations["changeCompanyStatus"];
         post?: never;
@@ -605,7 +605,7 @@ export interface paths {
         };
         /**
          * Profile photo of an account
-         * @description The photo of any account the caller can see: every account for admins; for agents staff, and customers of the companies they are assigned to (S1A-AC-27). Always PNG, with `X-Content-Type-Options: nosniff` and `Cache-Control: private` (S1A-AC-87).
+         * @description The photo of any account the caller can see: every account for admins; for agents staff, and customers of the companies they are assigned to (S1A-AC-27). Always PNG, with `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-cache`, and an `ETag` (S1A-AC-87): the browser asks again every time, so the caller's right to see the photo is checked again, and gets 304 while the photo is the same.
          */
         get: operations["getPhoto"];
         put?: never;
@@ -790,11 +790,14 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             email: string;
-            /** @description Whether the account has a profile photo (`getPhoto`). */
-            hasPhoto: boolean;
             /** Format: int64 */
             id: number;
             name: string;
+            /**
+             * Format: date-time
+             * @description When the profile photo last changed; null without a photo (`getPhoto`).
+             */
+            photoUpdatedAt: string | null;
             /** @enum {string} */
             role: "CUSTOMER" | "AGENT" | "ADMIN";
             /** @enum {string} */
@@ -895,9 +898,12 @@ export interface components {
             /** Format: int64 */
             accountId: number;
             email: string;
-            /** @description Whether the account has a profile photo (`getPhoto`). */
-            hasPhoto: boolean;
             name: string;
+            /**
+             * Format: date-time
+             * @description When the profile photo last changed; null without a photo (`getPhoto`).
+             */
+            photoUpdatedAt: string | null;
             /** @enum {string} */
             status: "INVITED" | "ACTIVE" | "SUSPENDED";
         };
@@ -1010,8 +1016,6 @@ export interface components {
             /** @description The companies an agent is assigned to, in code order; `[]` for an admin, who sees every company. */
             companies: components["schemas"]["CompanyRef"][];
             email: string;
-            /** @description Whether the account has a profile photo (`getPhoto`). */
-            hasPhoto: boolean;
             /** Format: int64 */
             id: number;
             /**
@@ -1020,6 +1024,11 @@ export interface components {
              */
             locale: "ko" | "en";
             name: string;
+            /**
+             * Format: date-time
+             * @description When the profile photo last changed; null without a photo (`getPhoto`).
+             */
+            photoUpdatedAt: string | null;
             /** @enum {string} */
             role: "CUSTOMER" | "AGENT" | "ADMIN";
         };
@@ -1214,9 +1223,12 @@ export interface components {
         Person: {
             /** Format: int64 */
             accountId: number;
-            /** @description Whether the account has a profile photo (`getPhoto`). */
-            hasPhoto: boolean;
             name: string;
+            /**
+             * Format: date-time
+             * @description When the profile photo last changed; null without a photo (`getPhoto`).
+             */
+            photoUpdatedAt: string | null;
             /** @enum {string} */
             role: "CUSTOMER" | "AGENT" | "ADMIN";
         };
@@ -1411,6 +1423,15 @@ export interface operations {
                     "application/json": components["schemas"]["PasswordResetLink"];
                 };
             };
+            /** @description `ACCOUNT_NOT_ACTIVE`: the account is `INVITED` or `SUSPENDED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
             /** @description `UNAUTHENTICATED`. */
             401: {
                 headers: {
@@ -1580,7 +1601,7 @@ export interface operations {
                     "application/json": components["schemas"]["Account"];
                 };
             };
-            /** @description `OWN_ACCOUNT`: the caller's own account (S1A-AC-33). `LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81). */
+            /** @description `OWN_ACCOUNT`: the caller's own account (S1A-AC-33). `LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81). `ACCOUNT_NOT_ACTIVE`: the account never accepted its invitation (`INVITED`, or a cancelled invitation); cancel the invitation instead. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3134,6 +3155,15 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            /** @description `RATE_LIMITED`: the current password was wrong five times in a row, so this request is refused for 15 minutes. `Retry-After` says when to try again (S1A-AC-18). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     uploadMyPhoto: {
@@ -3375,7 +3405,10 @@ export interface operations {
     getPhoto: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The `ETag` of the copy the caller has. */
+                "If-None-Match"?: string;
+            };
             path: {
                 accountId: number;
             };
@@ -3383,13 +3416,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The photo. */
+            /** @description The photo, with its `ETag`. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "image/png": string;
+                };
+            };
+            /** @description The photo still has the `ETag` sent in `If-None-Match`. No body. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
             /** @description `UNAUTHENTICATED`. */

@@ -25,7 +25,7 @@ class PortalMeController {
     @GetMapping("/api/portal/me")
     Me getMe() {
         CurrentAccount account = CurrentAccount.get();
-        return new Me(account.id(), account.email(), account.name(), account.role(), null, false, List.of());
+        return new Me(account.id(), account.email(), account.name(), account.role(), null, null, List.of());
     }
 
     @Operation(operationId = "updateMe", summary = "Change the caller's name or language",
@@ -49,6 +49,8 @@ class PortalMeController {
             + "new password breaks AUTH-5 (field `newPassword`: `TOO_SHORT`, `TOO_LONG`, `BLANK`, `SAME_AS_EMAIL`).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "429", description = "`RATE_LIMITED`: the current password was wrong five times in "
+            + "a row, so this request is refused for 15 minutes. `Retry-After` says when to try again (S1A-AC-18).")
     @PutMapping("/api/portal/me/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void changeMyPassword(@RequestBody ChangePasswordRequest request) {

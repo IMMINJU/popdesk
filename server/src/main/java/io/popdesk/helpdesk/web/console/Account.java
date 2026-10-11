@@ -13,4 +13,5 @@ public record Account(
         Role role,
         AccountStatus status,
         OffsetDateTime createdAt,
-        @Schema(description = "Whether the account has a profile photo (`getPhoto`).") boolean hasPhoto) {}
+        @Schema(description = "When the profile photo last changed; null without a photo (`getPhoto`).",
+                nullable = true) OffsetDateTime photoUpdatedAt) {}

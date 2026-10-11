@@ -42,7 +42,7 @@ class ConsoleCompanyController {
     }
 
     static CompanyMember member(MemberRow row) {
-        return new CompanyMember(row.accountId(), row.name(), row.email(), row.status(), false);
+        return new CompanyMember(row.accountId(), row.name(), row.email(), row.status(), null);
     }
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only (S0-AC-30).";
@@ -147,7 +147,8 @@ class ConsoleCompanyController {
     }
 
     @Operation(operationId = "changeCompanyStatus", summary = "Change a company's status",
-            description = "`ACTIVE` to `SUSPENDED` and back, or either to `ARCHIVED` (S1A-AC-44). Nothing new can "
+            description = "`ACTIVE` to `SUSPENDED` and back, or either to `ARCHIVED` (S1A-AC-44). The status the "
+                    + "company already has is 200 too, for `ACTIVE` and `SUSPENDED`. Nothing new can "
                     + "be filed in a company that is not `ACTIVE`; what is there stays readable (S1A-AC-46, "
                     + "S1A-AC-47).")
     @ApiResponse(responseCode = "200", description = "Changed.")

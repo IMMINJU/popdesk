@@ -24,16 +24,17 @@
           "email" : {
             "type" : "string"
           },
-          "hasPhoto" : {
-            "description" : "Whether the account has a profile photo (`getPhoto`).",
-            "type" : "boolean"
-          },
           "id" : {
             "format" : "int64",
             "type" : "integer"
           },
           "name" : {
             "type" : "string"
+          },
+          "photoUpdatedAt" : {
+            "description" : "When the profile photo last changed; null without a photo (`getPhoto`).",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
           },
           "role" : {
             "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
@@ -44,7 +45,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "createdAt", "email", "hasPhoto", "id", "name", "role", "status" ],
+        "required" : [ "createdAt", "email", "id", "name", "photoUpdatedAt", "role", "status" ],
         "type" : "object"
       },
       "ApiError" : {
@@ -238,19 +239,20 @@
           "email" : {
             "type" : "string"
           },
-          "hasPhoto" : {
-            "description" : "Whether the account has a profile photo (`getPhoto`).",
-            "type" : "boolean"
-          },
           "name" : {
             "type" : "string"
+          },
+          "photoUpdatedAt" : {
+            "description" : "When the profile photo last changed; null without a photo (`getPhoto`).",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
           },
           "status" : {
             "enum" : [ "INVITED", "ACTIVE", "SUSPENDED" ],
             "type" : "string"
           }
         },
-        "required" : [ "accountId", "email", "hasPhoto", "name", "status" ],
+        "required" : [ "accountId", "email", "name", "photoUpdatedAt", "status" ],
         "type" : "object"
       },
       "CompanyRef" : {
@@ -495,10 +497,6 @@
           "email" : {
             "type" : "string"
           },
-          "hasPhoto" : {
-            "description" : "Whether the account has a profile photo (`getPhoto`).",
-            "type" : "boolean"
-          },
           "id" : {
             "format" : "int64",
             "type" : "integer"
@@ -511,12 +509,17 @@
           "name" : {
             "type" : "string"
           },
+          "photoUpdatedAt" : {
+            "description" : "When the profile photo last changed; null without a photo (`getPhoto`).",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
           "role" : {
             "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
             "type" : "string"
           }
         },
-        "required" : [ "companies", "email", "hasPhoto", "id", "locale", "name", "role" ],
+        "required" : [ "companies", "email", "id", "locale", "name", "photoUpdatedAt", "role" ],
         "type" : "object"
       },
       "Notification" : {
@@ -871,19 +874,20 @@
             "format" : "int64",
             "type" : "integer"
           },
-          "hasPhoto" : {
-            "description" : "Whether the account has a profile photo (`getPhoto`).",
-            "type" : "boolean"
-          },
           "name" : {
             "type" : "string"
+          },
+          "photoUpdatedAt" : {
+            "description" : "When the profile photo last changed; null without a photo (`getPhoto`).",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
           },
           "role" : {
             "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
             "type" : "string"
           }
         },
-        "required" : [ "accountId", "hasPhoto", "name", "role" ],
+        "required" : [ "accountId", "name", "photoUpdatedAt", "role" ],
         "type" : "object"
       },
       "RequestPasswordResetRequest" : {
@@ -1194,6 +1198,16 @@
             },
             "description" : "Reset."
           },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`ACCOUNT_NOT_ACTIVE`: the account is `INVITED` or `SUSPENDED`."
+          },
           "401" : {
             "content" : {
               "application/json" : {
@@ -1231,7 +1245,7 @@
     },
     "/api/console/accounts/{accountId}/reactivate" : {
       "post" : {
-        "description" : "Makes a `SUSPENDED` account `ACTIVE` (S1A-AC-35).",
+        "description" : "Makes a `SUSPENDED` account `ACTIVE` (S1A-AC-35). For an account that is already `ACTIVE` it is 200 too.",
         "operationId" : "reactivateAccount",
         "parameters" : [ {
           "in" : "path",
@@ -1379,7 +1393,7 @@
     },
     "/api/console/accounts/{accountId}/suspend" : {
       "post" : {
-        "description" : "Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, S1A-AC-34). A suspended account cannot sign in and gets no email.",
+        "description" : "Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, S1A-AC-34). A suspended account cannot sign in and gets no email. Suspending an account that is already `SUSPENDED` is 200 too.",
         "operationId" : "suspendAccount",
         "parameters" : [ {
           "in" : "path",
@@ -1409,7 +1423,7 @@
                 }
               }
             },
-            "description" : "`OWN_ACCOUNT`: the caller's own account (S1A-AC-33). `LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81)."
+            "description" : "`OWN_ACCOUNT`: the caller's own account (S1A-AC-33). `LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81). `ACCOUNT_NOT_ACTIVE`: the account never accepted its invitation (`INVITED`, or a cancelled invitation); cancel the invitation instead."
           },
           "401" : {
             "content" : {
@@ -2142,7 +2156,7 @@
     },
     "/api/console/companies/{code}/status" : {
       "put" : {
-        "description" : "`ACTIVE` to `SUSPENDED` and back, or either to `ARCHIVED` (S1A-AC-44). Nothing new can be filed in a company that is not `ACTIVE`; what is there stays readable (S1A-AC-46, S1A-AC-47).",
+        "description" : "`ACTIVE` to `SUSPENDED` and back, or either to `ARCHIVED` (S1A-AC-44). The status the company already has is 200 too, for `ACTIVE` and `SUSPENDED`. Nothing new can be filed in a company that is not `ACTIVE`; what is there stays readable (S1A-AC-46, S1A-AC-47).",
         "operationId" : "changeCompanyStatus",
         "parameters" : [ {
           "in" : "path",
@@ -3338,6 +3352,16 @@
               }
             },
             "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: the current password was wrong five times in a row, so this request is refused for 15 minutes. `Retry-After` says when to try again (S1A-AC-18)."
           }
         },
         "summary" : "Change the caller's password",
@@ -3615,7 +3639,7 @@
     },
     "/api/console/photos/{accountId}" : {
       "get" : {
-        "description" : "The photo of any account the caller can see: every account for admins; for agents staff, and customers of the companies they are assigned to (S1A-AC-27). Always PNG, with `X-Content-Type-Options: nosniff` and `Cache-Control: private` (S1A-AC-87).",
+        "description" : "The photo of any account the caller can see: every account for admins; for agents staff, and customers of the companies they are assigned to (S1A-AC-27). Always PNG, with `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-cache`, and an `ETag` (S1A-AC-87): the browser asks again every time, so the caller's right to see the photo is checked again, and gets 304 while the photo is the same.",
         "operationId" : "getPhoto",
         "parameters" : [ {
           "in" : "path",
@@ -3624,6 +3648,14 @@
           "schema" : {
             "format" : "int64",
             "type" : "integer"
+          }
+        }, {
+          "description" : "The `ETag` of the copy the caller has.",
+          "in" : "header",
+          "name" : "If-None-Match",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -3636,7 +3668,18 @@
                 }
               }
             },
-            "description" : "The photo."
+            "description" : "The photo, with its `ETag`."
+          },
+          "304" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "The photo still has the `ETag` sent in `If-None-Match`. No body."
           },
           "401" : {
             "content" : {

@@ -55,7 +55,7 @@ class ConsoleAccountController {
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
         Paged<AccountRow> rows = accounts.list(role, page, size);
         return new Paged<>(rows.items().stream().map(a -> new Account(a.id(), a.email(), a.name(), a.role(), a.status(),
-                a.createdAt().atOffset(ZoneOffset.UTC), false)).toList(), rows.page(), rows.size(),
+                a.createdAt().atOffset(ZoneOffset.UTC), null)).toList(), rows.page(), rows.size(),
                 rows.totalElements(), rows.totalPages());
     }
 
@@ -90,10 +90,12 @@ class ConsoleAccountController {
 
     @Operation(operationId = "suspendAccount", summary = "Suspend an account",
             description = "Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, "
-                    + "S1A-AC-34). A suspended account cannot sign in and gets no email.")
+                    + "S1A-AC-34). A suspended account cannot sign in and gets no email. Suspending an account that "
+                    + "is already `SUSPENDED` is 200 too.")
     @ApiResponse(responseCode = "200", description = "Suspended.")
     @ApiResponse(responseCode = "400", description = "`OWN_ACCOUNT`: the caller's own account (S1A-AC-33). "
-            + "`LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81).")
+            + "`LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81). `ACCOUNT_NOT_ACTIVE`: the account never "
+            + "accepted its invitation (`INVITED`, or a cancelled invitation); cancel the invitation instead.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY)
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
@@ -103,7 +105,8 @@ class ConsoleAccountController {
     }
 
     @Operation(operationId = "reactivateAccount", summary = "Lift an account's suspension",
-            description = "Makes a `SUSPENDED` account `ACTIVE` (S1A-AC-35).")
+            description = "Makes a `SUSPENDED` account `ACTIVE` (S1A-AC-35). For an account that is already "
+                    + "`ACTIVE` it is 200 too.")
     @ApiResponse(responseCode = "200", description = "Active again.")
     @ApiResponse(responseCode = "400", description = "`INVITATION_NOT_ACCEPTED`: the account never accepted its "
             + "invitation (a cancelled invitation); send the invitation again instead (S1A-AC-35).")
@@ -121,6 +124,8 @@ class ConsoleAccountController {
                     + "Without SMTP the response carries the link instead, once (S1A-AC-37). The response has "
                     + "`Cache-Control: no-store`.")
     @ApiResponse(responseCode = "200", description = "Reset.")
+    @ApiResponse(responseCode = "400", description = "`ACCOUNT_NOT_ACTIVE`: the account is `INVITED` or "
+            + "`SUSPENDED`.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY)
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
