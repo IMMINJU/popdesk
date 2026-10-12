@@ -149,6 +149,13 @@ export const en: Record<keyof typeof ko, string> = {
   'inbox.deliveryFailed': 'Some mail or webhooks could not be sent',
   'inbox.quotaWarning': 'Attachments have passed 80% of the storage limit',
   'inbox.other': 'You have a new notification',
+  // The portal's sentences: whoever did it is the support team, never a name (S4-AC-68).
+  'inbox.portal.staffComment': 'The support team answered',
+  'inbox.portal.issueResolved': 'The support team marked the issue resolved. Please confirm',
+  'inbox.portal.issueClosed': 'The support team closed the issue',
+  'inbox.portal.issueReopened': 'The support team reopened the issue',
+  'inbox.portal.filedOnBehalf': 'The support team filed an issue for you',
+  'inbox.portal.mentioned': 'The support team mentioned you in a comment',
 
   // Slice 4, console: C-4 "알릴 사람" (screens.md 2절).
   'mentions.label': 'Notify',

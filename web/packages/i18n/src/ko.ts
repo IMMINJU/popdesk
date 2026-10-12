@@ -148,6 +148,13 @@ export const ko = {
   'inbox.deliveryFailed': '보내지 못한 메일이나 웹훅이 있습니다',
   'inbox.quotaWarning': '첨부 용량이 한도의 80%를 넘었습니다',
   'inbox.other': '새 알림이 있습니다',
+  // The portal's sentences: whoever did it is "지원팀", never a name (S4-AC-68).
+  'inbox.portal.staffComment': '지원팀이 답변했습니다',
+  'inbox.portal.issueResolved': '지원팀이 문의를 해결로 바꿨습니다. 확인해 주세요',
+  'inbox.portal.issueClosed': '지원팀이 문의를 종료했습니다',
+  'inbox.portal.issueReopened': '지원팀이 문의를 다시 열었습니다',
+  'inbox.portal.filedOnBehalf': '지원팀이 문의를 대신 올렸습니다',
+  'inbox.portal.mentioned': '지원팀이 댓글에서 회원님을 언급했습니다',
 
   // Slice 4, console: C-4 "알릴 사람" (screens.md 2절).
   'mentions.label': '알릴 사람',
