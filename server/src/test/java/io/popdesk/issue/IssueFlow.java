@@ -290,6 +290,12 @@ public final class IssueFlow {
         admin.client().delete("/api/console/companies/" + companyCode + "/agents/" + accountId).expect(200);
     }
 
+    /** Moves a company to {@code SUSPENDED} or {@code ARCHIVED}, or back to {@code ACTIVE}. */
+    public void companyStatus(Session admin, String companyCode, String status) {
+        admin.client().put("/api/console/companies/" + companyCode + "/status").json(Map.of("status", status))
+                .expect(200);
+    }
+
     /** Takes a customer out of a company. */
     public void removeCustomer(Session admin, String companyCode, long accountId) {
         admin.client().delete("/api/console/companies/" + companyCode + "/customers/" + accountId).expect(200);

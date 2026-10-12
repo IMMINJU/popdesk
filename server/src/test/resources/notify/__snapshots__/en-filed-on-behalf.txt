@@ -1,0 +1,10 @@
+Subject: [{key}] The support team filed an issue for you: Printer "B2" jams after toner change
+
+The support team filed an issue for you.
+
+Issue: {key}
+Title: Printer "B2" jams after toner change
+
+Read it and reply in the portal:
+
+{link}
