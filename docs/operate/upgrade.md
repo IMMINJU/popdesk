@@ -53,6 +53,15 @@ It also adds the search of issues, their assignee and history, and the keys that
 - **Searching.** A search text of three or more characters uses the index: in the measurement, a text that 10 of the 100,000 issues hold took 1 millisecond in the database, and one that 20,000 hold took 0.55 seconds. A text of one or two characters cannot use the index and reads every issue, about 2 seconds there. An account can send 60 searches a minute.
 - A dump taken with `popdesk backup` from this version on names the extension. `popdesk restore` restores it into an empty database when the app's database user may create the extension, or when the extension is there already.
 
+## Upgrading to the version after 0.3.0
+
+The next version adds editing and deleting comments, mentions, and the notification inbox of both apps (migration 12): three columns on every comment (when it was edited, when and by whom it was deleted), a table for the accounts a comment mentions, three columns on every inbox item (the issue, the comment, and who did it), and the company of a membership request email in the send queue.
+
+- **It does not take long.** The migration adds columns, one table, and three indexes on the inbox table, and computes nothing. Rows that are there are not changed: after the upgrade every comment has never been edited, is not deleted, and mentions nobody, and the inbox items of admins are listed as before, about no issue.
+- **There is no way back to the old image.** After this migration the 0.3.0 image does not start on the database (see [below](#the-database-is-newer-than-the-app)). To go back, restore the backup you took before the upgrade; what was written after it is lost.
+- Nothing has to be set. Customers get an inbox on the portal, and both apps show the unread count.
+- **More email goes out.** With `SMTP_HOST` set, popdesk now also emails the reporter when staff resolve, close, or reopen an issue, a person who is mentioned in a comment, the new assignee of an issue, and every active admin when a customer manager asks for an existing account to join a company. Without `SMTP_HOST` each of these is one log line, as for the emails before.
+
 ## A migration failed
 
 popdesk stops and logs a line like this:

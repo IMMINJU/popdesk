@@ -248,7 +248,7 @@ Issue content and comments are stored as the Markdown the author wrote. Clients 
 Some deletions keep the row and leave a trace: the content fields are cleared, and the row records `deleted`, the time of deletion, and who deleted it. Lists show the item in its place as "Deleted".
 
 - An attachment: `fileName` becomes `null`.
-- A comment: `content` becomes an empty string, and the comment's attachments are deleted with it. The comment stays in its place in the list and is counted. The portal gives `deleted` and `deletedAt` but not who deleted it; the console gives `deletedBy` too.
+- A comment: `content` becomes an empty string, and the comment's attachments are deleted with it. The comment stays in its place in the list and is counted. The portal gives `deleted` and `deletedAt` but not who deleted it; the console gives `deletedBy` too. A deleted comment takes no new attachment: its ID as `commentId` of an upload is `UNKNOWN_VALUE`, like the ID of a comment that is not the caller's.
 
 ## Notification inbox (INBOX-3)
 
@@ -259,7 +259,8 @@ Each app has the inbox of the signed-in account: `/api/portal/notifications` and
 - The unread count follows the same rule: the items the list would show that have no `readAt`.
 - Marking an item read sets `readAt` once; marking it again is 204 and keeps the first time. An item of another account, or one that does not exist, is 404.
 - `read-all` marks every unread item of the caller read, also those left out of the list now, so they do not come back as unread later.
-- Deleting a comment deletes the items about that comment.
+- Deleting a comment deletes the items about that comment. Taking an account out of a comment's mentions deletes that account's unread item about the mention.
+- An item is made in the request that causes it, for one person: the reporter for what staff do (a public comment, resolving, closing, reopening, filing for them), the assignee for what the reporter does (a comment, closing, reopening), the new assignee, and each account a comment mentions. Nobody gets an item for what they did themselves, an account that is not active or cannot see the issue at that moment gets none, and a person a comment both mentions and would be told of gets the mention alone. So an issue without an assignee tells nobody of the customer's comment. A request that fails or changes nothing makes no item.
 - The portal's items have their own type and their own kinds, only those a customer gets. What an agent or an admin did has the actor `SUPPORT_TEAM`, without a name, an email, or an account ID (D-49). The console gives the actor's account ID, name, and role.
 - Items about no issue (operational alerts, membership requests) go to admins only and have `null` for the issue, the comment, and the actor.
 

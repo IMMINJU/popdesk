@@ -134,10 +134,16 @@ Customers never see the assignee, the staff member who filed an issue for them, 
 | Read public comments | Yes | Yes | Yes | Yes |
 | Add a public comment | Yes | No (403) | Yes | Yes |
 | Read or add internal comments | No (internal comments do not exist for customers: 404) | No (404) | Yes | Yes |
-| Edit a comment | Own only | – | Own only | Own only |
-| Delete a comment | Own | – | Own | Any |
+| Edit a comment | Own only | No (403) | Own only | Own only |
+| Delete a comment | Own | No (403) | Own | Any |
+| Mention someone, list who can be mentioned | No | No | Yes | Yes |
 
-A mention can name up to 10 active accounts who can see the issue: admins, agents assigned to the company, and, in a public comment, the reporter. Not yourself. Anyone else is 400 (`MNT-1`).
+- Editing: only the author, an admin included; anyone else who can see the comment gets 403. Not on a `CLOSED` issue (400 `ISSUE_CLOSED`) and not a deleted comment (400 `COMMENT_DELETED`). Whether a comment is public or internal cannot be changed (`CMT-3`, `CMT-4`).
+- Deleting: the author, or an admin. An agent cannot delete another person's comment, and a customer cannot delete a staff comment (403). It works on a `CLOSED` issue too. The comment stays in the list as a deleted comment without its content, its attachments are deleted with it, and the inbox items about it are removed. A customer is not told who deleted a comment.
+- A reporter who no longer belongs to the company can still read their issue, but cannot edit or delete their comments on it (403), as they cannot add one (`PROJ-4`).
+- A comment on an issue the caller cannot see, a comment that does not exist, and for a customer an internal comment, are all 404.
+
+Mentions are for staff only. A customer cannot mention anyone, and the portal never says who a comment mentions. A mention can name up to 10 active accounts who can see the issue: admins, agents assigned to the company, and, in a public comment, the reporter. Not yourself. Anyone else is 400, the same answer whatever the reason (`MNT-1`). When a comment is edited only the accounts new to its mentions are checked and told; an account the comment mentions already may stay in the list after it was suspended or taken off the company, and then its inbox does not show the item.
 
 ## Attachments
 
@@ -171,14 +177,16 @@ Staff can link two issues as duplicate or related, even across customer companie
 
 | Area | Customer | Agent | Admin |
 |---|---|---|---|
-| Notification inbox | Own items, only for issues they can still see | Same | Same |
+| Notification inbox: list, unread count, mark read, mark all read | Own items, only for issues they can still see | Same | Same |
 | Statistics | – | Assigned companies | All companies |
 | SLA policy and business hours | – | – | Edit |
 | Branding | Read (public, also before sign-in) | Read | Edit |
 | Audit log: view, export, integrity check | – | – | Yes |
 
+The inbox is per account. An item of another account is 404, also for a colleague of the same company or another agent who sees the same issue. A customer's inbox holds only what a customer is told (a staff answer, the issue resolved, closed, or reopened by staff, an issue filed for them, a mention); what staff did shows as the support team, without a name. Items about an assignment, a customer's comment, an operational alert, or a membership request go to staff only (`INBOX-1` to `INBOX-3`).
+
 ## Email
 
 Inbound email follows the same rules as the portal. Only active customer accounts are accepted. A reply becomes a comment only if the sender can see the issue and could add that comment in the portal; otherwise the sender gets an explanation and a portal link, which never names an issue the sender cannot see (`MAILIN-1`, `MAILIN-2`). A new email becomes an issue only in an active company the sender belongs to, chosen by the `+CODE` address or by the sender's only membership (`MAILIN-3`).
 
-Outbound email links go to the portal for customers and to the console for staff. Notification emails to customers never contain internal information. Each email is checked again just before it is sent: if the issue is in the trash or the recipient can no longer see it, it is not sent (`MAIL-4`).
+Outbound email links go to the portal for customers and to the console for staff. Notification emails to customers never contain internal information. Each email is checked again just before it is sent: if the issue is in the trash, the recipient is no longer active or can no longer see the issue, the comment it is about was deleted, or the recipient was taken out of the comment's mentions, it is not sent (`MAIL-4`). Only a person who gets the inbox item gets the email: not the person who did it, and nobody who could not see the issue at that moment.

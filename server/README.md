@@ -64,17 +64,20 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 | `company_member` | `helpdesk` | Which customers belong to which company |
 | `company_agent` | `helpdesk` | Which agents are assigned to which company |
 | `issue` | `helpdesk` | Issues; the key is the company code and `number` |
-| `comment` | `helpdesk` | Comments, public and internal |
+| `comment` | `helpdesk` | Comments, public and internal. `edited_at` when the author changed the content; a deleted comment keeps its row with an empty `content`, `deleted_at`, and `deleted_by` (V12) |
+| `comment_mention` | `helpdesk` | The accounts a comment mentions (V12). The rows stay when the comment is deleted |
 | `attachment` | `helpdesk` | Attachment metadata and state, and where the file is stored (`storage`, `storage_location`). `pending` (row committed, file being written; no issue yet for a file sent with a new issue), `stored`, `purging` (delete committed, file not removed yet), `purged`. Only `stored` needs an issue (V4): the cleanup ends a failed filing's files without one. Rows stay after a delete as traces; a row the cleanup ended has no `deleted_by` and is not listed |
 | `attachment_content` | `helpdesk` | File contents when `POPDESK_STORAGE=db` |
 | `spring_session`, `spring_session_attributes` | `helpdesk` | Sign-in sessions (Spring Session JDBC) |
-| `outbox` | `notification` | Emails and webhooks waiting to be sent, and the ones that failed. `kind` is `INVITATION`, `PASSWORD_RESET`, or `STAFF_COMMENT` for `MAIL`, `ISSUE_CREATED` or `CUSTOMER_COMMENT` for `WEBHOOK` (`MailKind`, `WebhookKind`) |
+| `outbox` | `notification` | Emails and webhooks waiting to be sent, and the ones that failed. `kind` is a `MailKind` name for `MAIL` (`INVITATION`, `PASSWORD_RESET`, `STAFF_COMMENT`, `ISSUE_RESOLVED`, `MENTIONED`, ...) and a `WebhookKind` name for `WEBHOOK`. A row holds IDs only; `company_code` is set for a `MEMBERSHIP_REQUESTED` email alone (V12) |
 | `delivery_status` | `notification` | Last successful send per channel; both rows are made at startup |
 | `ops_alert` | `notification` | Operations alerts that are raised, one row per kind (`OpsAlerts.Kind`) until resolved |
-| `notification` | `notification` | Inbox items of staff accounts. `kind` is `DELIVERY_FAILED` or `ATTACHMENT_QUOTA_WARNING` |
+| `notification` | `notification` | Inbox items of every account. `kind` is an `OpsAlerts.Kind` name or `MEMBERSHIP_REQUESTED` for the items of admins about no issue, and an `IssueInbox.Kind` name for an item about an issue, which has `issue_id`, `actor_id`, and for a comment `comment_id` (V12). The title and the names are read when the inbox is read |
 | `cleanup_run` | `notification` | One row per cleanup job: when it last ran and how many rows it deleted. `helpdesk`'s jobs are `CleanupJob` beans that `notification` runs and records |
 
-`notification` reads accounts and issues only through interfaces it declares and `helpdesk` implements (`Recipients`, `IssueFacts`, `IssueAccess`, `InvitationLinks`, `PasswordResetLinks`), so it does not depend on `helpdesk`.
+`notification` reads accounts, issues, and comments only through interfaces it declares and `helpdesk` implements (`Recipients`, `IssueFacts`, `IssueAccess`, `InboxFacts`, `CommentFacts`, `InvitationLinks`, `PasswordResetLinks`), so it does not depend on `helpdesk`.
+
+Who is told of what happens on an issue is decided in one class, `helpdesk.issue.IssueNotifications`: it leaves out the person who did it, accounts that are not `ACTIVE`, and accounts that cannot see the issue, and calls `IssueInbox.add` once per person, which writes the inbox item and queues the email together. Services do not queue issue emails themselves.
 
 Migrations live in `src/main/resources/db/migration/` and only move forward (ADR D-24). A file is `V<n>__<what_it_does>.sql`, with `n` the next whole number. Versions 999 and up belong to test fixtures; the app's own stay below.
 
