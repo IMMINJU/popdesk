@@ -41,6 +41,7 @@ final class BoundaryList {
     private static final String TALK = "boundary.TalkBoundaryTest#";
     private static final String TALK_STAFF = "boundary.TalkStaffIdentityTest#";
     private static final String INBOX = "inbox.InboxReadTest#";
+    private static final String DELIVERY = "ops.DeliveryAccessTest#";
 
     static final List<Entry> ENTRIES = List.of(
             // Before sign-in, both hosts
@@ -354,5 +355,21 @@ final class BoundaryList {
                     "ops.TalkCheckOrderTest#scopeBeforePermissionAndInput"),
             tested("POST", "/api/console/notifications/read-all",
                     INBOX + "readingAllReadsOwnItemsOnly",
-                    INBOX + "readingAllReadsHiddenItemsToo"));
+                    INBOX + "readingAllReadsHiddenItemsToo"),
+
+            // Slice 4b (S4B-AC-37): the 2 operations it adds. Both are for admins only, on the console host
+            // only; an admin sees every customer company, so no customer company narrows which failed row an
+            // admin may send again, and the test mail goes to the caller's own address.
+            tested("POST", "/api/console/system/failed-deliveries/{id}/resend",
+                    DELIVERY + "agentIsForbiddenAndNothingHappens",
+                    DELIVERY + "signedOutIsUnauthenticated",
+                    DELIVERY + "withoutCsrfTokenIsForbidden",
+                    DELIVERY + "portalHostHasNeitherEndpoint",
+                    "ops.DeliveryCheckOrderTest#checksComeInOrder"),
+            tested("POST", "/api/console/system/test-mail",
+                    DELIVERY + "agentIsForbiddenAndNothingHappens",
+                    DELIVERY + "signedOutIsUnauthenticated",
+                    DELIVERY + "withoutCsrfTokenIsForbidden",
+                    DELIVERY + "portalHostHasNeitherEndpoint",
+                    "ops.DeliveryCheckOrderTest#checksComeInOrder"));
 }

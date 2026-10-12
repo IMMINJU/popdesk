@@ -1,0 +1,6 @@
+Subject: popdesk 시험 메일
+
+popdesk의 메일 보내기 설정을 확인하는 시험 메일입니다.
+
+콘솔: {link}
+보낸 시각: {time}

@@ -1,0 +1,6 @@
+Subject: popdesk test email
+
+This is a test email to check the email settings of popdesk.
+
+Console: {link}
+Sent: {time}
