@@ -1,15 +1,15 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.comment.CommentRepository;
 import io.popdesk.helpdesk.comment.CommentRepository.CommentRow;
 import io.popdesk.helpdesk.comment.CommentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,7 +36,14 @@ class ConsoleCommentController {
     static Comment comment(CommentRow row) {
         return new Comment(row.id(), ConsoleIssueController.person(row.authorId(), row.authorName(), row.authorRole(),
                 row.authorPhotoUpdatedAt()), row.internal(),
-                row.content(), ConsoleIssueController.utc(row.createdAt()), null, false, null, null, List.of());
+                row.content(), ConsoleIssueController.utc(row.createdAt()), ConsoleIssueController.utc(row.editedAt()),
+                row.deleted(), ConsoleIssueController.utc(row.deletedAt()), person(row.deletedBy()),
+                row.mentions().stream().map(ConsoleCommentController::person).toList());
+    }
+
+    private static Person person(CommentRepository.Person person) {
+        return person == null ? null : ConsoleIssueController.person(person.accountId(), person.name(),
+                person.role(), person.photoUpdatedAt());
     }
 
     static final String NOT_FOUND = "`NOT_FOUND`: no such issue or comment, the caller cannot see the issue, or the "
@@ -75,7 +82,7 @@ class ConsoleCommentController {
     @ResponseStatus(HttpStatus.CREATED)
     Comment createComment(@PathVariable String key, @RequestBody CreateCommentRequest request) {
         return comment(comments.add(CurrentAccount.get().viewer(), key, request.content(),
-                Boolean.TRUE.equals(request.internal())));
+                Boolean.TRUE.equals(request.internal()), request.mentions()));
     }
 
     @Operation(operationId = "updateComment", summary = "Edit the caller's own comment",
@@ -94,9 +101,10 @@ class ConsoleCommentController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @ApiResponse(responseCode = "429", description = RATE_LIMITED)
     @PatchMapping("/{id}")
-    Comment updateComment(@PathVariable String key, @PathVariable long id,
+    Comment updateComment(@PathVariable String key,
+            @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String id,
             @RequestBody UpdateCommentRequest request) {
-        throw new NotImplementedException();
+        return comment(comments.edit(CurrentAccount.get().viewer(), key, id, request.content(), request.mentions()));
     }
 
     @Operation(operationId = "deleteComment", summary = "Delete a comment",
@@ -111,7 +119,8 @@ class ConsoleCommentController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void deleteComment(@PathVariable String key, @PathVariable long id) {
-        throw new NotImplementedException();
+    void deleteComment(@PathVariable String key,
+            @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String id) {
+        comments.delete(CurrentAccount.get().viewer(), key, id);
     }
 }

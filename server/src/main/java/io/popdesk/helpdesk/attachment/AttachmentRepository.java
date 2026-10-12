@@ -110,6 +110,12 @@ public class AttachmentRepository {
                 .query(Long.class).single();
     }
 
+    /** The stored attachments of a comment, in ID order. The caller found the comment in a viewer's scope. */
+    List<UUID> storedOfComment(long commentId) {
+        return jdbc.sql("select id from attachment where comment_id = ? and state = 'stored' order by id")
+                .param(commentId).query(UUID.class).list();
+    }
+
     // Writes
 
     /** Step ①: the new attachment's row in state {@code pending}. Joins the caller's transaction. */

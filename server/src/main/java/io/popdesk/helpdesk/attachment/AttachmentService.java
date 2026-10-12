@@ -314,14 +314,41 @@ public class AttachmentService {
         if (attachments.updatePurging(id, viewer.accountId(), now()) != 1) {
             throw ApiException.notFound();
         }
-        try {
-            storage.delete(id);
-            attachments.updatePurged(id);
-        } catch (RuntimeException e) {
-            log.warn("Removing the file of a deleted attachment failed ({}); the attachment cleanup tries again.",
-                    e.getClass().getSimpleName());
+        removeFiles(List.of(id));
+    }
+
+    /**
+     * The first step of {@link #delete} for every stored attachment of a comment that is being deleted
+     * (S4-AC-14), inside the caller's transaction and after it locked the issue row: the rows become
+     * {@code purging} in ID order (architecture.md "Concurrency and lock order", step 2), with the trace
+     * a deleted attachment leaves. Returns their IDs for {@link #removeFiles}.
+     */
+    public List<UUID> purgeOfComment(long commentId, long deletedBy, Instant at) {
+        List<UUID> purging = new ArrayList<>();
+        for (UUID id : attachments.storedOfComment(commentId)) {
+            if (attachments.updatePurging(id, deletedBy, at) == 1) {
+                purging.add(id);
+            }
         }
-        if (!overWarning(attachments.storedBytes())) {
+        return purging;
+    }
+
+    /**
+     * The rest of a delete, after the {@code purging} rows are committed and never inside a transaction:
+     * the files go and the rows become {@code purged}. When removing a file fails the delete still
+     * succeeds; the row stays {@code purging} and the cleanup finishes it.
+     */
+    public void removeFiles(List<UUID> ids) {
+        for (UUID id : ids) {
+            try {
+                storage.delete(id);
+                attachments.updatePurged(id);
+            } catch (RuntimeException e) {
+                log.warn("Removing the file of a deleted attachment failed ({}); the attachment cleanup tries again.",
+                        e.getClass().getSimpleName());
+            }
+        }
+        if (!ids.isEmpty() && !overWarning(attachments.storedBytes())) {
             alerts.resolve(OpsAlerts.Kind.ATTACHMENT_QUOTA_WARNING);
         }
     }

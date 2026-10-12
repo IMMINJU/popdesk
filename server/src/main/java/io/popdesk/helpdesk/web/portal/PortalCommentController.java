@@ -1,12 +1,12 @@
 package io.popdesk.helpdesk.web.portal;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.helpdesk.account.CurrentAccount;
 import io.popdesk.helpdesk.comment.CommentRepository.CommentRow;
 import io.popdesk.helpdesk.comment.CommentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
@@ -35,7 +35,8 @@ class PortalCommentController {
     static Comment comment(CommentRow row) {
         return new Comment(row.id(), PortalIssueController.person(row.authorId(), row.authorName(), row.authorRole(),
                 row.authorPhotoUpdatedAt()),
-                row.content(), PortalIssueController.utc(row.createdAt()), null, false, null);
+                row.content(), PortalIssueController.utc(row.createdAt()), PortalIssueController.utc(row.editedAt()),
+                row.deleted(), PortalIssueController.utc(row.deletedAt()));
     }
 
     static final String NOT_FOUND = "`NOT_FOUND`: no such issue or comment, the caller cannot see the issue, the "
@@ -72,7 +73,7 @@ class PortalCommentController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     Comment createComment(@PathVariable String key, @RequestBody CreateCommentRequest request) {
-        return comment(comments.add(CurrentAccount.get().viewer(), key, request.content(), false));
+        return comment(comments.add(CurrentAccount.get().viewer(), key, request.content(), false, null));
     }
 
     @Operation(operationId = "updateComment", summary = "Edit the caller's own comment",
@@ -89,9 +90,10 @@ class PortalCommentController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @ApiResponse(responseCode = "429", description = RATE_LIMITED)
     @PatchMapping("/{id}")
-    Comment updateComment(@PathVariable String key, @PathVariable long id,
+    Comment updateComment(@PathVariable String key,
+            @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String id,
             @RequestBody UpdateCommentRequest request) {
-        throw new NotImplementedException();
+        return comment(comments.edit(CurrentAccount.get().viewer(), key, id, request.content(), null));
     }
 
     @Operation(operationId = "deleteComment", summary = "Delete the caller's own comment",
@@ -106,7 +108,8 @@ class PortalCommentController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void deleteComment(@PathVariable String key, @PathVariable long id) {
-        throw new NotImplementedException();
+    void deleteComment(@PathVariable String key,
+            @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String id) {
+        comments.delete(CurrentAccount.get().viewer(), key, id);
     }
 }
