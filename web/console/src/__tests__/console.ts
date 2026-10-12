@@ -263,7 +263,7 @@ export const state: {
   invitations: [],
   customers: [],
   agents: [],
-  status: { mail: channel(), webhook: channel(), auditForward: auditForwardOff() },
+  status: { mail: channel(), webhook: channel(), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [] },
   failed: [],
 };
 
@@ -279,7 +279,7 @@ function resetState() {
   state.invitations = [];
   state.customers = [];
   state.agents = [];
-  state.status = { mail: channel(), webhook: channel(), auditForward: auditForwardOff() };
+  state.status = { mail: channel(), webhook: channel(), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [] };
   state.failed = [];
 }
 

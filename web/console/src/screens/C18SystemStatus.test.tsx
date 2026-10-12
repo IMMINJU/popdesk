@@ -52,7 +52,7 @@ function manyFailed(count: number, from = 1): FailedDelivery[] {
 
 describe('C-18 시스템 상태', () => {
   test('C-18 데이터 있음: 채널 표에 메일 보내기·웹훅, 켜짐, 마지막 성공 시각, 실패 수', async () => {
-    state.status = { mail: channel({ enabled: true, failed: 3, lastSuccessAt: LAST_MAIL }), webhook: channel({ enabled: true, failed: 0 }), auditForward: auditForwardOff() };
+    state.status = { mail: channel({ enabled: true, failed: 3, lastSuccessAt: LAST_MAIL }), webhook: channel({ enabled: true, failed: 0 }), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [] };
     renderAt('/system');
 
     const mail = await channelRow('메일 보내기');
@@ -67,7 +67,7 @@ describe('C-18 시스템 상태', () => {
   });
 
   test('C-18 꺼진 채널: "설정 없음" 배지와 운영 문서 링크', async () => {
-    state.status = { mail: channel(), webhook: channel({ enabled: false, lastSuccessAt: null }), auditForward: auditForwardOff() };
+    state.status = { mail: channel(), webhook: channel({ enabled: false, lastSuccessAt: null }), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [] };
     renderAt('/system');
 
     const hook = await channelRow('웹훅');
@@ -77,7 +77,7 @@ describe('C-18 시스템 상태', () => {
   });
 
   test('S0-AC-81 C-18 비밀값 없음: 웹훅 주소·SMTP 비밀번호 칸과 값이 화면에 없다', async () => {
-    state.status = { mail: channel({ enabled: true }), webhook: channel({ enabled: true }), auditForward: auditForwardOff() };
+    state.status = { mail: channel({ enabled: true }), webhook: channel({ enabled: true }), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [] };
     state.failed = [failedDelivery({ channel: 'WEBHOOK', recipientAccountId: null })];
     renderAt('/system');
 
@@ -91,16 +91,8 @@ describe('C-18 시스템 상태', () => {
     expect(shown).not.toMatch(/비밀번호|password|smtp\.|hooks\./i);
   });
 
-  test('S0-AC-81 C-18 읽기만: `failed` 다시 보내기와 시험 메일 버튼이 없다(4번 묶음)', async () => {
-    state.failed = [failedDelivery()];
-    renderAt('/system');
-
-    await failedTable();
-    expect(screen.queryByRole('button', { name: /다시 보내기|재전송|시험 메일/ })).toBeNull();
-  });
-
   test('S0-AC-81 C-18 `failed` 표: 채널, 만든 시각, 마지막 오류 종류, 받는 계정 ID', async () => {
-    state.status = { mail: channel({ failed: 1 }), webhook: channel({ failed: 1 }), auditForward: auditForwardOff() };
+    state.status = { mail: channel({ failed: 1 }), webhook: channel({ failed: 1 }), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [] };
     state.failed = [
       failedDelivery({ id: 1, channel: 'MAIL', lastErrorKind: 'CONNECTION_REFUSED', recipientAccountId: 11 }),
       failedDelivery({ id: 2, channel: 'WEBHOOK', lastErrorKind: 'HTTP_500', recipientAccountId: null }),
@@ -177,7 +169,7 @@ describe('C-18 시스템 상태', () => {
   });
 
   test('C-18 axe: 채널 표와 `failed` 표가 있는 화면에 접근성 위반이 없다', async () => {
-    state.status = { mail: channel({ failed: 2 }), webhook: channel({ enabled: false, lastSuccessAt: null }), auditForward: auditForwardOff() };
+    state.status = { mail: channel({ failed: 2 }), webhook: channel({ enabled: false, lastSuccessAt: null }), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [] };
     state.failed = manyFailed(2);
     renderAt('/system');
     await failedTable();

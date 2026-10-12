@@ -28,7 +28,8 @@ class SystemStatusTest extends BareAppTest {
 
         JsonNode status = admin.client().get(STATUS).expect(200).json();
 
-        assertThat(fieldNames(status)).isEqualTo(Set.of("mail", "webhook", "auditForward"));
+        assertThat(fieldNames(status)).isEqualTo(
+                Set.of("mail", "webhook", "auditForward", "sandbox", "sandboxMailToSet", "cleanupJobs"));
         for (String channel : Set.of("mail", "webhook", "auditForward")) {
             JsonNode c = status.path(channel);
             assertThat(fieldNames(c)).as(channel).isEqualTo(CHANNEL_FIELDS);
