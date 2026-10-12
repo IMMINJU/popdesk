@@ -183,6 +183,8 @@
 
 0.2.0도 같은 범위로 했다(2026-10-12, 사람이 맡겨 메인이 정함): `v0.2.0` 태그, 태그의 코드로 이 PC에서 만든 이미지로 trivy와 견본(`deploy/upgrade/samples/0.2.0/`), 릴리스 노트. Actions 시간을 아끼려고 태그만 먼저 올려 전체 런 하나를 돌리고, 견본은 태그 커밋에 넣었고(`deploy/upgrade`는 이미지에 들어가지 않는다), 그 뒤 검증 기록 커밋은 `[skip ci]`를 붙여 `main`에 올렸다. 브랜치 푸시와 태그 푸시는 따로 돌기 때문에 둘을 같이 올리면 런이 둘이다. 버전을 올릴 때는 `server/pom.xml`, `OpenApiConfig.CONTRACT_VERSION`(계약 파일과 생성 클라이언트를 다시 만든다), `deploy/compose.yml`의 이미지 태그, README 둘의 상태 줄을 고친다.
 
+0.3.0도 같은 범위와 같은 순서로 했다(2026-10-12, 사람이 맡겨 메인이 정함. 2번과 3번을 묶었다). 더 고친 곳: `docs/operate/upgrade.md`의 "다음 판" 제목을 판 번호로 바꾸고 그 앵커를 가리키는 링크, `deploy/upgrade/README.md`와 `samples/README.md`의 견본 줄. 새 견본은 `upgrade-test.py`로 옛 견본들과 함께 새 이미지에 올려 본다. 기록은 `archive/3-issues/verify.md` 9절에 있다.
+
 0.1.0에서 한 것: `v0.1.0` 태그, 베이스 이미지 다이제스트 고정, 태그의 코드로 이 PC에서 만든 이미지(amd64)로 trivy와 업그레이드 견본, 릴리스 노트(`docs/release-notes/0.1.0.md`). v0.2의 업그레이드 테스트는 `v0.1.0` 태그를 다시 빌드한 이미지가 아니라 견본 덤프와 새 이미지로 돈다(`deploy/upgrade/README.md`).
 
 ## 산출물 처리 (D-27)
