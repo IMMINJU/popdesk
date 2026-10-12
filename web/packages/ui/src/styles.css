@@ -1010,7 +1010,10 @@ textarea {
 
 /* Table ----------------------------------------------------------------- */
 
+/* Positioned, so a visually hidden label in a cell (.pd-sr-only is absolute) scrolls with the table
+   and is cut by the wrap instead of widening the page. */
 .pd-table-wrap {
+  position: relative;
   width: 100%;
   overflow-x: auto;
 }
@@ -2497,6 +2500,12 @@ a.pd-inbox-row:hover .pd-inbox-text {
   padding: var(--space-8) var(--page-gutter) var(--space-16);
 }
 
+/* A comment the page scrolls to (#comment-ID, or the focus after a change) stops under the bar,
+   not behind it. */
+.pd-shell[data-app='portal'] .pd-comment {
+  scroll-margin-top: calc(56px + var(--space-2));
+}
+
 @media (max-width: 639.98px) {
   .pd-shell[data-app='portal'] .pd-shell-head {
     flex-wrap: wrap;
@@ -2522,6 +2531,11 @@ a.pd-inbox-row:hover .pd-inbox-text {
 
   .pd-shell[data-app='portal'] .pd-shell-main {
     padding: var(--space-5) var(--page-gutter-mobile) var(--space-12);
+  }
+
+  /* The bar with the menu row under it is 100px. */
+  .pd-shell[data-app='portal'] .pd-comment {
+    scroll-margin-top: calc(100px + var(--space-2));
   }
 
   .pd-shell[data-app='portal'] .pd-shell-user-name {
