@@ -375,6 +375,11 @@ textarea {
   box-shadow: inset 0 -1px 0 var(--danger);
 }
 
+/* SearchField draws its own 검색어 지우기 button. */
+.pd-input[type='search']::-webkit-search-cancel-button {
+  appearance: none;
+}
+
 .pd-input:disabled,
 .pd-editor-area:disabled {
   background: transparent;
