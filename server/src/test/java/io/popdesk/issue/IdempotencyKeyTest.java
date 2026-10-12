@@ -17,7 +17,6 @@ import io.popdesk.support.Fixtures.File;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
 import io.popdesk.support.Wait;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -297,8 +296,9 @@ class IdempotencyKeyTest extends BareAppTest {
                 Arguments.of("empty", ""),
                 Arguments.of("101 characters", "k".repeat(101)),
                 Arguments.of("a space inside", "two words"),
-                // Hangul as its UTF-8 bytes: the HTTP client sends header values as Latin-1.
-                Arguments.of("Hangul", new String("열쇠".getBytes(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1)));
+                // A tab is allowed in a header value but is not a visible character. (Characters above
+                // ASCII cannot be tested here: the JDK's HTTP client sends them as "?", which is a valid key.)
+                Arguments.of("a tab inside", "two	words"));
     }
 
     @ParameterizedTest(name = "{0}")
