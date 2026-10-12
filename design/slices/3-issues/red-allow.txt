@@ -5,3 +5,5 @@ io.popdesk.issue.PortalIssueFilterTest.staffOnlyNamesAreRejected(String, String)
 io.popdesk.issue.PortalIssueFilterTest.staffOnlyNamesAreRejected(String, String)[4] | 포털 목록은 첫 묶음부터 허용 목록에 없는 쿼리 이름을 400으로 답한다(S0-AC-48)
 io.popdesk.ops.IssueSearchLogTest.searchAndFilingLeaveNoText | 앱에 접근 로그와 쿼리 문자열을 적는 코드가 없어 지금도 검색어와 제목이 로그에 없다
 src/components/SearchField.test.tsx.SearchField > SearchField 꼴: role="search" 안의 이름표 있는 검색 입력. hint는 aria-describedby로 잇고 maxLength는 기본 100, disabled면 막힌다 | 계약 껍데기(s3-c4-web)가 이름표, role="search", hint, maxLength, disabled를 이미 그린다
+src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 동작(동료의 해결된 문의): 버튼은 [] | 동료의 문의에 동작과 해결 띠가 없다는 부정 단언이라 동작이 아직 없는 지금도 참이다
+src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 동작(동료의 종료된 문의(reopenable이 참)): 버튼은 [] | 위와 같다. reopenable이 참이어도 올린 사람이 아니면 "다시 열기"가 없다는 부정 단언이다

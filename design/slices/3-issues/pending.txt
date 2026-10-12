@@ -28,3 +28,7 @@ web src/screens/C10MemberList.clear.test.tsx
 web src/screens/C12AuditLog.cleared.test.tsx
 web src/App.test.tsx
 web src/screens/C3IssueList.test.tsx
+web src/screens/P3IssueList.filters.test.tsx
+web src/screens/P5IssueDetail.actions.test.tsx
+web src/screens/P5IssueDetail.edit.test.tsx
+web src/screens/P4IssueCreate.key.test.tsx
