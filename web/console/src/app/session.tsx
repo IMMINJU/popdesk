@@ -1,1 +1,1 @@
-export * from '@popdesk/app/session';
+export { SessionProvider } from '@popdesk/app/session';

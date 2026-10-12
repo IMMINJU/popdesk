@@ -1,1 +1,1 @@
-export * from '@popdesk/app/toast';
+export { ToastProvider } from '@popdesk/app/toast';

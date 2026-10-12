@@ -1,1 +1,1 @@
-export * from '@popdesk/app/PageNav';
+export { PageNav } from '@popdesk/app/PageNav';
