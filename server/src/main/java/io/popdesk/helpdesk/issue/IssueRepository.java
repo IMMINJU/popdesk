@@ -122,6 +122,13 @@ public class IssueRepository {
                 .query(IssueRepository::issue).optional();
     }
 
+    /** The issue with this ID, if the viewer may see it. */
+    public Optional<IssueRow> findById(Viewer viewer, UUID id) {
+        return jdbc.sql(SELECT + "where i.id = ? and " + IssueScope.SQL)
+                .params(concat(new Object[] {id}, IssueScope.params(viewer)))
+                .query(IssueRepository::issue).optional();
+    }
+
     /** Whether the viewer may see the issue with this ID. */
     public boolean visible(Viewer viewer, UUID id) {
         return jdbc.sql("select count(*) from issue i where i.id = ? and " + IssueScope.SQL)

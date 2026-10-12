@@ -138,8 +138,8 @@ class PortalIssueController {
                     @RequestHeader(name = "Idempotency-Key", required = false) @Nullable String idempotencyKey,
             @RequestBody CreateIssueRequest request) {
         Viewer viewer = CurrentAccount.get().viewer();
-        IssueService.Draft draft = issues.prepare(viewer, received(request));
-        return issue(issues.file(viewer, draft));
+        IssueService.Prepared prepared = issues.prepare(viewer, received(request), idempotencyKey);
+        return issue(prepared.filed() != null ? prepared.filed() : issues.file(viewer, prepared.draft()));
     }
 
     @Operation(operationId = "createIssue", summary = "File an issue")
@@ -158,7 +158,12 @@ class PortalIssueController {
         }
         // The company and the fields are checked before any file is looked at, every file before any is
         // written, and the files are written before the filing transaction begins (S0-AC-56, S0-AC-63).
-        IssueService.Draft draft = issues.prepare(viewer, received(issue));
+        IssueService.Prepared prepared = issues.prepare(viewer, received(issue), idempotencyKey);
+        if (prepared.filed() != null) {
+            // A filing sent again: the first issue is the answer, and these files are not looked at (S3-AC-42).
+            return issue(prepared.filed());
+        }
+        IssueService.Draft draft = prepared.draft();
         if (!withFiles) {
             return issue(issues.file(viewer, draft));
         }

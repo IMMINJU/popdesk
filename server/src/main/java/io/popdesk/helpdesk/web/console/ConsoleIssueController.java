@@ -173,11 +173,11 @@ class ConsoleIssueController {
                     @RequestHeader(name = "Idempotency-Key", required = false) @Nullable String idempotencyKey,
             @RequestBody CreateIssueRequest request) {
         Viewer viewer = CurrentAccount.get().viewer();
-        IssueService.Draft draft = issues.prepareOnBehalf(viewer, new IssueService.NewIssueOnBehalf(
+        IssueService.Prepared prepared = issues.prepareOnBehalf(viewer, new IssueService.NewIssueOnBehalf(
                 new IssueService.NewIssue(request.companyCode(), request.title(), request.content(),
                         request.priority(), request.privateIssue()),
-                request.reporterId(), request.channel()));
-        return issue(issues.file(viewer, draft));
+                request.reporterId(), request.channel()), idempotencyKey);
+        return issue(prepared.filed() != null ? prepared.filed() : issues.file(viewer, prepared.draft()));
     }
 
     @Operation(operationId = "getIssue", summary = "One issue")

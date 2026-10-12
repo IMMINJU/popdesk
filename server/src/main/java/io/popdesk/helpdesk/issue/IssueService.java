@@ -27,6 +27,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiFunction;
@@ -44,6 +45,11 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Filing is two calls so that attachments can be checked and written in between, outside the
  * filing transaction (architecture.md "Concurrency and lock order"): {@link #prepare} checks
  * everything and picks the issue ID, {@link #file} writes the issue.
+ *
+ * <p>A filing may come with an {@code Idempotency-Key} (ISSUE-12, slice 3 design section 4). When the
+ * account used the key in the last 24 hours, {@link #prepare} answers with the issue that filing made
+ * and nothing is written; else {@link #file} writes the key with the issue, and of two filings that
+ * do so at once one finds the key taken and answers with the other's issue.
  */
 @Service
 public class IssueService {
@@ -82,9 +88,30 @@ public class IssueService {
     /**
      * A checked filing, not written yet. The ID is chosen now, so attachments can point at it first.
      * {@code createdBy} is the staff member who files it for the reporter; null when the reporter files it.
+     * {@code key} is the key the filing was sent with, null without one.
      */
     public record Draft(UUID id, long reporterId, Long createdBy, String channel, CompanyRow company, String title,
-            String content, Priority priority, boolean privateIssue) {}
+            String content, Priority priority, boolean privateIssue, IdempotencyKey key) {
+
+        Draft with(IdempotencyKey key) {
+            return new Draft(id, reporterId, createdBy, channel, company, title, content, priority, privateIssue, key);
+        }
+    }
+
+    /**
+     * What a filing request comes to before anything is written: {@code filed}, the issue an earlier
+     * request with the same key and content made, as it is now (S3-AC-41); or {@code draft}, a filing
+     * to write. One of the two is null.
+     */
+    public record Prepared(IssueRow filed, Draft draft) {}
+
+    /** The key of this filing is taken: another filing with it was committed while this one ran. */
+    private static final class KeyTaken extends RuntimeException {
+
+        KeyTaken() {
+            super(null, null, false, false);
+        }
+    }
 
     /**
      * The filters of a list request, as received; a null one was not sent (ISSUE-5). {@code assignee}
@@ -102,6 +129,7 @@ public class IssueService {
 
     private final IssueRepository issues;
     private final IssueHistoryRepository history;
+    private final IdempotencyKeyRepository keys;
     private final ReporterAccess reporters;
     private final CompanyRepository companies;
     private final WebhookQueue webhooks;
@@ -110,11 +138,12 @@ public class IssueService {
     private final Transactions transactions;
     private final Clock clock;
 
-    IssueService(IssueRepository issues, IssueHistoryRepository history, ReporterAccess reporters,
-            CompanyRepository companies, WebhookQueue webhooks, MailQueue mail, AccountRateLimit rateLimit,
+    IssueService(IssueRepository issues, IssueHistoryRepository history, IdempotencyKeyRepository keys,
+            ReporterAccess reporters, CompanyRepository companies, WebhookQueue webhooks, MailQueue mail, AccountRateLimit rateLimit,
             Transactions transactions, Clock clock) {
         this.issues = issues;
         this.history = history;
+        this.keys = keys;
         this.reporters = reporters;
         this.companies = companies;
         this.webhooks = webhooks;
@@ -126,10 +155,12 @@ public class IssueService {
 
     /**
      * Checks a filing by a customer: counted against the rate limit (S0-AC-50), the company must be one
-     * the customer belongs to (S0-AC-43, 404), every invalid field is listed (S0-AC-42), and the company
-     * must be active. Nothing is written.
+     * the customer belongs to (S0-AC-43, 404), every invalid field is listed (S0-AC-42), with them a
+     * key that cannot be one (S3-AC-45), and the company must be active. Nothing is written.
+     *
+     * @param idempotencyKey the {@code Idempotency-Key} header as sent, or null
      */
-    public Draft prepare(Viewer viewer, NewIssue input) {
+    public Prepared prepare(Viewer viewer, NewIssue input, String idempotencyKey) {
         rateLimit.count(AccountRateLimit.Action.ISSUE, viewer.accountId());
         List<ApiError.FieldError> errors = new ArrayList<>();
         CompanyRow company = null;
@@ -141,14 +172,12 @@ public class IssueService {
         String title = TextInput.required("title", input.title(), TITLE_MAX, errors);
         String content = TextInput.multiLine("content", input.content(), false, CONTENT_MAX, errors);
         Priority priority = input.priority() == null ? Priority.NORMAL : priority(input.priority(), errors);
+        boolean keyed = idempotencyKey != null && IdempotencyKey.valid(idempotencyKey, errors);
         if (!errors.isEmpty()) {
             throw ApiException.invalid(errors);
         }
-        if (company.status() != CompanyStatus.ACTIVE) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "COMPANY_NOT_ACTIVE", "The company is not active.");
-        }
-        return new Draft(UUID.randomUUID(), viewer.accountId(), null, CHANNEL_PORTAL, company, title, content,
-                priority, Boolean.TRUE.equals(input.privateIssue()));
+        return prepared(viewer, new Draft(UUID.randomUUID(), viewer.accountId(), null, CHANNEL_PORTAL, company, title,
+                content, priority, Boolean.TRUE.equals(input.privateIssue()), null), keyed ? idempotencyKey : null);
     }
 
     /**
@@ -158,8 +187,10 @@ public class IssueService {
      * a channel that is not one of {@link #CHANNELS_ON_BEHALF} (S3-AC-35) and a reporter who is not an
      * {@code ACTIVE} customer of the company, one answer whatever the reason (S3-AC-33). Then the
      * company must be active. Nothing is written; {@link #file} looks at the reporter again.
+     *
+     * @param idempotencyKey the {@code Idempotency-Key} header as sent, or null
      */
-    public Draft prepareOnBehalf(Viewer staff, NewIssueOnBehalf input) {
+    public Prepared prepareOnBehalf(Viewer staff, NewIssueOnBehalf input, String idempotencyKey) {
         rateLimit.count(AccountRateLimit.Action.ISSUE, staff.accountId());
         NewIssue issue = input.issue();
         List<ApiError.FieldError> errors = new ArrayList<>();
@@ -182,14 +213,53 @@ public class IssueService {
         String title = TextInput.required("title", issue.title(), TITLE_MAX, errors);
         String content = TextInput.multiLine("content", issue.content(), false, CONTENT_MAX, errors);
         Priority priority = issue.priority() == null ? Priority.NORMAL : priority(issue.priority(), errors);
+        boolean keyed = idempotencyKey != null && IdempotencyKey.valid(idempotencyKey, errors);
         if (!errors.isEmpty()) {
             throw ApiException.invalid(errors);
         }
-        if (company.status() != CompanyStatus.ACTIVE) {
+        return prepared(staff, new Draft(UUID.randomUUID(), input.reporterId(), staff.accountId(), input.channel(),
+                company, title, content, priority, Boolean.TRUE.equals(issue.privateIssue()), null),
+                keyed ? idempotencyKey : null);
+    }
+
+    /**
+     * The last checks of a filing whose company and fields are fine. With a key, first what the account
+     * did with it (slice 3 design section 4, step 1): the issue of an earlier filing with this content
+     * is the answer, whatever happened to the company since. Then the company must be active.
+     */
+    private Prepared prepared(Viewer viewer, Draft draft, String idempotencyKey) {
+        Draft keyed = draft;
+        if (idempotencyKey != null) {
+            IdempotencyKey key = IdempotencyKey.of(idempotencyKey, draft);
+            Optional<IssueRow> filed = filedWith(viewer, key);
+            if (filed.isPresent()) {
+                return new Prepared(filed.get(), null);
+            }
+            keyed = draft.with(key);
+        }
+        if (draft.company().status() != CompanyStatus.ACTIVE) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "COMPANY_NOT_ACTIVE", "The company is not active.");
         }
-        return new Draft(UUID.randomUUID(), input.reporterId(), staff.accountId(), input.channel(), company, title,
-                content, priority, Boolean.TRUE.equals(issue.privateIssue()));
+        return new Prepared(null, keyed);
+    }
+
+    /**
+     * The issue the account filed with this key in the last 24 hours, as it is now (S3-AC-41); empty
+     * when it has not used the key, or longer ago (S3-AC-46). The key with other content is 409
+     * (S3-AC-42). A key is the account's own (S3-AC-43), and the issue is read in the viewer's scope
+     * like any other: one the viewer no longer sees is 404.
+     */
+    private Optional<IssueRow> filedWith(Viewer viewer, IdempotencyKey key) {
+        Optional<IdempotencyKeyRepository.KeyRow> used = keys.find(viewer.accountId(), key.value(),
+                now().minus(IdempotencyKey.KEPT));
+        if (used.isEmpty()) {
+            return Optional.empty();
+        }
+        if (!used.get().requestHash().equals(key.requestHash())) {
+            throw ApiException.conflict("IDEMPOTENCY_KEY_REUSED",
+                    "This Idempotency-Key was used for another filing.");
+        }
+        return Optional.of(issues.findById(viewer, used.get().issueId()).orElseThrow(ApiException::notFound));
     }
 
     /** Writes a prepared filing without attachments; see {@link #file(Viewer, Draft, Runnable)}. */
@@ -200,9 +270,14 @@ public class IssueService {
     /**
      * Writes a prepared filing in one transaction, retried once on a lock conflict (S0-AC-85), in the
      * lock order of architecture.md: {@code storeAttachments} turns the filing's pending attachments
-     * stored (step 2), then the webhook row, then the company counter, then the issue row with the number
-     * it got (S0-AC-44), then the first entry of its history, by the person who filed (S3-AC-61). A failed
-     * filing uses no number, and its attachments stay pending (S0-AC-63).
+     * stored (step 2), then the key row and the webhook row, then the company counter, then the issue row
+     * with the number it got (S0-AC-44), then the first entry of its history, by the person who filed
+     * (S3-AC-61). A failed filing uses no number and keeps no key (S3-AC-47), and its attachments stay
+     * pending (S0-AC-63).
+     *
+     * <p>The key row comes before the counter. When another filing with the key was committed first,
+     * the row is not written; this transaction is rolled back before it takes a number, and the answer
+     * is the other filing's issue, or 409 when its content differs (S3-AC-44).
      *
      * <p>A filing by staff for a customer goes the same way (ISSUE-9). Before anything is written the
      * reporter is looked at again, in this transaction: a customer who was suspended or taken out of the
@@ -211,6 +286,15 @@ public class IssueService {
      * (S3-AC-37). The staff member is the one the history names.
      */
     public IssueRow file(Viewer viewer, Draft draft, Runnable storeAttachments) {
+        try {
+            return write(viewer, draft, storeAttachments);
+        } catch (KeyTaken e) {
+            return filedWith(viewer, draft.key())
+                    .orElseThrow(() -> new IllegalStateException("The key of a filing was taken and is gone."));
+        }
+    }
+
+    private IssueRow write(Viewer viewer, Draft draft, Runnable storeAttachments) {
         return transactions.run(() -> {
             Instant now = now();
             boolean onBehalf = draft.createdBy() != null;
@@ -218,6 +302,11 @@ public class IssueService {
                 throw ApiException.invalid(List.of(unknownReporter()));
             }
             storeAttachments.run();
+            IdempotencyKey key = draft.key();
+            if (key != null && !keys.insert(viewer.accountId(), key.value(), key.requestHash(), draft.id(), now,
+                    now.minus(IdempotencyKey.KEPT))) {
+                throw new KeyTaken();
+            }
             webhooks.queue(WebhookKind.ISSUE_CREATED, draft.id(), null);
             if (onBehalf) {
                 mail.queue(MailKind.ISSUE_FILED_ON_BEHALF, draft.reporterId(), draft.id(), null);
