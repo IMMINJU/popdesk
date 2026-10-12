@@ -37,6 +37,7 @@ final class BoundaryList {
     private static final String STAFF = "boundary.StaffIdentityTest#";
     private static final String PHOTO = "boundary.PhotoBoundaryTest#";
     private static final String ADMIN_ONLY = "boundary.AgentCannotManageAccountsTest#";
+    private static final String ISSUE_OF_B = "boundary.IssueBoundaryTest#";
 
     static final List<Entry> ENTRIES = List.of(
             // Before sign-in, both hosts
@@ -254,5 +255,51 @@ final class BoundaryList {
             none("HEAD", "/api/console/audit-log/export",
                     "admins only (checked by audit.AuditLogAccessTest#agentForbidden); answers with headers only, no audit entry and no customer data"),
             none("POST", "/api/console/audit-log/verify",
-                    "admins only; checks the whole hash chain and answers with one result, which no customer company narrows"));
+                    "admins only; checks the whole hash chain and answers with one result, which no customer company narrows"),
+
+            // Slice 3 (S3-AC-88): the 14 operations it adds.
+            // Portal
+            tested("PATCH", ISSUE,
+                    ISSUE_OF_B + "issueOfAnotherCompanyIsNotFound",
+                    "issue.IssueEditTest#colleagueCannotEdit",
+                    "issue.IssueEditTest#reporterTakenOutOfTheCompanyCannotEdit"),
+            tested("POST", ISSUE + "/close",
+                    ISSUE_OF_B + "issueOfAnotherCompanyIsNotFound",
+                    "issue.IssueCloseReopenTest#colleagueCannotCloseOrReopen"),
+            tested("POST", ISSUE + "/reopen",
+                    ISSUE_OF_B + "issueOfAnotherCompanyIsNotFound",
+                    "issue.IssueCloseReopenTest#colleagueCannotCloseOrReopen",
+                    "issue.IssueCloseReopenTest#reporterTakenOutOfTheCompanyCannotReopen"),
+
+            // Console
+            tested("POST", "/api/console/issues",
+                    "issue.OnBehalfFilingTest#unassignedAgentGetsNotFound",
+                    "issue.OnBehalfFilingTest#accountsThatCannotBeTheReporterGetTheSame400",
+                    "issue.IdempotencyKeyTest#keyBelongsToTheAccount"),
+            tested("PATCH", STAFF_ISSUE,
+                    ISSUE_OF_B + "issueOfAnotherCompanyIsNotFound"),
+            tested("PUT", STAFF_ISSUE + "/status",
+                    ISSUE_OF_B + "issueOfAnotherCompanyIsNotFound"),
+            tested("POST", STAFF_ISSUE + "/reopen",
+                    ISSUE_OF_B + "issueOfAnotherCompanyIsNotFound"),
+            tested("PUT", STAFF_ISSUE + "/assignee",
+                    ISSUE_OF_B + "issueOfAnotherCompanyIsNotFound",
+                    "issue.IssueAssigneeTest#accountsThatCannotBeAssignedGetTheSame400"),
+            tested("DELETE", STAFF_ISSUE + "/assignee",
+                    ISSUE_OF_B + "issueOfAnotherCompanyIsNotFound"),
+            tested("GET", STAFF_ISSUE + "/history",
+                    ISSUE_OF_B + "issueOfAnotherCompanyIsNotFound",
+                    "issue.IssueHistoryTest#unassignedAgentGetsNotFound",
+                    "issue.IssueHistoryTest#portalHasNoHistory"),
+            tested("GET", "/api/console/companies/{code}/assignees",
+                    "issue.IssueAssigneeTest#unassignedAgentGetsNotFoundForCandidates"),
+            tested("GET", "/api/console/companies/{code}/reporters",
+                    "issue.CompanyReportersTest#unassignedAgentGetsNotFound",
+                    "issue.CompanyReportersTest#onlyActiveCustomersOfTheCompany"),
+            tested("GET", "/api/console/companies/{code}/agents/{accountId}/open-assignments",
+                    "issue.ClearAssignmentsTest#agentsCannotCount",
+                    "ops.CheckOrderTest#roleBeforeTargetAndInput"),
+            tested("GET", "/api/console/accounts/{accountId}/open-assignments",
+                    "issue.ClearAssignmentsTest#agentsCannotCount",
+                    "ops.CheckOrderTest#roleBeforeTargetAndInput"));
 }

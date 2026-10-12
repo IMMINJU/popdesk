@@ -10,6 +10,8 @@ import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.TestClock;
 import io.popdesk.support.Unique;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -131,7 +133,34 @@ public final class IssueFlow {
         return session.client().get(session.api("/issues/" + key)).expect(200).json();
     }
 
+    /** The first 100 entries of the issue's history as staff see them, oldest first. */
+    public List<JsonNode> history(Session staff, String key) {
+        return IssueSteps.items(staff.client().get("/api/console/issues/" + key + "/history").query("size", 100)
+                .expect(200));
+    }
+
+    /** A time field of a response as an instant, or null when the field is null. Fails when it is missing. */
+    public static Instant time(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        if (value.isNull()) {
+            return null;
+        }
+        if (!value.isString()) {
+            throw new AssertionError("No time field '" + field + "' in " + node);
+        }
+        try {
+            return OffsetDateTime.parse(value.stringValue()).toInstant();
+        } catch (DateTimeParseException e) {
+            throw new AssertionError("Not a time in '" + field + "': " + value.stringValue(), e);
+        }
+    }
+
     // Status
+
+    /** The request of {@link #changeStatus}, not sent yet: read another status than 200. */
+    public static ApiRequest statusRequest(Session staff, String key, String status) {
+        return staff.client().put("/api/console/issues/" + key + "/status").json(Map.of("status", status));
+    }
 
     /** Staff sets one status ({@code PUT .../status}). */
     public JsonNode changeStatus(Session staff, String key, String status) {

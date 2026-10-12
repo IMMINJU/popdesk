@@ -144,7 +144,28 @@ class CheckOrderTest extends BareAppTest {
                         + "/approve"), 401, "UNAUTHENTICATED"),
                 new Case("reject membership request", () -> c.post("/api/console/membership-requests/" + NO_ID
                         + "/reject"), 401, "UNAUTHENTICATED"),
-                new Case("portal me", () -> p.get("/api/portal/me"), 401, "UNAUTHENTICATED")));
+                new Case("portal me", () -> p.get("/api/portal/me"), 401, "UNAUTHENTICATED"),
+                new Case("file on behalf", () -> c.post("/api/console/issues").json(Map.of("companyCode", NO_CODE,
+                        "title", "")), 401, "UNAUTHENTICATED"),
+                new Case("console edit", () -> c.patch(ci).json(Map.of("title", "")), 401, "UNAUTHENTICATED"),
+                new Case("console status", () -> c.put(ci + "/status").json(Map.of("status", "NOPE")), 401,
+                        "UNAUTHENTICATED"),
+                new Case("console reopen", () -> c.post(ci + "/reopen"), 401, "UNAUTHENTICATED"),
+                new Case("set assignee", () -> c.put(ci + "/assignee").json(Map.of("accountId", NO_ID)), 401,
+                        "UNAUTHENTICATED"),
+                new Case("clear assignee", () -> c.delete(ci + "/assignee"), 401, "UNAUTHENTICATED"),
+                new Case("history", () -> c.get(ci + "/history").query("size", 0), 401, "UNAUTHENTICATED"),
+                new Case("assignee candidates", () -> c.get("/api/console/companies/" + NO_CODE + "/assignees"),
+                        401, "UNAUTHENTICATED"),
+                new Case("company reporters", () -> c.get("/api/console/companies/" + NO_CODE + "/reporters")
+                        .query("size", 0), 401, "UNAUTHENTICATED"),
+                new Case("open assignments in a company", () -> c.get("/api/console/companies/" + NO_CODE
+                        + "/agents/" + NO_ID + "/open-assignments"), 401, "UNAUTHENTICATED"),
+                new Case("open assignments of an account", () -> c.get("/api/console/accounts/" + NO_ID
+                        + "/open-assignments"), 401, "UNAUTHENTICATED"),
+                new Case("portal edit", () -> p.patch(pi).json(Map.of("title", "")), 401, "UNAUTHENTICATED"),
+                new Case("portal close", () -> p.post(pi + "/close"), 401, "UNAUTHENTICATED"),
+                new Case("portal reopen", () -> p.post(pi + "/reopen"), 401, "UNAUTHENTICATED")));
         check(cases);
     }
 
@@ -183,7 +204,12 @@ class CheckOrderTest extends BareAppTest {
                         + NO_ID + "/reject"), 403, "FORBIDDEN"),
                 new Case("system status", () -> agent.get("/api/console/system/status"), 403, "FORBIDDEN"),
                 new Case("failed deliveries, size 0", () -> agent.get("/api/console/system/failed-deliveries")
-                        .query("size", 0), 403, "FORBIDDEN")));
+                        .query("size", 0), 403, "FORBIDDEN"),
+                new Case("open assignments of a missing agent in a missing company", () -> agent
+                        .get("/api/console/companies/" + NO_CODE + "/agents/" + NO_ID + "/open-assignments"), 403,
+                        "FORBIDDEN"),
+                new Case("open assignments of a missing account", () -> agent.get("/api/console/accounts/" + NO_ID
+                        + "/open-assignments"), 403, "FORBIDDEN")));
     }
 
     @Test
@@ -230,7 +256,35 @@ class CheckOrderTest extends BareAppTest {
                 new Case("customer of B: empty upload", () -> emptyUpload(customerB, portalPath + "/attachments"),
                         404, "NOT_FOUND"),
                 new Case("customer of B: delete attachment", () -> customerB.delete(w.attachmentPath(w.customerB())),
-                        404, "NOT_FOUND")));
+                        404, "NOT_FOUND"),
+                new Case("admin: open assignments in a missing company", () -> admin.get("/api/console/companies/"
+                        + NO_CODE + "/agents/" + w.agentA().accountId() + "/open-assignments"), 404, "NOT_FOUND"),
+                new Case("admin: open assignments of a missing account", () -> admin.get("/api/console/accounts/"
+                        + NO_ID + "/open-assignments"), 404, "NOT_FOUND"),
+                new Case("agent elsewhere: edit with an empty title and no version", () -> outsider.patch(agentPath)
+                        .json(Map.of("title", "")), 404, "NOT_FOUND"),
+                new Case("agent elsewhere: a status that does not exist", () -> outsider.put(agentPath + "/status")
+                        .json(Map.of("status", "NOPE")), 404, "NOT_FOUND"),
+                new Case("agent elsewhere: reopen an issue that is not resolved", () -> outsider
+                        .post(agentPath + "/reopen"), 404, "NOT_FOUND"),
+                new Case("agent elsewhere: an assignee nobody is", () -> outsider.put(agentPath + "/assignee")
+                        .json(Map.of("accountId", NO_ID)), 404, "NOT_FOUND"),
+                new Case("agent elsewhere: clear the assignee", () -> outsider.delete(agentPath + "/assignee"), 404,
+                        "NOT_FOUND"),
+                new Case("agent elsewhere: history, size 0", () -> outsider.get(agentPath + "/history")
+                        .query("size", 0), 404, "NOT_FOUND"),
+                new Case("agent elsewhere: assignee candidates of A", () -> outsider.get("/api/console/companies/"
+                        + w.a().code() + "/assignees"), 404, "NOT_FOUND"),
+                new Case("agent elsewhere: reporters of A, size 0", () -> outsider.get("/api/console/companies/"
+                        + w.a().code() + "/reporters").query("size", 0), 404, "NOT_FOUND"),
+                new Case("agent elsewhere: file in A for nobody with an empty title", () -> outsider
+                        .post("/api/console/issues").json(Map.of("companyCode", w.a().code(), "reporterId", NO_ID,
+                                "channel", "EMAIL", "title", "")), 404, "NOT_FOUND"),
+                new Case("customer of B: edit with an empty title and no version", () -> customerB.patch(portalPath)
+                        .json(Map.of("title", "")), 404, "NOT_FOUND"),
+                new Case("customer of B: close", () -> customerB.post(portalPath + "/close"), 404, "NOT_FOUND"),
+                new Case("customer of B: reopen an issue that is not resolved", () -> customerB
+                        .post(portalPath + "/reopen"), 404, "NOT_FOUND")));
     }
 
     @Test
@@ -249,7 +303,11 @@ class CheckOrderTest extends BareAppTest {
                 new Case("colleague: delete someone else's attachment", () -> colleague
                         .delete(w.attachmentPath(w.colleagueA())), 403, "FORBIDDEN"),
                 new Case("assigned agent: delete the customer's attachment", () -> agent
-                        .delete(w.attachmentPath(w.agentA())), 403, "FORBIDDEN")));
+                        .delete(w.attachmentPath(w.agentA())), 403, "FORBIDDEN"),
+                new Case("colleague: edit someone else's public issue with an empty title and no version",
+                        () -> colleague.patch(colleaguePath).json(Map.of("title", "")), 403, "FORBIDDEN"),
+                new Case("colleague: reopen someone else's public issue that is not resolved", () -> colleague
+                        .post(colleaguePath + "/reopen"), 403, "FORBIDDEN")));
     }
 
     @Test
