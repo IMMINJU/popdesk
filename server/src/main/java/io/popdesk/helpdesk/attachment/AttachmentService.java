@@ -106,9 +106,10 @@ public class AttachmentService {
     // Uploads
 
     /**
-     * Attaches a file to an issue, or to the caller's own comment on it. Customers attach to issues they
-     * reported while they still belong to the company, like comments (S0-AC-52); staff attach to issues
-     * they can see. Checks in conventions order: the rate limit (S0-AC-65), the issue in scope (404),
+     * Attaches a file to an issue, or to the caller's own comment on it; a comment that is deleted takes
+     * no file and is the same {@code UNKNOWN_VALUE} as one that is not the caller's. Customers attach to
+     * issues they reported while they still belong to the company, like comments (S0-AC-52); staff
+     * attach to issues they can see. Checks in conventions order: the rate limit (S0-AC-65), the issue in scope (404),
      * permission (403), input (400), then the issue's state and the limits (400).
      */
     public AttachmentRow upload(Viewer viewer, String key, MultipartFile file, Long commentId) {
@@ -124,7 +125,7 @@ public class AttachmentService {
         boolean internal = false;
         if (commentId != null) {
             CommentRow comment = comments.find(viewer, issue.id(), commentId)
-                    .filter(c -> c.authorId() == viewer.accountId()).orElse(null);
+                    .filter(c -> c.authorId() == viewer.accountId() && !c.deleted()).orElse(null);
             if (comment == null) {
                 errors.add(new ApiError.FieldError("commentId", "UNKNOWN_VALUE"));
             } else {
