@@ -101,7 +101,19 @@ export function summary(over: Partial<IssueSummary> = {}): IssueSummary {
 }
 
 export function comment(over: Partial<Comment> = {}): Comment {
-  return { id: 101, author: CUSTOMER_PERSON, content: '확인 부탁드립니다.', createdAt: T0, internal: false, ...over };
+  return {
+    id: 101,
+    author: CUSTOMER_PERSON,
+    content: '확인 부탁드립니다.',
+    createdAt: T0,
+    internal: false,
+    editedAt: null,
+    deleted: false,
+    deletedAt: null,
+    deletedBy: null,
+    mentions: [],
+    ...over,
+  };
 }
 
 export function attachment(over: Partial<Attachment> = {}): Attachment {

@@ -34,10 +34,11 @@ class PortalIssueContractTest {
      * {@code Person.photoUpdatedAt} came with slice 1a (S1A-AC-25, S1A-AC-26): the time a customer's
      * photo last changed, never a staff member's. Slice 3 added {@code filedBySupport} (a flag, never
      * the agent who filed: S3-AC-36), {@code resolvedAt} and {@code closedAt}, and on the issue
-     * {@code reopenable} (S3-AC-59).
+     * {@code reopenable} (S3-AC-59). Slice 4 added to the comment {@code editedAt} (S4-AC-07) and the
+     * trace of a deleted one, {@code deleted} and {@code deletedAt}, never who deleted it (S4-AC-15).
      */
     private static final Map<String, List<String>> SNAPSHOT = new TreeMap<>(Map.of(
-            "Comment", List.of("author", "content", "createdAt", "id"),
+            "Comment", List.of("author", "content", "createdAt", "deleted", "deletedAt", "editedAt", "id"),
             "Issue", List.of("closedAt", "companyCode", "companyName", "content", "createdAt", "filedBySupport",
                     "key", "priority", "private", "reopenable", "reporter", "resolvedAt", "status", "title",
                     "updatedAt", "version"),

@@ -22,7 +22,9 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * Who hears of a membership request, with SMTP: every active admin gets an item in the console inbox
- * and no mail, and the account the request is about gets nothing at any step.
+ * and, since slice 4, one mail (S4-AC-51 changed the "no mail" of S2-AC-39: S4-AC-75); a suspended
+ * admin and an agent get neither, and the account the request is about gets nothing at any step.
+ * What the mail says is for the tests of slice 4; here only its number is counted.
  *
  * <p>"No mail" is checked after a later mail arrived, as in {@link MemberMailTest}.
  */
@@ -42,12 +44,12 @@ class MembershipRequestMailTest extends ConnectedAppTest {
                 .toList();
     }
 
-    // S2-AC-39
+    // S2-AC-39, S4-AC-51
 
     @Test
-    @DisplayName("S2-AC-39 a new membership request puts one MEMBERSHIP_REQUESTED item with the company's code "
-            + "in the inbox of every ACTIVE admin, none in a suspended admin's or an agent's, and sends them no "
-            + "mail")
+    @DisplayName("S2-AC-39 S4-AC-51 a new membership request puts one MEMBERSHIP_REQUESTED item with the "
+            + "company's code in the inbox of every ACTIVE admin and sends each of them one mail; a suspended "
+            + "admin and an agent get no item and no mail")
     void requestIsAnInboxItemForActiveAdmins() {
         Scene s = scene();
         Session second = fixtures.admin(s.admin());
@@ -74,8 +76,12 @@ class MembershipRequestMailTest extends ConnectedAppTest {
         assertThat(itemsAbout(fixtures.signInAgain(suspended), s.code()))
                 .as("items for the admin who was suspended when the request was made").isEmpty();
         awaitALaterMail(s, mail());
-        assertThat(staff.stream().map(e -> mail().messagesTo(e).size()).toList()).as("mail to %s", staff)
-                .isEqualTo(mailBefore);
+        // One more for each of the two ACTIVE admins, none for the suspended admin and the agent.
+        List<Integer> mailAfter = List.of(mailBefore.get(0) + 1, mailBefore.get(1) + 1, mailBefore.get(2),
+                mailBefore.get(3));
+        Wait.untilAsserted("one mail to each ACTIVE admin about the request", () ->
+                assertThat(staff.stream().map(e -> mail().messagesTo(e).size()).toList()).as("mail to %s", staff)
+                        .isEqualTo(mailAfter));
     }
 
     // S2-AC-40

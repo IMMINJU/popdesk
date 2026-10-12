@@ -21,8 +21,14 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Without {@code NOTIFY_WEBHOOK_URL} (setup "bare") the changes of slice 3 that would post a webhook
- * put nothing in the send queue, the way {@link NoWebhookTest} shows it for a new issue: no row is
- * added to the table the mails went through, and no table gets a row that is deleted again.
+ * put nothing in the send queue, the way {@link NoWebhookTest} shows it for a new issue: no row
+ * stays in the table the mails went through, and no other table gets a row that is deleted again.
+ *
+ * <p>Since slice 4 an agent's RESOLVED queues one mail to the customer who filed (S4-AC-48), which
+ * without SMTP is a queue row handled at once. None of the other four changes sends a mail: the
+ * customer's reopening and closing (S4-AC-48), assigning oneself (S4-AC-49), clearing the assignee.
+ * So at most one row may come and go in the queue; each of the five changes would post a webhook, and
+ * their rows would make it more.
  */
 class NoIssueWebhookTest extends BareAppTest {
 
@@ -40,7 +46,8 @@ class NoIssueWebhookTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S3-AC-73 without NOTIFY_WEBHOOK_URL resolving, reopening, closing, and setting and clearing the assignee add no queue row")
+    @DisplayName("S3-AC-73 without NOTIFY_WEBHOOK_URL resolving, reopening, closing, and setting and clearing the "
+            + "assignee add no webhook row to the queue: at most the one row of the mail for RESOLVED (S4-AC-48)")
     void noWebhookRows() {
         Map<String, Counts> beforeScene = activity.counts();
         Scene s = steps.scene();
@@ -65,8 +72,12 @@ class NoIssueWebhookTest extends BareAppTest {
         flow.unassign(s.admin(), issue.key());
         flow.close(s.customer(), issue.key());
 
-        Wait.holds("no table gets a row that is deleted again", Duration.ofSeconds(12),
-                () -> TableActivity.deleted(countsBefore, activity.counts()).isEmpty());
+        Wait.holds("no table but the send queue gets a row that is deleted again, and the queue at most the one "
+                + "mail row", Duration.ofSeconds(12), () -> {
+                    Map<String, Long> deleted = TableActivity.deleted(countsBefore, activity.counts());
+                    return queue.containsAll(deleted.keySet())
+                            && deleted.values().stream().mapToLong(Long::longValue).sum() <= 1;
+                });
         List<Row> added = rows.added(before);
         assertThat(added).as("rows added by the five changes: their history entries").hasSizeGreaterThanOrEqualTo(5);
         assertThat(added).as("rows added by the five changes, in the send queue %s", queue)

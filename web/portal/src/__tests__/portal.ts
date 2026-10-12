@@ -90,7 +90,7 @@ export function summary(over: Partial<IssueSummary> = {}): IssueSummary {
 }
 
 export function comment(over: Partial<Comment> = {}): Comment {
-  return { id: 101, author: ME_PERSON, content: '확인 부탁드립니다.', createdAt: T0, ...over };
+  return { id: 101, author: ME_PERSON, content: '확인 부탁드립니다.', createdAt: T0, editedAt: null, deleted: false, deletedAt: null, ...over };
 }
 
 export function attachment(over: Partial<Attachment> = {}): Attachment {

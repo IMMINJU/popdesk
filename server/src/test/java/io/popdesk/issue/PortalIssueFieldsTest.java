@@ -77,6 +77,6 @@ class PortalIssueFieldsTest extends BareAppTest {
                 "closedAt", "companyCode", "companyName", "createdAt", "filedBySupport", "key", "priority", "private",
                 "reporter", "resolvedAt", "status", "title");
         assertThat(items(comments).getFirst().propertyNames())
-                .containsExactlyInAnyOrder("author", "content", "createdAt", "id");
+                .containsExactlyInAnyOrder("author", "content", "createdAt", "deleted", "deletedAt", "editedAt", "id");
     }
 }
