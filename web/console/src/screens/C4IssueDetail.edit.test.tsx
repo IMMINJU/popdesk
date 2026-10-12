@@ -216,19 +216,19 @@ describe('C-4 이력', () => {
     {
       what: '담당자 정함',
       issue: {},
-      entry: history({ field: 'ASSIGNEE', oldValue: null, newValue: '3', newPerson: OTHER_AGENT_PERSON, actor: ADMIN_PERSON }),
+      entry: history({ field: 'ASSIGNEE', oldValue: null, newValue: null, newPerson: OTHER_AGENT_PERSON, actor: ADMIN_PERSON }),
       says: /최관리 님이 담당자를 정상담 님으로 정했습니다/,
     },
     {
       what: '담당자 바꿈',
       issue: {},
-      entry: history({ field: 'ASSIGNEE', oldValue: '2', newValue: '3', oldPerson: AGENT_PERSON, newPerson: OTHER_AGENT_PERSON, actor: ADMIN_PERSON }),
+      entry: history({ field: 'ASSIGNEE', oldValue: null, newValue: null, oldPerson: AGENT_PERSON, newPerson: OTHER_AGENT_PERSON, actor: ADMIN_PERSON }),
       says: /최관리 님이 담당자를 이상담 님에서 정상담 님으로 바꿨습니다/,
     },
     {
       what: '담당자 비움',
       issue: {},
-      entry: history({ field: 'ASSIGNEE', oldValue: '2', newValue: null, oldPerson: AGENT_PERSON, actor: ADMIN_PERSON }),
+      entry: history({ field: 'ASSIGNEE', oldValue: null, newValue: null, oldPerson: AGENT_PERSON, actor: ADMIN_PERSON }),
       says: /최관리 님이 담당자를 비웠습니다/,
     },
     { what: '우선순위', issue: {}, entry: history({ field: 'PRIORITY', oldValue: 'NORMAL', newValue: 'URGENT' }), says: /이상담 님이 우선순위를 보통에서 긴급으로 바꿨습니다/ },
@@ -326,7 +326,7 @@ describe('C-4 이력', () => {
     });
     const reads = historyReads();
 
-    s3.history = [...s3.history, history({ id: 2, field: 'ASSIGNEE', oldValue: null, newValue: '3', newPerson: OTHER_AGENT_PERSON, actor: ADMIN_PERSON })];
+    s3.history = [...s3.history, history({ id: 2, field: 'ASSIGNEE', oldValue: null, newValue: null, newPerson: OTHER_AGENT_PERSON, actor: ADMIN_PERSON })];
     await user.click(await button(/^(담당자 )?바꾸기$/));
     const box = await found(() => screen.queryByRole('dialog', { name: '담당자' }), '대화상자 "담당자"');
     await user.click(await found(() => within(box).queryByRole('radio', { name: /정상담/ }), '대화상자의 "정상담"'));
