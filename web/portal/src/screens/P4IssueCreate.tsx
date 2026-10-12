@@ -27,6 +27,7 @@ import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { useCooldown, useFieldErrors, useLeaveGuard, useLoad } from '../app/hooks';
 import { LoadFailed, PageTitle } from '../app/layout';
+import { t } from '../app/locale';
 import { TEXT } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { call, isAppError, type Failure, type Result } from '../app/result';
@@ -40,6 +41,11 @@ const MAX_FILES = 20;
 const TOO_MANY_FILES_TEXT = `한 번에 ${String(MAX_FILES)}개까지 붙일 수 있습니다`;
 const NOT_MEMBER_TEXT = '이 고객사에 문의를 올릴 수 없습니다.';
 const COMPANY_ID = 'issue-company';
+
+/** A new `Idempotency-Key` (S3-AC-84). `getRandomValues`, since `randomUUID` needs HTTPS. */
+function newKey(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 /** A file row the screen keeps until the issue is made (FileUpload). */
 interface Upload extends UploadItem {
@@ -81,6 +87,8 @@ export function P4IssueCreate() {
 
   // Set once the issue is made and its files are done; the move to P-5 follows.
   const [created, setCreated] = useState<{ key: string; failures: UploadFailure[] } | null>(null);
+  // The key of the filing and the content it went with. The key is made with the first send.
+  const idempotency = useRef<{ key: string; sent: string | null }>({ key: '', sent: null });
   const dirty = created === null && (title.trim() !== '' || content.trim() !== '' || uploads.length > 0);
   const blocker = useLeaveGuard(dirty);
 
@@ -123,16 +131,26 @@ export function P4IssueCreate() {
     setPending(true);
     // A 413 from the app carries an error body; a proxy in front answers with its own page.
     const seen = { appError: false };
-    const result = await call(
-      api
-        .POST('/api/portal/issues', {
-          body: { companyCode: chosen, title, content, priority, private: isPrivate },
-        })
-        .then((answer) => {
+    const body = { companyCode: chosen, title, content, priority, private: isPrivate };
+    const create = () => {
+      // The same key for the same content sent again; a changed field makes a new filing (S3-AC-84).
+      const text = JSON.stringify(body);
+      if (idempotency.current.key === '' || (idempotency.current.sent !== null && idempotency.current.sent !== text)) idempotency.current.key = newKey();
+      idempotency.current.sent = text;
+      return call(
+        api.POST('/api/portal/issues', { params: { header: { 'Idempotency-Key': idempotency.current.key } }, body }).then((answer) => {
           seen.appError = isAppError(answer.error);
           return answer;
         }),
-    );
+      );
+    };
+    let result = await create();
+    if (!result.ok && result.failure.kind === 'rejected' && result.failure.code === 'IDEMPOTENCY_KEY_REUSED') {
+      // The key met other content. A new key, once; a second 409 goes to the band.
+      idempotency.current = { key: newKey(), sent: null };
+      result = await create();
+      if (!result.ok && result.failure.kind === 'rejected' && result.failure.code === 'IDEMPOTENCY_KEY_REUSED') idempotency.current = { key: newKey(), sent: null };
+    }
     if (result.ok) {
       const key = result.data.key;
       const tried = uploads.filter((u) => u.state === 'selected').length;
@@ -250,7 +268,7 @@ export function P4IssueCreate() {
       >
         <FieldSummary summary={fields.summary} />
         {band && <Alert tone="error">{band}</Alert>}
-        <SaveFailure failure={failure} />
+        <SaveFailure failure={failure} known={{ IDEMPOTENCY_KEY_REUSED: t('portalIssueCreate.keyReused') }} />
         <RateLimitBand {...cooldown} />
         {companyField}
         <TextField
