@@ -168,8 +168,8 @@ class Api:
         # The sign-in limit counts per client address; give each client its own (198.18.0.0/15).
         self.forwarded_for = f"198.18.{uuid.uuid4().int % 250}.{uuid.uuid4().int % 250 + 1}"
 
-    def request(self, method, path, body=None, content_type=None, expect=None):
-        headers = {"Host": self.host, "X-Forwarded-For": self.forwarded_for, "Accept": "*/*"}
+    def request(self, method, path, body=None, content_type=None, expect=None, headers=None):
+        headers = {"Host": self.host, "X-Forwarded-For": self.forwarded_for, "Accept": "*/*", **(headers or {})}
         if method not in ("GET", "HEAD"):
             if "XSRF-TOKEN" not in self.cookies:
                 self.request("GET", "/api/public/csrf")
@@ -197,9 +197,9 @@ class Api:
             raise ApiError(method, path, response.status, data.decode(errors="replace"))
         return response.status, data
 
-    def json(self, method, path, value=None, expect=200):
+    def json(self, method, path, value=None, expect=200, headers=None):
         body = None if value is None else json.dumps(value).encode()
-        _, data = self.request(method, path, body, "application/json", expect)
+        _, data = self.request(method, path, body, "application/json", expect, headers)
         return json.loads(data) if data else None
 
     def upload(self, path, field, file_name, content, expect=201):

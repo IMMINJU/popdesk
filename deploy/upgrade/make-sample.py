@@ -125,6 +125,27 @@ def fill(project):
     customer.request("DELETE", f"/api/portal/issues/{keys[2]}/attachments/{deleted['id']}", expect=204)
     purging = upload(customer, "/api/portal", keys[2], "purging.bin", 6, 1_000)
 
+    # What slice 3 added to an issue (S3-AC-90), after the uploads: a closed issue takes none. The first
+    # issue gets an assignee and goes on to RESOLVED; the second is CONFIRMED with a changed title and
+    # priority. Each change is a CHANGED row of issue_history.
+    agent.json("PUT", f"/api/console/issues/{first}/assignee", {"accountId": agent_id})
+    for status in ("IN_PROGRESS", "RESOLVED"):
+        agent.json("PUT", f"/api/console/issues/{first}/status", {"status": status})
+    agent.json("PUT", f"/api/console/issues/{keys[1]}/status", {"status": "CONFIRMED"})
+    version = customer.json("GET", f"/api/portal/issues/{keys[1]}")["version"]
+    customer.json("PATCH", f"/api/portal/issues/{keys[1]}",
+                  {"title": "Invoice for March is missing", "priority": "HIGH", "version": version})
+    # A filing with a key (issue_idempotency), which its reporter then closes.
+    once = customer.json("POST", "/api/portal/issues",
+                         {"companyCode": "ACME", "title": "Filed once", "content": "Sent with a key."},
+                         expect=201, headers={"Idempotency-Key": "sample-filing-key-1"})["key"]
+    customer.json("POST", f"/api/portal/issues/{once}/close")
+    # An issue the agent filed for the customer (issue.created_by). Its email to the customer is one of
+    # the mail rows waited for below.
+    agent.json("POST", "/api/console/issues",
+               {"companyCode": "ACME", "reporterId": customer_id, "channel": "PHONE",
+                "title": "Reported by phone", "content": "The **scanner** stops after one page."}, expect=201)
+
     # Mail rows of this run are sent (SMTP is off: one log line each) and deleted. Wait for that, so the
     # queue holds only the failed row added below when it is dumped.
     end = time.monotonic() + 60
