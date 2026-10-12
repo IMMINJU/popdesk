@@ -135,6 +135,13 @@
             <artifactId>imageio-webp</artifactId>
             <version>3.15.3</version>
         </dependency>
+        <!-- Parses the Markdown of an issue to collect the text it shows, for the search (ADR D-56).
+             One jar, pure Java, no dependencies. Parsing only: no HTML renderer, no extensions. -->
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>0.30.0</version>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
