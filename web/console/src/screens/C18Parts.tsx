@@ -16,7 +16,7 @@ const DOCS = 'https://github.com/IMMINJU/popdesk/blob/main/docs/operate/configur
 /** Where an operator reads which environment variables turn a channel on. */
 const CONFIG_DOC = DOCS;
 /** Where an operator reads what a sandbox turns off. */
-const SANDBOX_DOC = `${DOCS}#sandbox`;
+const SANDBOX_DOC = `${DOCS}#a-sandbox`;
 
 const FORWARD = '감사 바깥 사본';
 const CHANNEL_WORDS: Record<FailedDelivery['channel'], string> = { MAIL: '메일', WEBHOOK: '웹훅', AUDIT_FORWARD: FORWARD };
