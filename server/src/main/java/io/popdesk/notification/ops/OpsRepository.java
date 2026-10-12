@@ -36,13 +36,16 @@ public class OpsRepository {
      */
     record Shown(long accountId, Collection<String> kinds, Collection<UUID> issues) {
 
-        /** The condition on {@code notification}, with the parameters of {@link #params}. */
-        static final String SQL = "account_id = ? and (cast(? as text[]) is null or kind = any(?)) "
-                + "and (issue_id is null or issue_id = any(?))";
+        /**
+         * The condition on {@code notification}, with the parameters of {@link #params}. The account is
+         * written as a range of one value on purpose; see {@link OpsRepository#listInbox}.
+         */
+        static final String SQL = "account_id >= ? and account_id <= ? "
+                + "and (cast(? as text[]) is null or kind = any(?)) and (issue_id is null or issue_id = any(?))";
 
         Object[] params() {
             String[] names = kinds == null ? null : kinds.toArray(String[]::new);
-            return new Object[] {accountId, names, names, issues.toArray(UUID[]::new)};
+            return new Object[] {accountId, accountId, names, names, issues.toArray(UUID[]::new)};
         }
     }
 
@@ -110,9 +113,14 @@ public class OpsRepository {
     }
 
     /**
-     * One page of the items, newest first. The order names {@code account_id} too, though it is one
-     * value here: with {@code order by id desc} alone the planner walked the primary key backward
-     * through everybody's items; with both columns it takes the index on {@code (account_id, id)}.
+     * One page of the items, newest first, read from the index on {@code (account_id, id)}.
+     *
+     * <p>With {@code account_id = ? order by id desc limit ?} the planner walks the primary key backward
+     * through everybody's items until it has a page of this account's, which is slow for an account
+     * whose items are old. Adding {@code account_id} to the order does not help while the condition is
+     * an equality: the planner drops a column that has one value from the sort. So the account is a
+     * range of one value and the order names both columns; then only the index on
+     * {@code (account_id, id)} gives the order, read backward, or the account's rows are sorted.
      */
     List<InboxRow> listInbox(Shown shown, long offset, int limit) {
         return jdbc.sql("select id, kind, company_code, issue_id, comment_id, actor_id, created_at, read_at "
