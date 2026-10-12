@@ -418,6 +418,13 @@
   border-top: 1px solid var(--border);
 }
 
+/* Over the comments: an edit the server no longer takes, with what was typed. */
+.pd-comment-unsent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
 .pd-detail-closed {
   display: flex;
   flex-direction: column;
