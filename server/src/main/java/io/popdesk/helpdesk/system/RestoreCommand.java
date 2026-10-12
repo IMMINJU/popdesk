@@ -50,8 +50,12 @@ final class RestoreCommand {
                 throw new Failed("The database is not empty (" + tables + " tables). Restore only goes into a new, "
                         + "empty database; nothing was changed.");
             }
+            // Without comments: the dump holds COMMENT ON EXTENSION pg_trgm, which only the owner of the
+            // extension may run. Where an administrator created the extension for the app's user, that one
+            // statement would fail the whole restore (S3-AC-93). popdesk's schema has no comments of its own.
             int exit = database.runTool(List.of("pg_restore", "--exit-on-error", "--single-transaction",
-                    "--no-owner", "--no-privileges", "--no-password", "--dbname=" + database.databaseName(), file));
+                    "--no-owner", "--no-privileges", "--no-comments", "--no-password",
+                    "--dbname=" + database.databaseName(), file));
             if (exit != 0) {
                 throw new Failed("pg_restore ended with exit code " + exit + "; it ran in one transaction, so the "
                         + "database is still empty.");
