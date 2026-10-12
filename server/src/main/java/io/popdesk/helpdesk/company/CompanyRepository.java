@@ -36,6 +36,9 @@ public class CompanyRepository {
     public record MemberRow(long companyId, long accountId, String name, String email, AccountStatus status,
             Instant photoUpdatedAt, boolean manager) {}
 
+    /** An admin or agent who can be the assignee of an issue; {@code photoUpdatedAt} is null without a profile photo. */
+    public record StaffRow(long accountId, String name, Role role, Instant photoUpdatedAt) {}
+
     /** A company the caller belongs to as a customer, and whether they are a manager of it. */
     record OwnMembership(CompanyRow company, boolean manager) {}
 
@@ -54,6 +57,14 @@ public class CompanyRepository {
     private static final String SCOPE = "(? = 'ADMIN' or exists (select 1 from company_agent ca where "
             + "ca.company_id = c.id and ca.account_id = ? and 'AGENT' = ?) or exists (select 1 from company_member cm "
             + "where cm.company_id = c.id and cm.account_id = ? and 'CUSTOMER' = ?))";
+
+    /**
+     * Who can be the assignee of an issue (ISSUE-7), as SQL on the account {@code a} and the company
+     * {@code c}: an {@code ACTIVE} admin, or an {@code ACTIVE} agent assigned to that company. An
+     * assignment to another company does not count.
+     */
+    private static final String ASSIGNABLE = "a.status = 'ACTIVE' and (a.role = 'ADMIN' or (a.role = 'AGENT' and "
+            + "exists (select 1 from company_agent aa where aa.company_id = c.id and aa.account_id = a.id)))";
 
     private final JdbcClient jdbc;
 
@@ -142,6 +153,30 @@ public class CompanyRepository {
         return jdbc.sql("select count(*) from " + memberTable(role) + " m join company c on c.id = m.company_id "
                         + "where m.company_id = ? and " + SCOPE)
                 .params(with(new Object[] {companyId}, scope(viewer))).query(Long.class).single();
+    }
+
+    /**
+     * Everyone who can be the assignee of an issue of this company, in name order, if the viewer may see
+     * the company (ISSUE-7, S3-AC-27): {@link #ASSIGNABLE}.
+     */
+    public List<StaffRow> listAssignable(Viewer viewer, long companyId) {
+        return jdbc.sql("select a.id, a.name, a.role, p.updated_at from account a "
+                        + "join company c on c.id = ? left join account_photo p on p.account_id = a.id "
+                        + "where " + ASSIGNABLE + " and " + SCOPE + " order by a.name, a.id")
+                .params(with(new Object[] {companyId}, scope(viewer)))
+                .query(CompanyRepository::staff).list();
+    }
+
+    /**
+     * The account, if it can be the assignee of an issue of this company and the viewer may see the
+     * company (S3-AC-25). Empty for every other account, whatever the reason.
+     */
+    public Optional<StaffRow> findAssignable(Viewer viewer, long companyId, long accountId) {
+        return jdbc.sql("select a.id, a.name, a.role, p.updated_at from account a "
+                        + "join company c on c.id = ? left join account_photo p on p.account_id = a.id "
+                        + "where a.id = ? and " + ASSIGNABLE + " and " + SCOPE)
+                .params(with(new Object[] {companyId, accountId}, scope(viewer)))
+                .query(CompanyRepository::staff).optional();
     }
 
     /** The companies that these customers belong to, among those the viewer may see. */
@@ -292,6 +327,12 @@ public class CompanyRepository {
     private static CompanyRow company(ResultSet rs, int row) throws SQLException {
         return new CompanyRow(rs.getLong("id"), rs.getString("code"), rs.getString("name"), rs.getString("legal_name"),
                 CompanyStatus.valueOf(rs.getString("status")), rs.getTimestamp("created_at").toInstant());
+    }
+
+    private static StaffRow staff(ResultSet rs, int row) throws SQLException {
+        Timestamp photo = rs.getTimestamp(4);
+        return new StaffRow(rs.getLong(1), rs.getString(2), Role.valueOf(rs.getString(3)),
+                photo == null ? null : photo.toInstant());
     }
 
     private static MemberRow member(ResultSet rs, int row) throws SQLException {

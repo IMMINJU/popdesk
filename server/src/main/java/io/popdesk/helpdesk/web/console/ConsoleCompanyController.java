@@ -249,7 +249,10 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @GetMapping("/{code}/assignees")
     AssigneeCandidates listAssigneeCandidates(@PathVariable String code) {
-        throw new NotImplementedException();
+        return new AssigneeCandidates(companies.assigneeCandidates(CurrentAccount.get().viewer(), code).stream()
+                .map(row -> ConsoleIssueController.person(row.accountId(), row.name(), row.role(),
+                        row.photoUpdatedAt()))
+                .toList());
     }
 
     @Operation(operationId = "listCompanyReporters", summary = "Customers an issue can be filed on behalf of",

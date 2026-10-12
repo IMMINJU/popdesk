@@ -16,6 +16,7 @@ import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
 import io.popdesk.helpdesk.company.CompanyRepository.MemberRow;
+import io.popdesk.helpdesk.company.CompanyRepository.StaffRow;
 import io.popdesk.helpdesk.company.MembershipRequestRepository.RequestRow;
 import io.popdesk.helpdesk.company.MembershipRequestRepository.State;
 import java.time.Clock;
@@ -144,6 +145,17 @@ public class CompanyService {
         PageRequest request = PageRequest.of(page, size);
         return request.of(companies.listMembers(viewer, company.id(), role, request.offset(), request.size()),
                 companies.countMembers(viewer, company.id(), role));
+    }
+
+    /**
+     * Everyone who can be the assignee of an issue of the company, in name order (S3-AC-27): the
+     * {@code ACTIVE} admins and the {@code ACTIVE} agents assigned to it. A company the caller, an agent,
+     * is not assigned to is 404, like a code that does not exist.
+     */
+    @Transactional(readOnly = true)
+    public List<StaffRow> assigneeCandidates(Viewer viewer, String code) {
+        CompanyRow company = get(viewer, code);
+        return companies.listAssignable(viewer, company.id());
     }
 
     /**

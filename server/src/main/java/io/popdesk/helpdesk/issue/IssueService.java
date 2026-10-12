@@ -24,8 +24,11 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -296,6 +299,54 @@ public class IssueService {
                 history.insertChanged(issue.id(), Field.PRIORITY, issue.priority().name(), priority.name(),
                         viewer.accountId(), now);
             }
+            return issues.findByKey(viewer, issueKey).orElseThrow();
+        });
+    }
+
+    /**
+     * Staff set the assignee of an issue they see, whatever its status (S3-AC-24, S3-AC-30): an
+     * {@code ACTIVE} admin, or an {@code ACTIVE} agent assigned to the issue's company. Any other account
+     * is the same 400, whatever the reason (S3-AC-25). The assignee the issue has changes nothing.
+     */
+    public IssueRow assign(Viewer viewer, String key, Long accountId) {
+        return changeAssignee(viewer, key, issue -> {
+            if (accountId == null) {
+                throw ApiException.invalid("accountId", "REQUIRED");
+            }
+            return companies.findAssignable(viewer, issue.companyId(), accountId)
+                    .orElseThrow(() -> ApiException.invalid("accountId", "UNKNOWN_VALUE")).accountId();
+        });
+    }
+
+    /** Staff clear the assignee of an issue they see; an issue without one stays as it is (S3-AC-26). */
+    public IssueRow unassign(Viewer viewer, String key) {
+        return changeAssignee(viewer, key, issue -> null);
+    }
+
+    /**
+     * A change of the assignee in one transaction, retried once on a lock conflict (slice 3 design
+     * section 2): the issue row {@code FOR NO KEY UPDATE} first, in the caller's scope; then
+     * {@code assignee} reads, in the same transaction, who it is to be; then the UPDATE, the history
+     * entry, and the webhook row (S3-AC-62, S3-AC-73). No other row is locked. An assignee that does not
+     * change writes nothing (S3-AC-63).
+     *
+     * @param assignee given the locked issue, throws when the account cannot be its assignee; else the
+     *     account ID, or null for nobody
+     */
+    private IssueRow changeAssignee(Viewer viewer, String key, Function<IssueRow, Long> assignee) {
+        IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
+        return transactions.run(() -> {
+            IssueRow issue = issues.lockByKey(viewer, issueKey).orElseThrow(ApiException::notFound);
+            Long from = issue.assignee() == null ? null : issue.assignee().accountId();
+            Long to = assignee.apply(issue);
+            if (Objects.equals(from, to)) {
+                return issue;
+            }
+            Instant now = now();
+            issues.updateAssignee(issue.id(), to, now);
+            history.insertChanged(issue.id(), Field.ASSIGNEE, from == null ? null : from.toString(),
+                    to == null ? null : to.toString(), viewer.accountId(), now);
+            webhooks.queue(WebhookKind.ASSIGNEE_CHANGED, issue.id(), null);
             return issues.findByKey(viewer, issueKey).orElseThrow();
         });
     }

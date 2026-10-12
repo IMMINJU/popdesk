@@ -8,6 +8,7 @@ import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.CurrentAccount;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository.HistoryRow;
+import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.helpdesk.issue.IssueService;
 import java.time.Instant;
@@ -45,11 +46,15 @@ class ConsoleIssueController {
         this.issues = issues;
     }
 
-    /** The issue with what its status allows now: the transitions of staff and reopening (S3-AC-59). */
+    /**
+     * The issue with what its status allows now: the transitions of staff and reopening (S3-AC-59). Staff
+     * see who filed it for the reporter and who is assigned (S3-AC-28, S3-AC-36).
+     */
     private Issue issue(IssueRow row) {
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
-                null, IssueChannel.valueOf(row.channel()), null, false, row.status().next(), issues.reopenable(row),
+                person(row.createdBy()), IssueChannel.valueOf(row.channel()), person(row.assignee()),
+                row.assigneeUnavailable(), row.status().next(), issues.reopenable(row),
                 utc(row.firstResponseAt()), utc(row.resolvedAt()), utc(row.closedAt()), row.version(),
                 utc(row.createdAt()), utc(row.updatedAt()));
     }
@@ -57,12 +62,17 @@ class ConsoleIssueController {
     static IssueSummary summary(IssueRow row) {
         return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
-                false, null, false, utc(row.createdAt()));
+                row.createdBy() != null, person(row.assignee()), row.assigneeUnavailable(), utc(row.createdAt()));
     }
 
     /** Staff see every person by name, with the time of the profile photo for the photo's address. */
     static Person person(long accountId, String name, Role role, Instant photoUpdatedAt) {
         return new Person(accountId, name, role, utc(photoUpdatedAt));
+    }
+
+    private static Person person(IssueRepository.Staff person) {
+        return person == null ? null
+                : person(person.accountId(), person.name(), person.role(), person.photoUpdatedAt());
     }
 
     private static Person person(IssueHistoryRepository.Person person) {
@@ -223,7 +233,7 @@ class ConsoleIssueController {
     @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
     @PutMapping("/{key}/assignee")
     Issue setIssueAssignee(@PathVariable String key, @RequestBody SetAssigneeRequest request) {
-        throw new NotImplementedException();
+        return issue(issues.assign(CurrentAccount.get().viewer(), key, request.accountId()));
     }
 
     @Operation(operationId = "clearIssueAssignee", summary = "Clear an issue's assignee",
@@ -235,7 +245,7 @@ class ConsoleIssueController {
     @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
     @DeleteMapping("/{key}/assignee")
     Issue clearIssueAssignee(@PathVariable String key) {
-        throw new NotImplementedException();
+        return issue(issues.unassign(CurrentAccount.get().viewer(), key));
     }
 
     @Operation(operationId = "listIssueHistory", summary = "History of an issue",

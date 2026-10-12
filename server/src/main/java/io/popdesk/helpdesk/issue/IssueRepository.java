@@ -25,10 +25,19 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class IssueRepository {
 
-    /** One issue with its company and reporter; {@code reporterPhotoUpdatedAt} is null without a profile photo. */
+    /** An account an issue names besides its reporter; {@code photoUpdatedAt} is null without a profile photo. */
+    public record Staff(long accountId, String name, Role role, Instant photoUpdatedAt) {}
+
+    /**
+     * One issue with its company and reporter; {@code reporterPhotoUpdatedAt} is null without a profile photo.
+     * {@code createdBy} is the staff member who filed it for the reporter, null when the reporter filed it
+     * (ISSUE-9). {@code assignee} is null when nobody is assigned; {@code assigneeUnavailable} says that
+     * the assignee can no longer see the issue ({@link #ASSIGNEE_UNAVAILABLE}).
+     */
     public record IssueRow(UUID id, long companyId, String companyCode, String companyName, int number, String title,
             String content, IssueStatus status, Priority priority, boolean privateIssue, long reporterId,
-            String reporterName, Role reporterRole, Instant reporterPhotoUpdatedAt, String channel, Instant firstResponseAt,
+            String reporterName, Role reporterRole, Instant reporterPhotoUpdatedAt, Staff createdBy, String channel,
+            Staff assignee, boolean assigneeUnavailable, Instant firstResponseAt,
             Instant resolvedAt, Instant closedAt, long version, Instant createdAt, Instant updatedAt) {
 
         public String key() {
@@ -48,12 +57,30 @@ public class IssueRepository {
     /** How long after it was closed an issue can still be reopened (STATUS-4). */
     public static final Duration REOPEN_WINDOW = Duration.ofDays(14);
 
+    /**
+     * "The assignee can no longer see the issue" (ISSUE-11), as SQL on the issue alias {@code i}, without
+     * parameters: the issue has an assignee whose account is not {@code ACTIVE}, or who is an agent
+     * without an assignment to the issue's company; an assignment to another company does not count. An
+     * admin sees every issue. The list, the detail, and the list filter use this one condition.
+     */
+    public static final String ASSIGNEE_UNAVAILABLE = "exists (select 1 from account ua where ua.id = i.assignee_id "
+            + "and (ua.status <> 'ACTIVE' or (ua.role = 'AGENT' and not exists (select 1 from company_agent uca "
+            + "where uca.company_id = i.company_id and uca.account_id = ua.id))))";
+
     private static final String SELECT = "select i.id, i.company_id, c.code, c.name, i.number, i.title, i.content, "
             + "i.status, i.priority, i.is_private, i.reporter_id, r.name as reporter_name, r.role as reporter_role, "
             + "rp.updated_at as reporter_photo_updated_at, i.channel, i.first_response_at, i.resolved_at, i.closed_at, "
-            + "i.version, i.created_at, i.updated_at "
+            + "i.version, i.created_at, i.updated_at, "
+            + "i.created_by, cb.name as created_by_name, cb.role as created_by_role, "
+            + "cbp.updated_at as created_by_photo_updated_at, "
+            + "i.assignee_id, asg.name as assignee_name, asg.role as assignee_role, "
+            + "asgp.updated_at as assignee_photo_updated_at, " + ASSIGNEE_UNAVAILABLE + " as assignee_unavailable "
             + "from issue i join company c on c.id = i.company_id join account r on r.id = i.reporter_id "
-            + "left join account_photo rp on rp.account_id = i.reporter_id ";
+            + "left join account_photo rp on rp.account_id = i.reporter_id "
+            + "left join account cb on cb.id = i.created_by "
+            + "left join account_photo cbp on cbp.account_id = i.created_by "
+            + "left join account asg on asg.id = i.assignee_id "
+            + "left join account_photo asgp on asgp.account_id = i.assignee_id ";
 
     private final JdbcClient jdbc;
 
@@ -110,6 +137,16 @@ public class IssueRepository {
                 .params(id, companyId, number, title, content, IssueStatus.RECEIVED.name(), priority.name(),
                         privateIssue, reporterId, channel, Timestamp.from(now), Timestamp.from(now),
                         SearchText.of(title, content))
+                .update();
+    }
+
+    /**
+     * Sets the assignee, or clears it with null. The caller has locked the issue row and seen that the
+     * assignee changes. A change to the row raises its version (S3-AC-24).
+     */
+    void updateAssignee(UUID id, Long assigneeId, Instant now) {
+        jdbc.sql("update issue set assignee_id = ?, updated_at = ?, version = version + 1 where id = ?")
+                .params(assigneeId, Timestamp.from(now), id)
                 .update();
     }
 
@@ -181,10 +218,22 @@ public class IssueRepository {
                 IssueStatus.valueOf(rs.getString("status")), Priority.valueOf(rs.getString("priority")),
                 rs.getBoolean("is_private"), rs.getLong("reporter_id"), rs.getString("reporter_name"),
                 Role.valueOf(rs.getString("reporter_role")), reporterPhoto == null ? null : reporterPhoto.toInstant(),
-                rs.getString("channel"),
+                staff(rs, "created_by", "created_by"), rs.getString("channel"),
+                staff(rs, "assignee_id", "assignee"), rs.getBoolean("assignee_unavailable"),
                 firstResponse == null ? null : firstResponse.toInstant(),
                 resolved == null ? null : resolved.toInstant(), closed == null ? null : closed.toInstant(),
                 rs.getLong("version"),
                 rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant());
+    }
+
+    /** The account in column {@code id}, with its name, role, and photo time under {@code prefix}; null when empty. */
+    private static Staff staff(ResultSet rs, String id, String prefix) throws SQLException {
+        long accountId = rs.getLong(id);
+        if (rs.wasNull()) {
+            return null;
+        }
+        Timestamp photo = rs.getTimestamp(prefix + "_photo_updated_at");
+        return new Staff(accountId, rs.getString(prefix + "_name"), Role.valueOf(rs.getString(prefix + "_role")),
+                photo == null ? null : photo.toInstant());
     }
 }
