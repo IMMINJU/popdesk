@@ -1,0 +1,35 @@
+# 4번 묶음: 구현 전에 통과해도 되는 테스트와 이유 (check-red.py --allow). 한 줄에 `이름 | 이유`.
+io.popdesk.boundary.BoundaryListTest.everyNamedTestExists | 있던 테스트다. 목록에 4번의 연산 열을 올려 통과한다
+io.popdesk.boundary.BoundaryListTest.everyListedOperationIsInTheContract | 있던 테스트다. 목록에 4번의 연산 열을 올려 통과한다
+io.popdesk.boundary.BoundaryListTest.eachOperationHasTestsOrReason | 있던 테스트다. 목록에 4번의 연산 열을 올려 통과한다
+io.popdesk.boundary.BoundaryListTest.everyContractOperationIsListed | 있던 테스트다. 목록에 4번의 연산 열을 올려 통과한다
+io.popdesk.inbox.AdminInboxItemsTest.membershipRequestItemHasNoIssue | 관리자 항목은 앞 묶음부터 들어가고, 계약 껍데기가 새 칸 셋을 null로 준다(S4-AC-38은 있던 동작이 그대로인지를 본다)
+io.popdesk.inbox.AdminInboxItemsTest.deliveryFailedItemHasNoIssue | 관리자 항목은 앞 묶음부터 들어가고, 계약 껍데기가 새 칸 셋을 null로 준다(S4-AC-38은 있던 동작이 그대로인지를 본다)
+io.popdesk.inbox.InboxReadTest.listNeedsASession(Side)[1] | 로그인 전 401은 보안 설정이 이미 한다
+io.popdesk.inbox.InboxReadTest.listNeedsASession(Side)[2] | 로그인 전 401은 보안 설정이 이미 한다
+io.popdesk.inbox.PortalNotificationContractTest.typesMatchSnapshot | 계약 파일의 스냅샷이다. 포털 알림 타입은 C-4 계약에 이미 있다
+io.popdesk.inbox.PortalNotificationContractTest.kindsAreTheCustomersOnly | 계약 파일의 스냅샷이다. 포털 알림 타입은 C-4 계약에 이미 있다
+io.popdesk.issue.CommentEditTest.neverEditedCommentHasNullEditedAt | 계약 껍데기가 editedAt을 null로 준다. 칸이 빠지지 않는지를 본다
+io.popdesk.ops.TalkCheckOrderTest.unauthenticatedFirst | 로그인 전 401은 보안 설정이 이미 한다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox(콘솔): 머리(banner) 안이고 메뉴 nav 밖인 링크 하나다. navigation은 하나뿐이다 | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox(포털): 머리(banner) 안이고 메뉴 nav 밖인 링크 하나다. navigation은 하나뿐이다 | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 count를 주지 않으면: 숫자가 없고 링크의 이름은 "알림"이다 | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 count를 0이면: 숫자가 없고 링크의 이름은 "알림"이다 | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 count 3: 이름은 label과 countLabel("3건")을 이은 것이고, 보이는 숫자 "3"는 aria-hidden이다 | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 count 99: 이름은 label과 countLabel("99건")을 이은 것이고, 보이는 숫자 "99"는 aria-hidden이다 | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 count 100: 이름은 label과 countLabel("100건")을 이은 것이고, 보이는 숫자 "99+"는 aria-hidden이다 | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 count 120: 이름은 label과 countLabel("120건")을 이은 것이고, 보이는 숫자 "99+"는 aria-hidden이다 | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 current: 지금 화면이 알림함이면 aria-current="page" | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox를 주지 않으면: 알림 링크가 없다. 주면 생긴다 | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell 좁은 창: 옆 메뉴가 접혀 있어도 알림 링크는 이름 그대로 있다 | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > AppShell axe (알림 0): 접근성 위반이 없다 | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > AppShell axe (알림 120, 지금 화면): 접근성 위반이 없다 | C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-61 CommentItem 고침: editedAt을 주면 쓴 시각 뒤에 "고침"과 고친 시각이 있고, 정확한 시각은 title에 있다. 주지 않거나 null이면 없다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-60 CommentItem 동작: actions의 버튼이 머리 줄에 있고, aria-describedby로 그 댓글의 쓴 사람과 쓴 시각에 이어진다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-63 CommentItem 멘션: mentions를 주면 본문 아래에 "알림: 김상담, 이관리" 한 줄이 있다. 비었으면 줄이 없다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-62 CommentItem 지운 댓글: "지워진 댓글" 옆에 지운 사람과 지운 시각이 있고 본문은 없다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-62 CommentItem 지운 댓글: 동작, 편집기, 멘션 줄을 받아도 그리지 않는다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-61 CommentItem 고치는 중: editing을 주면 본문 대신 그것을 그린다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > CommentItem axe (고침·동작·멘션): 접근성 위반이 없다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > CommentItem axe (내부 메모의 동작): 접근성 위반이 없다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > CommentItem axe (지운 댓글): 접근성 위반이 없다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다

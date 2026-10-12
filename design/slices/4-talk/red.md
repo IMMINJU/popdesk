@@ -1,0 +1,362 @@
+# 실패 확인
+
+- 단언 실패 315, 통과 0, 허용한 통과 34, 오류 0, 건너뜀 0
+- 판정: 통과
+
+## 처음부터 통과해도 된다고 허용한 테스트 (점검에서 이유를 본다)
+
+- `io.popdesk.boundary.BoundaryListTest.everyNamedTestExists`: 있던 테스트다. 목록에 4번의 연산 열을 올려 통과한다
+- `io.popdesk.boundary.BoundaryListTest.everyListedOperationIsInTheContract`: 있던 테스트다. 목록에 4번의 연산 열을 올려 통과한다
+- `io.popdesk.boundary.BoundaryListTest.eachOperationHasTestsOrReason`: 있던 테스트다. 목록에 4번의 연산 열을 올려 통과한다
+- `io.popdesk.boundary.BoundaryListTest.everyContractOperationIsListed`: 있던 테스트다. 목록에 4번의 연산 열을 올려 통과한다
+- `io.popdesk.inbox.AdminInboxItemsTest.membershipRequestItemHasNoIssue`: 관리자 항목은 앞 묶음부터 들어가고, 계약 껍데기가 새 칸 셋을 null로 준다(S4-AC-38은 있던 동작이 그대로인지를 본다)
+- `io.popdesk.inbox.AdminInboxItemsTest.deliveryFailedItemHasNoIssue`: 관리자 항목은 앞 묶음부터 들어가고, 계약 껍데기가 새 칸 셋을 null로 준다(S4-AC-38은 있던 동작이 그대로인지를 본다)
+- `io.popdesk.inbox.InboxReadTest.listNeedsASession(Side)[1]`: 로그인 전 401은 보안 설정이 이미 한다
+- `io.popdesk.inbox.InboxReadTest.listNeedsASession(Side)[2]`: 로그인 전 401은 보안 설정이 이미 한다
+- `io.popdesk.inbox.PortalNotificationContractTest.typesMatchSnapshot`: 계약 파일의 스냅샷이다. 포털 알림 타입은 C-4 계약에 이미 있다
+- `io.popdesk.inbox.PortalNotificationContractTest.kindsAreTheCustomersOnly`: 계약 파일의 스냅샷이다. 포털 알림 타입은 C-4 계약에 이미 있다
+- `io.popdesk.issue.CommentEditTest.neverEditedCommentHasNullEditedAt`: 계약 껍데기가 editedAt을 null로 준다. 칸이 빠지지 않는지를 본다
+- `io.popdesk.ops.TalkCheckOrderTest.unauthenticatedFirst`: 로그인 전 401은 보안 설정이 이미 한다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox(콘솔): 머리(banner) 안이고 메뉴 nav 밖인 링크 하나다. navigation은 하나뿐이다`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox(포털): 머리(banner) 안이고 메뉴 nav 밖인 링크 하나다. navigation은 하나뿐이다`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 count를 주지 않으면: 숫자가 없고 링크의 이름은 "알림"이다`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 count를 0이면: 숫자가 없고 링크의 이름은 "알림"이다`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 count 3: 이름은 label과 countLabel("3건")을 이은 것이고, 보이는 숫자 "3"는 aria-hidden이다`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 count 99: 이름은 label과 countLabel("99건")을 이은 것이고, 보이는 숫자 "99"는 aria-hidden이다`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 count 100: 이름은 label과 countLabel("100건")을 이은 것이고, 보이는 숫자 "99+"는 aria-hidden이다`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 count 120: 이름은 label과 countLabel("120건")을 이은 것이고, 보이는 숫자 "99+"는 aria-hidden이다`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox의 current: 지금 화면이 알림함이면 aria-current="page"`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell inbox를 주지 않으면: 알림 링크가 없다. 주면 생긴다`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > S4-AC-64 AppShell 좁은 창: 옆 메뉴가 접혀 있어도 알림 링크는 이름 그대로 있다`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > AppShell axe (알림 0): 접근성 위반이 없다`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > AppShell axe (알림 120, 지금 화면): 접근성 위반이 없다`: C-4 웹 껍데기가 inbox props와 InboxLinkLabel을 이미 그린다. 화면이 넘기는 것은 layout.inbox 테스트가 본다
+- `src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-61 CommentItem 고침: editedAt을 주면 쓴 시각 뒤에 "고침"과 고친 시각이 있고, 정확한 시각은 title에 있다. 주지 않거나 null이면 없다`: C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+- `src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-60 CommentItem 동작: actions의 버튼이 머리 줄에 있고, aria-describedby로 그 댓글의 쓴 사람과 쓴 시각에 이어진다`: C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+- `src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-63 CommentItem 멘션: mentions를 주면 본문 아래에 "알림: 김상담, 이관리" 한 줄이 있다. 비었으면 줄이 없다`: C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+- `src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-62 CommentItem 지운 댓글: "지워진 댓글" 옆에 지운 사람과 지운 시각이 있고 본문은 없다`: C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+- `src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-62 CommentItem 지운 댓글: 동작, 편집기, 멘션 줄을 받아도 그리지 않는다`: C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+- `src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-61 CommentItem 고치는 중: editing을 주면 본문 대신 그것을 그린다`: C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+- `src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > CommentItem axe (고침·동작·멘션): 접근성 위반이 없다`: C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+- `src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > CommentItem axe (내부 메모의 동작): 접근성 위반이 없다`: C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+- `src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > CommentItem axe (지운 댓글): 접근성 위반이 없다`: C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+
+## 단언에서 실패한 테스트
+
+실패 글은 뺐다. 이름만 남긴다.
+
+
+- `io.popdesk.boundary.TalkBoundaryTest.readingAnItemOfCompanyBIsNotFound(Side)[1]`
+- `io.popdesk.boundary.TalkBoundaryTest.readingAnItemOfCompanyBIsNotFound(Side)[2]`
+- `io.popdesk.boundary.TalkBoundaryTest.agentTakenOffCompanyBKeepsOnlyTheItemsOfA`
+- `io.popdesk.boundary.TalkBoundaryTest.authorTakenOffTheCompanyFindsNoCommentOfTheirs`
+- `io.popdesk.boundary.TalkBoundaryTest.inboxesOfCompanyAHoldNothingOfCompanyB`
+- `io.popdesk.boundary.TalkStaffIdentityTest.answersAndMailsOfOneIssueHoldNoStaff`
+- `io.popdesk.deploy.TalkSampleTest.sampleHasAMentionEditedAndDeletedCommentsAndIssueItems`
+- `io.popdesk.deploy.TalkUpgradeTest.sampleAdminInboxIsReadAsItWas(String)[1]`
+- `io.popdesk.deploy.TalkUpgradeTest.sampleAdminInboxIsReadAsItWas(String)[2]`
+- `io.popdesk.deploy.TalkUpgradeTest.sampleAdminInboxIsReadAsItWas(String)[3]`
+- `io.popdesk.deploy.TalkUpgradeTest.answerOnASampleIssueReachesTheSampleCustomersInbox(String)[1]`
+- `io.popdesk.deploy.TalkUpgradeTest.answerOnASampleIssueReachesTheSampleCustomersInbox(String)[2]`
+- `io.popdesk.deploy.TalkUpgradeTest.answerOnASampleIssueReachesTheSampleCustomersInbox(String)[3]`
+- `io.popdesk.deploy.TalkUpgradeTest.membershipRequestItemKeepsItsCompany`
+- `io.popdesk.deploy.TalkUpgradeTest.sampleCommentsWereNeverEditedDeletedOrMentioning(String)[1]`
+- `io.popdesk.deploy.TalkUpgradeTest.sampleCommentsWereNeverEditedDeletedOrMentioning(String)[2]`
+- `io.popdesk.deploy.TalkUpgradeTest.sampleCommentsWereNeverEditedDeletedOrMentioning(String)[3]`
+- `io.popdesk.inbox.InboxReadTest.consoleNamesTheActor`
+- `io.popdesk.inbox.InboxReadTest.readingAllReadsHiddenItemsToo`
+- `io.popdesk.inbox.InboxReadTest.unreadCountCountsUnreadItems(Side)[1]`
+- `io.popdesk.inbox.InboxReadTest.unreadCountCountsUnreadItems(Side)[2]`
+- `io.popdesk.inbox.InboxReadTest.customersGetNoStaffKinds`
+- `io.popdesk.inbox.InboxReadTest.deletingTheCommentRemovesItsItem(String)[1]`
+- `io.popdesk.inbox.InboxReadTest.deletingTheCommentRemovesItsItem(String)[2]`
+- `io.popdesk.inbox.InboxReadTest.itemOfAnIssueOutOfScopeIsHiddenUntilItIsBack(String)[1]`
+- `io.popdesk.inbox.InboxReadTest.itemOfAnIssueOutOfScopeIsHiddenUntilItIsBack(String)[2]`
+- `io.popdesk.inbox.InboxReadTest.readingAnItemStampsItOnce(Side)[1]`
+- `io.popdesk.inbox.InboxReadTest.readingAnItemStampsItOnce(Side)[2]`
+- `io.popdesk.inbox.InboxReadTest.itemCarriesItsFieldsAndTheTitleOfNow(Side)[1]`
+- `io.popdesk.inbox.InboxReadTest.itemCarriesItsFieldsAndTheTitleOfNow(Side)[2]`
+- `io.popdesk.inbox.InboxReadTest.portalNamesNoStaff`
+- `io.popdesk.inbox.InboxReadTest.anItemIsForOnePersonOnly`
+- `io.popdesk.inbox.InboxReadTest.readingAnotherPersonsItemIsNotFound(Side)[1]`
+- `io.popdesk.inbox.InboxReadTest.readingAnotherPersonsItemIsNotFound(Side)[2]`
+- `io.popdesk.inbox.InboxReadTest.listIsNewestFirstInPages(Side)[1]`
+- `io.popdesk.inbox.InboxReadTest.listIsNewestFirstInPages(Side)[2]`
+- `io.popdesk.inbox.InboxReadTest.readingAllReadsOwnItemsOnly(Side)[1]`
+- `io.popdesk.inbox.InboxReadTest.readingAllReadsOwnItemsOnly(Side)[2]`
+- `io.popdesk.inbox.InboxRecipientsTest.eventReachesItsOneRecipientAndNobodyElse(Event)[1]`
+- `io.popdesk.inbox.InboxRecipientsTest.eventReachesItsOneRecipientAndNobodyElse(Event)[2]`
+- `io.popdesk.inbox.InboxRecipientsTest.eventReachesItsOneRecipientAndNobodyElse(Event)[3]`
+- `io.popdesk.inbox.InboxRecipientsTest.eventReachesItsOneRecipientAndNobodyElse(Event)[4]`
+- `io.popdesk.inbox.InboxRecipientsTest.eventReachesItsOneRecipientAndNobodyElse(Event)[5]`
+- `io.popdesk.inbox.InboxRecipientsTest.eventReachesItsOneRecipientAndNobodyElse(Event)[6]`
+- `io.popdesk.inbox.InboxRecipientsTest.eventReachesItsOneRecipientAndNobodyElse(Event)[7]`
+- `io.popdesk.inbox.InboxRecipientsTest.eventReachesItsOneRecipientAndNobodyElse(Event)[8]`
+- `io.popdesk.inbox.InboxRecipientsTest.eventReachesItsOneRecipientAndNobodyElse(Event)[9]`
+- `io.popdesk.inbox.InboxRecipientsTest.eventReachesItsOneRecipientAndNobodyElse(Event)[10]`
+- `io.popdesk.inbox.InboxRecipientsTest.eventReachesItsOneRecipientAndNobodyElse(Event)[11]`
+- `io.popdesk.inbox.InboxRulesTest.commentWithoutAnAssigneeIsNoItem`
+- `io.popdesk.inbox.InboxRulesTest.mentionAndCommentTogetherAreOneItem`
+- `io.popdesk.inbox.InboxRulesTest.adminAssigneeGetsTheItem`
+- `io.popdesk.inbox.InboxRulesTest.internalCommentIsNoItemForTheReporter`
+- `io.popdesk.inbox.InboxRulesTest.assigneeWhoIsAwayGetsNoItem(Away)[1]`
+- `io.popdesk.inbox.InboxRulesTest.assigneeWhoIsAwayGetsNoItem(Away)[2]`
+- `io.popdesk.inbox.InboxRulesTest.sameTransitionAtOnceIsOneItem`
+- `io.popdesk.inbox.InboxRulesTest.ownDoingIsNoItem`
+- `io.popdesk.inbox.InboxRulesTest.suspendedReporterGetsNoItem`
+- `io.popdesk.inbox.InboxRulesTest.failedAndUnchangedRequestsAreNoItems`
+- `io.popdesk.inbox.InboxRulesTest.clearingTheAssigneeIsNoItem`
+- `io.popdesk.inbox.InboxRulesTest.confirmedAndInProgressAreNoItems`
+- `io.popdesk.issue.CommentDeleteTest.commentOnClosedIssueIsDeleted(Deleter)[1]`
+- `io.popdesk.issue.CommentDeleteTest.commentOnClosedIssueIsDeleted(Deleter)[2]`
+- `io.popdesk.issue.CommentDeleteTest.commentOnClosedIssueIsDeleted(Deleter)[3]`
+- `io.popdesk.issue.CommentDeleteTest.commentOnClosedIssueIsDeleted(Deleter)[4]`
+- `io.popdesk.issue.CommentDeleteTest.authorOrAdminDeletes(Deleter)[1]`
+- `io.popdesk.issue.CommentDeleteTest.authorOrAdminDeletes(Deleter)[2]`
+- `io.popdesk.issue.CommentDeleteTest.authorOrAdminDeletes(Deleter)[3]`
+- `io.popdesk.issue.CommentDeleteTest.authorOrAdminDeletes(Deleter)[4]`
+- `io.popdesk.issue.CommentDeleteTest.deletedContentIsNowhere(Deleter)[1]`
+- `io.popdesk.issue.CommentDeleteTest.deletedContentIsNowhere(Deleter)[2]`
+- `io.popdesk.issue.CommentDeleteTest.colleagueMayNotDeleteTheReportersComment`
+- `io.popdesk.issue.CommentDeleteTest.firstResponseTimeStays`
+- `io.popdesk.issue.CommentDeleteTest.deletingAgainChangesNothing`
+- `io.popdesk.issue.CommentDeleteTest.attachmentsOfTheCommentAreDeletedWithIt`
+- `io.popdesk.issue.CommentDeleteTest.contentBeforeAnEditIsNotKept`
+- `io.popdesk.issue.CommentDeleteTest.portalDoesNotSayWhoDeleted`
+- `io.popdesk.issue.CommentDeleteTest.othersMayNotDelete(Intruder)[1]`
+- `io.popdesk.issue.CommentDeleteTest.othersMayNotDelete(Intruder)[2]`
+- `io.popdesk.issue.CommentDeleteTest.othersMayNotDelete(Intruder)[3]`
+- `io.popdesk.issue.CommentDeleteWebhookTest.deletedContentIsNowhereWithAWebhookWaiting`
+- `io.popdesk.issue.CommentEditRateLimitTest.deletingIsNotCounted`
+- `io.popdesk.issue.CommentEditRateLimitTest.thirtyFirstOfAddingAndEditingIsLimited(Request)[1]`
+- `io.popdesk.issue.CommentEditRateLimitTest.thirtyFirstOfAddingAndEditingIsLimited(Request)[2]`
+- `io.popdesk.issue.CommentEditTest.closedIssueRefusesEdits(Author)[1]`
+- `io.popdesk.issue.CommentEditTest.closedIssueRefusesEdits(Author)[2]`
+- `io.popdesk.issue.CommentEditTest.reporterWhoLeftTheCompanyMayNotEditOrDelete`
+- `io.popdesk.issue.CommentEditTest.authorChangesTheContent(Author)[1]`
+- `io.popdesk.issue.CommentEditTest.authorChangesTheContent(Author)[2]`
+- `io.popdesk.issue.CommentEditTest.authorChangesTheContent(Author)[3]`
+- `io.popdesk.issue.CommentEditTest.sameContentKeepsTheEditTime(Author)[1]`
+- `io.popdesk.issue.CommentEditTest.sameContentKeepsTheEditTime(Author)[2]`
+- `io.popdesk.issue.CommentEditTest.contentLengthLimitsInside(Author)[1]`
+- `io.popdesk.issue.CommentEditTest.contentLengthLimitsInside(Author)[2]`
+- `io.popdesk.issue.CommentEditTest.notTheAuthorComesBeforeClosed`
+- `io.popdesk.issue.CommentEditTest.deletedCommentCannotBeEdited(Author)[1]`
+- `io.popdesk.issue.CommentEditTest.deletedCommentCannotBeEdited(Author)[2]`
+- `io.popdesk.issue.CommentEditTest.contentOutsideTheLimitsIsRefused(String, String, String)[1]`
+- `io.popdesk.issue.CommentEditTest.contentOutsideTheLimitsIsRefused(String, String, String)[2]`
+- `io.popdesk.issue.CommentEditTest.contentOutsideTheLimitsIsRefused(String, String, String)[3]`
+- `io.popdesk.issue.CommentEditTest.contentOutsideTheLimitsIsRefused(String, String, String)[4]`
+- `io.popdesk.issue.CommentEditTest.onlyTheAuthorEdits(Intruder)[1]`
+- `io.popdesk.issue.CommentEditTest.onlyTheAuthorEdits(Intruder)[2]`
+- `io.popdesk.issue.CommentEditTest.onlyTheAuthorEdits(Intruder)[3]`
+- `io.popdesk.issue.CommentEditTest.onlyTheAuthorEdits(Intruder)[4]`
+- `io.popdesk.issue.CommentEditTest.onlyTheAuthorEdits(Intruder)[5]`
+- `io.popdesk.issue.CommentEditTest.editDoesNotChangeInternal`
+- `io.popdesk.issue.CommentEditTest.deletedCommentOnClosedIssueCannotBeEdited`
+- `io.popdesk.issue.CommentNotFoundTest.hiddenOrMissingCommentIsNotFound(Hidden)[1]`
+- `io.popdesk.issue.CommentNotFoundTest.hiddenOrMissingCommentIsNotFound(Hidden)[2]`
+- `io.popdesk.issue.CommentNotFoundTest.hiddenOrMissingCommentIsNotFound(Hidden)[3]`
+- `io.popdesk.issue.CommentNotFoundTest.hiddenOrMissingCommentIsNotFound(Hidden)[4]`
+- `io.popdesk.issue.CommentNotFoundTest.hiddenOrMissingCommentIsNotFound(Hidden)[5]`
+- `io.popdesk.issue.CommentNotFoundTest.hiddenOrMissingCommentIsNotFound(Hidden)[6]`
+- `io.popdesk.issue.CommentNotFoundTest.hiddenOrMissingCommentIsNotFound(Hidden)[7]`
+- `io.popdesk.issue.CommentNotFoundTest.hiddenOrMissingCommentIsNotFound(Hidden)[8]`
+- `io.popdesk.issue.MentionCandidatesTest.agentWhoCannotSeeTheIssueGetsNotFound`
+- `io.popdesk.issue.MentionCandidatesTest.candidatesForPublicAndInternalComments`
+- `io.popdesk.issue.MentionCandidatesTest.candidatesAreForAPublicCommentByDefault`
+- `io.popdesk.issue.MentionCandidatesTest.suspendedReporterIsNoCandidate`
+- `io.popdesk.issue.MentionTest.onlyTheAuthorChangesTheMentions`
+- `io.popdesk.issue.MentionTest.mentionsAreKeptWithTheComment(boolean)[1]`
+- `io.popdesk.issue.MentionTest.mentionsAreKeptWithTheComment(boolean)[2]`
+- `io.popdesk.issue.MentionTest.portalIgnoresMentions`
+- `io.popdesk.issue.MentionTest.editWithoutMentionsKeepsThem`
+- `io.popdesk.issue.MentionTest.elevenMentionsAreRefused`
+- `io.popdesk.issue.MentionTest.editChecksTheMentions`
+- `io.popdesk.issue.MentionTest.accountsThatCannotBeMentionedGetTheSame400`
+- `io.popdesk.issue.MentionTest.portalCommentsCarryNoMentions`
+- `io.popdesk.issue.MentionTest.sameAccountTwiceCountsOnce`
+- `io.popdesk.issue.MentionTest.editReplacesTheMentions`
+- `io.popdesk.issue.MentionTest.tenAccountsAreMentioned`
+- `io.popdesk.issue.MentionTest.emptyListOrNullClearsTheMentions(boolean)[1]`
+- `io.popdesk.issue.MentionTest.emptyListOrNullClearsTheMentions(boolean)[2]`
+- `io.popdesk.notify.KoreanTalkMailTest.queuedMailOfADeletedCommentIsDropped(String)[1]`
+- `io.popdesk.notify.KoreanTalkMailTest.queuedMailOfADeletedCommentIsDropped(String)[2]`
+- `io.popdesk.notify.KoreanTalkMailTest.queuedMailOfARemovedMentionIsDropped`
+- `io.popdesk.notify.KoreanTalkMailTest.queuedMailForSomeoneWhoMayNotGetItIsDropped(Gone)[1]`
+- `io.popdesk.notify.KoreanTalkMailTest.queuedMailForSomeoneWhoMayNotGetItIsDropped(Gone)[2]`
+- `io.popdesk.notify.KoreanTalkMailTest.queuedMailForSomeoneWhoMayNotGetItIsDropped(Gone)[3]`
+- `io.popdesk.notify.KoreanTalkMailTest.queuedMailForSomeoneWhoMayNotGetItIsDropped(Gone)[4]`
+- `io.popdesk.notify.KoreanTalkMailTest.mailInKorean(Mail)[1]`
+- `io.popdesk.notify.KoreanTalkMailTest.mailInKorean(Mail)[2]`
+- `io.popdesk.notify.KoreanTalkMailTest.mailInKorean(Mail)[3]`
+- `io.popdesk.notify.KoreanTalkMailTest.mailInKorean(Mail)[4]`
+- `io.popdesk.notify.KoreanTalkMailTest.mailInKorean(Mail)[5]`
+- `io.popdesk.notify.KoreanTalkMailTest.mailInKorean(Mail)[6]`
+- `io.popdesk.notify.NoSmtpTalkMailLogTest.resolvedMailIsALogLineAndTheItemIsThere`
+- `io.popdesk.notify.TalkMailTest.mailInEnglish(Mail)[1]`
+- `io.popdesk.notify.TalkMailTest.mailInEnglish(Mail)[2]`
+- `io.popdesk.notify.TalkMailTest.mailInEnglish(Mail)[3]`
+- `io.popdesk.notify.TalkMailTest.mailInEnglish(Mail)[4]`
+- `io.popdesk.notify.TalkMailTest.mailInEnglish(Mail)[5]`
+- `io.popdesk.notify.TalkMailTest.mailInEnglish(Mail)[6]`
+- `io.popdesk.notify.TalkMailTest.mentionedStaffAreMailedOnce`
+- `io.popdesk.notify.TalkMailTest.adminTheRequestIsAboutGetsNoMail`
+- `io.popdesk.notify.TalkMailTest.customersCloseAndReopenMailNobody`
+- `io.popdesk.notify.TalkMailTest.membershipRequestMailNamesTheCompanyOnly`
+- `io.popdesk.notify.TalkMailTest.staffTransitionsMailTheReporter`
+- `io.popdesk.notify.TalkMailTest.newAssigneeIsMailedOnce`
+- `io.popdesk.notify.TalkMailTest.mentionedReporterGetsTheMentionMailOnly`
+- `io.popdesk.notify.TalkWebhookTest.editsDeletesAndMentionsPostNoWebhook`
+- `io.popdesk.ops.TalkCheckOrderTest.inputBeforeState`
+- `io.popdesk.ops.TalkCheckOrderTest.scopeBeforePermissionAndInput`
+- `io.popdesk.ops.TalkCheckOrderTest.permissionBeforeInput`
+- `io.popdesk.ops.TalkLogTest.refusedRequestsLeaveNoText`
+- `io.popdesk.ops.TalkLogTest.editsMentionsAndDeletionsLeaveNoText`
+- `src/app/layout.inbox.test.tsx.콘솔 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 콘솔 머리(관리자): 레이아웃이 뜨면 안 읽은 수를 한 번 받고 링크의 이름이 "알림 3건"이다. /inbox로 가고 메뉴 nav의 항목은 그대로다`
+- `src/app/layout.inbox.test.tsx.콘솔 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 콘솔 머리(상담원): 레이아웃이 뜨면 안 읽은 수를 한 번 받고 링크의 이름이 "알림 3건"이다. /inbox로 가고 메뉴 nav의 항목은 그대로다`
+- `src/app/layout.inbox.test.tsx.콘솔 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 콘솔 머리: 안 읽은 것이 없으면 숫자가 없고 이름은 "알림"이다. 100건을 넘으면 "99+"로 보이고 이름은 실제 수를 쓴다`
+- `src/app/layout.inbox.test.tsx.콘솔 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 콘솔 머리: 알림함 화면에서는 링크가 aria-current="page"다`
+- `src/app/layout.inbox.test.tsx.콘솔 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 콘솔 머리 60초: 30초가 지나도 다시 받지 않고, 60초가 지나면 한 번 다시 받아 수를 바꾼다. 화면을 옮겨도 다시 받지 않는다`
+- `src/app/layout.inbox.test.tsx.콘솔 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 콘솔 머리 숨은 탭: document.hidden이면 그 차례에 받지 않고, 다시 보이면 바로 한 번 받는다`
+- `src/app/layout.inbox.test.tsx.콘솔 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-69 콘솔 머리 401: 안 읽은 수가 401이면 그 뒤로 받지 않고, 로그인 화면으로 가지 않으며 아무것도 띄우지 않는다`
+- `src/app/layout.inbox.test.tsx.콘솔 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-69 콘솔 머리 5xx: 다시 받기가 실패하면 마지막 수가 그대로이고 alert가 없다. 다음 차례에 다시 받는다`
+- `src/app/layout.inbox.test.tsx.콘솔 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-69 콘솔 머리를 떠남: 레이아웃이 사라지면 주기를 지워 더 받지 않는다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글의 버튼과 표시 (4번 묶음) > S4-AC-60 C-4 댓글의 버튼(상담원: 내 댓글에 둘 다, 남의 댓글에 없음). 지운 댓글에는 없다. 버튼은 aria-describedby로 그 댓글에 이어진다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글의 버튼과 표시 (4번 묶음) > S4-AC-60 C-4 댓글의 버튼(관리자: 내 댓글에 둘 다, 남의 댓글에 지우기만). 지운 댓글에는 없다. 버튼은 aria-describedby로 그 댓글에 이어진다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글의 버튼과 표시 (4번 묶음) > S4-AC-60 C-4 댓글의 버튼(CLOSED 문의의 상담원: 내 댓글에 지우기만, 남의 댓글에 없음). 지운 댓글에는 없다. 버튼은 aria-describedby로 그 댓글에 이어진다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글의 버튼과 표시 (4번 묶음) > S4-AC-60 C-4 댓글의 버튼(CLOSED 문의의 관리자: 어느 댓글에나 지우기만). 지운 댓글에는 없다. 버튼은 aria-describedby로 그 댓글에 이어진다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글의 버튼과 표시 (4번 묶음) > S4-AC-61 S4-AC-62 S4-AC-63 C-4 댓글의 표시: 고친 댓글에 "고침"과 고친 시각, 멘션이 있으면 "알림: 이름들", 지운 댓글은 "지워진 댓글"과 지운 사람·시각. 지운 댓글에는 고침과 멘션이 없고 "댓글 N개"는 지운 것도 센다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 고치기 (4번 묶음) > S4-AC-61 C-4 댓글 고치기를 누름: 그 댓글 자리에 이름 "댓글 고치기"인 form이 생기고 편집기 "댓글 내용 고치기"에 지금 내용이 들어 포커스를 받는다. 고치는 동안 그 댓글의 동작 버튼이 없다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 고치기 (4번 묶음) > S4-AC-61 C-4 댓글 고치기 저장: 내용만 바꾸면 PATCH에 content만 보낸다. 보내는 중 버튼이 막히고, 성공하면 닫히고 목록을 다시 받으며 "고침"이 보이고 토스트 "댓글을 고쳤습니다", 포커스는 그 댓글`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 고치기 (4번 묶음) > S4-AC-61 C-4 댓글 고치기: 내용이 그대로인 채 "고친 댓글 저장"을 누르면 요청 없이 편집기를 닫는다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 고치기 (4번 묶음) > S4-AC-61 C-4 댓글 고치기 400 칸 오류: 편집기 아래에 문구가 보이고 입력은 그대로다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 고치기 (4번 묶음) > S4-AC-61 C-4 댓글 고치기 400 ISSUE_CLOSED: 오류 띠 "문의가 종료되어 댓글을 고칠 수 없습니다."와 함께 다시 받고, 입력은 "보내지 못한 글"로 남긴다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 고치기 (4번 묶음) > S4-AC-61 C-4 댓글 고치기 400 COMMENT_DELETED: 오류 띠 "이 댓글은 지워졌습니다."와 함께 다시 받고, 입력은 "보내지 못한 글"로 남긴다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 고치기 (4번 묶음) > S4-AC-61 C-4 댓글 고치기 404: 오류 띠 "이 댓글은 지워졌습니다."와 함께 다시 받고, 입력은 "보내지 못한 글"로 남긴다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 고치기 (4번 묶음) > S4-AC-61 C-4 댓글 고치기 403: 띠로 알리고 입력은 편집기에 그대로다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 고치기 (4번 묶음) > S4-AC-61 C-4 댓글 고치기 429: 띠로 알리고 입력은 편집기에 그대로다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 고치기 (4번 묶음) > S4-AC-61 C-4 고치기 취소와 떠나기: 바뀐 것이 없으면 묻지 않고 닫고 포커스가 "댓글 고치기"로 간다. 바뀌었으면 취소와 떠나기 모두 먼저 묻고, 머무르면 글이 남는다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 고치기 (4번 묶음) > S4-AC-61 C-4 다른 댓글의 "댓글 고치기": 쓰던 것이 없으면 바로 그 댓글로 옮기고, 쓰던 것이 있으면 먼저 묻는다. 한 번에 한 댓글만 고친다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 고치기 (4번 묶음) > S4-AC-69 C-4 떠난 뒤 온 답(댓글 고치기): 저장 중에 화면을 떠난 뒤 온 성공은 토스트를 띄우지 않고 주소를 바꾸지 않는다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 지우기 (4번 묶음) > S4-AC-62 C-4 댓글 지우기를 누름(첨부가 없는 댓글): 대화상자 "댓글 지우기"가 되돌릴 수 없다고 묻는다. "그만두기"는 요청 없이 닫는다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 지우기 (4번 묶음) > S4-AC-62 C-4 댓글 지우기를 누름(첨부가 있는 댓글): 대화상자 "댓글 지우기"가 되돌릴 수 없다고 묻는다. "그만두기"는 요청 없이 닫는다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 지우기 (4번 묶음) > S4-AC-62 C-4 댓글 지우기 성공: DELETE를 보내고(보내는 중 "지우는 중…") 닫은 뒤 댓글과 첨부 목록을 다시 받는다. 그 자리에 "지워진 댓글"과 지운 사람, 토스트 "댓글을 지웠습니다", 포커스는 그 댓글`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 지우기 (4번 묶음) > S4-AC-62 C-4 댓글 지우기 403: 대화상자 안 오류 띠로 알리고 대화상자는 열려 있다. 5xx는 다시 누를 수 있다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 지우기 (4번 묶음) > S4-AC-62 C-4 댓글 지우기 5xx: 대화상자 안 오류 띠로 알리고 대화상자는 열려 있다. 5xx는 다시 누를 수 있다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 지우기 (4번 묶음) > S4-AC-62 C-4 댓글 지우기 404: 대화상자를 닫고 댓글 목록을 다시 받는다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 댓글 지우기 (4번 묶음) > S4-AC-69 C-4 닫힌 뒤 온 답(댓글 지우기): 지우는 중에 닫은 뒤 온 실패는 버린다. 다른 댓글로 다시 열면 오류 없이 처음부터 묻는다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 주소의 #comment-ID (4번 묶음) > S4-AC-66 C-4 #comment-ID: 받은 댓글에 없는 ID면 포커스가 화면 제목 그대로이고, 있는 ID면 댓글을 받은 뒤 그 댓글이 포커스를 받는다`
+- `src/screens/C4IssueDetail.comments4.test.tsx.C-4 axe (4번 묶음) > C-4 axe (댓글): 버튼, 고침, 멘션, 지운 댓글이 있는 화면과 고치는 화면, 지우기 대화상자에 접근성 위반이 없다`
+- `src/screens/C4IssueDetail.mentions.test.tsx.C-4 알릴 사람 (4번 묶음) > S4-AC-63 C-4 알릴 사람(접힘과 펼침): 댓글 쓰기 폼에 "알릴 사람 고르기" 버튼과 "알릴 사람 없음"이 있다. 처음 펼칠 때 internal=false로 후보를 받아 "이름 (역할)" 줄로 보이고 올린 고객은 "이름 (올린 고객)"이다`
+- `src/screens/C4IssueDetail.mentions.test.tsx.C-4 알릴 사람 (4번 묶음) > S4-AC-63 C-4 알릴 사람을 고르고 보냄: 본문에 mentions(계정 ID 숫자의 목록)가 실린다. 보내면 고른 것이 비고 접히며, 아무도 고르지 않은 다음 댓글의 본문에는 mentions 키가 없다`
+- `src/screens/C4IssueDetail.mentions.test.tsx.C-4 알릴 사람 (4번 묶음) > S4-AC-63 C-4 알릴 사람(내부 메모로 바꿈): internal=true로 후보를 다시 받고 올린 고객이 빠지며 한 줄로 알린다. 남은 사람만 mentions에 실린다`
+- `src/screens/C4IssueDetail.mentions.test.tsx.C-4 알릴 사람 (4번 묶음) > S4-AC-63 C-4 알릴 사람 10명: 10명을 고르면 나머지 상자가 막히고 "10명까지 고를 수 있습니다"가 보인다. 하나를 빼면 풀린다`
+- `src/screens/C4IssueDetail.mentions.test.tsx.C-4 알릴 사람 (4번 묶음) > S4-AC-63 C-4 알릴 사람(후보를 받는 중, 후보 없음): 받는 동안 "불러오는 중…", 후보가 없으면 "알릴 수 있는 사람이 없습니다"`
+- `src/screens/C4IssueDetail.mentions.test.tsx.C-4 알릴 사람 (4번 묶음) > S4-AC-63 C-4 알릴 사람(후보 받기 실패): 구역 안에 "후보를 불러오지 못했습니다"와 "다시 불러오기"가 보이고, 누르면 후보가 나온다`
+- `src/screens/C4IssueDetail.mentions.test.tsx.C-4 알릴 사람 (4번 묶음) > S4-AC-63 C-4 알릴 사람(후보 받기 실패): 후보를 받지 못해도 댓글은 멘션 없이 보낼 수 있다`
+- `src/screens/C4IssueDetail.mentions.test.tsx.C-4 알릴 사람 (4번 묶음) > S4-AC-63 C-4 알릴 사람 400 UNKNOWN_VALUE: "지금 알릴 수 없는 사람이 있습니다. 다시 골라 주세요."와 함께 후보를 다시 받고, 없는 사람을 고른 것에서 뺀다. 내용은 그대로다`
+- `src/screens/C4IssueDetail.mentions.test.tsx.C-4 알릴 사람 (4번 묶음) > S4-AC-63 C-4 알릴 사람 400 TOO_MANY: "10명까지 고를 수 있습니다"를 보이고 내용과 고른 사람은 그대로다`
+- `src/screens/C4IssueDetail.mentions.test.tsx.C-4 알릴 사람 (4번 묶음) > S4-AC-69 C-4 알릴 사람(늦게 온 후보): 댓글 종류를 바꾼 뒤에 온 앞 종류의 후보는 버린다`
+- `src/screens/C4IssueDetail.mentions.test.tsx.C-4 알릴 사람 (4번 묶음) > S4-AC-63 C-4 알릴 사람(고치기 폼): 고치기 폼에도 있고 지금 멘션된 사람이 골라져 있다. 후보는 그 댓글의 종류로 받고, 멘션만 바꾸면 PATCH에 mentions만 보낸다`
+- `src/screens/C4IssueDetail.mentions.test.tsx.C-4 알릴 사람 (4번 묶음) > C-4 axe (알릴 사람): 후보를 펼쳐 둘을 고른 댓글 쓰기 폼에 접근성 위반이 없다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 C-7 목록: 제목은 "알림함"이고 항목이 받은 순서(최신순) 그대로다. 항목 하나가 링크 하나이고 문의 키와 제목, 시각이 있다. 안 읽은 항목에만 숨긴 글자 "안 읽음"이 있다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(CUSTOMER_COMMENT): 김고객 님이 댓글을 남겼습니다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(ISSUE_CLOSED): 김고객 님이 문의를 종료했습니다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(ISSUE_REOPENED): 김고객 님이 문의를 다시 열었습니다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(MENTIONED): 정상담 님이 댓글에서 나를 언급했습니다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(ASSIGNED): 최관리 님이 이 문의를 나에게 맡겼습니다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(MEMBERSHIP_REQUESTED): 고객사 ACME에 소속 요청이 있습니다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(DELIVERY_FAILED): 보내지 못한 메일이나 웹훅이 있습니다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(ATTACHMENT_QUOTA_WARNING): 첨부 용량이 한도의 80%를 넘었습니다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(일으킨 사람이 null인 ISSUE_CLOSED): /누군가.*문의를 종료했습니다/`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(콘솔에 오지 않는 STAFF_COMMENT): 새 알림이 있습니다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(콘솔에 오지 않는 ISSUE_RESOLVED): 새 알림이 있습니다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(콘솔에 오지 않는 ISSUE_FILED_ON_BEHALF): 새 알림이 있습니다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-68 C-7 문장(모르는 종류): 새 알림이 있습니다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-66 C-7 항목 누르기(문의의 항목): 읽음 요청을 보내고 /issues/ACME-7 로 간다(댓글의 항목이면 #comment-ID)`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-66 C-7 항목 누르기(댓글의 항목): 읽음 요청을 보내고 /issues/ACME-7 로 간다(댓글의 항목이면 #comment-ID)`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-66 C-7 항목 누르기(보내기 실패 경보): 읽음 요청을 보내고 /system 로 간다(댓글의 항목이면 #comment-ID)`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-66 C-7 항목 누르기(첨부 용량 경보): 읽음 요청을 보내고 /system 로 간다(댓글의 항목이면 #comment-ID)`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-66 C-7 항목 누르기(소속 요청): 읽음 요청을 보내고 /companies/ACME 로 간다(댓글의 항목이면 #comment-ID)`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-66 C-7 항목 누르기(모르는 종류인데 문의가 있음): 읽음 요청을 보내고 /issues/ACME-7 로 간다(댓글의 항목이면 #comment-ID)`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-66 S4-AC-69 C-7 읽음 실패: 읽음의 답을 기다리지 않고 옮긴다. 떠난 뒤에 온 5xx는 아무것도 띄우지 않는다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-67 C-7 모두 읽음: 안 읽은 것이 있을 때만 버튼이 있다. 누르면 read-all을 보내고(보내는 중 버튼 막힘) 목록과 머리의 수를 다시 받으며 토스트 "모두 읽음으로 했습니다"`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-67 C-7 모두 읽음 실패: 오류 띠가 보이고 목록은 그대로다. 버튼을 다시 누를 수 있다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 S4-AC-67 C-7 빈 상태와 읽은 것뿐: 항목이 없으면 "알림이 없습니다". 안 읽은 것이 없으면 "모두 읽음" 버튼이 없다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 C-7 쪽 넘기기: 2쪽 링크를 누르면 주소의 page에 싣고 그 쪽을 받아 보인다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 C-7 없는 쪽: "이 쪽에는 알림이 없습니다"와 "1쪽으로"`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-65 C-7 불러오기 실패: 띠와 "다시 불러오기". 누르면 목록이 나온다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-69 C-7 쪽을 넘긴 뒤 온 답: 2쪽의 답이 늦게 와도 그 사이에 돌아온 1쪽의 항목을 덮지 않는다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > S4-AC-69 C-7 떠난 뒤 온 답: 화면을 떠난 뒤에 온 목록의 401은 주소를 /login으로 바꾸지 않는다`
+- `src/screens/C7Inbox.test.tsx.C-7 알림함 > C-7 axe: 안 읽음과 읽음, 문의의 항목과 경보가 섞인 목록에 접근성 위반이 없다`
+- `src/app/layout.inbox.test.tsx.포털 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 포털 머리(담당자가 아닌 고객): 레이아웃이 뜨면 안 읽은 수를 한 번 받고 링크의 이름이 "알림 3건"이다. /inbox로 가고 메뉴 nav는 그대로다`
+- `src/app/layout.inbox.test.tsx.포털 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 포털 머리(고객사 담당자): 레이아웃이 뜨면 안 읽은 수를 한 번 받고 링크의 이름이 "알림 3건"이다. /inbox로 가고 메뉴 nav는 그대로다`
+- `src/app/layout.inbox.test.tsx.포털 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 포털 머리(좁은 화면(360px)의 담당자가 아닌 고객): 레이아웃이 뜨면 안 읽은 수를 한 번 받고 링크의 이름이 "알림 3건"이다. /inbox로 가고 메뉴 nav는 그대로다`
+- `src/app/layout.inbox.test.tsx.포털 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 포털 머리(좁은 화면(360px)의 고객사 담당자): 레이아웃이 뜨면 안 읽은 수를 한 번 받고 링크의 이름이 "알림 3건"이다. /inbox로 가고 메뉴 nav는 그대로다`
+- `src/app/layout.inbox.test.tsx.포털 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 포털 머리: 안 읽은 것이 없으면 숫자가 없고 이름은 "알림"이다. 100건을 넘으면 "99+"로 보이고 이름은 실제 수를 쓴다`
+- `src/app/layout.inbox.test.tsx.포털 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 포털 머리: 알림함 화면에서는 링크가 aria-current="page"다`
+- `src/app/layout.inbox.test.tsx.포털 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 포털 머리 60초: 30초가 지나도 다시 받지 않고, 60초가 지나면 한 번 다시 받아 수를 바꾼다. 화면을 옮겨도 다시 받지 않는다`
+- `src/app/layout.inbox.test.tsx.포털 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-64 포털 머리 숨은 탭: document.hidden이면 그 차례에 받지 않고, 다시 보이면 바로 한 번 받는다`
+- `src/app/layout.inbox.test.tsx.포털 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-69 포털 머리 401: 안 읽은 수가 401이면 그 뒤로 받지 않고, 로그인 화면으로 가지 않으며 아무것도 띄우지 않는다`
+- `src/app/layout.inbox.test.tsx.포털 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-69 포털 머리 5xx: 다시 받기가 실패하면 마지막 수가 그대로이고 alert가 없다. 다음 차례에 다시 받는다`
+- `src/app/layout.inbox.test.tsx.포털 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-69 포털 머리 연결 실패: 다시 받기가 실패하면 마지막 수가 그대로이고 alert가 없다. 다음 차례에 다시 받는다`
+- `src/app/layout.inbox.test.tsx.포털 머리: 알림 링크와 안 읽은 수 (4번 묶음) > S4-AC-69 포털 머리를 떠남: 레이아웃이 사라지면 주기를 지워 더 받지 않는다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글의 버튼과 표시 (4번 묶음) > S4-AC-60 P-5 댓글의 버튼(열린 문의: 내 댓글에 둘 다). 지원팀과 동료의 댓글, 지운 댓글에는 없다. 버튼은 aria-describedby로 그 댓글에 이어진다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글의 버튼과 표시 (4번 묶음) > S4-AC-60 P-5 댓글의 버튼(CLOSED 문의: 내 댓글에 지우기만). 지원팀과 동료의 댓글, 지운 댓글에는 없다. 버튼은 aria-describedby로 그 댓글에 이어진다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글의 버튼과 표시 (4번 묶음) > S4-AC-60 P-5 댓글의 버튼(내가 소속에서 빠짐: 내 댓글에 없음). 지원팀과 동료의 댓글, 지운 댓글에는 없다. 버튼은 aria-describedby로 그 댓글에 이어진다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글의 버튼과 표시 (4번 묶음) > S4-AC-61 S4-AC-62 S4-AC-25 P-5 댓글의 표시: 고친 댓글에 "고침"과 고친 시각. 지운 댓글은 "지워진 댓글"과 지운 시각뿐이고 지운 사람과 고침이 없다. 멘션 줄은 없고 "댓글 N개"는 지운 것도 센다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 고치기 (4번 묶음) > S4-AC-61 P-5 댓글 고치기를 누름: 그 댓글 자리에 이름 "댓글 고치기"인 form이 생기고 편집기 "댓글 내용 고치기"에 지금 내용이 들어 포커스를 받는다. 고치는 동안 그 댓글의 동작 버튼이 없다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 고치기 (4번 묶음) > S4-AC-61 P-5 댓글 고치기 저장: PATCH의 본문은 {content}뿐이다. 보내는 중 버튼이 막히고, 성공하면 닫히고 목록을 다시 받으며 "고침"이 보이고 토스트 "댓글을 고쳤습니다", 포커스는 그 댓글`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 고치기 (4번 묶음) > S4-AC-61 P-5 댓글 고치기: 내용이 그대로인 채 "고친 댓글 저장"을 누르면 요청 없이 편집기를 닫는다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 고치기 (4번 묶음) > S4-AC-61 P-5 댓글 고치기 400 칸 오류: 편집기 아래에 문구가 보이고 입력은 그대로다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 고치기 (4번 묶음) > S4-AC-61 P-5 댓글 고치기 400 ISSUE_CLOSED: 오류 띠 "문의가 종료되어 댓글을 고칠 수 없습니다."와 함께 다시 받고, 입력은 "보내지 못한 글"로 남긴다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 고치기 (4번 묶음) > S4-AC-61 P-5 댓글 고치기 400 COMMENT_DELETED: 오류 띠 "이 댓글은 지워졌습니다."와 함께 다시 받고, 입력은 "보내지 못한 글"로 남긴다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 고치기 (4번 묶음) > S4-AC-61 P-5 댓글 고치기 404: 오류 띠 "이 댓글은 지워졌습니다."와 함께 다시 받고, 입력은 "보내지 못한 글"로 남긴다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 고치기 (4번 묶음) > S4-AC-61 P-5 댓글 고치기 403: 띠로 알리고 입력은 편집기에 그대로다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 고치기 (4번 묶음) > S4-AC-61 P-5 댓글 고치기 429: 띠로 알리고 입력은 편집기에 그대로다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 고치기 (4번 묶음) > S4-AC-61 P-5 고치기 취소와 떠나기: 바뀐 것이 없으면 묻지 않고 닫고 포커스가 "댓글 고치기"로 간다. 바뀌었으면 취소와 떠나기 모두 먼저 묻고, 머무르면 글이 남는다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 고치기 (4번 묶음) > S4-AC-61 P-5 다른 댓글의 "댓글 고치기": 쓰던 것이 없으면 바로 그 댓글로 옮기고, 쓰던 것이 있으면 먼저 묻는다. 한 번에 한 댓글만 고친다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 고치기 (4번 묶음) > S4-AC-69 P-5 떠난 뒤 온 답(댓글 고치기): 저장 중에 화면을 떠난 뒤 온 성공은 토스트를 띄우지 않고 주소를 바꾸지 않는다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 지우기 (4번 묶음) > S4-AC-62 P-5 댓글 지우기를 누름(첨부가 없는 댓글): 대화상자 "댓글 지우기"가 되돌릴 수 없다고 묻는다. "그만두기"는 요청 없이 닫는다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 지우기 (4번 묶음) > S4-AC-62 P-5 댓글 지우기를 누름(첨부가 있는 댓글): 대화상자 "댓글 지우기"가 되돌릴 수 없다고 묻는다. "그만두기"는 요청 없이 닫는다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 지우기 (4번 묶음) > S4-AC-62 P-5 댓글 지우기 성공: DELETE를 보내고(보내는 중 "지우는 중…") 닫은 뒤 댓글과 첨부 목록을 다시 받는다. 그 자리에 "지워진 댓글", 토스트 "댓글을 지웠습니다", 포커스는 그 댓글`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 지우기 (4번 묶음) > S4-AC-62 P-5 댓글 지우기 403: 대화상자 안 오류 띠로 알리고 대화상자는 열려 있다. 5xx는 다시 누를 수 있다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 지우기 (4번 묶음) > S4-AC-62 P-5 댓글 지우기 5xx: 대화상자 안 오류 띠로 알리고 대화상자는 열려 있다. 5xx는 다시 누를 수 있다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 지우기 (4번 묶음) > S4-AC-62 P-5 댓글 지우기 404: 대화상자를 닫고 댓글 목록을 다시 받는다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 댓글 지우기 (4번 묶음) > S4-AC-69 P-5 닫힌 뒤 온 답(댓글 지우기): 지우는 중에 닫은 뒤 온 실패는 버린다. 다른 댓글로 다시 열면 오류 없이 처음부터 묻는다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 주소의 #comment-ID (4번 묶음) > S4-AC-66 P-5 #comment-ID: 받은 댓글에 없는 ID면 포커스가 화면 제목 그대로이고, 있는 ID면 댓글을 받은 뒤 그 댓글이 포커스를 받는다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5에 없는 것 (4번 묶음) > S4-AC-25 P-5 알릴 사람: 댓글 쓰기 폼과 고치기 폼에 "알릴 사람 고르기"가 없고, 보낸 본문에 mentions가 없다`
+- `src/screens/P5IssueDetail.comments4.test.tsx.P-5 axe (4번 묶음) > P-5 axe (댓글): 버튼, 고침, 지운 댓글이 있는 화면과 고치는 화면, 지우기 대화상자에 접근성 위반이 없다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-65 P-7 목록: 제목은 "알림함"이고 항목이 받은 순서(최신순) 그대로다. 항목 하나가 링크 하나이고 문의 키와 제목, 시각이 있다. 안 읽은 항목에만 숨긴 글자 "안 읽음"이 있다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-65 S4-AC-68 P-7 문장(STAFF_COMMENT): 지원팀이 답변했습니다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-65 S4-AC-68 P-7 문장(ISSUE_RESOLVED): 지원팀이 문의를 해결로 바꿨습니다. 확인해 주세요`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-65 S4-AC-68 P-7 문장(ISSUE_CLOSED): 지원팀이 문의를 종료했습니다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-65 S4-AC-68 P-7 문장(ISSUE_REOPENED): 지원팀이 문의를 다시 열었습니다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-65 S4-AC-68 P-7 문장(ISSUE_FILED_ON_BEHALF): 지원팀이 문의를 대신 올렸습니다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-65 S4-AC-68 P-7 문장(MENTIONED): 지원팀이 댓글에서 회원님을 언급했습니다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-65 S4-AC-68 P-7 문장(모르는 종류): 새 알림이 있습니다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-66 P-7 항목 누르기(문의의 항목): 읽음 요청을 보내고 문의 상세로 간다(댓글의 항목이면 #comment-ID)`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-66 P-7 항목 누르기(댓글의 항목): 읽음 요청을 보내고 문의 상세로 간다(댓글의 항목이면 #comment-ID)`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-66 P-7 항목 누르기(모르는 종류): 읽음 요청을 보내고 문의 상세로 간다(댓글의 항목이면 #comment-ID)`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-66 S4-AC-69 P-7 읽음 실패: 읽음의 답을 기다리지 않고 옮긴다. 떠난 뒤에 온 5xx는 아무것도 띄우지 않는다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-67 P-7 모두 읽음: 안 읽은 것이 있을 때만 버튼이 있다. 누르면 read-all을 보내고(보내는 중 버튼 막힘) 목록과 머리의 수를 다시 받으며 토스트 "모두 읽음으로 했습니다"`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-67 P-7 모두 읽음 실패: 오류 띠가 보이고 목록은 그대로다. 버튼을 다시 누를 수 있다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-65 S4-AC-67 P-7 빈 상태와 읽은 것뿐: 항목이 없으면 "알림이 없습니다". 안 읽은 것이 없으면 "모두 읽음" 버튼이 없다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-65 P-7 쪽 넘기기: 2쪽 링크를 누르면 주소의 page에 싣고 그 쪽을 받아 보인다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-65 P-7 없는 쪽: "이 쪽에는 알림이 없습니다"와 "1쪽으로"`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-65 P-7 불러오기 실패: 띠와 "다시 불러오기". 누르면 목록이 나온다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-69 P-7 쪽을 넘긴 뒤 온 답: 2쪽의 답이 늦게 와도 그 사이에 돌아온 1쪽의 항목을 덮지 않는다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > S4-AC-69 P-7 떠난 뒤 온 답: 화면을 떠난 뒤에 온 목록의 401은 주소를 /login으로 바꾸지 않는다`
+- `src/screens/P7Inbox.test.tsx.P-7 알림함 > P-7 axe: 안 읽음과 읽음, 여러 종류가 섞인 목록에 접근성 위반이 없다`
+- `src/components/ConfirmDialog.error.test.tsx.ConfirmDialog error (4번 묶음) > S4-AC-62 ConfirmDialog error: 주지 않으면 대화상자에 alert가 없고, 주면 대화상자 안에 role="alert"로 그 글이 보인다. 두 버튼은 그대로다`
+- `src/components/PeoplePicker.test.tsx.PeoplePicker > S4-AC-63 PeoplePicker 접힘과 펼침: 접힌 한 줄은 aria-expanded="false"인 버튼과 요약 글이다. 버튼을 누르면 펼쳐지고 onOpenChange가 불린다`
+- `src/components/PeoplePicker.test.tsx.PeoplePicker > S4-AC-63 PeoplePicker open: 펼치면 이름이 label인 group 안에 후보마다 체크 상자가 있다. 사진이 없고 radiogroup이 아니다. notice는 한 줄로 보인다`
+- `src/components/PeoplePicker.test.tsx.PeoplePicker > S4-AC-63 PeoplePicker 고르기: 상자를 누르면 onChange가 고른 ID들로 불린다. 고른 것을 다시 누르면 그 ID가 빠진다`
+- `src/components/PeoplePicker.test.tsx.PeoplePicker > S4-AC-63 PeoplePicker 상한: max만큼 골랐으면 나머지 상자가 막히고 maxText가 보인다. 고른 상자는 뺄 수 있다. 덜 골랐으면 막지 않는다`
+- `src/components/PeoplePicker.test.tsx.PeoplePicker > S4-AC-63 PeoplePicker 받는 중: 펼친 자리에 상자 대신 글이 보인다`
+- `src/components/PeoplePicker.test.tsx.PeoplePicker > S4-AC-63 PeoplePicker 후보 없음: 펼친 자리에 상자 대신 글이 보인다`
+- `src/components/PeoplePicker.test.tsx.PeoplePicker > S4-AC-63 PeoplePicker 후보 받기 실패: failedText와 "다시 불러오기" 버튼이 보이고 누르면 onRetry가 불린다`
+- `src/components/PeoplePicker.test.tsx.PeoplePicker > S4-AC-63 PeoplePicker 키보드: 펼친 채 Escape를 누르면 접히고 포커스가 버튼으로 간다`
+- `src/components/PeoplePicker.test.tsx.PeoplePicker > PeoplePicker axe (펼침): 펼친 모습에 접근성 위반이 없다`
+- `src/components/PeoplePicker.test.tsx.PeoplePicker > PeoplePicker axe (10명 참): 펼친 모습에 접근성 위반이 없다`
+- `src/components/PeoplePicker.test.tsx.PeoplePicker > PeoplePicker axe (실패): 펼친 모습에 접근성 위반이 없다`
