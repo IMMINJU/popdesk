@@ -767,7 +767,8 @@ function IssueDetail(props: { issueKey: string }) {
                   // A deleted comment shows neither 고침 nor who was told, whatever the server still holds.
                   editedAt={c.deleted ? null : c.editedAt}
                   editedLabel={t('comment.edited')}
-                  mentions={c.deleted ? [] : mentionsOf(c).map((p) => p.name)}
+                  // While it is edited the picker under the editor says who is told.
+                  mentions={c.deleted || editingThis ? [] : mentionsOf(c).map((p) => p.name)}
                   mentionsLabel={t('comment.notified')}
                   {...(!c.deleted && !editingThis && (canEdit || canRemove)
                     ? {

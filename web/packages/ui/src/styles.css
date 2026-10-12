@@ -1764,7 +1764,8 @@ textarea {
 
 .pd-comment-body,
 .pd-comment-editing,
-.pd-comment-mentions {
+.pd-comment-mentions,
+.pd-comment-deleted {
   padding-left: calc(24px + var(--space-2));
 }
 
