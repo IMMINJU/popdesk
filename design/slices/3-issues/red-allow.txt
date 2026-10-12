@@ -15,3 +15,4 @@ io.popdesk.ops.CheckOrderTest.unauthenticatedFirst | 있던 테스트다. 새 �
 io.popdesk.ops.CheckOrderTest.inputBeforeConflict | 있던 테스트다. 이 탭이 줄을 더하지 않았다
 io.popdesk.ops.CheckOrderTest.roleBeforeTargetAndInput | 있던 테스트다. 열린 담당 수 둘은 관리자 전용 패턴에 이미 걸려 상담원이 403이다
 src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 동작(동료의 열린 문의): 버튼은 [] | 동료의 문의에 동작이 없다는 부정 단언이라 동작이 아직 없는 지금도 참이다
+src/components/DataTable.sticky.test.tsx.DataTable 열 고정 > DataTable 열 고정: 고정이 아닌 칸에는 min-width와 left가 없다. width를 주어도 그렇다 | C-10에서 더한 부정 단언이다. 고정이 아닌 칸에는 지금도 min-width가 없다
