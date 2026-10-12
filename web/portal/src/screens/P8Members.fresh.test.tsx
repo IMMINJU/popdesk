@@ -24,6 +24,9 @@ describe('P-8 우리 회사 사람: 포털을 연 뒤 바뀐 담당자 지정', 
   test('S2-AC-45 P-8 방금 담당자가 됨: 처음 읽은 내 정보에서는 메뉴가 없고, /members로 가면 내 정보를 다시 읽어 표와 "초대" 버튼이 보이고 메뉴에 "우리 회사 사람"이 생긴다', async () => {
     belongTo(ACME_PLAIN);
     renderAt('/issues');
+    // One wait for each step of the first screen: on a busy machine the session and then the list take more than one wait together.
+    await sent('GET', ME_PATH);
+    await sent('GET', '/api/portal/issues');
     await link(/로그인이 안 됩니다/);
     expect(peopleLinks(), '담당자가 되기 전의 메뉴').toHaveLength(0);
     const readBefore = (await sent('GET', ME_PATH)).length;

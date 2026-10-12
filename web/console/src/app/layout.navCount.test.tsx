@@ -22,6 +22,9 @@ describe('콘솔 옆 메뉴: 고객사의 소속 요청 수 (2번 묶음)', () =
     // A screen that does not ask for the companies itself: what is counted below is the frame's own requests.
     renderAt('/me');
 
+    // One wait for each step of the first screen: on a busy machine the session and then the count take more than one wait together.
+    await sent('GET', '/api/console/me');
+    await sent('GET', REQUESTS);
     const companies = await link('고객사 소속 요청 3건');
     expect(hrefPath(companies)).toBe('/companies');
     expect(companies.closest('nav'), '메뉴 안').not.toBeNull();

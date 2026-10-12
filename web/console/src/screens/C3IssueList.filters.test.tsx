@@ -415,9 +415,14 @@ describe('C-3 문의 목록 (3번 묶음)', () => {
     const asked = callsTo('GET', ISSUES).filter((c) => new URL(c.url).searchParams.get('q') === '결제').length;
 
     limited = false;
-    act(() => {
-      vi.advanceTimersByTime(3100);
-    });
+    // The band can be drawn before the screen starts to count (the count starts in an effect after it),
+    // so the clock moves a second at a time and the screen follows, until it asks again.
+    const askedAgain = () => callsTo('GET', ISSUES).filter((c) => new URL(c.url).searchParams.get('q') === '결제').length > asked;
+    for (let second = 0; second < 6 && !askedAgain(); second += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+    }
 
     await issueRow('ACME-21');
     expect(callsTo('GET', ISSUES).filter((c) => new URL(c.url).searchParams.get('q') === '결제')).toHaveLength(asked + 1);
