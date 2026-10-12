@@ -11,3 +11,10 @@ server io/popdesk/issue/IssueSearchTest.java
 server io/popdesk/issue/SearchRateLimitTest.java
 server io/popdesk/issue/CompanyReportersTest.java
 server io/popdesk/ops/IssueSearchLogTest.java
+server io/popdesk/issue/IssueEditTest.java
+server io/popdesk/issue/IssueAssigneeTest.java
+server io/popdesk/issue/OnBehalfFilingTest.java
+server io/popdesk/issue/IdempotencyKeyTest.java
+server io/popdesk/boundary/OnBehalfIdentityTest.java
+server io/popdesk/notify/OnBehalfMailTest.java
+server io/popdesk/notify/KoreanOnBehalfMailTest.java
