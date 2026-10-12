@@ -40,7 +40,11 @@
         <!-- Small heap and one JVM for tests: the dev machine has 16 GB (ADR D-3). -->
         <!-- The tests send their own Host header. The JDK HTTP client reads this property once, when it
              is first used, so it is set for the whole test JVM and not by whichever test class loads first. -->
-        <test.argLine>-Xmx512m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Djdk.httpclient.allowRestrictedHeaders=host</test.argLine>
+        <!-- Heap of the test JVM. 512m fits the 16 GB dev PC, where tests run a package at a time. CI runs
+             every class in one JVM and passes -Dtest.heap=1024m: with 512m the run of 2026-10-13 ran out
+             of heap about 200 classes in. -->
+        <test.heap>512m</test.heap>
+        <test.argLine>-Xmx${test.heap} -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Djdk.httpclient.allowRestrictedHeaders=host</test.argLine>
         <!-- Tags left out of a normal test run. deploy: needs the app image, runs in the CI image job. -->
         <test.excludedGroups>openapi,deploy</test.excludedGroups>
         <test.groups></test.groups>

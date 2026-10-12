@@ -117,7 +117,8 @@ jobs:
           java-version: '25'
           cache: maven
       # Tests still waiting for implementation are left out (design/slices/*/pending.txt).
-      - run: ./mvnw -B verify $(python3 ../scripts/ci/pending.py server)
+      # One JVM runs every class here, so it gets more heap than on the dev PC (pom.xml test.heap).
+      - run: ./mvnw -B verify -Dtest.heap=1024m $(python3 ../scripts/ci/pending.py server)
       - name: OpenAPI files match the code (D-21, D-43)
         run: |
           ./mvnw -B -Popenapi test
