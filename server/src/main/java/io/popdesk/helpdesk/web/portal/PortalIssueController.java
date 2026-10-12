@@ -207,7 +207,11 @@ class PortalIssueController {
         if (!unknown.isEmpty()) {
             throw ApiException.invalid(unknown);
         }
-        return issues.list(CurrentAccount.get().viewer(), page, size).map(PortalIssueController::summary);
+        Viewer viewer = CurrentAccount.get().viewer();
+        // "Mine" is the reporter filter with the caller's own account; a customer names no other (S3-AC-09).
+        Long reporter = Boolean.TRUE.equals(mine) ? viewer.accountId() : null;
+        return issues.list(viewer, new IssueService.Filters(status, companyCode, null, reporter), page, size)
+                .map(PortalIssueController::summary);
     }
 
     @Operation(operationId = "getIssue", summary = "One issue")

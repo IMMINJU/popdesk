@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +55,14 @@ public class IssueService {
     /** How a request staff file for a customer can have come in (ISSUE-9); the names are stored. */
     static final Set<String> CHANNELS_ON_BEHALF = Set.of("PHONE", "OTHER");
 
+    /** The words the assignee filter of the list takes besides an account ID (S3-AC-03, S3-AC-04). */
+    static final String ASSIGNEE_ME = "me";
+    static final String ASSIGNEE_NONE = "none";
+    static final String ASSIGNEE_UNAVAILABLE = "unavailable";
+
+    /** An account ID as the assignee filter gets it: a positive number that fits a {@code bigint}. */
+    private static final Pattern ACCOUNT_ID = Pattern.compile("[1-9][0-9]{0,17}");
+
     /**
      * How often a status change that lost against another one reads the issue again and tries once
      * more before it takes the row lock, under which the next try cannot lose.
@@ -75,6 +84,12 @@ public class IssueService {
      */
     public record Draft(UUID id, long reporterId, Long createdBy, String channel, CompanyRow company, String title,
             String content, Priority priority, boolean privateIssue) {}
+
+    /**
+     * The filters of a list request, as received; a null one was not sent (ISSUE-5). {@code assignee}
+     * is an account ID or one of the words {@code me}, {@code none}, {@code unavailable}.
+     */
+    public record Filters(List<IssueStatus> statuses, String companyCode, String assignee, Long reporterId) {}
 
     /**
      * What an edit sent (S3-AC-18). A field that was not sent keeps its value; {@code version} is the
@@ -441,11 +456,47 @@ public class IssueService {
         return IssueKey.parse(key).flatMap(k -> issues.findByKey(viewer, k)).orElseThrow(ApiException::notFound);
     }
 
-    /** One page of the issues the viewer may see, newest first (S0-AC-47). */
+    /**
+     * One page of the issues the viewer may see that match the filters, newest first (S0-AC-47,
+     * S3-AC-06). A value a filter cannot have is 400; a company or an account the viewer cannot see is
+     * no error and gives an empty page, like one that does not exist (S3-AC-02, S3-AC-05).
+     */
     @Transactional(readOnly = true)
-    public Paged<IssueRow> list(Viewer viewer, int page, int size) {
+    public Paged<IssueRow> list(Viewer viewer, Filters filters, int page, int size) {
+        List<ApiError.FieldError> errors = new ArrayList<>();
+        IssueFilter.Assignee assignee = filters.assignee() == null ? null
+                : assignee(viewer, filters.assignee(), errors);
+        if (!errors.isEmpty()) {
+            throw ApiException.invalid(errors);
+        }
         PageRequest request = PageRequest.of(page, size);
-        return request.of(issues.list(viewer, request.offset(), request.size()), issues.count(viewer));
+        IssueFilter filter = new IssueFilter(
+                filters.statuses() == null ? List.of() : filters.statuses().stream().filter(Objects::nonNull).toList(),
+                filters.companyCode(), assignee, filters.reporterId());
+        return request.of(issues.list(viewer, filter, request.offset(), request.size()),
+                issues.count(viewer, filter));
+    }
+
+    /**
+     * The assignee filter of this value (S3-AC-03, S3-AC-04): {@code me} is the viewer, {@code none}
+     * nobody, {@code unavailable} an assignee who can no longer see the issue, and a positive number an
+     * account ID. Anything else is {@code UNKNOWN_VALUE} in {@code errors}.
+     */
+    private static IssueFilter.Assignee assignee(Viewer viewer, String value, List<ApiError.FieldError> errors) {
+        switch (value) {
+            case ASSIGNEE_ME:
+                return new IssueFilter.Assignee(IssueFilter.Assignee.Kind.ACCOUNT, viewer.accountId());
+            case ASSIGNEE_NONE:
+                return new IssueFilter.Assignee(IssueFilter.Assignee.Kind.NONE, null);
+            case ASSIGNEE_UNAVAILABLE:
+                return new IssueFilter.Assignee(IssueFilter.Assignee.Kind.UNAVAILABLE, null);
+            default:
+        }
+        if (ACCOUNT_ID.matcher(value).matches()) {
+            return new IssueFilter.Assignee(IssueFilter.Assignee.Kind.ACCOUNT, Long.parseLong(value));
+        }
+        errors.add(new ApiError.FieldError("assignee", "UNKNOWN_VALUE"));
+        return null;
     }
 
     /** The priority of this name; {@code NORMAL} with an entry in {@code errors} when there is none. */

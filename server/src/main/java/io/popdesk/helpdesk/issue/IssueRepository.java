@@ -85,6 +85,11 @@ public class IssueRepository {
             + "left join account asg on asg.id = i.assignee_id "
             + "left join account_photo asgp on asgp.account_id = i.assignee_id ";
 
+    private static final String NEWEST_FIRST = " order by i.created_at desc, i.number desc, i.id";
+
+    /** A WHERE condition with its parameters. */
+    private record Condition(String sql, Object[] params) {}
+
     private final JdbcClient jdbc;
 
     IssueRepository(JdbcClient jdbc) {
@@ -116,17 +121,54 @@ public class IssueRepository {
                 .query(Long.class).single() > 0;
     }
 
-    /** One page of the issues the viewer may see, newest first. */
-    public List<IssueRow> list(Viewer viewer, long offset, int limit) {
-        return jdbc.sql(SELECT + "where " + IssueScope.SQL
-                        + " order by i.created_at desc, i.number desc, i.id offset ? limit ?")
-                .params(concat(IssueScope.params(viewer), offset, limit))
+    /** One page of the issues the viewer may see that match the filter, newest first. */
+    public List<IssueRow> list(Viewer viewer, IssueFilter filter, long offset, int limit) {
+        Condition where = condition(viewer, filter);
+        return jdbc.sql(SELECT + "where " + where.sql() + NEWEST_FIRST + " offset ? limit ?")
+                .params(concat(where.params(), offset, limit))
                 .query(IssueRepository::issue).list();
     }
 
-    public long count(Viewer viewer) {
-        return jdbc.sql("select count(*) from issue i where " + IssueScope.SQL)
-                .params(IssueScope.params(viewer)).query(Long.class).single();
+    /** How many issues {@link #list} has over all its pages: the same condition (S3-AC-06). */
+    public long count(Viewer viewer, IssueFilter filter) {
+        Condition where = condition(viewer, filter);
+        return jdbc.sql("select count(*) from issue i join company c on c.id = i.company_id where " + where.sql())
+                .params(where.params()).query(Long.class).single();
+    }
+
+    /**
+     * The condition of a list and of its count, on {@code i} and its company {@code c}: the viewer's
+     * scope, and after it each part of the filter with {@code and}. No part stands in for the scope or
+     * joins it with {@code or}, so a filter only narrows what the viewer sees (S3-AC-06, S3-AC-10). A
+     * company code or an account the viewer cannot see matches nothing, like one that does not exist
+     * (S3-AC-02, S3-AC-05).
+     */
+    private static Condition condition(Viewer viewer, IssueFilter filter) {
+        StringBuilder sql = new StringBuilder(IssueScope.SQL);
+        List<Object> params = new ArrayList<>(List.of(IssueScope.params(viewer)));
+        if (!filter.statuses().isEmpty()) {
+            sql.append(" and i.status in (").append("?, ".repeat(filter.statuses().size() - 1)).append("?)");
+            filter.statuses().forEach(status -> params.add(status.name()));
+        }
+        if (filter.companyCode() != null) {
+            sql.append(" and c.code = ?");
+            params.add(filter.companyCode());
+        }
+        if (filter.assignee() != null) {
+            switch (filter.assignee().kind()) {
+                case ACCOUNT -> {
+                    sql.append(" and i.assignee_id = ?");
+                    params.add(filter.assignee().accountId());
+                }
+                case NONE -> sql.append(" and i.assignee_id is null");
+                case UNAVAILABLE -> sql.append(" and ").append(ASSIGNEE_UNAVAILABLE);
+            }
+        }
+        if (filter.reporterId() != null) {
+            sql.append(" and i.reporter_id = ?");
+            params.add(filter.reporterId());
+        }
+        return new Condition(sql.toString(), params.toArray());
     }
 
     /**

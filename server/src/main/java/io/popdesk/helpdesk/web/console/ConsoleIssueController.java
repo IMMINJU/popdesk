@@ -1,5 +1,7 @@
 package io.popdesk.helpdesk.web.console;
 
+import io.popdesk.ApiError;
+import io.popdesk.ApiException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.IssueStatus;
@@ -11,10 +13,12 @@ import io.popdesk.helpdesk.issue.IssueHistoryRepository.HistoryRow;
 import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.helpdesk.issue.IssueService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -39,6 +43,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/console/issues")
 class ConsoleIssueController {
+
+    /** Query parameters of the list; any other name is 400, so a mistyped filter is not ignored (S3-AC-07). */
+    private static final Set<String> LIST_PARAMETERS = Set.of("page", "size", "status", "companyCode", "assignee",
+            "reporter", "q");
 
     private final IssueService issues;
 
@@ -125,8 +133,17 @@ class ConsoleIssueController {
                     + "characters. Case is ignored; `%` and `_` are ordinary characters (COM-5).")
                     @RequestParam(required = false) @Nullable String q,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        return issues.list(CurrentAccount.get().viewer(), page, size).map(ConsoleIssueController::summary);
+            @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request) {
+        List<ApiError.FieldError> unknown = request.getParameterMap().keySet().stream()
+                .filter(name -> !LIST_PARAMETERS.contains(name)).sorted()
+                .map(name -> new ApiError.FieldError(name, "UNKNOWN_PARAMETER")).toList();
+        if (!unknown.isEmpty()) {
+            throw ApiException.invalid(unknown);
+        }
+        return issues.list(CurrentAccount.get().viewer(),
+                        new IssueService.Filters(status, companyCode, assignee, reporter), page, size)
+                .map(ConsoleIssueController::summary);
     }
 
     @Operation(operationId = "createIssue", summary = "File an issue on behalf of a customer",

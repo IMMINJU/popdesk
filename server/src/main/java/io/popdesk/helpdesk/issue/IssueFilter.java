@@ -1,0 +1,30 @@
+package io.popdesk.helpdesk.issue;
+
+import io.popdesk.helpdesk.IssueStatus;
+import java.util.List;
+
+/**
+ * What narrows an issue list inside the viewer's scope (ISSUE-5). Every part that is set must match;
+ * a null part, or an empty list of statuses, leaves that one out. Checked values only:
+ * {@link IssueService#list} makes it from what a request sent.
+ *
+ * @param statuses the issue has one of these
+ * @param companyCode the issue is of the company with this code
+ * @param assignee who is assigned
+ * @param reporterId this account reported the issue
+ */
+public record IssueFilter(List<IssueStatus> statuses, String companyCode, Assignee assignee, Long reporterId) {
+
+    /** The assignee an issue must have. {@code accountId} is set for {@link Kind#ACCOUNT} only. */
+    public record Assignee(Kind kind, Long accountId) {
+
+        public enum Kind {
+            /** This account is assigned. */
+            ACCOUNT,
+            /** Nobody is assigned. */
+            NONE,
+            /** The assignee can no longer see the issue (ISSUE-11). */
+            UNAVAILABLE
+        }
+    }
+}
