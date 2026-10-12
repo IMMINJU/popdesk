@@ -71,6 +71,8 @@ describe('changeLines', () => {
       'BACKUP_CREATED',
       'DATABASE_RESTORED',
       'AUDIT_EXPORTED',
+      'DELIVERY_RESENT',
+      'TEST_MAIL_SENT',
     ];
 
     expect(changeLines('AUDIT_EXPORTED', { filter: { action: signIn } })).toEqual(['조건: 종류: 로그인 기록']);
