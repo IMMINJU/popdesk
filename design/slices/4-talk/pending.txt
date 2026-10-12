@@ -5,12 +5,7 @@
 # 서버 줄은 구현 탭마다 묶는다. 탭이 병합되면 그 묶음을 지운다.
 server io/popdesk/project/NoStoreTest.java
 server io/popdesk/manager/MembershipRequestMailTest.java
-server io/popdesk/issue/CommentEditTest.java
-server io/popdesk/issue/CommentEditRateLimitTest.java
-server io/popdesk/issue/CommentNotFoundTest.java
-server io/popdesk/issue/CommentDeleteTest.java
 server io/popdesk/issue/MentionTest.java
-server io/popdesk/issue/MentionCandidatesTest.java
 web src/components/PeoplePicker.test.tsx
 web src/components/ConfirmDialog.error.test.tsx
 web src/app/layout.inbox.test.tsx
