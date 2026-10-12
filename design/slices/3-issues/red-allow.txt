@@ -1,0 +1,6 @@
+io.popdesk.issue.IssueFilterTest.unknownStatus | status는 enum 타입이라 틀린 값이 계약 껍데기에서 이미 400 UNKNOWN_VALUE다
+io.popdesk.issue.PortalIssueFilterTest.staffOnlyNamesAreRejected(String, String)[1] | 포털 목록은 첫 묶음부터 허용 목록에 없는 쿼리 이름을 400으로 답한다(S0-AC-48)
+io.popdesk.issue.PortalIssueFilterTest.staffOnlyNamesAreRejected(String, String)[2] | 포털 목록은 첫 묶음부터 허용 목록에 없는 쿼리 이름을 400으로 답한다(S0-AC-48)
+io.popdesk.issue.PortalIssueFilterTest.staffOnlyNamesAreRejected(String, String)[3] | 포털 목록은 첫 묶음부터 허용 목록에 없는 쿼리 이름을 400으로 답한다(S0-AC-48)
+io.popdesk.issue.PortalIssueFilterTest.staffOnlyNamesAreRejected(String, String)[4] | 포털 목록은 첫 묶음부터 허용 목록에 없는 쿼리 이름을 400으로 답한다(S0-AC-48)
+io.popdesk.ops.IssueSearchLogTest.searchAndFilingLeaveNoText | 앱에 접근 로그와 쿼리 문자열을 적는 코드가 없어 지금도 검색어와 제목이 로그에 없다
