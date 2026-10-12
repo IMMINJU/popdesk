@@ -1,0 +1,10 @@
+Subject: [{key}] 문의의 담당자로 정해졌습니다: Printer "B2" jams after toner change
+
+문의의 담당자로 정해졌습니다.
+
+문의: {key}
+제목: Printer "B2" jams after toner change
+
+콘솔에서 문의를 볼 수 있습니다.
+
+{link}

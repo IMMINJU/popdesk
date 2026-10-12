@@ -1,0 +1,10 @@
+Subject: [{key}] You were mentioned in a comment: Printer "B2" jams after toner change
+
+You were mentioned in a comment on an issue.
+
+Issue: {key}
+Title: Printer "B2" jams after toner change
+
+Read the comment here:
+
+{link}

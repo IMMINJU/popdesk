@@ -1,0 +1,7 @@
+Subject: Membership request for company {code}
+
+A customer manager of company {code} asked to add a person to the company.
+
+Approve or reject the request in the console:
+
+{link}

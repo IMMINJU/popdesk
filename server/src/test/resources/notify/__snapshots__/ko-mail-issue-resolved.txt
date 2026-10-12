@@ -1,0 +1,10 @@
+Subject: [{key}] 지원팀이 문의를 해결로 바꿨습니다: Printer "B2" jams after toner change
+
+지원팀이 문의를 해결로 바꿨습니다.
+
+문의: {key}
+제목: Printer "B2" jams after toner change
+
+포털에서 답변을 보고 해결됐는지 확인해 주세요.
+
+{link}

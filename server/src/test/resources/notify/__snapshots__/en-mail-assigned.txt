@@ -1,0 +1,10 @@
+Subject: [{key}] You are the assignee now: Printer "B2" jams after toner change
+
+You were made the assignee of an issue.
+
+Issue: {key}
+Title: Printer "B2" jams after toner change
+
+Read it in the console:
+
+{link}
