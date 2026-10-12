@@ -88,8 +88,8 @@ class MailSender implements Sender {
                     recipient.locale(), recipient.name(), link));
             case STAFF_COMMENT -> Optional.of(MailText.staffComment(recipient.locale(), issue,
                     address.origin(App.PORTAL) + "/issues/" + issue.key()));
-            // In the contract of slice 3; nothing queues this kind until the slice is built.
-            case ISSUE_FILED_ON_BEHALF -> throw new UnsupportedOperationException("Not built yet: " + kind);
+            case ISSUE_FILED_ON_BEHALF -> Optional.of(MailText.filedOnBehalf(recipient.locale(), issue,
+                    address.origin(App.PORTAL) + "/issues/" + issue.key()));
         };
         if (message.isEmpty()) {
             return Attempt.dropped();

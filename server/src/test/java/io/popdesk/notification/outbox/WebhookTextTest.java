@@ -29,9 +29,10 @@ class WebhookTextTest {
             "en, customer-comment, CUSTOMER_COMMENT", "ko, customer-comment, CUSTOMER_COMMENT",
             "en, issue-resolved, ISSUE_RESOLVED", "ko, issue-resolved, ISSUE_RESOLVED",
             "en, issue-closed, ISSUE_CLOSED", "ko, issue-closed, ISSUE_CLOSED",
-            "en, issue-reopened, ISSUE_REOPENED", "ko, issue-reopened, ISSUE_REOPENED"})
-    @DisplayName("S3-AC-74 the body for a new, commented, resolved, closed, and reopened issue is the snapshot of "
-            + "its language, character for character")
+            "en, issue-reopened, ISSUE_REOPENED", "ko, issue-reopened, ISSUE_REOPENED",
+            "en, assignee-changed, ASSIGNEE_CHANGED", "ko, assignee-changed, ASSIGNEE_CHANGED"})
+    @DisplayName("S3-AC-74 the body for a new, commented, resolved, closed, and reopened issue and for a changed "
+            + "assignee is the snapshot of its language, character for character")
     void bodyIsTheSnapshot(String language, String name, WebhookKind kind) throws IOException {
         String text = WebhookSender.text(kind, new Issue("{key}", TITLE, "{code}"), language.equals("ko"), ORIGIN);
 

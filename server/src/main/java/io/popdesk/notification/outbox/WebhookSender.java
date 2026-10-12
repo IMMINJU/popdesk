@@ -84,8 +84,8 @@ class WebhookSender implements Sender {
             case ISSUE_RESOLVED -> korean ? "문의 해결 " + which : "Issue " + which + " resolved";
             case ISSUE_CLOSED -> korean ? "문의 종료 " + which : "Issue " + which + " closed";
             case ISSUE_REOPENED -> korean ? "문의 다시 열림 " + which : "Issue " + which + " reopened";
-            // In the contract of slice 3; nothing queues this kind until assignees are built.
-            case ASSIGNEE_CHANGED -> throw new UnsupportedOperationException("Not built yet: " + kind);
+            // One wording for an assignee set, changed, and cleared; it names nobody (S3-AC-74).
+            case ASSIGNEE_CHANGED -> korean ? "담당자 변경 " + which : "Assignee of " + which + " changed";
         };
         return what + ": " + title + "\n" + link;
     }

@@ -65,6 +65,28 @@ final class MailText {
                         + link + "\n");
     }
 
+    /**
+     * An issue staff filed for the customer, to that customer (S3-AC-37). It says the support team filed
+     * it and names nobody; it holds the title and not what the issue says.
+     */
+    static Message filedOnBehalf(String locale, Issue issue, String link) {
+        String title = oneLine(issue.title());
+        if (korean(locale)) {
+            return new Message("[" + issue.key() + "] 지원팀이 문의를 대신 올렸습니다: " + title,
+                    "지원팀이 고객님을 대신해 문의를 올렸습니다.\n\n"
+                            + "문의: " + issue.key() + "\n"
+                            + "제목: " + title + "\n\n"
+                            + "포털에서 문의를 보고 댓글을 달 수 있습니다.\n\n"
+                            + link + "\n");
+        }
+        return new Message("[" + issue.key() + "] The support team filed an issue for you: " + title,
+                "The support team filed an issue for you.\n\n"
+                        + "Issue: " + issue.key() + "\n"
+                        + "Title: " + title + "\n\n"
+                        + "Read it and reply in the portal:\n\n"
+                        + link + "\n");
+    }
+
     /** Line breaks and other control characters as spaces, so a value cannot start a header (MAIL-2). */
     static String oneLine(String value) {
         return value.replaceAll("[\\p{Cntrl}\\u0085\\u2028\\u2029]+", " ");
