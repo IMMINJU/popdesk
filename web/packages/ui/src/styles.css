@@ -136,7 +136,8 @@ textarea {
 /* Korean text breaks between any two letters unless told otherwise. In the text places of the
    shared parts (a band, a dialog, a toast, a row of a list, a table cell) and of every screen (its
    title, the head of a detail, a Markdown body, the line under a field, a value shown in a field's
-   place, the title of a row) it breaks between words only. Screens do not repeat this. */
+   place, a list of values, a row of the issue list) it breaks between words only. Screens do not
+   repeat this. */
 .pd-page-title,
 .pd-section-title,
 .pd-detail-head,
@@ -144,7 +145,8 @@ textarea {
 .pd-field-help,
 .pd-field-error,
 .pd-static-value,
-.pd-issue-row-title-text,
+.pd-meta,
+.pd-issue-row,
 .pd-alert-body,
 .pd-dialog-title,
 .pd-dialog-description,
@@ -171,7 +173,8 @@ textarea {
 .pd-field-help,
 .pd-field-error,
 .pd-static-value,
-.pd-issue-row-title-text,
+.pd-meta,
+.pd-issue-row,
 .pd-alert-body,
 .pd-dialog-title,
 .pd-dialog-description,
