@@ -15,8 +15,9 @@ Locked test files (in scripts/ci/tests.lock) also fail on:
     stand-ins (Testcontainers Postgres, GreenMail, MinIO, a test webhook receiver, a fixed Clock),
     so a locked test has nothing to mock.
   fixed waits: Thread.sleep(, waitForTimeout(, setTimeout(  (use Awaitility or expect.poll)
+  a test whose body reaches no assertion, directly or through a helper (assertless.py)
 
-Other test files (unit tests the implementing side added) get the same two as warnings.
+Other test files (unit tests the implementing side added) get the same three as warnings.
 --all-strict treats every test file as locked; the test-writing side uses it before the lock exists.
 
 A line that ends with a comment holding `style-allowed: <reason>` is reported but does not fail.
@@ -26,6 +27,7 @@ import re
 import sys
 from pathlib import Path
 
+import assertless
 from lockrules import LOCK_FILE, is_test, parse_lock, walk
 
 ALWAYS = [
@@ -53,15 +55,22 @@ def main():
 
     errors, warnings = [], []
     files = [p for p in walk(root) if is_test(p) and Path(p).suffix in SUFFIXES]
+    sources = {path: (root / path).read_text(encoding="utf-8") for path in files}
     for path in files:
         strict = all_strict or path in locked
-        for n, line in enumerate((root / path).read_text(encoding="utf-8").splitlines(), 1):
+        for n, line in enumerate(sources[path].splitlines(), 1):
             allowed = bool(ALLOW_RE.search(line))
             for rules, severe in ((ALWAYS, True), (LOCKED_ONLY, strict)):
                 for rx, what in rules:
                     if rx.search(line):
                         msg = f"{path}:{n}: {what}: {line.strip()[:120]}"
                         (warnings if (allowed or not severe) else errors).append(msg)
+
+    for path, n in assertless.find(sources):
+        line = sources[path].splitlines()[n - 1]
+        msg = f"{path}:{n}: no assertion: {line.strip()[:120]}"
+        severe = all_strict or path in locked
+        (warnings if (ALLOW_RE.search(line) or not severe) else errors).append(msg)
 
     for w in warnings:
         print(f"WARN   {w}")
