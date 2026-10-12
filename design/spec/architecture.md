@@ -133,6 +133,18 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 - 등록의 트랜잭션은 대리 등록이면 고객의 자격을 잠그지 않고 다시 읽고, 첨부(2), 등록 키 행, 웹훅 대기 행, 대리 등록의 메일 대기 행(3), 순번(4), 문의 행, `CREATED` 이력 순이다. `issue_history`의 문의 외래 키는 미루지 않아 이력은 문의 행 뒤에 온다. 자기 트랜잭션이 넣은 행이라 다른 트랜잭션과 부딪히지 않는다.
 - 등록 키 행은 `INSERT … ON CONFLICT (account_id, key) DO UPDATE … WHERE created_at <= 지금 - 24시간`으로 넣는다. 같은 키의 다른 등록이 돌고 있으면 그것이 끝날 때까지 기다리고, 그것이 커밋됐으면 바뀐 행이 0이다. 그때는 순번을 받기 전에 트랜잭션을 되돌리고 먼저 된 문의로 답한다. 유니크 오류를 잡지 않으므로 Postgres 로그에 ERROR 줄이 남지 않는다. 문의 외래 키는 미뤄 두어 키 행이 문의 행보다 먼저 들어간다.
 
+댓글과 알림(4번 묶음)은 이렇게 잠근다. 같은 문의의 댓글 쓰기는 모두 문의 행에서 줄을 서고, 댓글 행은 따로 잠그지 않는다.
+
+- 댓글 달기: 문의 행 `FOR NO KEY UPDATE`(1) → 멘션 후보 읽기(계정 행과 배정 행은 잠그지 않는다) → `comment` INSERT, `comment_mention` INSERT(계정 ID순) → 웹훅 대기 행 → 받는 사람마다 계정과 범위 읽기(잠그지 않는다), `notification` INSERT, `outbox` INSERT → 첫 응답 UPDATE. 모두 3의 자리다.
+- 댓글 고치기: 문의 행 잠금(1) → 댓글, 멘션 후보, 지금 멘션 읽기(잠그지 않는다) → `comment` UPDATE → `comment_mention` DELETE(빠진 사람)와 INSERT(더한 사람, 계정 ID순) → 더한 사람의 `notification`·`outbox` INSERT, 빠진 사람의 안 읽은 `notification` DELETE(계정 ID순).
+- 댓글 지우기: 문의 행 잠금(1) → 그 댓글의 `stored` 첨부를 ID순으로 `purging` UPDATE(2) → `comment` UPDATE(조건 `deleted_at IS NULL`) → 그 댓글의 `notification` DELETE → 커밋 → 트랜잭션 밖에서 파일 지우기.
+- 상태 변경과 담당자: 있던 순서의 끝(이력, 웹훅 대기 행 뒤)에 `notification`·`outbox` INSERT가 온다. 상태 변경은 조건부 UPDATE가 행을 바꾼 뒤에만 넣는다.
+- 대리 등록: 있던 메일 대기 행 자리(등록 키와 웹훅 대기 행 뒤, 순번 앞)에 `notification` INSERT가 하나 더 온다. 그때는 문의 행이 아직 없어 범위를 묻지 못하므로 "올린 사람은 자기 문의를 본다"로 판정한다.
+- 소속 요청: 요청 행 INSERT 뒤 관리자마다 `notification`과 `outbox` INSERT.
+- `notification`과 `outbox`에는 외래 키가 없어 INSERT가 다른 행을 잠그지 않는다. `comment_mention` INSERT는 외래 키로 `comment` 행과 `account` 행에 `FOR KEY SHARE`를 건다. `NO KEY` 없는 `FOR UPDATE`를 쓰지 않는 한 정지나 배정 빼기와 부딪히지 않는다.
+- 읽음과 모두 읽음은 `notification` 행만 잡는다. 항목 DELETE와 같은 행에서 만나면 한쪽이 기다렸다 끝난다. 두 쪽 다 다른 잠금을 더 잡지 않는다.
+- 첨부 지우기 혼자 하는 요청은 문의 행을 잠그지 않는다. 같은 첨부를 두 요청이 지우면 조건부 UPDATE에서 하나만 바꾼다.
+
 ### 감사 로그의 해시 사슬 (1b 묶음에서 정함)
 
 - 항목마다 `hash = SHA-256(앞 해시의 소문자 16진 글자 64개 ‖ 정해진 JSON 바이트)`를 저장한다. 첫 항목의 앞 해시는 `0` 64개다. 밖에서 확인하는 규칙과 스크립트는 `docs/integrate/conventions.md`와 `docs/integrate/audit-verify.py`에 있다.
