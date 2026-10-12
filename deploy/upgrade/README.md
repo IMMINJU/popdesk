@@ -8,13 +8,13 @@ Checks that a new image upgrades a database made by an older one (ADR D-24, proc
 python deploy/upgrade/make-sample.py --image IMAGE --out DIR --project NAME
 ```
 
-Starts IMAGE on an empty database and fills every business table through the API, with SQL only for two states the API cannot reach on demand (an attachment in `purging`, a send queue row in `failed`). It includes a 255-character file name, a profile photo, a password reset link nobody used, a suspended account (`suspended@sample.popdesk.test`, from the 0.2.0 sample on), and, from the 0.3.0 sample on, a customer manager (`customer@sample.popdesk.test` in `ACME`) with a membership request that waits for an admin (for `other@sample.popdesk.test`). From that sample on its issues are also what slice 3 made of them: one is `RESOLVED` and has an assignee, one is `CONFIRMED` with a changed title and priority, one was filed with an `Idempotency-Key` (`sample-filing-key-1`) and closed by its reporter, and one was filed by the agent for the customer by phone. So `issue_history` has `CREATED` and `CHANGED` rows and `issue_idempotency` has one row, which the app deletes once it is 24 hours old. Then it runs `popdesk backup` and writes:
+Starts IMAGE on an empty database and fills every business table through the API, with SQL only for two states the API cannot reach on demand (an attachment in `purging`, a send queue row in `failed`). It includes a 255-character file name, a profile photo, a password reset link nobody used, a suspended account (`suspended@sample.popdesk.test`, from the 0.2.0 sample on), and, from the 0.3.0 sample on, a customer manager (`customer@sample.popdesk.test` in `ACME`) with a membership request that waits for an admin (for `other@sample.popdesk.test`). From that sample on its issues are also what slice 3 made of them: one is `RESOLVED` and has an assignee, one is `CONFIRMED` with a changed title and priority, one was filed with an `Idempotency-Key` (`sample-filing-key-1`) and closed by its reporter, and one was filed by the agent for the customer by phone. So `issue_history` has `CREATED` and `CHANGED` rows and `issue_idempotency` has one row, which the app deletes once it is 24 hours old. From the sample after 0.3.0 on, the first issue also has what slice 4 added: an internal comment that mentions the admin (`comment_mention`), a comment its author edited, a comment its author deleted, and inbox items about issues, of which the customer has read one. Then it runs `popdesk backup` and writes:
 
 | File | Content |
 |---|---|
 | `DIR/sample.dump` | the dump |
 | `DIR/sample.image` | the image ID (`sha256:...`) that made it |
-| `DIR/sample.expected.json` | what the sample check expects: issue keys, attachment hashes, failed queue rows, audit rows, profile photo hashes (`photos`), password reset links (`passwordResets`, without the token hash) |
+| `DIR/sample.expected.json` | what the sample check expects: issue keys, attachment hashes, failed queue rows, audit rows, profile photo hashes (`photos`), password reset links (`passwordResets`, without the token hash), comments (`comments`: the issue, edited, deleted, mentioned accounts), inbox items about issues (`notifications`: the account, kind, issue, comment, read) |
 
 Exit code 0 when it worked, 3 when it did not. It also fails when a business table is left empty, so a new table without sample data is noticed.
 
@@ -24,9 +24,9 @@ Exit code 0 when it worked, 3 when it did not. It also fails when a business tab
 python deploy/upgrade/upgrade-test.py --sample DIR --image IMAGE --work WORK --project NAME [--compose-file FILE ...]
 ```
 
-Restores `DIR/sample.dump` with `popdesk restore` into a new database, starts IMAGE on it, waits until it is healthy, and checks the sample through the API (issues, attachment contents, profile photos, as the sample's admin) and SQL (failed queue rows, audit rows, password reset links). Writes `WORK/result.json` and `WORK/app.log`.
+Restores `DIR/sample.dump` with `popdesk restore` into a new database, starts IMAGE on it, waits until it is healthy, and checks the sample through the API (issues, attachment contents, profile photos, as the sample's admin) and SQL (failed queue rows, audit rows, password reset links, comments, inbox items about issues). Writes `WORK/result.json` and `WORK/app.log`.
 
-The checks `issues`, `attachments`, `outbox`, and `audit` always run. `photos` and `passwordResets` run only when `sample.expected.json` names them: the 0.1.0 sample was made before those tables existed, so with it `result.json` has the four checks only.
+The checks `issues`, `attachments`, `outbox`, and `audit` always run. `photos`, `passwordResets`, `comments`, and `notifications` run only when `sample.expected.json` names them: the 0.1.0 sample was made before the first two existed, so with it `result.json` has the four checks only, and the samples up to 0.3.0 do not name the last two. `notifications` covers the items about an issue only; the app adds operations alerts of its own while it runs.
 
 | Exit code | Meaning |
 |---|---|

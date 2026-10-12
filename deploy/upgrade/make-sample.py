@@ -22,7 +22,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from popdesk_stack import (  # noqa: E402
     ADMIN_EMAIL, ADMIN_PASSWORD, CONSOLE_HOST, PEOPLE_PASSWORD, PORTAL_HOST, HarnessError, Project, image_id,
-    log, read_audit, read_issues, read_outbox, read_password_resets, read_photos, sha256)
+    log, read_audit, read_comments, read_issues, read_notifications, read_outbox, read_password_resets, read_photos,
+    sha256)
 
 # Low, so a few small uploads pass 80% and raise the quota alert (ops_alert, notification rows).
 QUOTA = "1MB"
@@ -98,10 +99,26 @@ def fill(project):
                            expect=201)["key"])
 
     first = keys[0]
-    customer.json("POST", f"/api/portal/issues/{first}/comments", {"content": "It still happens."}, expect=201)
+    question = customer.json("POST", f"/api/portal/issues/{first}/comments", {"content": "It still happens."},
+                             expect=201)
     agent.json("POST", f"/api/console/issues/{first}/comments", {"content": "We are looking at it."}, expect=201)
-    agent.json("POST", f"/api/console/issues/{first}/comments", {"content": "Internal: check the driver.",
-                                                                    "internal": True}, expect=201)
+    # What slice 4 added to a comment (S4-AC-73). An internal comment that mentions the admin
+    # (comment_mention, and an unread MENTIONED item in the admin's inbox).
+    agent.json("POST", f"/api/console/issues/{first}/comments",
+               {"content": "Internal: check the driver.", "internal": True, "mentions": [admin_id]}, expect=201)
+    # A comment its author edited (comment.edited_at).
+    customer.json("PATCH", f"/api/portal/issues/{first}/comments/{question['id']}",
+                  {"content": "It still happens, also after a restart."})
+    # A comment its author deleted (comment.deleted_at, deleted_by, an empty content). Its inbox item
+    # goes with it.
+    mistake = agent.json("POST", f"/api/console/issues/{first}/comments", {"content": "Wrong issue, sorry."},
+                         expect=201)
+    agent.request("DELETE", f"/api/console/issues/{first}/comments/{mistake['id']}", expect=204)
+    # The customer reads the item of the agent's answer (notification.read_at). The items of what
+    # follows (resolved, filed by phone) stay unread.
+    answered = [n for n in customer.json("GET", "/api/portal/notifications")["items"]
+                if n["kind"] == "STAFF_COMMENT"]
+    customer.request("POST", f"/api/portal/notifications/{answered[0]['id']}/read", expect=204)
 
     # A profile photo larger than the app stores, so what it keeps is its own scaled copy (account_photo).
     customer.upload("/api/portal/me/photo", "file", "photo.png", png(7, 300, 200))
@@ -218,11 +235,19 @@ def main():
             "audit": read_audit(project),
             "photos": read_photos(admin, with_photo),
             "passwordResets": read_password_resets(project),
+            "comments": read_comments(project),
+            "notifications": read_notifications(project),
         }
         if not expected["outbox"]:
             raise HarnessError("The sample has no failed queue row.")
         if not expected["passwordResets"]:
             raise HarnessError("The sample has no password reset link.")
+        comments = expected["comments"]
+        if not (any(c["edited"] and not c["deleted"] for c in comments) and any(c["deleted"] for c in comments)
+                and any(c["mentions"] and not c["deleted"] for c in comments)):
+            raise HarnessError("The sample needs an edited comment, a deleted one, and one that mentions someone.")
+        if {n["read"] for n in expected["notifications"]} != {True, False}:
+            raise HarnessError("The sample needs a read and an unread inbox item about an issue.")
 
         project.compose("exec", "-T", "app", "popdesk", "backup", "/tmp/sample.dump")
         project.compose("cp", "app:/tmp/sample.dump", str(out / "sample.dump"))

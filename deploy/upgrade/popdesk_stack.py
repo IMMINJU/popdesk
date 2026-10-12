@@ -265,6 +265,26 @@ def read_password_resets(project):
         "'expiresAt', expires_at) order by account_id), '[]') from password_reset")
 
 
+def read_comments(project):
+    """Every comment: its issue, whether it was edited and deleted, and the accounts it mentions."""
+    return project.sql_json(
+        "select coalesce(json_agg(json_build_object('id', c.id, 'issue', co.code || '-' || i.number, "
+        "'edited', c.edited_at is not null, 'deleted', c.deleted_at is not null, 'mentions', "
+        "(select coalesce(json_agg(m.account_id order by m.account_id), '[]') from comment_mention m "
+        "where m.comment_id = c.id)) order by c.id), '[]') "
+        "from comment c join issue i on i.id = c.issue_id join company co on co.id = i.company_id")
+
+
+def read_notifications(project):
+    """Inbox items about an issue: whose, the kind, the issue, the comment, and whether it was read. Items
+    about no issue are left out: the app adds operations alerts of its own while it runs."""
+    return project.sql_json(
+        "select coalesce(json_agg(json_build_object('id', n.id, 'accountId', n.account_id, 'kind', n.kind, "
+        "'issue', co.code || '-' || i.number, 'commentId', n.comment_id, 'read', n.read_at is not null) "
+        "order by n.id), '[]') "
+        "from notification n join issue i on i.id = n.issue_id join company co on co.id = i.company_id")
+
+
 def read_audit(project):
     return project.sql_json(
         "select coalesce(json_agg(json_build_object('id', id, 'action', action, 'row', row_to_json(a)::text) "

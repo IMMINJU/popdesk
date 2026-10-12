@@ -23,12 +23,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from popdesk_stack import (  # noqa: E402
     ADMIN_EMAIL, ADMIN_PASSWORD, CONSOLE_HOST, FAILED_ROWS_KEPT_DAYS, ApiError, Project, log, read_audit,
-    read_issues, read_outbox, read_password_resets, read_photos, sha256)
+    read_comments, read_issues, read_notifications, read_outbox, read_password_resets, read_photos, sha256)
 
-# The checks every sample has, and those only a sample made after 0.1.0 has (profile photos and
-# password reset links). A later check runs when sample.expected.json names it.
+# The checks every sample has, and those only a later sample has: profile photos and password reset
+# links (after 0.1.0), comments and inbox items about issues (after 0.3.0). A later check runs when
+# sample.expected.json names it.
 CHECKS = ("issues", "attachments", "outbox", "audit")
-LATER_CHECKS = ("photos", "passwordResets")
+LATER_CHECKS = ("photos", "passwordResets", "comments", "notifications")
 
 # The app's health check gives a start period of 3 minutes and then 6 tries 10 seconds apart; a long
 # migration on a large sample can take longer, so the harness waits longer than that.
@@ -122,6 +123,27 @@ def check_password_resets(project, expected):
     return ok
 
 
+def check_rows(name, actual, expected):
+    """Every row of the sample is still there, unchanged, by its ID. New rows may follow."""
+    found = {row["id"]: row for row in actual}
+    ok = True
+    for row in expected[name]:
+        if found.get(row["id"]) != row:
+            log(f"{name}: expected {row}, found {found.get(row['id'])}")
+            ok = False
+    return ok
+
+
+def check_comments(project, expected):
+    """Every comment of the sample is as it was: edited or not, deleted or not, mentioning the same accounts."""
+    return check_rows("comments", read_comments(project), expected)
+
+
+def check_notifications(project, expected):
+    """Every inbox item about an issue is still there for the same account, read or unread as it was."""
+    return check_rows("notifications", read_notifications(project), expected)
+
+
 def run_checks(project, expected):
     checks = {}
     console = project.api(CONSOLE_HOST)
@@ -134,7 +156,9 @@ def run_checks(project, expected):
     for name, check, target in (("issues", check_issues, console), ("attachments", check_attachments, console),
                                 ("outbox", check_outbox, project), ("audit", check_audit, project),
                                 ("photos", check_photos, console),
-                                ("passwordResets", check_password_resets, project)):
+                                ("passwordResets", check_password_resets, project),
+                                ("comments", check_comments, project),
+                                ("notifications", check_notifications, project)):
         if name in LATER_CHECKS and name not in expected:
             continue
         if target is console and not signed_in:
