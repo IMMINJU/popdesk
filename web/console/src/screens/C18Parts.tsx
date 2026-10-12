@@ -124,7 +124,7 @@ export function FailedTable(props: FailedTableProps) {
       header: '마지막 오류 종류',
       cell: (f) =>
         f.lastErrorKind === 'RATE_LIMITED' ? (
-          <span className="pd-two-lines">
+          <span className="pd-two-lines pd-kind-note">
             <code className="pd-code">{f.lastErrorKind}</code>
             <span className="pd-muted">한 주소에 한 시간 50통을 넘겼습니다.</span>
           </span>

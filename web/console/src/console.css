@@ -374,6 +374,12 @@
   word-break: keep-all;
 }
 
+/* An error kind with a line under it: the kind keeps its own width. */
+.pd-kind-note {
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
 /* What the SMTP server answered, as it came: a long line scrolls inside its own box. */
 .pd-server-reply {
   display: flex;
