@@ -23,7 +23,7 @@
 - 웹훅: 대기에 넣는 쪽이 넣지 않고 [소스: `OutboxWebhookQueue.queue`가 주소가 없으면 넣지 않는다], 보내는 쪽이 있던 행을 버린다 [소스: `AuditCopySender`가 샌드박스에서 버리는 꼴].
 - 시스템 상태: `enabled`는 "설정이 있고 샌드박스가 끄지 않았다"다. 샌드박스인지와 주소가 있는지를 상태 응답의 새 칸으로 준다(더하기만 한다).
 - 초대 링크 복사(C-10)는 `mail.enabled`를 읽는다 [소스: `getSystemStatus`의 설명]. 주소 없는 샌드박스에서는 메일이 꺼진 것이므로 링크 복사가 나온다. 주소가 있는 샌드박스에서는 초대 메일이 운영자에게 간다. 그대로 둔다.
-- `POPDESK_SANDBOX_MAIL_TO`의 검사는 시작할 때 다른 설정 검사와 같은 자리에서 한다 [소스: `POPDESK_AUDIT_RETENTION`, `POPDESK_LOCALE`의 검사].
+- `POPDESK_SANDBOX_MAIL_TO`가 이메일 꼴이 아니면 앱이 뜨지 않는다(S4B-AC-06, S0-AC-10의 꼴). `POPDESK_AUDIT_RETENTION`, `POPDESK_LOCALE`처럼 뜬 채 준비 상태만 내리는 꼴이 아니다. 틀린 주소로 뜬 샌드박스는 메일이 어디로 갈지 알 수 없다(테스트 탭이 기준과 이 줄이 어긋난다고 알려 2026-10-12에 고침).
 
 ## 2. 한 시간 50통
 
