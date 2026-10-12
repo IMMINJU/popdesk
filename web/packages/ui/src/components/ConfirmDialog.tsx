@@ -1,4 +1,5 @@
 import { useRef, type ReactNode } from 'react';
+import { Alert } from './Alert';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 
@@ -16,6 +17,8 @@ export interface ConfirmDialogProps {
   pending?: boolean;
   /** Text on the confirm button while pending, e.g. "지우는 중…". */
   pendingLabel?: string;
+  /** What went wrong with the answer, as an error band under the message. The buttons stay, so it can be tried again. */
+  error?: string;
 }
 
 /**
@@ -52,6 +55,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
       }
     >
       <div className="pd-confirm-message">{props.message}</div>
+      {props.error !== undefined && <Alert tone="error">{props.error}</Alert>}
     </Dialog>
   );
 }

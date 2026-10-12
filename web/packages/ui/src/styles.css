@@ -642,6 +642,77 @@ textarea {
   cursor: not-allowed;
 }
 
+/* People picker: one folded line, the candidates under it once opened ------ */
+
+.pd-people-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pd-people-picker-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+.pd-people-picker-line > .pd-button {
+  flex: none;
+}
+
+.pd-people-picker-arrow {
+  display: inline-flex;
+  transition: transform var(--duration-fast) var(--easing);
+}
+
+.pd-people-picker-line > [aria-expanded='true'] .pd-people-picker-arrow {
+  transform: rotate(180deg);
+}
+
+/* Ten long names take more than one line: the line wraps beside the button and under it. */
+.pd-people-picker-summary {
+  flex: 1;
+  min-width: min(12rem, 100%);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+}
+
+.pd-people-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+/* Over eight candidates only this part scrolls. The padding keeps the focus ring of a box inside. */
+.pd-people-picker-list .pd-group-options {
+  max-height: calc(8 * var(--body-line) + 7 * var(--space-2) + 2 * var(--space-1));
+  margin: calc(var(--space-1) * -1);
+  padding: var(--space-1);
+  overflow-y: auto;
+}
+
+.pd-people-picker-state,
+.pd-people-picker-max,
+.pd-people-picker-notice {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+}
+
+.pd-people-picker-state[data-state='failed'] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  color: var(--danger);
+}
+
 /* Alert band ------------------------------------------------------------ */
 
 .pd-alert {

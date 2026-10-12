@@ -29,3 +29,19 @@ export const Danger: Story = {
   },
 };
 export const Pending: Story = { args: { tone: 'danger', pending: true } };
+/** 지우기가 실패했을 때: 글 아래에 오류 띠가 있고 다시 누를 수 있다. */
+export const WithError: Story = {
+  args: {
+    tone: 'danger',
+    title: '댓글 지우기',
+    message: (
+      <>
+        <p>지운 댓글은 되돌릴 수 없습니다.</p>
+        <p>이 댓글에 붙은 파일도 함께 지웁니다.</p>
+      </>
+    ),
+    confirmLabel: '댓글 지우기',
+    cancelLabel: '그만두기',
+    error: '서버에 연결하지 못했습니다. 잠시 뒤 다시 하세요.',
+  },
+};

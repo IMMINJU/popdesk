@@ -1,3 +1,8 @@
+import { useId, useRef, useState } from 'react';
+import { ChevronDownIcon } from '../icons';
+import { Button } from './Button';
+import { CheckboxGroup } from './CheckboxGroup';
+
 export interface PeoplePickerOption {
   /** Account ID as text, like the values of `CheckboxGroup`. */
   id: string;
@@ -47,18 +52,86 @@ export interface PeoplePickerProps {
  * a button with `aria-expanded` and the summary of who is picked, and under it the candidates as a
  * `CheckboxGroup` named `label` once opened. Not a `radiogroup`, no photos.
  *
- * Contract shell: only the folded line and `notice` are drawn. Opening, the boxes, the states of
- * the candidates, the limit and the `onChange` call come later (C-9).
+ * Escape folds it and returns focus to the button. Over eight candidates the list scrolls by itself.
  */
 export function PeoplePicker(props: PeoplePickerProps) {
+  const autoId = useId();
+  const id = props.id ?? autoId;
+  const listId = `${id}-list`;
+  const toggle = useRef<HTMLButtonElement>(null);
+  const [own, setOwn] = useState(false);
+  const open = props.open ?? own;
+  const setOpen = (next: boolean) => {
+    setOwn(next);
+    props.onOpenChange?.(next);
+  };
+  const status = props.status ?? 'ready';
+  const full = props.max !== undefined && props.value.length >= props.max;
   return (
-    <div className="pd-people-picker" data-pd="PeoplePicker">
+    <div
+      className="pd-people-picker"
+      data-pd="PeoplePicker"
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || !open) return;
+        // The fold is this key's whole answer: a dialog or a guard around it stays as it is.
+        e.stopPropagation();
+        setOpen(false);
+        toggle.current?.focus();
+      }}
+    >
       <div className="pd-people-picker-line">
-        <button id={props.id} type="button" className="pd-button" data-variant="secondary" data-size="sm" aria-expanded={false}>
+        <button
+          ref={toggle}
+          id={id}
+          type="button"
+          className="pd-button"
+          data-variant="secondary"
+          data-size="sm"
+          aria-expanded={open}
+          aria-controls={open ? listId : undefined}
+          onClick={() => {
+            setOpen(!open);
+          }}
+        >
           <span className="pd-button-text">{props.toggleLabel}</span>
+          <span className="pd-people-picker-arrow" aria-hidden="true">
+            <ChevronDownIcon size={14} />
+          </span>
         </button>
         <span className="pd-people-picker-summary">{props.summary}</span>
       </div>
+      {open && (
+        <div id={listId} className="pd-people-picker-list">
+          {status === 'loading' ? (
+            <p className="pd-people-picker-state">{props.loadingText}</p>
+          ) : status === 'failed' ? (
+            <div className="pd-people-picker-state" data-state="failed">
+              <p>{props.failedText}</p>
+              <Button variant="secondary" size="sm" onClick={() => props.onRetry?.()}>
+                {props.retryLabel}
+              </Button>
+            </div>
+          ) : props.candidates.length === 0 ? (
+            <p className="pd-people-picker-state">{props.emptyText}</p>
+          ) : (
+            <>
+              <CheckboxGroup
+                id={`${id}-boxes`}
+                legend={props.label}
+                options={props.candidates.map((c) => ({
+                  value: c.id,
+                  label: c.label,
+                  // A picked box stays free, so one can be taken out to make room.
+                  disabled: full && !props.value.includes(c.id),
+                }))}
+                value={props.value}
+                onChange={props.onChange}
+              />
+              {full && props.maxText !== undefined && <p className="pd-people-picker-max">{props.maxText}</p>}
+            </>
+          )}
+        </div>
+      )}
       {props.notice !== undefined && <p className="pd-people-picker-notice">{props.notice}</p>}
     </div>
   );
