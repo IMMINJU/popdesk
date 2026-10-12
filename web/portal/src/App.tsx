@@ -10,6 +10,7 @@ import { P3IssueList } from './screens/P3IssueList';
 import { P4IssueCreate } from './screens/P4IssueCreate';
 import { P5IssueDetail } from './screens/P5IssueDetail';
 import { P6MyInfo } from './screens/P6MyInfo';
+import { P7Inbox } from './screens/P7Inbox';
 import { P8Members } from './screens/P8Members';
 import { P9PasswordForgot } from './screens/P9PasswordForgot';
 
@@ -17,6 +18,7 @@ import { P9PasswordForgot } from './screens/P9PasswordForgot';
 // list; signed-in screens sit in PortalLayout. Slice 1a adds P-9 and P-10 (signed
 // out; P-10 takes its token after `#`, like the invitation) and P-6 (signed in).
 // Slice 2 adds P-8 (signed in; managers only, which the server's answers decide).
+// Slice 4 adds P-7 (signed in).
 const routes: RouteObject[] = [
   { index: true, element: <Navigate to="/issues" replace /> },
   { path: '/login', element: <P1Login /> },
@@ -30,6 +32,7 @@ const routes: RouteObject[] = [
       { path: '/issues/new', element: <P4IssueCreate /> },
       { path: '/issues/:issueKey', element: <P5IssueDetail /> },
       { path: '/me', element: <P6MyInfo /> },
+      { path: '/inbox', element: <P7Inbox /> },
       { path: '/members', element: <P8Members /> },
       { path: '*', element: <NotFound listHref="/issues" listLabel="문의 목록으로" /> },
     ],

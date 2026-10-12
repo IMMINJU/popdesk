@@ -3,11 +3,12 @@
 
 export type * from './types';
 export * from './icons';
+export { commentActionDescribedBy } from './aria';
 export { codePoints, formatBytes } from './format';
 export { ACCOUNT_STATUS_WORDS, ISSUE_STATUS_WORDS, PRIORITY_WORDS, PROJECT_STATUS_WORDS } from './words';
 
 export { Alert, type AlertProps, type AlertTone } from './components/Alert';
-export { AppShell, NavItemLabel, type AppShellProps, type NavItem } from './components/AppShell';
+export { AppShell, InboxLinkLabel, NavItemLabel, type AppShellProps, type InboxLink, type NavItem } from './components/AppShell';
 export { AttachmentList, type AttachmentItem, type AttachmentListProps } from './components/AttachmentList';
 export { Avatar, type AvatarProps } from './components/Avatar';
 export { Badge, type BadgeProps, type BadgeTone } from './components/Badge';
@@ -34,6 +35,7 @@ export { MarkdownEditor, type MarkdownEditorProps, type MarkdownTool } from './c
 export { MarkdownView, type MarkdownViewProps } from './components/MarkdownView';
 export { Pagination, type PageLink, type PaginationProps } from './components/Pagination';
 export { PasswordField, type PasswordFieldProps } from './components/PasswordField';
+export { PeoplePicker, type PeoplePickerOption, type PeoplePickerProps } from './components/PeoplePicker';
 export { PhotoField, type PhotoFieldProps } from './components/PhotoField';
 export { PriorityLabel, type PriorityLabelProps } from './components/PriorityLabel';
 export { PriorityPicker, type PriorityPickerProps } from './components/PriorityPicker';

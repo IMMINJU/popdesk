@@ -57,3 +57,42 @@ export const PortalManager: Story = {
     ],
   },
 };
+
+// 4번 묶음(screens.md 1절 "머리의 알림 링크")의 껍데기다. 링크를 머리 안, 메뉴 밖, 사용자 줄 앞에 그리기만 하고 모양은 C-9가 채운다.
+const inbox = { href: '/inbox', label: '알림' };
+
+/** 안 읽은 알림 0: 숫자가 없고 링크의 이름은 "알림"이다. */
+export const InboxNone: Story = { args: { inbox: { ...inbox, count: 0 } } };
+/** 안 읽은 알림 3: 링크의 이름은 "알림 3건"이다. */
+export const InboxThree: Story = { args: { inbox: { ...inbox, count: 3, countLabel: '3건' } } };
+/** 100 이상은 "99+"로 보이고 이름은 실제 수를 쓴다("알림 120건"). */
+export const InboxMany: Story = { args: { inbox: { ...inbox, count: 120, countLabel: '120건' } } };
+/** 지금 화면이 알림함: `aria-current="page"`. */
+export const InboxCurrent: Story = {
+  args: {
+    nav: [
+      { href: '/issues', label: '문의' },
+      { href: '/companies', label: '고객사' },
+      { href: '/members', label: '구성원' },
+      { href: '/system', label: '시스템 상태' },
+    ],
+    inbox: { ...inbox, count: 3, countLabel: '3건', current: true },
+  },
+};
+export const PortalInbox: Story = {
+  args: { app: 'portal', nav: [], userName: '김하나', inbox: { ...inbox, count: 3, countLabel: '3건' } },
+};
+/** 담당자의 포털: 메뉴와 알림 링크가 함께 있다. */
+export const PortalManagerInbox: Story = {
+  args: {
+    app: 'portal',
+    userName: '김하나',
+    navLabel: '메뉴',
+    nav: [
+      { href: '/issues', label: '문의', current: true },
+      { href: '/members', label: '우리 회사 사람' },
+    ],
+    inbox: { ...inbox, count: 120, countLabel: '120건' },
+  },
+};
+// 좁은 화면: 따로 story를 두지 않는다. 창을 1024px(콘솔), 640px(포털) 아래로 줄여 InboxThree와 PortalManagerInbox를 본다.

@@ -125,4 +125,7 @@ export const ko = {
   'portalIssue.changedAlready': '문의 상태가 이미 바뀌었습니다',
   'portalIssue.tooLateToReopen': '종료한 지 14일이 지나 다시 열 수 없습니다. 새 문의를 올려 주세요.',
   'portalIssueCreate.keyReused': '등록을 확인하지 못했습니다. "올리기"를 다시 눌러 주세요.',
+
+  // Slice 4 (design/slices/4-talk/screens.md 1절).
+  'inbox.title': '알림함',
 } as const;

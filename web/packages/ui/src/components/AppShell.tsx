@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type Ref } from 'react';
-import { SidebarIcon } from '../icons';
+import { BellIcon, SidebarIcon } from '../icons';
 import { Avatar } from './Avatar';
 import { Button } from './Button';
 import { IconButton } from './IconButton';
@@ -17,6 +17,23 @@ export interface NavItem {
   /**
    * What the number counts, with the number, e.g. "소속 요청 3건". It joins the link's accessible
    * name after the label. Needed whenever `count` is drawn.
+   */
+  countLabel?: string;
+}
+
+/** The inbox link of the head (slice 4 screens.md "머리의 알림 링크"). Shaped like `NavItem`. */
+export interface InboxLink {
+  /** `/inbox`. */
+  href: string;
+  /** "알림". */
+  label: string;
+  /** `aria-current="page"`. */
+  current?: boolean;
+  /** The unread items. Absent or 0 draws no number. 100 and above shows "99+". */
+  count?: number;
+  /**
+   * The number as it is read, e.g. "3건" (the real number, also above 99). It joins the link's
+   * accessible name after the label: "알림 3건". Needed whenever `count` is drawn.
    */
   countLabel?: string;
 }
@@ -46,6 +63,13 @@ export interface AppShellProps {
   navLabel?: string;
   /** Lets the app render nav links with its router. Default: a plain `<a>`. */
   renderLink?: (item: NavItem) => ReactNode;
+  /**
+   * The inbox link: in the head, outside the menu `nav`, before the user. Absent: nothing is drawn.
+   * It is not a second `nav` and its number is not a live region.
+   */
+  inbox?: InboxLink;
+  /** Lets the app render the inbox link with its router, with `InboxLinkLabel` inside. Default: a plain `<a>`. */
+  renderInboxLink?: (inbox: InboxLink) => ReactNode;
   /** The display name links here, e.g. `/issues`. Default: no link. */
   homeHref?: string;
   /** Draws the home link with the app's router. */
@@ -73,6 +97,29 @@ export function NavItemLabel(props: { item: NavItem }) {
       </span>
       {/* The space stays outside the hidden span, or the name reads "고객사소속 요청 3건". */}{' '}
       <span className="pd-sr-only">{countLabel ?? String(count)}</span>
+    </>
+  );
+}
+
+/**
+ * What the inbox link holds: the bell, the label and, for a `count` above 0, the number after it.
+ * The number is for the eye ("99+" from 100); a screen reader gets `countLabel` in the link's
+ * name ("알림 3건"). An app that draws its own link (`renderInboxLink`) puts this inside it.
+ */
+export function InboxLinkLabel(props: { inbox: InboxLink }) {
+  const { label, count, countLabel } = props.inbox;
+  return (
+    <>
+      <BellIcon />
+      <span className="pd-shell-inbox-label">{label}</span>
+      {count !== undefined && count > 0 && (
+        <>
+          <span className="pd-shell-inbox-count" aria-hidden="true">
+            {count >= 100 ? '99+' : count}
+          </span>{' '}
+          <span className="pd-sr-only">{countLabel ?? String(count)}</span>
+        </>
+      )}
     </>
   );
 }
@@ -147,6 +194,17 @@ export function AppShell({ mainRef, ...props }: AppShellProps) {
         </ul>
       </nav>
     ) : null;
+  const inbox = props.inbox ? (
+    <div className="pd-shell-inbox">
+      {props.renderInboxLink ? (
+        <Fragment>{props.renderInboxLink(props.inbox)}</Fragment>
+      ) : (
+        <a href={props.inbox.href} aria-current={props.inbox.current ? 'page' : undefined}>
+          <InboxLinkLabel inbox={props.inbox} />
+        </a>
+      )}
+    </div>
+  ) : null;
   const who = (
     <>
       <Avatar name={props.userName} photoUrl={props.userPhotoUrl ?? null} size="sm" decorative />
@@ -207,6 +265,7 @@ export function AppShell({ mainRef, ...props }: AppShellProps) {
           )}
         </div>
         {nav}
+        {inbox}
         {user}
       </header>
       {opened && (

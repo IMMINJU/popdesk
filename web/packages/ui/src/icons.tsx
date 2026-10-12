@@ -187,6 +187,16 @@ export function InboxIcon(props: IconProps) {
   );
 }
 
+/** The inbox link in the head (slice 4). */
+export function BellIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 11V7a4 4 0 0 1 8 0v4l1.25 2H2.75Z" />
+      <path d="M6.75 13a1.25 1.25 0 0 0 2.5 0M8 1.75V3" />
+    </Svg>
+  );
+}
+
 export function SearchOffIcon(props: IconProps) {
   return (
     <Svg {...props}>

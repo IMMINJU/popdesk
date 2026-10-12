@@ -15,6 +15,7 @@ import { C2InviteAccept } from './screens/C2InviteAccept';
 import { C3IssueList } from './screens/C3IssueList';
 import { C4IssueDetail } from './screens/C4IssueDetail';
 import { C6MyInfo } from './screens/C6MyInfo';
+import { C7Inbox } from './screens/C7Inbox';
 import { C8CompanyList } from './screens/C8CompanyList';
 import { C9CompanyDetail } from './screens/C9CompanyDetail';
 
@@ -24,6 +25,7 @@ import { C9CompanyDetail } from './screens/C9CompanyDetail';
 // the invitation) and C-6 (signed in, every role).
 // Slice 1b adds C-12 (admin only).
 // Slice 3 adds C-19 (every role), before `/issues/:issueKey` so `new` is not read as a key.
+// Slice 4 adds C-7 (every role).
 const routes: RouteObject[] = [
   { index: true, element: <Navigate to={MY_ISSUES_HREF} replace /> },
   { path: '/login', element: <C1Login /> },
@@ -37,6 +39,7 @@ const routes: RouteObject[] = [
       { path: '/issues/new', element: <C19IssueCreate /> },
       { path: '/issues/:issueKey', element: <C4IssueDetail /> },
       { path: '/me', element: <C6MyInfo /> },
+      { path: '/inbox', element: <C7Inbox /> },
       { path: '/companies', element: <AdminOnly><C8CompanyList /></AdminOnly> },
       { path: '/companies/:code', element: <AdminOnly><C9CompanyDetail /></AdminOnly> },
       { path: '/members', element: <AdminOnly><C10MemberList /></AdminOnly> },
