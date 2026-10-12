@@ -67,18 +67,27 @@ class WebhookSender implements Sender {
 
     /** The message text in the installation's language ({@code POPDESK_LOCALE}). */
     String text(WebhookKind kind, Issue issue) {
+        return text(kind, issue, MailText.korean(locale.language()), address.origin(App.CONSOLE));
+    }
+
+    /**
+     * The wording (S0-AC-75, S3-AC-74): what happened, the issue key, the company code, and the title on
+     * one line; the console link on the next.
+     */
+    static String text(WebhookKind kind, Issue issue, boolean korean, String consoleOrigin) {
         String title = MailText.oneLine(issue.title());
-        String link = address.origin(App.CONSOLE) + "/issues/" + issue.key();
-        boolean korean = MailText.korean(locale.language());
+        String link = consoleOrigin + "/issues/" + issue.key();
+        String which = issue.key() + (korean ? " (고객사 " + issue.companyCode() + ")" : " from " + issue.companyCode());
         String what = switch (kind) {
-            case ISSUE_CREATED -> korean ? "새 문의" : "New issue";
-            case CUSTOMER_COMMENT -> korean ? "고객 댓글" : "Customer comment on";
-            // In the contract of slice 3; nothing queues these kinds until the slice is built.
-            case ISSUE_RESOLVED, ISSUE_CLOSED, ISSUE_REOPENED, ASSIGNEE_CHANGED ->
-                    throw new UnsupportedOperationException("Not built yet: " + kind);
+            case ISSUE_CREATED -> korean ? "새 문의 " + which : "New issue " + which;
+            case CUSTOMER_COMMENT -> korean ? "고객 댓글 " + which : "Customer comment on " + which;
+            case ISSUE_RESOLVED -> korean ? "문의 해결 " + which : "Issue " + which + " resolved";
+            case ISSUE_CLOSED -> korean ? "문의 종료 " + which : "Issue " + which + " closed";
+            case ISSUE_REOPENED -> korean ? "문의 다시 열림 " + which : "Issue " + which + " reopened";
+            // In the contract of slice 3; nothing queues this kind until assignees are built.
+            case ASSIGNEE_CHANGED -> throw new UnsupportedOperationException("Not built yet: " + kind);
         };
-        String company = korean ? " (고객사 " + issue.companyCode() + ")" : " from " + issue.companyCode();
-        return what + " " + issue.key() + company + ": " + title + "\n" + link;
+        return what + ": " + title + "\n" + link;
     }
 
     private HttpClient client() {
