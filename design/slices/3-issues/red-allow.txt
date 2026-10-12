@@ -7,3 +7,12 @@ io.popdesk.ops.IssueSearchLogTest.searchAndFilingLeaveNoText | 앱에 접근 로
 src/components/SearchField.test.tsx.SearchField > SearchField 꼴: role="search" 안의 이름표 있는 검색 입력. hint는 aria-describedby로 잇고 maxLength는 기본 100, disabled면 막힌다 | 계약 껍데기(s3-c4-web)가 이름표, role="search", hint, maxLength, disabled를 이미 그린다
 src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 동작(동료의 해결된 문의): 버튼은 [] | 동료의 문의에 동작과 해결 띠가 없다는 부정 단언이라 동작이 아직 없는 지금도 참이다
 src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 동작(동료의 종료된 문의(reopenable이 참)): 버튼은 [] | 위와 같다. reopenable이 참이어도 올린 사람이 아니면 "다시 열기"가 없다는 부정 단언이다
+io.popdesk.issue.ClearAssignmentsTest.agentsCannotCount | 열린 담당 수 둘은 보안 설정의 관리자 전용 패턴에 이미 걸려 상담원이 지금도 403이다
+io.popdesk.issue.IssueHistoryTest.portalHasNoHistory | 포털 호스트에는 이력 경로가 없고 콘솔 경로는 포털 호스트에서 404다(D-43)
+io.popdesk.boundary.BoundaryListTest.everyNamedTestExists | 있던 테스트다. 목록에 3번의 오퍼레이션 열넷을 올려 통과한다
+io.popdesk.boundary.BoundaryListTest.everyListedOperationIsInTheContract | 있던 테스트다. 목록에 3번의 오퍼레이션 열넷을 올려 통과한다
+io.popdesk.boundary.BoundaryListTest.eachOperationHasTestsOrReason | 있던 테스트다. 목록에 3번의 오퍼레이션 열넷을 올려 통과한다
+io.popdesk.boundary.BoundaryListTest.everyContractOperationIsListed | 있던 테스트다. 목록에 3번의 오퍼레이션 열넷을 올려 통과한다
+io.popdesk.ops.CheckOrderTest.unauthenticatedFirst | 있던 테스트다. 새 엔드포인트도 로그인 전에는 401이 먼저다
+io.popdesk.ops.CheckOrderTest.inputBeforeConflict | 있던 테스트다. 이 탭이 줄을 더하지 않았다
+io.popdesk.ops.CheckOrderTest.roleBeforeTargetAndInput | 있던 테스트다. 열린 담당 수 둘은 관리자 전용 패턴에 이미 걸려 상담원이 403이다
