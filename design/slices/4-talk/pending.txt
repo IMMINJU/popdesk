@@ -12,3 +12,9 @@ server io/popdesk/issue/CommentNotFoundTest.java
 server io/popdesk/issue/CommentDeleteTest.java
 server io/popdesk/issue/MentionTest.java
 server io/popdesk/issue/MentionCandidatesTest.java
+web src/components/PeoplePicker.test.tsx
+web src/components/ConfirmDialog.error.test.tsx
+web src/app/layout.inbox.test.tsx
+web src/screens/C7Inbox.test.tsx
+web src/screens/C4IssueDetail.comments4.test.tsx
+web src/screens/C4IssueDetail.mentions.test.tsx
