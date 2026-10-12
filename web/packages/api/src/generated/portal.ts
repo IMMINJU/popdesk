@@ -1652,7 +1652,7 @@ export interface operations {
                     "application/json": components["schemas"]["Attachment"];
                 };
             };
-            /** @description `FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `ISSUE_ATTACHMENTS_TOO_LARGE` (public attachments of the issue over 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), `INVALID_INPUT` (field `file` `TOO_LONG`: name over 255; field `commentId` `UNKNOWN_VALUE`: not the caller's comment on this issue) (S0-AC-57, S0-AC-58). `ISSUE_CLOSED`. */
+            /** @description `FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `ISSUE_ATTACHMENTS_TOO_LARGE` (public attachments of the issue over 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), `INVALID_INPUT` (field `file` `TOO_LONG`: name over 255; field `commentId` `UNKNOWN_VALUE`: not the caller's comment on this issue, or a deleted comment) (S0-AC-57, S0-AC-58). `ISSUE_CLOSED`. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2001,7 +2001,7 @@ export interface operations {
                     "application/json": components["schemas"]["Comment"];
                 };
             };
-            /** @description `INVALID_INPUT`: `content` empty or over 4,000. `ISSUE_CLOSED`: the issue is closed. */
+            /** @description `INVALID_INPUT`: `content` empty or over 4,000, or not text (`INVALID_FORMAT`). `ISSUE_CLOSED`: the issue is closed. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2121,7 +2121,7 @@ export interface operations {
                     "application/json": components["schemas"]["Comment"];
                 };
             };
-            /** @description `INVALID_INPUT`: `content` empty, over 4,000, or `null`. `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` (S4-AC-04). */
+            /** @description `INVALID_INPUT`: `content` empty, over 4,000, or `null`, or not text (`INVALID_FORMAT`). `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` (S4-AC-04). */
             400: {
                 headers: {
                     [name: string]: unknown;

@@ -293,7 +293,7 @@
       "ChannelStatus" : {
         "properties" : {
           "enabled" : {
-            "description" : "Configured.",
+            "description" : "Configured, and not turned off by the sandbox (S4B-AC-08).",
             "type" : "boolean"
           },
           "failed" : {
@@ -312,6 +312,26 @@
           }
         },
         "required" : [ "enabled", "failed", "lastSuccessAt", "queued" ],
+        "type" : "object"
+      },
+      "CleanupJobStatus" : {
+        "properties" : {
+          "deleted" : {
+            "description" : "How many rows that run deleted; null when the job never ran.",
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
+          "lastRunAt" : {
+            "description" : "When the job last ran; null when it never ran.",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "description" : "The job's name, as in the metrics label `job`, for example `session-cleanup`.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "deleted", "lastRunAt", "name" ],
         "type" : "object"
       },
       "ClearedAssignments" : {
@@ -367,7 +387,7 @@
             "type" : "boolean"
           },
           "mentions" : {
-            "description" : "The accounts the comment mentions, as they were chosen: someone who can no longer see the issue stays in the list (S4-AC-19, S4-AC-26).",
+            "description" : "The accounts the comment mentions, as they were chosen: someone who can no longer see the issue stays in the list (S4-AC-19, S4-AC-26). In name order, then by account ID.",
             "items" : {
               "$ref" : "#/components/schemas/Person"
             },
@@ -591,7 +611,7 @@
             "type" : "integer"
           },
           "lastErrorKind" : {
-            "description" : "Kind of the last error, for example `CONNECTION_REFUSED`; never the error text.",
+            "description" : "Kind of the last error, for example `CONNECTION_REFUSED`, or `RATE_LIMITED` for an email over the 50 an hour one address gets (S4B-AC-10); never the error text.",
             "type" : "string"
           },
           "recipientAccountId" : {
@@ -989,7 +1009,7 @@
             "type" : "integer"
           },
           "issue" : {
-            "description" : "The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, and `MEMBERSHIP_REQUESTED` (S4-AC-40).",
+            "description" : "The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, and `MEMBERSHIP_REQUESTED` (S4-AC-40).",
             "oneOf" : [ {
               "$ref" : "#/components/schemas/NotificationIssue"
             }, {
@@ -997,7 +1017,7 @@
             } ]
           },
           "kind" : {
-            "enum" : [ "DELIVERY_FAILED", "ATTACHMENT_QUOTA_WARNING", "MEMBERSHIP_REQUESTED", "STAFF_COMMENT", "CUSTOMER_COMMENT", "ISSUE_RESOLVED", "ISSUE_CLOSED", "ISSUE_REOPENED", "ISSUE_FILED_ON_BEHALF", "MENTIONED", "ASSIGNED" ],
+            "enum" : [ "DELIVERY_FAILED", "ATTACHMENT_QUOTA_WARNING", "MAIL_STALLED", "WEBHOOK_STALLED", "AUDIT_FORWARD_STALLED", "MEMBERSHIP_REQUESTED", "STAFF_COMMENT", "CUSTOMER_COMMENT", "ISSUE_RESOLVED", "ISSUE_CLOSED", "ISSUE_REOPENED", "ISSUE_FILED_ON_BEHALF", "MENTIONED", "ASSIGNED" ],
             "type" : "string"
           },
           "readAt" : {
@@ -1641,14 +1661,47 @@
           "auditForward" : {
             "$ref" : "#/components/schemas/ChannelStatus"
           },
+          "cleanupJobs" : {
+            "description" : "Every cleanup job, in name order (S4B-AC-30).",
+            "items" : {
+              "$ref" : "#/components/schemas/CleanupJobStatus"
+            },
+            "type" : "array"
+          },
           "mail" : {
             "$ref" : "#/components/schemas/ChannelStatus"
+          },
+          "sandbox" : {
+            "description" : "`POPDESK_SANDBOX=true`: the webhook and the outside copy of the audit log are off, and email goes to one address only or is off (S4B-AC-08).",
+            "type" : "boolean"
+          },
+          "sandboxMailToSet" : {
+            "description" : "The sandbox has an address to send email to (`POPDESK_SANDBOX_MAIL_TO`). `false` outside a sandbox. The address itself is never given.",
+            "type" : "boolean"
           },
           "webhook" : {
             "$ref" : "#/components/schemas/ChannelStatus"
           }
         },
-        "required" : [ "auditForward", "mail", "webhook" ],
+        "required" : [ "auditForward", "cleanupJobs", "mail", "sandbox", "sandboxMailToSet", "webhook" ],
+        "type" : "object"
+      },
+      "TestMailResult" : {
+        "properties" : {
+          "errorKind" : {
+            "description" : "Kind of the error, for example `SMTP_AUTHENTICATION_FAILED` or `CONNECTION_FAILED`, as in `FailedDelivery.lastErrorKind`; null when `ok`.",
+            "type" : [ "string", "null" ]
+          },
+          "ok" : {
+            "description" : "The SMTP server took the email.",
+            "type" : "boolean"
+          },
+          "serverReply" : {
+            "description" : "What the SMTP server answered, as plain text of up to 500 characters, with line breaks but no other control characters; show it as text, never as markup. null when the server gave no answer, for example when it could not be reached.",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "errorKind", "ok", "serverReply" ],
         "type" : "object"
       },
       "UnreadCount" : {
@@ -1677,7 +1730,7 @@
             "type" : "string"
           },
           "mentions" : {
-            "description" : "The whole list of account IDs the comment mentions from now on, up to 10, by the rules of `createComment`. `null` is the same as an empty list. Left out, the mentions stay (S4-AC-24).",
+            "description" : "The whole list of account IDs the comment mentions from now on, up to 10 counting the whole list. Only an account new to the list is checked by the rules of `createComment`; one the comment mentions already is not checked again and may stay. `null` is the same as an empty list. Left out, the mentions stay (S4-AC-24).",
             "items" : {
               "format" : "int64",
               "type" : "integer"
@@ -2302,7 +2355,7 @@
           "required" : false,
           "schema" : {
             "items" : {
-              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED" ],
+              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED", "DELIVERY_RESENT", "TEST_MAIL_SENT" ],
               "type" : "string"
             },
             "type" : "array"
@@ -2447,7 +2500,7 @@
           "required" : false,
           "schema" : {
             "items" : {
-              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED" ],
+              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED", "DELIVERY_RESENT", "TEST_MAIL_SENT" ],
               "type" : "string"
             },
             "type" : "array"
@@ -2610,7 +2663,7 @@
           "required" : false,
           "schema" : {
             "items" : {
-              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED" ],
+              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED", "DELIVERY_RESENT", "TEST_MAIL_SENT" ],
               "type" : "string"
             },
             "type" : "array"
@@ -4878,7 +4931,7 @@
                 }
               }
             },
-            "description" : "`FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `ISSUE_ATTACHMENTS_TOO_LARGE` (public attachments of the issue over 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), `INVALID_INPUT` (field `file` `TOO_LONG`: name over 255; field `commentId` `UNKNOWN_VALUE`: not the caller's comment on this issue) (S0-AC-57, S0-AC-58). `ISSUE_CLOSED`."
+            "description" : "`FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `ISSUE_ATTACHMENTS_TOO_LARGE` (public attachments of the issue over 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), `INVALID_INPUT` (field `file` `TOO_LONG`: name over 255; field `commentId` `UNKNOWN_VALUE`: not the caller's comment on this issue, or a deleted comment) (S0-AC-57, S0-AC-58). `ISSUE_CLOSED`."
           },
           "401" : {
             "content" : {
@@ -5251,7 +5304,7 @@
                 }
               }
             },
-            "description" : "`INVALID_INPUT`: `content` empty or over 4,000; `mentions` over 10 (`TOO_MANY`, S4-AC-21) or with an account that cannot be mentioned here (`UNKNOWN_VALUE`, one answer whatever the reason, S4-AC-20). `ISSUE_CLOSED`: the issue is closed."
+            "description" : "`INVALID_INPUT`: `content` empty or over 4,000; `mentions` over 10 (`TOO_MANY`, S4-AC-21) or with an account that cannot be mentioned here (`UNKNOWN_VALUE`, one answer whatever the reason, S4-AC-20); `content` that is not text or `mentions` that is not a list of whole numbers (`INVALID_FORMAT` on that field). `ISSUE_CLOSED`: the issue is closed."
           },
           "401" : {
             "content" : {
@@ -5404,7 +5457,7 @@
                 }
               }
             },
-            "description" : "`INVALID_INPUT`: `content` empty, over 4,000, or `null`; `mentions` over 10 (`TOO_MANY`) or with an account that cannot be mentioned here (`UNKNOWN_VALUE`); `fields` lists all. `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` (S4-AC-04)."
+            "description" : "`INVALID_INPUT`: `content` empty, over 4,000, or `null`; `mentions` over 10 (`TOO_MANY`) or with an account new to the list that cannot be mentioned here (`UNKNOWN_VALUE`); `content` that is not text or `mentions` that is not a list of whole numbers (`INVALID_FORMAT` on that field); `fields` lists all. `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` (S4-AC-04)."
           },
           "401" : {
             "content" : {
@@ -5541,7 +5594,7 @@
             "type" : "string"
           }
         }, {
-          "description" : "`true`: for an internal comment, so without the reporter. Left out or `false`: for a public comment.",
+          "description" : "`true`: for an internal comment, so without the reporter. Left out or `false`: for a public comment. Only these two spellings are taken: `TRUE`, `1`, or an empty value is 400.",
           "in" : "query",
           "name" : "internal",
           "required" : false,
@@ -6480,7 +6533,7 @@
     },
     "/api/console/system/failed-deliveries" : {
       "get" : {
-        "description" : "Newest first (S0-AC-81). Read only in the first slice.",
+        "description" : "Newest first (S0-AC-81). `resendFailedDelivery` sends one of them again.",
         "operationId" : "listFailedDeliveries",
         "parameters" : [ {
           "description" : "Page number, from 1.",
@@ -6549,9 +6602,71 @@
         "tags" : [ "System" ]
       }
     },
+    "/api/console/system/failed-deliveries/{id}/resend" : {
+      "post" : {
+        "description" : "Puts a `failed` row of any channel back in the queue with its attempts and failure times cleared; it is sent at once and, when it fails again, retried like a new row (S4B-AC-14, S4B-AC-16). The checks before sending run again, so an email whose recipient may no longer get it is dropped, not sent (S4B-AC-15). A row that is back in the queue already is 204 too and changes nothing (S4B-AC-18). Leaves an audit entry `DELIVERY_RESENT` when it changed the row (S4B-AC-20).",
+        "operationId" : "resendFailedDelivery",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Queued again."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CHANNEL_DISABLED`: the row's channel is not configured or the sandbox turned it off. The row stays as it is (S4B-AC-17)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such row. It was sent, dropped, or cleaned up 7 days after it failed (S4B-AC-18)."
+          }
+        },
+        "summary" : "Send a failed outbox row again",
+        "tags" : [ "System" ]
+      }
+    },
     "/api/console/system/status" : {
       "get" : {
-        "description" : "For mail, webhook, and the outside copy of the audit log (`auditForward`): configured or not, last success, queued and failed rows (S0-AC-81, S1B-AC-33). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10).",
+        "description" : "For mail, webhook, and the outside copy of the audit log (`auditForward`): configured or not, last success, queued and failed rows (S0-AC-81, S1B-AC-33). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10). In a sandbox the webhook and the outside copy are not `enabled`, and neither is mail without a sandbox address (S4B-AC-08). Each cleanup job comes with its last run (S4B-AC-30). No SMTP password, webhook URL, or address or token of the outside copy (S4B-AC-31).",
         "operationId" : "getSystemStatus",
         "responses" : {
           "200" : {
@@ -6585,7 +6700,67 @@
             "description" : "`FORBIDDEN`: admins only."
           }
         },
-        "summary" : "Outgoing channels",
+        "summary" : "Outgoing channels, the sandbox, and cleanup jobs",
+        "tags" : [ "System" ]
+      }
+    },
+    "/api/console/system/test-mail" : {
+      "post" : {
+        "description" : "Sends one email to the caller's own address, in a sandbox to the sandbox address, within the request and without the outbox, and says what the SMTP server answered (S4B-AC-22). A server that refuses or cannot be reached is 200 with `ok` false, never a 5xx (S4B-AC-23). The email counts toward the 50 an hour one address gets (S4B-AC-13). Leaves an audit entry `TEST_MAIL_SENT` whether it worked or not (S4B-AC-27). The request can take as long as the SMTP timeouts.",
+        "operationId" : "sendTestMail",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TestMailResult"
+                }
+              }
+            },
+            "description" : "The email was tried; `ok` says whether it went."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CHANNEL_DISABLED`: email is not configured, or this is a sandbox without an address (S4B-AC-25)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 5 test emails in 60 seconds (S4B-AC-26). Counted before the channel is checked."
+          }
+        },
+        "summary" : "Send a test email to the caller",
         "tags" : [ "System" ]
       }
     },
