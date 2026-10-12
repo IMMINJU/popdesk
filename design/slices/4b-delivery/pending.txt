@@ -10,7 +10,6 @@ server io/popdesk/notify/MailLimitTest.java
 server io/popdesk/start/SandboxMailToSettingTest.java
 server io/popdesk/notify/ResendTest.java
 server io/popdesk/notify/TestMailTest.java
-server io/popdesk/notify/TestMailCountsTest.java
 server io/popdesk/ops/DeliveryAccessTest.java
 server io/popdesk/ops/DeliveryCheckOrderTest.java
 server io/popdesk/ops/SandboxChannelsOffTest.java

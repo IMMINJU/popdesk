@@ -9,3 +9,5 @@ io.popdesk.start.SandboxMailToSettingTest.notASandboxDoesNotReadTheKey(String)[2
 io.popdesk.ops.DeliveryAccessTest.signedOutIsUnauthenticated | 로그인 전 401은 보안 설정이 이미 한다
 io.popdesk.ops.DeliveryAccessTest.withoutCsrfTokenIsForbidden | CSRF 403은 보안 설정이 이미 한다
 io.popdesk.ops.DeliveryAccessTest.portalHostHasNeitherEndpoint | 포털 호스트의 콘솔 경로 404는 앱 나누기(D-43)가 이미 한다
+io.popdesk.start.SandboxMailToSettingTest.notASandboxDoesNotReadTheKey(String)[3] | POPDESK_SANDBOX=1은 샌드박스가 아니다. 지금도 그 키를 읽지 않아 틀린 값으로 뜬다. 구현 뒤에도 그래야 한다(acceptance 5절 11)
+io.popdesk.start.SandboxMailToSettingTest.notASandboxDoesNotReadTheKey(String)[4] | POPDESK_SANDBOX=yes는 샌드박스가 아니다. 지금도 그 키를 읽지 않아 틀린 값으로 뜬다. 구현 뒤에도 그래야 한다(acceptance 5절 11)

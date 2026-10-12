@@ -53,7 +53,7 @@
 | S4B-AC-16 | When 다시 보낸 행이 또 실패하면, the system shall 처음 실패한 행처럼 다시 시도하고(1초부터, 24시간까지) 그 뒤 `failed`로 둔다. (D-39) |
 | S4B-AC-17 | If 그 행의 채널이 꺼져 있으면, then the system shall 400 `CHANNEL_DISABLED`로 답하고 행을 그대로 둔다. (5절 5) |
 | S4B-AC-18 | If 행이 없거나(7일 뒤 정리됨, 없는 ID) 이미 나갔으면, then the system shall 404로 답한다. 이미 대기로 돌아가 있는 행(방금 다시 보낸 것)에는 같은 응답을 주고 아무것도 바꾸지 않는다. (COM-1, 5절 6) |
-| S4B-AC-19 | If 상담원이나 고객이 다시 보내기나 시험 메일을 부르면, then the system shall 403으로 답한다. 포털 호스트에서는 404다. (COM-2, D-43) |
+| S4B-AC-19 | If 상담원이나 고객이 다시 보내기나 시험 메일을 부르면, then the system shall 403으로 답한다. 포털 호스트에서는 404다. 고객의 세션은 콘솔 호스트에서 로그인하지 않은 것과 같아 401이다(있던 대로). (COM-2, D-43) |
 | S4B-AC-20 | When 다시 보내기가 행을 바꾸면, the system shall 감사 로그에 한 사람, 채널, 대기 행의 종류를 남긴다. 받는 주소, 문의 제목, 웹훅 주소는 남기지 않는다. 바꾸지 않은 요청(400, 404, 이미 대기)은 남기지 않는다. (OPS-3, AUDIT-1, PII-2) |
 | S4B-AC-21 | When 실패한 행이 모두 나가거나 지워지면, the system shall `DELIVERY_FAILED` 경보를 지금처럼 푼다. (S1A-AC-68) |
 

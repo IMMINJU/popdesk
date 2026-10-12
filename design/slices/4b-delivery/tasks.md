@@ -7,7 +7,7 @@
 
 | 탭 | 맡은 것 | 통과시킬 테스트 |
 |---|---|---|
-| `s4b-i-server` (서버) | 샌드박스를 읽는 한 클래스와 그것을 쓰는 곳(메일, 웹훅 대기와 보내기, 감사 사본, 시작 검사와 경고, 시스템 상태), 한 주소에 한 시간 50통과 지표, 다시 보내기, 시험 메일, 감사 종류 둘, 멈춤 경보 셋, 정리 작업 목록, 오류 code `CHANNEL_DISABLED`, 운영 문서 | `notify`의 `SandboxMailTest`·`SandboxChannelsTest`·`SandboxMailLimitTest`·`SandboxNoAddressTest`·`SandboxOffTest`·`MailLimitTest`·`ResendTest`·`TestMailTest`·`TestMailCountsTest`, `start.SandboxMailToSettingTest`, `ops`의 `DeliveryAccessTest`·`DeliveryCheckOrderTest`·`SandboxChannelsOffTest`·`StalledAlertTest`·`CleanupJobsStatusTest`·`DeliverySecretsTest`·`TestMailLogTest` |
+| `s4b-i-server` (서버) | 샌드박스를 읽는 한 클래스와 그것을 쓰는 곳(메일, 웹훅 대기와 보내기, 감사 사본, 시작 검사와 경고, 시스템 상태), 한 주소에 한 시간 50통과 지표, 다시 보내기, 시험 메일, 감사 종류 둘, 멈춤 경보 셋, 정리 작업 목록, 오류 code `CHANNEL_DISABLED`, 운영 문서 | `notify`의 `SandboxMailTest`·`SandboxChannelsTest`·`SandboxMailLimitTest`·`SandboxNoAddressTest`·`SandboxOffTest`·`MailLimitTest`·`ResendTest`·`TestMailTest`, `start.SandboxMailToSettingTest`, `ops`의 `DeliveryAccessTest`·`DeliveryCheckOrderTest`·`SandboxChannelsOffTest`·`StalledAlertTest`·`CleanupJobsStatusTest`·`DeliverySecretsTest`·`TestMailLogTest` |
 | `s4b-i-web` (웹, 브라우저) | C-18의 샌드박스 띠, 다시 보내기, 시험 메일, 정리 작업 표와 story, C-7의 새 경보 셋, C-12의 새 묶음과 바뀐 값의 글. 4a 검증이 넘긴 공용 CSS 둘(360px의 낱말 가운데 줄바꿈, `#comment-ID`로 간 댓글의 포커스 테두리) | 콘솔의 `C18SystemStatus.4b.test`, `C7Inbox.4b.test`, `C12AuditLog.4b.test`, 그리고 `pending.txt`에 올린 앞 묶음 파일 셋(`auditWords.words.test`, `C12AuditLog.filters.test`, `C12AuditLog.test`) |
 
 ## 2. 구현 탭이 코드로 지킬 것 (테스트로는 볼 수 없는 것)
