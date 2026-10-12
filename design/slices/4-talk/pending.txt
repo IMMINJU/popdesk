@@ -27,3 +27,5 @@ server io/popdesk/notify/TalkMailTest.java
 server io/popdesk/notify/KoreanTalkMailTest.java
 server io/popdesk/notify/NoSmtpTalkMailLogTest.java
 server io/popdesk/notify/TalkWebhookTest.java
+web src/screens/P7Inbox.test.tsx
+web src/screens/P5IssueDetail.comments4.test.tsx
