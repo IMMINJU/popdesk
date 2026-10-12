@@ -110,7 +110,8 @@ public class MemberService {
      * Invites an email to the company (S2-AC-13, S2-AC-14). A new email becomes an {@code INVITED}
      * customer of this company with the invitation mail an admin's invitation sends. An email that has
      * an account, whatever its role and status, leaves that account as it is and becomes a membership
-     * request for an admin, with an item in the admins' inbox. Both end the same way for the caller.
+     * request for an admin, with an item in the admins' inbox and an email to each of them (S4-AC-51).
+     * Both end the same way for the caller.
      *
      * <p>The company's status and the limit of 100 are checked before the email is looked up, so their
      * answers do not depend on it. 409 {@code ALREADY_LISTED} only for an email the caller's list
@@ -148,7 +149,7 @@ public class MemberService {
                 manager.accountId(), cleanEmail, cleanName, now).isEmpty()) {
             throw ApiException.conflict("ALREADY_LISTED", "This email is in the member list already.");
         }
-        inbox.membershipRequested(company.code());
+        inbox.membershipRequested(company.code(), existing.id());
         Map<String, Object> changes = new LinkedHashMap<>();
         changes.put("email", cleanEmail);
         changes.put("name", cleanName);

@@ -23,4 +23,15 @@ public interface MailQueue {
      * @param commentId the comment it is about, if any
      */
     void queue(MailKind kind, long recipientAccountId, @Nullable UUID issueId, @Nullable Long commentId);
+
+    /**
+     * Queues one email about a company and no issue in the caller's transaction; fails when there is
+     * none. The row keeps the company's code, since what the email is about may be gone by the time it
+     * is sent (S4-AC-51).
+     *
+     * @param kind what the email is about
+     * @param recipientAccountId the account that receives it
+     * @param companyCode the company it is about
+     */
+    void queueAboutCompany(MailKind kind, long recipientAccountId, String companyCode);
 }

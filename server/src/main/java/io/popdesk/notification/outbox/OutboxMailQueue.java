@@ -40,4 +40,12 @@ class OutboxMailQueue implements MailQueue {
                 clock.instant().truncatedTo(ChronoUnit.MICROS));
         wakeups.afterCommit(OutboxRepository.MAIL);
     }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void queueAboutCompany(MailKind kind, long recipientAccountId, String companyCode) {
+        repository.insertMailAboutCompany(kind.name(), recipientAccountId, companyCode,
+                clock.instant().truncatedTo(ChronoUnit.MICROS));
+        wakeups.afterCommit(OutboxRepository.MAIL);
+    }
 }

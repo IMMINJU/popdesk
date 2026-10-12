@@ -53,6 +53,20 @@ public class OutboxRepository {
                 .update();
     }
 
+    /** A new queued email about a company and no issue, due now (S4-AC-51). */
+    void insertMailAboutCompany(String kind, long recipientAccountId, String companyCode, Instant now) {
+        jdbc.sql("insert into outbox (tenant_id, channel, kind, recipient_account_id, company_code, state, "
+                        + "attempts, next_attempt_at, created_at) values (1, ?, ?, ?, ?, ?, 0, ?, ?)")
+                .params(MAIL, kind, recipientAccountId, companyCode, QUEUED, Timestamp.from(now), Timestamp.from(now))
+                .update();
+    }
+
+    /** The company an email row is about; empty for a row about none, and for a row that is gone. */
+    Optional<String> findCompanyCode(long id) {
+        return jdbc.sql("select company_code from outbox where id = ? and company_code is not null").param(id)
+                .query(String.class).optional();
+    }
+
     /**
      * The oldest queued row of the channel that is due, locked; rows another transaction has locked are
      * skipped (S0-AC-67).

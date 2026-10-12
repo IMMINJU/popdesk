@@ -2,6 +2,7 @@ package io.popdesk.notification.outbox;
 
 import io.popdesk.PublicAddress;
 import io.popdesk.PublicAddress.App;
+import io.popdesk.notification.CommentFacts;
 import io.popdesk.notification.InvitationLinks;
 import io.popdesk.notification.IssueAccess;
 import io.popdesk.notification.IssueFacts;
@@ -23,9 +24,14 @@ import org.springframework.stereotype.Component;
 
 /**
  * The mail channel. Just before each email it reads from the database who receives it and what it says
- * (MAIL-5, S0-AC-66), and drops the email when the account is no longer {@code ACTIVE} ({@code INVITED}
- * for an invitation) or may no longer see the issue (S0-AC-69). Without SMTP it writes one log line, the
- * address masked, in place of the email (S0-AC-73).
+ * (MAIL-5, S0-AC-66), and drops the email when it is no longer to be sent (MAIL-4): the account is not
+ * {@code ACTIVE} ({@code INVITED} for an invitation), or may no longer see the issue (S0-AC-69,
+ * S4-AC-54), the comment it is about was deleted (S4-AC-55), a mention was taken out of the comment
+ * (S4-AC-56), or the recipient of a membership request is no admin any more. Without SMTP it writes one
+ * log line, the address masked, in place of the email (S0-AC-73).
+ *
+ * <p>The link to an issue is that of the recipient's app: the portal for a customer, the console for
+ * staff (MAIL-1).
  *
  * <p>An invitation or password reset email gets a new token when it is first tried, since the database
  * keeps only the token's hash; retries of that row send the same link. The link is kept in memory only
@@ -39,17 +45,22 @@ class MailSender implements Sender {
     private final Recipients recipients;
     private final IssueFacts issues;
     private final IssueAccess access;
+    private final CommentFacts comments;
+    private final OutboxRepository outbox;
     private final InvitationLinks invitations;
     private final PasswordResetLinks passwordResets;
     private final PublicAddress address;
     private final SmtpMail smtp;
     private final Map<Long, String> links = new ConcurrentHashMap<>();
 
-    MailSender(Recipients recipients, IssueFacts issues, IssueAccess access, InvitationLinks invitations,
-            PasswordResetLinks passwordResets, PublicAddress address, SmtpMail smtp) {
+    MailSender(Recipients recipients, IssueFacts issues, IssueAccess access, CommentFacts comments,
+            OutboxRepository outbox, InvitationLinks invitations, PasswordResetLinks passwordResets,
+            PublicAddress address, SmtpMail smtp) {
         this.recipients = recipients;
         this.issues = issues;
         this.access = access;
+        this.comments = comments;
+        this.outbox = outbox;
         this.invitations = invitations;
         this.passwordResets = passwordResets;
         this.address = address;
@@ -70,29 +81,39 @@ class MailSender implements Sender {
         if (recipient == null || recipient.status() != wanted) {
             return Attempt.dropped();
         }
-        Issue issue = null;
-        if (row.issueId() != null) {
-            issue = issues.find(row.issueId()).orElse(null);
-            if (issue == null || !access.canSee(row.recipientAccountId(), row.issueId())) {
-                return Attempt.dropped();
-            }
+        Issue issue = row.issueId() == null ? null : issues.find(row.issueId()).orElse(null);
+        if (row.issueId() != null && (issue == null || !access.canSee(row.recipientAccountId(), row.issueId()))) {
+            return Attempt.dropped();
+        }
+        if (row.commentId() != null && (!comments.present(row.commentId())
+                || kind == MailKind.MENTIONED && !comments.mentions(row.commentId(), row.recipientAccountId()))) {
+            return Attempt.dropped();
+        }
+        String company = kind == MailKind.MEMBERSHIP_REQUESTED ? outbox.findCompanyCode(row.id()).orElse(null) : null;
+        if (kind == MailKind.MEMBERSHIP_REQUESTED
+                && (company == null || !recipients.activeAdmins().contains(row.recipientAccountId()))) {
+            return Attempt.dropped();
         }
         if (!smtp.enabled()) {
             log.info("No SMTP server is set up, so the {} email to {} was not sent.", kind, masked(recipient.email()));
             return Attempt.dropped();
         }
+        String locale = recipient.locale();
+        String issueLink = issue == null ? null : address.origin(recipient.app()) + "/issues/" + issue.key();
         Optional<Message> message = switch (kind) {
-            case INVITATION -> link(row, invitations::renew).map(link -> MailText.invitation(recipient.locale(),
+            case INVITATION -> link(row, invitations::renew).map(link -> MailText.invitation(locale,
                     recipient.name(), link));
             case PASSWORD_RESET -> link(row, passwordResets::renew).map(link -> MailText.passwordReset(
-                    recipient.locale(), recipient.name(), link));
-            case STAFF_COMMENT -> Optional.of(MailText.staffComment(recipient.locale(), issue,
-                    address.origin(App.PORTAL) + "/issues/" + issue.key()));
-            case ISSUE_FILED_ON_BEHALF -> Optional.of(MailText.filedOnBehalf(recipient.locale(), issue,
-                    address.origin(App.PORTAL) + "/issues/" + issue.key()));
-            // Kinds of slice 4: in the contract, not sent yet. Nothing queues them.
-            case ISSUE_RESOLVED, ISSUE_CLOSED, ISSUE_REOPENED, MENTIONED, ASSIGNED, MEMBERSHIP_REQUESTED ->
-                    throw new IllegalStateException("No email for " + kind + " yet.");
+                    locale, recipient.name(), link));
+            case STAFF_COMMENT -> Optional.of(MailText.staffComment(locale, issue, issueLink));
+            case ISSUE_FILED_ON_BEHALF -> Optional.of(MailText.filedOnBehalf(locale, issue, issueLink));
+            case ISSUE_RESOLVED -> Optional.of(MailText.resolved(locale, issue, issueLink));
+            case ISSUE_CLOSED -> Optional.of(MailText.closed(locale, issue, issueLink));
+            case ISSUE_REOPENED -> Optional.of(MailText.reopened(locale, issue, issueLink));
+            case MENTIONED -> Optional.of(MailText.mentioned(locale, issue, issueLink));
+            case ASSIGNED -> Optional.of(MailText.assigned(locale, issue, issueLink));
+            case MEMBERSHIP_REQUESTED -> Optional.of(MailText.membershipRequested(locale, company,
+                    address.origin(App.CONSOLE) + "/companies/" + company));
         };
         if (message.isEmpty()) {
             return Attempt.dropped();
