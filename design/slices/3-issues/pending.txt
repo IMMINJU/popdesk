@@ -18,10 +18,6 @@ server io/popdesk/issue/IdempotencyKeyTest.java
 server io/popdesk/boundary/OnBehalfIdentityTest.java
 server io/popdesk/notify/OnBehalfMailTest.java
 server io/popdesk/notify/KoreanOnBehalfMailTest.java
-web src/screens/P3IssueList.filters.test.tsx
-web src/screens/P5IssueDetail.actions.test.tsx
-web src/screens/P5IssueDetail.edit.test.tsx
-web src/screens/P4IssueCreate.key.test.tsx
 server io/popdesk/issue/IssueStatusTest.java
 server io/popdesk/issue/IssueStatusRaceTest.java
 server io/popdesk/issue/IssueCloseRaceTest.java
