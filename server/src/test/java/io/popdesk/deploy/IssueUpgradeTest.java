@@ -1,5 +1,12 @@
 package io.popdesk.deploy;
 
+import static io.popdesk.deploy.IssueInstallSteps.SAMPLE_CUSTOMER;
+import static io.popdesk.deploy.IssueInstallSteps.SAMPLE_PASSWORD;
+import static io.popdesk.deploy.IssueInstallSteps.items;
+import static io.popdesk.deploy.IssueInstallSteps.keptSample;
+import static io.popdesk.deploy.IssueInstallSteps.keys;
+import static io.popdesk.deploy.IssueInstallSteps.sampleAdmin;
+import static io.popdesk.deploy.IssueInstallSteps.startedOn;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.deploy.AppSteps.Person;
@@ -9,7 +16,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
@@ -37,16 +43,10 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>The issues are the keys in the sample's {@code sample.expected.json}. They are read through the
  * console as the sample's admin; the database is only asked whether a migration failed. Each sample
  * is restored once and its stack is shared by the tests of this class (two installations at the
- * end). The accounts and passwords are the ones {@code deploy/upgrade/popdesk_stack.py} gives every
- * sample.
+ * end).
  */
 @Tag("deploy")
 class IssueUpgradeTest {
-
-    private static final String SAMPLE_ADMIN = "admin@sample.popdesk.test";
-    private static final String SAMPLE_ADMIN_PASSWORD = "sample-Admin-Password-1";
-    private static final String SAMPLE_PASSWORD = "sample-People-Password-1";
-    private static final String SAMPLE_CUSTOMER = "customer@sample.popdesk.test";
 
     /** A search word is at least this long, so it is more than a stop word of the sample's texts. */
     private static final int WORD_LENGTH = 4;
@@ -85,38 +85,13 @@ class IssueUpgradeTest {
         }
     }
 
-    private static Path sample(String version, String file) {
-        return Repo.require("deploy/upgrade/samples/" + version + "/" + file,
-                "the sample kept from " + version + ", deploy/upgrade/README.md");
-    }
-
     private static Stack restored(String version) {
-        Path dump = sample(version, "sample.dump");
-        Stack stack = Stack.release("issues" + version.replace(".", ""));
-        try {
-            stack.appEnv("POPDESK_ADMIN_EMAIL", SAMPLE_ADMIN).appEnv("POPDESK_ADMIN_PASSWORD", SAMPLE_ADMIN_PASSWORD);
-            stack.up("db");
-            stack.db().awaitReady();
-            stack.command(Duration.ofMinutes(5), "run", "--rm", "-T", "-v",
-                            Repo.forCompose(dump) + ":/tmp/restore.dump:ro", "app", "popdesk", "restore",
-                            "/tmp/restore.dump")
-                    .expectOk("popdesk restore of " + dump);
-            stack.up("app");
-            stack.awaitHealthy("app");
-            return stack;
-        } catch (AssertionError | RuntimeException e) {
-            stack.close();
-            throw e;
-        }
-    }
-
-    private static Person admin(Stack stack) {
-        return new AppSteps(stack).signIn(SAMPLE_ADMIN, SAMPLE_ADMIN_PASSWORD);
+        return startedOn("issues" + version.replace(".", ""), keptSample(version, "sample.dump"));
     }
 
     /** The issues that were in the sample (the keys of its expected file), read one by one on the console. */
     private static List<SampleIssue> sampleIssues(String version, Person admin) {
-        Path file = sample(version, "sample.expected.json");
+        Path file = keptSample(version, "sample.expected.json");
         JsonNode expected;
         try {
             expected = JSON.readTree(Files.readString(file, StandardCharsets.UTF_8));
@@ -131,16 +106,6 @@ class IssueUpgradeTest {
             out.add(new SampleIssue(key, admin.client().get("/api/console/issues/" + key).expect(200).json()));
         }
         return out;
-    }
-
-    private static List<JsonNode> items(ApiResponse page) {
-        List<JsonNode> out = new ArrayList<>();
-        page.json().path("items").forEach(out::add);
-        return out;
-    }
-
-    private static List<String> keys(ApiResponse page) {
-        return items(page).stream().map(item -> item.path("key").asString("")).toList();
     }
 
     /** The longest word of {@code text} with letters and digits only, or null when none is long enough. */
@@ -167,7 +132,7 @@ class IssueUpgradeTest {
         assertThat(db.count("select count(*) from " + Db.quote(db.schema())
                 + ".flyway_schema_history where not success")).as("failed migrations").isZero();
 
-        List<SampleIssue> issues = sampleIssues(version, admin(stack));
+        List<SampleIssue> issues = sampleIssues(version, sampleAdmin(stack));
 
         for (SampleIssue issue : issues) {
             for (String field : List.of("assignee", "createdBy", "resolvedAt", "closedAt")) {
@@ -180,10 +145,10 @@ class IssueUpgradeTest {
     @ParameterizedTest(name = "from {0}")
     @ValueSource(strings = {"0.1.0", "0.2.0"})
     @DisplayName("S3-AC-89 every issue of an older sample has a history of one entry after the upgrade: CREATED, "
-            + "by its reporter, at the time it was filed")
+            + "without a field or values, by its reporter, at the time it was filed")
     void sampleIssuesHaveOneCreatedHistoryEntry(String version) {
         Stack stack = UPGRADED.get(version).get();
-        Person admin = admin(stack);
+        Person admin = sampleAdmin(stack);
 
         for (SampleIssue issue : sampleIssues(version, admin)) {
             JsonNode reporter = issue.detail().path("reporter").path("accountId");
@@ -197,6 +162,8 @@ class IssueUpgradeTest {
             assertThat(items(history)).as("history of %s: %s", issue.key(), history.snippet()).hasSize(1);
             JsonNode entry = items(history).getFirst();
             assertThat(entry.path("kind").asString(null)).as("kind of %s", entry).isEqualTo("CREATED");
+            assertThat(List.of("field", "oldValue", "newValue")).as("fields that are there and null in %s", entry)
+                    .allMatch(field -> entry.has(field) && entry.path(field).isNull());
             assertThat(entry.path("actor").path("accountId").asLong(-1))
                     .as("actor of %s is the reporter of %s", entry, issue.key()).isEqualTo(reporter.asLong());
             assertThat(instant(entry.path("createdAt"), "createdAt of the history entry of " + issue.key()))
@@ -208,10 +175,11 @@ class IssueUpgradeTest {
     @ParameterizedTest(name = "from {0}")
     @ValueSource(strings = {"0.1.0", "0.2.0"})
     @DisplayName("S3-AC-89 after the upgrade the console list finds the issues of an older sample by a word of "
-            + "their title and by a word of their content, and no issue without that word")
+            + "their title and by a word of their content, no issue without that word, and none by the list "
+            + "marker of their content")
     void sampleIssuesAreFoundOnTheConsole(String version) {
         Stack stack = UPGRADED.get(version).get();
-        Person admin = admin(stack);
+        Person admin = sampleAdmin(stack);
         List<SampleIssue> issues = sampleIssues(version, admin);
         int narrowed = 0;
 
@@ -240,6 +208,18 @@ class IssueUpgradeTest {
             }
         }
         assertThat(narrowed).as("search words that leave some issue of the sample out").isPositive();
+
+        // The generator files issues whose content is a line and a numbered list ("1. Open it."). The text
+        // as it is shown has the item without its marker, so the marker with the word after it finds nothing.
+        assertThat(issues).as("issues of the sample with the list item '1. Open it.' in their content")
+                .anyMatch(issue -> issue.content().contains("\n1. Open"));
+        assertThat(issues).as("issues of the sample with '1. Open' in their title")
+                .noneMatch(issue -> issue.title().contains("1. Open"));
+        ApiResponse byMarker = admin.client().get("/api/console/issues").query("q", "1. Open").query("size", 100)
+                .expect(200);
+        assertThat(keys(byMarker)).as("issues the console finds with q=1. Open, a list marker and its first word")
+                .isEmpty();
+        assertThat(byMarker.json().path("totalElements").asLong(-1)).as("totalElements with q=1. Open").isZero();
     }
 
     @ParameterizedTest(name = "from {0}")
@@ -248,7 +228,7 @@ class IssueUpgradeTest {
             + "of their title, and no issue without that word")
     void sampleIssuesAreFoundOnThePortal(String version) {
         Stack stack = UPGRADED.get(version).get();
-        List<SampleIssue> issues = sampleIssues(version, admin(stack));
+        List<SampleIssue> issues = sampleIssues(version, sampleAdmin(stack));
         ApiClient portal = stack.portal();
         portal.post("/api/public/sign-in").json(Map.of("email", SAMPLE_CUSTOMER, "password", SAMPLE_PASSWORD))
                 .expect(204);

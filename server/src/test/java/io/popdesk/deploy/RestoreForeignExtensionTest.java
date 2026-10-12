@@ -1,11 +1,13 @@
 package io.popdesk.deploy;
 
+import static io.popdesk.deploy.IssueInstallSteps.backup;
+import static io.popdesk.deploy.IssueInstallSteps.emptyDatabase;
+import static io.popdesk.deploy.IssueInstallSteps.restoreAs;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.deploy.AppSteps.Person;
 import io.popdesk.support.ApiResponse;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -26,14 +28,13 @@ import org.junit.jupiter.api.Test;
 @Tag("deploy")
 class RestoreForeignExtensionTest {
 
-    private static final String DUMP_IN_APP = "/tmp/popdesk-test.dump";
     private static final String RESTORE_USER = "test_restore_not_extension_owner";
     private static final String RESTORE_PASSWORD = "Restore-Password-1";
 
     @Test
     @DisplayName("S3-AC-93 popdesk restore finishes in an empty database where a superuser created pg_trgm and the "
-            + "app's database user does not own it; the database then has the extension and a gin_trgm_ops index, "
-            + "and the app started on it finds an issue by its title")
+            + "app's database user does not own it; the database then has the extension and the gin_trgm_ops "
+            + "indexes it had at the backup, and the app started on it finds an issue by its title")
     void restoreWhereAnotherRoleOwnsTheExtension() {
         Stack stack = Stack.release("restore-trgm");
         try {
@@ -47,8 +48,10 @@ class RestoreForeignExtensionTest {
             String searched = steps.fileIssue(customer, company);
             steps.fileIssue(customer, company);
             String title = admin.client().get("/api/console/issues/" + searched).expect(200).jsonText("title");
-            Path dump = backup(stack);
             Db db = stack.db();
+            List<String> indexes = trigramIndexes(db);
+            assertThat(indexes).as("indexes with gin_trgm_ops before the backup").isNotEmpty();
+            Path dump = backup(stack);
             stack.command("stop", "app").expectOk("docker compose stop app");
             emptyDatabase(stack, db);
             db.execute("create extension pg_trgm");
@@ -60,14 +63,14 @@ class RestoreForeignExtensionTest {
             assertThat(extensionOwners(db)).as("owners of pg_trgm before the restore").hasSize(1)
                     .doesNotContain(RESTORE_USER);
 
-            Cli.Result restored = restore(stack, dump);
+            Cli.Result restored = restoreAs(stack, dump, RESTORE_USER, RESTORE_PASSWORD);
 
             assertThat(restored.exit()).as("popdesk restore as a role that does not own pg_trgm\n%s", restored)
                     .isZero();
             assertThat(extensionOwners(db)).as("owners of pg_trgm after the restore").hasSize(1)
                     .doesNotContain(RESTORE_USER);
-            assertThat(db.query("select indexname from pg_indexes where indexdef like '%gin_trgm_ops%'"))
-                    .as("indexes with gin_trgm_ops after the restore").isNotEmpty();
+            assertThat(trigramIndexes(db)).as("indexes with gin_trgm_ops after the restore, as before the backup")
+                    .isEqualTo(indexes);
 
             stack.appEnv("POPDESK_DB_USER", RESTORE_USER).appEnv("POPDESK_DB_PASSWORD", RESTORE_PASSWORD);
             stack.up("app");
@@ -86,41 +89,11 @@ class RestoreForeignExtensionTest {
         }
     }
 
-    /** Copies a {@code popdesk backup} dump of the running installation to the host. */
-    private static Path backup(Stack stack) {
-        stack.exec("app", null, "popdesk", "backup", DUMP_IN_APP).expectOk("popdesk backup");
-        Path file = stack.work().resolve("backup.dump");
-        stack.command("cp", "app:" + DUMP_IN_APP, file.toString()).expectOk("copy the dump out of app");
-        file.toFile().setReadable(true, false);
-        return file;
-    }
-
-    /** {@code popdesk restore} in a new container of the app service, as the role that does not own the extension. */
-    private static Cli.Result restore(Stack stack, Path dump) {
-        return stack.command(Duration.ofMinutes(5), "run", "--rm", "-T",
-                "-e", "POPDESK_DB_USER=" + RESTORE_USER,
-                "-e", "POPDESK_DB_PASSWORD=" + RESTORE_PASSWORD,
-                "-v", dump.toAbsolutePath() + ":/tmp/restore.dump:ro", "app", "popdesk", "restore", "/tmp/restore.dump");
-    }
-
-    /** Removes db's volume and starts db again: a new, empty database. */
-    private static void emptyDatabase(Stack stack, Db db) {
-        String volume = dbVolume(stack);
-        stack.command("rm", "-f", "-s", "db").expectOk("remove db");
-        Cli.run(Duration.ofMinutes(1), Cli.docker("volume", "rm", volume)).expectOk("remove the volume " + volume);
-        stack.up("db");
-        db.awaitReady();
-        assertThat(db.userTableCount()).as("tables in the new database").isZero();
-    }
-
-    /** The real name of the volume that holds db's files (the test override renamed it). */
-    private static String dbVolume(Stack stack) {
-        ComposeModel compose = ComposeModel.resolved(stack.config());
-        return compose.mounts("db").stream()
-                .filter(m -> m.target().equals("/var/lib/postgresql/data"))
-                .map(m -> stack.project() + "-" + m.source().toLowerCase())
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("db has no volume at /var/lib/postgresql/data"));
+    /** The names of the indexes that use the trigram operator class, in every schema, by name. */
+    private static List<String> trigramIndexes(Db db) {
+        return db.query("select schemaname || '.' || indexname as name from pg_indexes "
+                        + "where indexdef like '%gin_trgm_ops%' order by 1")
+                .stream().map(r -> (String) r.get("name")).toList();
     }
 
     /** Who owns {@code pg_trgm} in the database; empty when it is not there. */
