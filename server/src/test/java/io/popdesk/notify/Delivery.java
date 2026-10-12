@@ -233,6 +233,13 @@ public final class Delivery {
             invite(admin, Role.AGENT, Unique.email("later"), Unique.text("Later"), List.of());
         }
 
+        /** Staff answer the issue {@code n} times with public comments: {@code n} mails to its reporter. */
+        protected void answer(Session staff, String issueKey, int n) {
+            for (int i = 0; i < n; i++) {
+                fixtures.comment(staff, issueKey, "Answer " + Unique.number());
+            }
+        }
+
         // Time
 
         /** Moves the app clock a second on and gives the new time as the database keeps it. */
@@ -474,14 +481,14 @@ public final class Delivery {
     /**
      * The forms an address or a secret could take in a log or a response: as it is, with {@code %40},
      * as Base64, and for an address the part between its first character and the {@code @}, which a
-     * masked address never shows.
+     * masked address never shows (left out when it is shorter than 6 characters and could be anything).
      */
     public static List<String> forms(String value) {
         List<String> out = new ArrayList<>(List.of(value, value.replace("@", "%40"),
                 Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8)),
                 Base64.getEncoder().withoutPadding().encodeToString(value.getBytes(StandardCharsets.UTF_8))));
         int at = value.indexOf('@');
-        if (at > 1) {
+        if (at >= 7) {
             out.add(value.substring(1, at));
         }
         return out;
