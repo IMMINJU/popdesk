@@ -50,6 +50,7 @@ import {
   commentById,
   commentWith,
   deletedComment,
+  deletedFrom,
   editBox,
   editForm,
   editFormShown,
@@ -286,7 +287,7 @@ describe('C-4 댓글 고치기 (4번 묶음)', () => {
     {
       what: '400 COMMENT_DELETED',
       answer: () => {
-        state.comments = [deletedComment({ ...MINE, content: '', deletedBy: ADMIN_PERSON })];
+        state.comments = [deletedFrom(MINE, ADMIN_PERSON)];
         return rejected('COMMENT_DELETED');
       },
       says: '이 댓글은 지워졌습니다.',
@@ -295,7 +296,7 @@ describe('C-4 댓글 고치기 (4번 묶음)', () => {
     {
       what: '404',
       answer: () => {
-        state.comments = [deletedComment({ ...MINE, content: '', deletedBy: ADMIN_PERSON })];
+        state.comments = [deletedFrom(MINE, ADMIN_PERSON)];
         return errors.notFound();
       },
       says: '이 댓글은 지워졌습니다.',
@@ -317,6 +318,8 @@ describe('C-4 댓글 고치기 (4번 묶음)', () => {
     });
     expect(draftKept('닫히기 직전에 고친 글')).toBe(true);
     expectNotSaid('댓글을 고쳤습니다');
+    expect(editForm(), '편집기는 닫힌다').toBeNull();
+    if (reads === COMMENTS_7) expect(text(await commentWith('지워진 댓글'))).toContain('최관리 님이 지움');
   });
 
   test.each([
@@ -453,7 +456,7 @@ describe('C-4 댓글 지우기 (4번 묶음)', () => {
     const release = gate();
     route('delete', `${COMMENTS_7}/:id`, async () => {
       await release.opened;
-      state.comments = state.comments.map((c) => (c.id === MINE.id ? deletedComment({ ...MINE, content: '', deletedBy: AGENT_PERSON }) : c));
+      state.comments = state.comments.map((c) => (c.id === MINE.id ? deletedFrom(MINE, AGENT_PERSON) : c));
       state.attachments = state.attachments.map((a) => ({ ...a, deleted: true, fileName: null, deletedAt: DELETED_AT, deletedBy: AGENT_PERSON }));
       return new HttpResponse(null, { status: 204 });
     });
@@ -517,7 +520,7 @@ describe('C-4 댓글 지우기 (4번 묶음)', () => {
     asAgent([FROM_CUSTOMER, MINE]);
     route('delete', `${COMMENTS_7}/:id`, () => {
       // An admin deleted it first, and the issue's comments say so now.
-      state.comments = state.comments.map((c) => (c.id === MINE.id ? deletedComment({ ...MINE, content: '', deletedBy: ADMIN_PERSON }) : c));
+      state.comments = state.comments.map((c) => (c.id === MINE.id ? deletedFrom(MINE, ADMIN_PERSON) : c));
       return errors.notFound();
     });
     const { user } = renderAt(URL_7);

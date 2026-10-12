@@ -68,6 +68,11 @@ export function deletedComment(over: Partial<Comment> = {}): Comment {
   return comment({ content: '', deleted: true, deletedAt: DELETED_AT, deletedBy: ADMIN_PERSON, ...over });
 }
 
+/** `c` after `by` deleted it: the same comment, emptied, with the trace fields set. */
+export function deletedFrom(c: Comment, by: Person): Comment {
+  return { ...c, content: '', deleted: true, deletedAt: DELETED_AT, deletedBy: by };
+}
+
 // ---------------------------------------------------------------------------
 // Fake server
 
