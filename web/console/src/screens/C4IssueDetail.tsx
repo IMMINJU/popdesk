@@ -1,5 +1,7 @@
 // C-4 문의 상세 (screens.md 4절). Issue, public and internal comments in time
 // order, attachments, and the comment form with 공개 답변·내부 메모.
+// Slice 3 (3-issues screens.md 2절) adds the assignee and the other new lines of
+// the head, the action row, 고치기, and the folded history.
 import {
   Alert,
   AttachmentList,
@@ -8,6 +10,7 @@ import {
   CommentItem,
   ConfirmDialog,
   FileUpload,
+  ISSUE_STATUS_WORDS,
   LockIcon,
   MarkdownEditor,
   MarkdownView,
@@ -16,12 +19,14 @@ import {
   RelativeTime,
   Skeleton,
   StatusBadge,
+  WarningIcon,
   type AttachmentItem,
   type UploadItem,
 } from '@popdesk/ui';
-import { useLayoutEffect, useRef, useState, type SubmitEvent, type MouseEvent } from 'react';
-import { useParams } from 'react-router';
+import { useCallback, useLayoutEffect, useRef, useState, type SubmitEvent, type MouseEvent } from 'react';
+import { Link, useParams } from 'react-router';
 import { api, type Schemas } from '../api';
+import { AssigneeName } from '../app/AssigneeName';
 import {
   ATTACHMENT_LIMITS,
   attachmentHref,
@@ -34,9 +39,14 @@ import {
 } from '../app/attachments';
 import { RateLimitBand, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
-import { useCooldown, useFieldErrors, useLeaveGuard, useLoad } from '../app/hooks';
+import { useCooldown, useFieldErrors, useLeaveGuard, useLive, useLoad } from '../app/hooks';
+import { IssueAssigneeDialog } from '../app/IssueAssigneeDialog';
+import { IssueEdit } from '../app/IssueEdit';
+import { issuesHref, type IssueStatus } from '../app/issueFilters';
+import { IssueHistory } from '../app/IssueHistory';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
-import { failureText, TEXT } from '../app/messages';
+import { t } from '../app/locale';
+import { failureText, rateLimitedText, TEXT } from '../app/messages';
 import { photoUrl } from '../app/photos';
 import { call, type Failure, type Result } from '../app/result';
 import { useSession, useToLogin } from '../app/sessionContext';
@@ -48,6 +58,9 @@ type Visibility = 'public' | 'internal';
 
 const LIST_SIZE = 100;
 const ISSUE_CLOSED_TEXT = '문의가 종료되어 댓글을 달 수 없습니다.';
+const CHANNEL_WORDS: Record<Issue['channel'], string> = { PORTAL: '포털', EMAIL: '메일', PHONE: '전화', OTHER: '그 밖' };
+/** The server says so when somebody else changed the status first (S3-AC-79). */
+const ALREADY_CHANGED = ['INVALID_TRANSITION', 'NOT_REOPENABLE', 'ISSUE_CLOSED'];
 const VISIBILITIES = [
   { value: 'public' as const, label: '공개 답변' },
   { value: 'internal' as const, label: '내부 메모' },
@@ -68,8 +81,34 @@ interface Upload extends UploadItem {
   file?: File;
 }
 
+/** The button that moves the issue to `next`, named after what is done, not where it goes. */
+function actionName(now: IssueStatus, next: IssueStatus): string {
+  switch (next) {
+    case 'CONFIRMED':
+      return '확인';
+    case 'IN_PROGRESS':
+      return now === 'RESOLVED' ? '다시 처리' : '처리 시작';
+    case 'RESOLVED':
+      return '해결';
+    case 'CLOSED':
+      return '종료';
+    case 'RECEIVED':
+      return '접수로 되돌리기';
+  }
+}
+
+/**
+ * One screen for each issue: a move to another issue starts anew, so its dialogs
+ * close and an answer for the issue left behind finds nothing to change (S3-AC-87).
+ */
 export function C4IssueDetail() {
   const key = useParams().issueKey ?? '';
+  return <IssueDetail key={key} issueKey={key} />;
+}
+
+function IssueDetail(props: { issueKey: string }) {
+  const key = props.issueKey;
+  const live = useLive();
   const { me } = useSession();
   const toLogin = useToLogin();
   const toast = useToast();
@@ -107,7 +146,17 @@ export function C4IssueDetail() {
   const focusComment = useRef<number | null>(null);
   const focusEditor = useRef(false);
   const fields = useFieldErrors({ content: { id: 'comment-content', limits: { min: 1, max: 4000 } } });
-  const blocker = useLeaveGuard(draft.trim() !== '');
+
+  // Slice 3: the action row, 담당자 바꾸기, 고치기, and the history that is read again after them.
+  const [acting, setActing] = useState<IssueStatus | 'reopen' | null>(null);
+  const [asking, setAsking] = useState<'close' | 'reopen' | null>(null);
+  const [actionFailure, setActionFailure] = useState<Failure | null>(null);
+  // Counts openings: the key that makes every opening a new dialog.
+  const [assigning, setAssigning] = useState<number | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editDirty, setEditDirty] = useState(false);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const blocker = useLeaveGuard(draft.trim() !== '' || (editing && editDirty));
 
   // Attachments
   const [uploads, setUploads] = useState<Upload[]>([]);
@@ -117,6 +166,11 @@ export function C4IssueDetail() {
   const [fileBand, setFileBand] = useState<string | null>(null);
 
   const detail = load.data;
+  const reload = load.reload;
+  const reloadIssue = useCallback(async () => {
+    const result = await reload();
+    return result?.ok ? result.data.issue : undefined;
+  }, [reload]);
 
   useLayoutEffect(() => {
     if (focusComment.current !== null) {
@@ -160,6 +214,35 @@ export function C4IssueDetail() {
   const { issue } = detail;
   const closed = issue.status === 'CLOSED';
   const isAdmin = me?.role === 'ADMIN';
+
+  // Status ---------------------------------------------------------------
+  const act = async (target: IssueStatus | 'reopen') => {
+    if (acting !== null) return;
+    setActing(target);
+    setActionFailure(null);
+    const path = { params: { path: { key } } };
+    const result =
+      target === 'reopen'
+        ? await call(api.POST('/api/console/issues/{key}/reopen', path))
+        : await call(api.PUT('/api/console/issues/{key}/status', { ...path, body: { status: target } }));
+    // The screen has gone, or moved to another issue: no toast, nothing read again.
+    if (!live()) return;
+    const changedFirst = !result.ok && result.failure.kind === 'rejected' && ALREADY_CHANGED.includes(result.failure.code);
+    if (result.ok) {
+      toast(`상태를 바꿨습니다: ${ISSUE_STATUS_WORDS[result.data.status].agent}`);
+    } else if (changedFirst) {
+      toast('상태가 이미 바뀌었습니다', 'info');
+    } else {
+      setActionFailure(result.failure);
+    }
+    if (result.ok || changedFirst) {
+      await load.reload();
+      if (!live()) return;
+      setHistoryVersion((n) => n + 1);
+    }
+    setActing(null);
+    setAsking(null);
+  };
 
   const send = async () => {
     if (sending || cooldown.active) return;
@@ -305,6 +388,56 @@ export function C4IssueDetail() {
           <span>{issue.companyName}</span>
         </p>
         <PageTitle>{issue.title}</PageTitle>
+        {!editing && (
+          <div className="pd-detail-actions">
+            {issue.nextStatuses.map((next) => (
+              <Button
+                key={next}
+                variant="secondary"
+                size="sm"
+                pending={acting === next && next !== 'CLOSED'}
+                blocked={acting !== null && acting !== next}
+                onClick={() => {
+                  if (next === 'CLOSED') setAsking('close');
+                  else void act(next);
+                }}
+              >
+                {actionName(issue.status, next)}
+              </Button>
+            ))}
+            {issue.reopenable && (
+              <Button
+                variant="secondary"
+                size="sm"
+                blocked={acting !== null}
+                onClick={() => {
+                  setAsking('reopen');
+                }}
+              >
+                다시 열기
+              </Button>
+            )}
+            {!closed && (
+              <Button
+                variant="quiet"
+                size="sm"
+                blocked={acting !== null}
+                onClick={() => {
+                  setActionFailure(null);
+                  setEditing(true);
+                }}
+              >
+                {t('issueEdit.edit')}
+              </Button>
+            )}
+          </div>
+        )}
+        {closed && !issue.reopenable && <p className="pd-muted">{t('issueStatus.tooLateToReopen')}</p>}
+        {actionFailure?.kind === 'rateLimited' ? (
+          <Alert tone="error">{rateLimitedText(actionFailure.seconds)}</Alert>
+        ) : (
+          <SaveFailure failure={actionFailure} />
+        )}
         <dl className="pd-meta">
           <div>
             <dt>상태</dt>
@@ -319,12 +452,40 @@ export function C4IssueDetail() {
             </dd>
           </div>
           <div>
+            <dt>담당자</dt>
+            <dd className="pd-inline">
+              <AssigneeName person={issue.assignee} unavailable={issue.assigneeUnavailable} />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setAssigning((n) => (n ?? 0) + 1);
+                }}
+              >
+                바꾸기
+              </Button>
+            </dd>
+          </div>
+          <div>
             <dt>고객사</dt>
             <dd>{issue.companyName}</dd>
           </div>
           <div>
             <dt>올린 사람</dt>
-            <dd>{issue.reporter.name}</dd>
+            <dd className="pd-inline">
+              <span>{issue.reporter.name}</span>
+              <Link to={issuesHref({ reporter: issue.reporter.accountId })}>이 사람이 올린 문의 보기</Link>
+            </dd>
+          </div>
+          {issue.createdBy && (
+            <div>
+              <dt>대리 등록</dt>
+              <dd>{issue.createdBy.name}</dd>
+            </div>
+          )}
+          <div>
+            <dt>받은 경로</dt>
+            <dd>{CHANNEL_WORDS[issue.channel]}</dd>
           </div>
           <div>
             <dt>올린 시각</dt>
@@ -332,6 +493,26 @@ export function C4IssueDetail() {
               <RelativeTime dateTime={issue.createdAt} />
             </dd>
           </div>
+          <div>
+            <dt>첫 응답</dt>
+            <dd>{issue.firstResponseAt === null ? <span className="pd-muted">아직 없음</span> : <RelativeTime dateTime={issue.firstResponseAt} />}</dd>
+          </div>
+          {issue.resolvedAt !== null && (
+            <div>
+              <dt>해결 시각</dt>
+              <dd>
+                <RelativeTime dateTime={issue.resolvedAt} />
+              </dd>
+            </div>
+          )}
+          {issue.closedAt !== null && (
+            <div>
+              <dt>종료 시각</dt>
+              <dd>
+                <RelativeTime dateTime={issue.closedAt} />
+              </dd>
+            </div>
+          )}
           {issue.private && (
             <div>
               <dt className="pd-sr-only">공개 범위</dt>
@@ -343,11 +524,35 @@ export function C4IssueDetail() {
             </div>
           )}
         </dl>
+        {issue.assigneeUnavailable && (
+          <p className="pd-detail-note">
+            <WarningIcon size={14} />
+            <span>이 담당자는 지금 이 문의를 볼 수 없습니다. 담당자를 바꿔 주세요.</span>
+          </p>
+        )}
       </header>
 
-      <article className="pd-detail-body" aria-label="문의 내용">
-        <MarkdownView source={issue.content} />
-      </article>
+      {editing ? (
+        <IssueEdit
+          issue={issue}
+          reload={reloadIssue}
+          onDirtyChange={setEditDirty}
+          onCancel={() => {
+            setEditing(false);
+            setEditDirty(false);
+          }}
+          onSaved={() => {
+            setEditing(false);
+            setEditDirty(false);
+            setHistoryVersion((n) => n + 1);
+            void load.reload();
+          }}
+        />
+      ) : (
+        <article className="pd-detail-body" aria-label="문의 내용">
+          <MarkdownView source={issue.content} />
+        </article>
+      )}
 
       <div className="pd-detail-attachments">
         {fileBand && (
@@ -417,6 +622,8 @@ export function C4IssueDetail() {
           </div>
         )}
       </section>
+
+      <IssueHistory issueKey={key} onBehalf={issue.createdBy !== null} version={historyVersion} />
 
       {closed ? (
         <div className="pd-detail-closed">
@@ -490,6 +697,36 @@ export function C4IssueDetail() {
           setDeleteTarget(null);
         }}
       />
+      <ConfirmDialog
+        open={asking !== null}
+        title={asking === 'reopen' ? '다시 열기' : '문의 종료'}
+        message={asking === 'reopen' ? '이 문의를 다시 열까요? 상태가 접수로 돌아갑니다.' : '이 문의를 종료할까요? 고객은 14일 안에 다시 열 수 있습니다.'}
+        confirmLabel={asking === 'reopen' ? '다시 열기' : '종료'}
+        cancelLabel={TEXT.cancel}
+        pending={acting !== null}
+        pendingLabel={TEXT.sending}
+        onConfirm={() => {
+          void act(asking === 'reopen' ? 'reopen' : 'CLOSED');
+        }}
+        onCancel={() => {
+          setAsking(null);
+        }}
+      />
+      {assigning !== null && (
+        <IssueAssigneeDialog
+          key={assigning}
+          issue={issue}
+          onClose={() => {
+            setAssigning(null);
+          }}
+          onChanged={(person) => {
+            setAssigning(null);
+            toast(person ? `담당자를 ${person.name} 님으로 바꿨습니다` : '담당자를 비웠습니다');
+            setHistoryVersion((n) => n + 1);
+            void load.reload();
+          }}
+        />
+      )}
       <ConfirmDialog
         open={blocker.state === 'blocked'}
         title={TEXT.leaveTitle}

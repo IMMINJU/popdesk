@@ -83,4 +83,22 @@ export const ko = {
   'issueOnBehalf.companyNotActive': '멈췄거나 보관된 고객사입니다.',
   'issueOnBehalf.companyNotFound': '이 고객사를 찾을 수 없습니다',
   'issueOnBehalf.keyReused': '등록을 확인하지 못했습니다. "등록"을 다시 눌러 주세요.',
+
+  // Slice 3: texts the portal shares (screens.md 2절 C-3·P-3 필터, C-4·P-5 고치기).
+  'issueEdit.edit': '고치기',
+  'issueEdit.formName': '문의 고치기',
+  'issueEdit.save': '저장',
+  'issueEdit.saved': '문의를 고쳤습니다',
+  'issueEdit.conflict': '고치는 동안 다른 사람이 이 문의를 바꿨습니다. 아래 지금 값을 보고 다시 저장해 주세요.',
+  'issueEdit.now': '지금 값',
+  'issueEdit.nowContent': '지금 내용 보기',
+  'issueEdit.closed': '문의가 종료되어 고칠 수 없습니다',
+  'issueEdit.cancelMessage': '취소하면 고친 글이 사라집니다.',
+  'issueEdit.discard': '버리기',
+  'issueEdit.keep': '계속 고치기',
+  'issueSearch.label': '문의 검색',
+  'issueSearch.hint': '제목과 내용에서 찾습니다',
+  'issueSearch.none': '조건에 맞는 문의가 없습니다',
+  'issueSearch.clear': '필터 지우기',
+  'issueStatus.tooLateToReopen': '종료한 지 14일이 지나 다시 열 수 없습니다.',
 } as const;

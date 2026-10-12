@@ -84,4 +84,22 @@ export const en: Record<keyof typeof ko, string> = {
   'issueOnBehalf.companyNotActive': 'This company is suspended or archived.',
   'issueOnBehalf.companyNotFound': 'This company cannot be found',
   'issueOnBehalf.keyReused': 'The filing could not be confirmed. Press "File" again.',
+
+  // Slice 3: texts the portal shares (screens.md 2절 C-3·P-3 필터, C-4·P-5 고치기).
+  'issueEdit.edit': 'Edit',
+  'issueEdit.formName': 'Edit the issue',
+  'issueEdit.save': 'Save',
+  'issueEdit.saved': 'Issue saved',
+  'issueEdit.conflict': 'Someone else changed this issue while you were editing. Check the current values below and save again.',
+  'issueEdit.now': 'Current values',
+  'issueEdit.nowContent': 'Show the current content',
+  'issueEdit.closed': 'The issue is closed and cannot be edited',
+  'issueEdit.cancelMessage': 'Cancelling discards your changes.',
+  'issueEdit.discard': 'Discard',
+  'issueEdit.keep': 'Keep editing',
+  'issueSearch.label': 'Search issues',
+  'issueSearch.hint': 'Searches titles and content',
+  'issueSearch.none': 'No issue matches',
+  'issueSearch.clear': 'Clear filters',
+  'issueStatus.tooLateToReopen': 'Closed more than 14 days ago; it cannot be reopened.',
 };

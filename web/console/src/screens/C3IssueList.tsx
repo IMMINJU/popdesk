@@ -40,6 +40,7 @@ import {
   type IssueFilters,
 } from '../app/issueFilters';
 import { LoadFailed, PageTitle } from '../app/layout';
+import { t } from '../app/locale';
 import { rateLimitedText } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { PageNav } from '../app/PageNav';
@@ -194,7 +195,7 @@ export function C3IssueList() {
       />
     );
   } else if (filtered) {
-    empty = <EmptyState icon={<SearchOffIcon size={20} />} title="조건에 맞는 문의가 없습니다" action={<Link to="/issues">필터 지우기</Link>} />;
+    empty = <EmptyState icon={<SearchOffIcon size={20} />} title={t('issueSearch.none')} action={<Link to="/issues">{t('issueSearch.clear')}</Link>} />;
   } else if (me?.role === 'ADMIN') {
     empty = (
       <EmptyState
@@ -232,8 +233,8 @@ export function C3IssueList() {
       </nav>
       <div className="pd-filters pd-issue-filters">
         <SearchField
-          label="문의 검색"
-          hint="제목과 내용에서 찾습니다"
+          label={t('issueSearch.label')}
+          hint={t('issueSearch.hint')}
           value={filters.q}
           onSearch={(value) => {
             const q = value.trim();
@@ -283,7 +284,7 @@ export function C3IssueList() {
         )}
         {filtered && (
           <Link className="pd-filters-clear" to="/issues">
-            필터 지우기
+            {t('issueSearch.clear')}
           </Link>
         )}
       </div>

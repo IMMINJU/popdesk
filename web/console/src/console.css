@@ -400,12 +400,117 @@
   gap: var(--space-1);
 }
 
-.pd-kept-draft pre {
+.pd-kept-draft pre,
+.pd-plain-text {
   padding: var(--space-3);
   border-radius: var(--radius-md);
   background: var(--sunken);
   font-family: inherit;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Slice 3: the action row under the title, the note under the head, 고치기, the folded history */
+.pd-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.pd-detail-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--warning);
+  font-size: var(--text-sm);
+}
+
+.pd-detail-note .pd-icon {
+  flex: none;
+  margin-top: 3px;
+}
+
+.pd-now-values {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--sunken);
+}
+
+.pd-disclosure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.pd-disclosure-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pd-disclosure[data-kind='section'] .pd-disclosure-button {
+  color: var(--text);
+}
+
+.pd-disclosure-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.pd-disclosure-button .pd-icon {
+  transform: rotate(-90deg);
+  transition: transform var(--duration-fast) var(--easing);
+}
+
+.pd-disclosure[data-open='true'] > .pd-disclosure-button .pd-icon,
+.pd-disclosure[data-open='true'] > h2 .pd-icon {
+  transform: none;
+}
+
+.pd-disclosure-body {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pd-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.pd-history li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.pd-history time {
+  margin-left: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.pd-history-titles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .pd-detail-skeleton {
