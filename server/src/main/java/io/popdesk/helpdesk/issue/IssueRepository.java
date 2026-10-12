@@ -67,6 +67,9 @@ public class IssueRepository {
             + "and (ua.status <> 'ACTIVE' or (ua.role = 'AGENT' and not exists (select 1 from company_agent uca "
             + "where uca.company_id = i.company_id and uca.account_id = ua.id))))";
 
+    /** Open issues an account is the assignee of (ACCT-7), as SQL on {@code i} with one parameter, the account. */
+    private static final String OPEN_ASSIGNMENT = "i.assignee_id = ? and i.status <> 'CLOSED'";
+
     private static final String SELECT = "select i.id, i.company_id, c.code, c.name, i.number, i.title, i.content, "
             + "i.status, i.priority, i.is_private, i.reporter_id, r.name as reporter_name, r.role as reporter_role, "
             + "rp.updated_at as reporter_photo_updated_at, i.channel, i.first_response_at, i.resolved_at, i.closed_at, "
@@ -126,6 +129,19 @@ public class IssueRepository {
                 .params(IssueScope.params(viewer)).query(Long.class).single();
     }
 
+    /**
+     * How many issues that are not {@code CLOSED} have the account as their assignee, among those the
+     * viewer may see; with {@code companyId}, in that company only (S3-AC-68). It counts what
+     * {@link #updateAssigneesCleared} clears for the same account and company.
+     */
+    public long countOpenAssignments(Viewer viewer, long accountId, Long companyId) {
+        Object[] params = concat(IssueScope.params(viewer), accountId);
+        return jdbc.sql("select count(*) from issue i where " + IssueScope.SQL + " and " + OPEN_ASSIGNMENT
+                        + (companyId == null ? "" : " and i.company_id = ?"))
+                .params(companyId == null ? params : concat(params, companyId))
+                .query(Long.class).single();
+    }
+
     // Writes
 
     /** A new issue with the number the company counter gave it (ISSUE-3), and the text the search looks in. */
@@ -148,6 +164,25 @@ public class IssueRepository {
         jdbc.sql("update issue set assignee_id = ?, updated_at = ?, version = version + 1 where id = ?")
                 .params(assigneeId, Timestamp.from(now), id)
                 .update();
+    }
+
+    /**
+     * Clears the assignee of every issue that is not {@code CLOSED} and has this account as its assignee;
+     * with {@code companyId}, in that company only (ACCT-7, S3-AC-69). One conditional UPDATE, without
+     * locking the rows one by one first (STATUS-7): an issue that got another assignee or was closed
+     * meanwhile no longer matches and stays as it is. Each cleared issue gets a new version.
+     *
+     * @return the issues that were cleared
+     */
+    public List<UUID> updateAssigneesCleared(long accountId, Long companyId, Instant now) {
+        List<Object> params = new ArrayList<>(List.of(Timestamp.from(now), accountId));
+        if (companyId != null) {
+            params.add(companyId);
+        }
+        return jdbc.sql("update issue i set assignee_id = null, updated_at = ?, version = version + 1 where "
+                        + OPEN_ASSIGNMENT + (companyId == null ? "" : " and i.company_id = ?") + " returning i.id")
+                .params(params)
+                .query(UUID.class).list();
     }
 
     /**

@@ -287,7 +287,7 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
     @GetMapping("/{code}/agents/{accountId}/open-assignments")
     OpenAssignments countCompanyOpenAssignments(@PathVariable String code, @PathVariable long accountId) {
-        throw new NotImplementedException();
+        return new OpenAssignments(companies.openAssignments(CurrentAccount.get().viewer(), code, accountId));
     }
 
     @Operation(operationId = "unassignAgent", summary = "Take an agent off a company",
@@ -304,12 +304,9 @@ class ConsoleCompanyController {
     ResponseEntity<ClearedAssignments> unassignAgent(@PathVariable String code, @PathVariable long accountId,
             @Parameter(description = CLEAR_ASSIGNMENTS) @RequestParam(defaultValue = "false")
                     boolean clearAssignments) {
-        if (clearAssignments) {
-            throw new NotImplementedException();
-        }
         CurrentAccount admin = CurrentAccount.get();
-        companies.unassignAgent(admin.viewer(), admin.actor(), code, accountId);
-        return ResponseEntity.ok().build();
+        int cleared = companies.unassignAgent(admin.viewer(), admin.actor(), code, accountId, clearAssignments);
+        return clearAssignments ? ResponseEntity.ok(new ClearedAssignments(cleared)) : ResponseEntity.ok().build();
     }
 
     private Paged<CompanyMember> members(String code, Role role, int page, int size) {

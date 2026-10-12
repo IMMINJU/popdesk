@@ -19,6 +19,7 @@ import io.popdesk.helpdesk.company.CompanyRepository.MemberRow;
 import io.popdesk.helpdesk.company.CompanyRepository.StaffRow;
 import io.popdesk.helpdesk.company.MembershipRequestRepository.RequestRow;
 import io.popdesk.helpdesk.company.MembershipRequestRepository.State;
+import io.popdesk.helpdesk.issue.AssigneeClearing;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -52,15 +53,17 @@ public class CompanyService {
     private final CompanyRepository companies;
     private final MembershipRequestRepository requests;
     private final AccountRepository accounts;
+    private final AssigneeClearing assignments;
     private final AuditLog audit;
     private final Transactions transactions;
     private final Clock clock;
 
     CompanyService(CompanyRepository companies, MembershipRequestRepository requests, AccountRepository accounts,
-            AuditLog audit, Transactions transactions, Clock clock) {
+            AssigneeClearing assignments, AuditLog audit, Transactions transactions, Clock clock) {
         this.companies = companies;
         this.requests = requests;
         this.accounts = accounts;
+        this.assignments = assignments;
         this.audit = audit;
         this.transactions = transactions;
         this.clock = clock;
@@ -156,6 +159,19 @@ public class CompanyService {
     public List<StaffRow> assigneeCandidates(Viewer viewer, String code) {
         CompanyRow company = get(viewer, code);
         return companies.listAssignable(viewer, company.id());
+    }
+
+    /**
+     * How many open issues of the company have the account as their assignee: what
+     * {@link #unassignAgent} clears with {@code clearAssignments} (S3-AC-68). The company first, then the
+     * account (404). An agent who is not assigned to the company is no error; the count is of the
+     * issues, not of the assignment.
+     */
+    @Transactional(readOnly = true)
+    public long openAssignments(Viewer viewer, String code, long accountId) {
+        CompanyRow company = get(viewer, code);
+        AccountRow account = accounts.findById(accountId).orElseThrow(ApiException::notFound);
+        return assignments.count(viewer, account.id(), company.id());
     }
 
     /**
@@ -322,15 +338,37 @@ public class CompanyService {
     /**
      * Takes an agent off a company of any status (S1A-AC-55). Removing again changes nothing and is not
      * audited again.
+     *
+     * <p>With {@code clearAssignments}, the same transaction then clears the assignee of the open issues
+     * of this company the agent is the assignee of, after every check (S3-AC-69, S3-AC-71); the issues
+     * of other companies and closed issues keep theirs. The audit entry holds how many as
+     * {@code clearedIssues}, 0 too; without {@code clearAssignments} it has no such key (S3-AC-72). An
+     * agent who was no longer assigned but still had such issues gets them cleared, and an entry with
+     * that number alone.
+     *
+     * @return how many issues were cleared; 0 without {@code clearAssignments}
      */
-    public void unassignAgent(Viewer viewer, AuditLog.Actor admin, String code, long accountId) {
-        transactions.run(() -> {
+    public int unassignAgent(Viewer viewer, AuditLog.Actor admin, String code, long accountId,
+            boolean clearAssignments) {
+        return transactions.run(() -> {
             CompanyRow company = companies.findByCode(viewer, code).orElseThrow(ApiException::notFound);
             AccountRow agent = accounts.findById(accountId).orElseThrow(ApiException::notFound);
-            if (companies.deleteAgent(company.id(), agent.id())) {
-                audit.record(admin, AuditAction.AGENT_UNASSIGNED, target(company.code(), agent.id()),
-                        Map.of("assigned", false));
+            boolean removed = companies.deleteAgent(company.id(), agent.id());
+            Map<String, Object> changes = new LinkedHashMap<>();
+            if (removed) {
+                changes.put("assigned", false);
             }
+            int cleared = 0;
+            if (clearAssignments) {
+                cleared = assignments.clear(agent.id(), company.id(), admin.accountId());
+                if (removed || cleared > 0) {
+                    changes.put("clearedIssues", cleared);
+                }
+            }
+            if (!changes.isEmpty()) {
+                audit.record(admin, AuditAction.AGENT_UNASSIGNED, target(company.code(), agent.id()), changes);
+            }
+            return cleared;
         });
     }
 

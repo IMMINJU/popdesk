@@ -1,6 +1,5 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.AccountStatus;
@@ -113,12 +112,10 @@ class ConsoleAccountController {
     SuspendedAccount suspendAccount(@PathVariable long accountId,
             @Parameter(description = CLEAR_ASSIGNMENTS) @RequestParam(defaultValue = "false")
                     boolean clearAssignments) {
-        if (clearAssignments) {
-            throw new NotImplementedException();
-        }
-        Account a = account(accounts.suspend(CurrentAccount.get(), accountId));
+        AccountService.Suspension suspension = accounts.suspend(CurrentAccount.get(), accountId, clearAssignments);
+        Account a = account(suspension.account());
         return new SuspendedAccount(a.id(), a.email(), a.name(), a.role(), a.status(), a.createdAt(),
-                a.photoUpdatedAt(), new ClearedAssignments(0));
+                a.photoUpdatedAt(), new ClearedAssignments(suspension.clearedIssues()));
     }
 
     @Operation(operationId = "countOpenAssignments", summary = "What an account is still assigned to",
@@ -130,7 +127,7 @@ class ConsoleAccountController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @GetMapping("/api/console/accounts/{accountId}/open-assignments")
     OpenAssignments countOpenAssignments(@PathVariable long accountId) {
-        throw new NotImplementedException();
+        return new OpenAssignments(accounts.openAssignments(CurrentAccount.get(), accountId));
     }
 
     @Operation(operationId = "reactivateAccount", summary = "Lift an account's suspension",

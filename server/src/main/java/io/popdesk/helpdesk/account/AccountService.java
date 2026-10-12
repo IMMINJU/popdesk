@@ -12,6 +12,7 @@ import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
 import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
+import io.popdesk.helpdesk.issue.AssigneeClearing;
 import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Instant;
@@ -44,18 +45,23 @@ public class AccountService {
 
     private static final Logger log = LoggerFactory.getLogger(AccountService.class);
 
+    /** A suspended account, and how many issues the suspension took it off as their assignee. */
+    public record Suspension(AccountRow account, int clearedIssues) {}
+
     private final AccountRepository accounts;
     private final Sessions sessions;
     private final PasswordResetService resets;
+    private final AssigneeClearing assignments;
     private final AuditLog audit;
     private final Transactions transactions;
     private final Clock clock;
 
-    AccountService(AccountRepository accounts, Sessions sessions, PasswordResetService resets, AuditLog audit,
-            Transactions transactions, Clock clock) {
+    AccountService(AccountRepository accounts, Sessions sessions, PasswordResetService resets,
+            AssigneeClearing assignments, AuditLog audit, Transactions transactions, Clock clock) {
         this.accounts = accounts;
         this.sessions = sessions;
         this.resets = resets;
+        this.assignments = assignments;
         this.audit = audit;
         this.transactions = transactions;
         this.clock = clock;
@@ -108,7 +114,7 @@ public class AccountService {
      * S1A-AC-31). Company assignments stay. The role the account has changes nothing.
      */
     public AccountRow changeRole(CurrentAccount admin, long accountId, Role role) {
-        AccountRow changed = changeRoleOrSuspend(admin, accountId, false, role);
+        AccountRow changed = changeRoleOrSuspend(admin, accountId, false, role, false).account();
         log.info("The role of account {} is {}.", accountId, changed.role());
         return changed;
     }
@@ -117,11 +123,28 @@ public class AccountService {
      * Makes an {@code ACTIVE} account {@code SUSPENDED} and ends every session of it (S1A-AC-01,
      * S1A-AC-34). A suspended account stays as it is. An account that never accepted its invitation is
      * not suspended; its invitation is cancelled instead.
+     *
+     * <p>With {@code clearAssignments}, the same transaction then clears the assignee of every open
+     * issue the account is the assignee of, in every company, after every check: a refused suspension
+     * clears nothing (S3-AC-69, S3-AC-71). The audit entry holds how many as {@code clearedIssues}, 0
+     * too; without {@code clearAssignments} it is the entry it always was (S3-AC-72). An account that
+     * was suspended already and still had such issues gets them cleared, and an entry with that number
+     * alone.
      */
-    public AccountRow suspend(CurrentAccount admin, long accountId) {
-        AccountRow changed = changeRoleOrSuspend(admin, accountId, true, null);
+    public Suspension suspend(CurrentAccount admin, long accountId, boolean clearAssignments) {
+        Suspension changed = changeRoleOrSuspend(admin, accountId, true, null, clearAssignments);
         log.info("Account {} is suspended.", accountId);
         return changed;
+    }
+
+    /**
+     * How many open issues the account is the assignee of, in every company: what {@link #suspend}
+     * clears with {@code clearAssignments} (S3-AC-68). Counted for a suspended account too.
+     */
+    @Transactional(readOnly = true)
+    public long openAssignments(CurrentAccount admin, long accountId) {
+        AccountRow account = accounts.findById(accountId).orElseThrow(ApiException::notFound);
+        return assignments.count(admin.viewer(), account.id(), null);
     }
 
     /**
@@ -130,8 +153,13 @@ public class AccountService {
      * so of two admins who take each other down at the same time the second finds no other admin left
      * and is refused (S1A-AC-81). The caller's own account is refused before the admins are counted
      * (S1A-AC-33).
+     *
+     * <p>A suspension that clears the account's open issues does so after the account row is changed:
+     * the account rows are locked first, the issue rows are changed by one UPDATE after that, and the
+     * history rows are inserted last.
      */
-    private AccountRow changeRoleOrSuspend(CurrentAccount admin, long accountId, boolean suspension, Role role) {
+    private Suspension changeRoleOrSuspend(CurrentAccount admin, long accountId, boolean suspension, Role role,
+            boolean clearAssignments) {
         return transactions.run(() -> {
             List<AccountRow> locked = accounts.lockWithActiveAdmins(accountId);
             AccountRow account = locked.stream().filter(a -> a.id() == accountId).findFirst()
@@ -147,31 +175,42 @@ public class AccountService {
                     throw accountNotActive();
                 }
                 if (account.status() == AccountStatus.SUSPENDED) {
-                    return account;
+                    int cleared = clearAssignments ? assignments.clear(accountId, null, admin.id()) : 0;
+                    if (cleared > 0) {
+                        audit.record(admin.actor(), AuditAction.ACCOUNT_SUSPENDED, target(accountId),
+                                Map.of("clearedIssues", cleared));
+                    }
+                    return new Suspension(account, cleared);
                 }
             } else {
                 if (role == Role.CUSTOMER || account.role() == Role.CUSTOMER) {
                     throw refused("CUSTOMER_ROLE_FIXED", "Only agents and admins change into each other.");
                 }
                 if (account.role() == role) {
-                    return account;
+                    return new Suspension(account, 0);
                 }
             }
             if (activeAdmin(account) && locked.stream().noneMatch(a -> a.id() != accountId && activeAdmin(a))) {
                 throw refused("LAST_ADMIN", "This would leave no active admin.");
             }
             Instant now = now();
+            int cleared = 0;
             if (suspension) {
                 accounts.updateStatus(accountId, AccountStatus.SUSPENDED, now);
-                audit.record(admin.actor(), AuditAction.ACCOUNT_SUSPENDED, target(accountId),
-                        Map.of("status", change(account.status().name(), AccountStatus.SUSPENDED.name())));
+                Map<String, Object> changes = new LinkedHashMap<>();
+                changes.put("status", change(account.status().name(), AccountStatus.SUSPENDED.name()));
+                if (clearAssignments) {
+                    cleared = assignments.clear(accountId, null, admin.id());
+                    changes.put("clearedIssues", cleared);
+                }
+                audit.record(admin.actor(), AuditAction.ACCOUNT_SUSPENDED, target(accountId), changes);
             } else {
                 accounts.updateRole(accountId, role, now);
                 audit.record(admin.actor(), AuditAction.ACCOUNT_ROLE_CHANGED, target(accountId),
                         Map.of("role", change(account.role().name(), role.name())));
             }
             sessions.endAll(accountId);
-            return accounts.findById(accountId).orElseThrow();
+            return new Suspension(accounts.findById(accountId).orElseThrow(), cleared);
         });
     }
 
