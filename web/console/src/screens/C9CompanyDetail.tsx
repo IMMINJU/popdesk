@@ -24,12 +24,14 @@ import { Link, useLocation, useParams } from 'react-router';
 import { api, type Schemas } from '../api';
 import { AccountFinder } from '../app/AccountFinder';
 import { FieldSummary, SaveFailure } from '../app/bands';
+import { ClearAssignments } from '../app/ClearAssignments';
 import { useMainBusy } from '../app/busy';
 import { useFieldErrors, useFocusWhenReady, useLive, useLoad } from '../app/hooks';
 import { InviteDialog } from '../app/InviteDialog';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
 import { TEXT } from '../app/messages';
 import { useNavCountRefresh } from '../app/navCount';
+import { clearedText, useOpenAssignments } from '../app/openAssignments';
 import { photoUrl } from '../app/photos';
 import { call, type Failure, type Result } from '../app/result';
 import { useToast } from '../app/toastContext';
@@ -337,25 +339,41 @@ function RemoveDialog(props: { code: string; kind: 'customer' | 'agent'; member:
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const { member, kind } = props;
+  // 배정 빼기: the open issues of this company the agent is the assignee of (S3-AC-85).
+  const open = useOpenAssignments(
+    kind === 'agent'
+      ? () => api.GET('/api/console/companies/{code}/agents/{accountId}/open-assignments', { params: { path: { code: props.code, accountId: member.accountId } } })
+      : null,
+  );
+  const [clear, setClear] = useState(false);
 
   const remove = async () => {
     if (pending) return;
     setPending(true);
     setFailure(null);
-    const path = { params: { path: { code: props.code, accountId: member.accountId } } };
-    const result =
-      kind === 'customer'
-        ? await call(api.DELETE('/api/console/companies/{code}/customers/{accountId}', path))
-        : await call(api.DELETE('/api/console/companies/{code}/agents/{accountId}', path));
-    if (result.ok) props.onRemoved();
+    const path = { path: { code: props.code, accountId: member.accountId } };
+    let failed: Failure | null = null;
+    let cleared: number | undefined;
+    if (kind === 'customer') {
+      const result = await call(api.DELETE('/api/console/companies/{code}/customers/{accountId}', { params: path }));
+      if (!result.ok) failed = result.failure;
+    } else {
+      const result = await call(
+        api.DELETE('/api/console/companies/{code}/agents/{accountId}', { params: { ...path, ...(clear ? { query: { clearAssignments: true } } : {}) } }),
+      );
+      if (!result.ok) failed = result.failure;
+      // A body only when the request asked to clear.
+      else if (clear) cleared = (result.data as { issues: number } | undefined)?.issues;
+    }
+    if (failed === null) props.onRemoved();
     if (!live()) return;
     setPending(false);
-    if (result.ok) {
-      toast(kind === 'customer' ? `${member.name} 님을 소속 고객에서 뺐습니다` : `${member.name} 님을 배정에서 뺐습니다`);
+    if (failed === null) {
+      toast(kind === 'customer' ? `${member.name} 님을 소속 고객에서 뺐습니다` : `${member.name} 님을 배정에서 뺐습니다${clearedText(cleared)}`);
       props.onClose();
       return;
     }
-    setFailure(result.failure);
+    setFailure(failed);
   };
 
   return (
@@ -369,6 +387,7 @@ function RemoveDialog(props: { code: string; kind: 'customer' | 'agent'; member:
             {member.name} 님은 이 고객사의 문의를 더 보지 못합니다.{kind === 'customer' && ' 자기가 올린 문의는 계속 봅니다.'}
           </p>
           {kind === 'customer' && member.manager && <p>이 사람은 담당자입니다. 빼면 담당자 표시도 사라집니다.</p>}
+          <ClearAssignments name={member.name} open={open} scope="company" checked={clear} onChange={setClear} />
           <SaveFailure failure={failure} known={COMPANY_ERRORS} />
         </>
       }

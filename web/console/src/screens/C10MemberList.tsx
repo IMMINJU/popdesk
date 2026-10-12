@@ -1,7 +1,8 @@
 // C-10 구성원 목록 (관리자, screens.md 4절, 1a screens.md 2절). List with role,
 // status and search filters, 초대 (INVITE-1·2), the actions of a row (ACCT-3,
 // INVITE-3), and 초대 링크 복사 on accounts not accepted yet when SMTP is off
-// (INVITE-6, S0-AC-38).
+// (INVITE-6, S0-AC-38). Slice 3: the filters live in the address (S3-AC-86), and
+// 정지 of a staff member offers to clear the open issues they are the assignee of (S3-AC-85).
 import {
   ACCOUNT_STATUS_WORDS,
   Alert,
@@ -12,22 +13,25 @@ import {
   Dialog,
   EmptyState,
   RelativeTime,
+  SearchField,
   Select,
   StatusBadge,
   TextField,
   type AccountStatus,
   type DataTableColumn,
 } from '@popdesk/ui';
-import { useEffect, useLayoutEffect, useRef, useState, type SubmitEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type SubmitEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api, type Schemas } from '../api';
 import { FieldSummary, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
+import { ClearAssignments } from '../app/ClearAssignments';
 import { useFieldErrors, useLive, useLoad } from '../app/hooks';
 import { InviteDialog } from '../app/InviteDialog';
 import { InviteLink } from '../app/InviteLink';
 import { LoadFailed, PageTitle } from '../app/layout';
 import { rateLimitedText, TEXT } from '../app/messages';
+import { clearedText, useOpenAssignments } from '../app/openAssignments';
 import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, usePageMove, usePageParam } from '../app/paging';
 import { photoUrl } from '../app/photos';
@@ -44,9 +48,6 @@ const ROLE_WORDS: Record<Role, string> = { CUSTOMER: '고객', AGENT: '상담원
 const ROLE_TO: Record<'AGENT' | 'ADMIN', string> = { AGENT: '상담원으로', ADMIN: '관리자로' };
 const ROLE_OPTIONS = (['CUSTOMER', 'AGENT', 'ADMIN'] as const).map((value) => ({ value, label: ROLE_WORDS[value] }));
 const STATUS_OPTIONS = (['ACTIVE', 'INVITED', 'SUSPENDED'] as const).map((value) => ({ value, label: ACCOUNT_STATUS_WORDS[value] }));
-
-/** The search goes out this long after the last key (screens.md C-10 필터). */
-const SEARCH_DELAY_MS = 300;
 
 const ACCOUNT_ERRORS: Record<string, string> = {
   OWN_ACCOUNT: '자기 계정은 정지하거나 역할을 바꿀 수 없습니다.',
@@ -169,6 +170,13 @@ function AskDialog(props: ActionDialogProps & { action: AskedAction; mailEnabled
   const [failure, setFailure] = useState<Failure | null>(null);
   const { account, action } = props;
   const nextRole = account.role === 'ADMIN' ? 'AGENT' : 'ADMIN';
+  // 정지 of staff: the open issues of every company they are the assignee of. A customer is nobody's assignee.
+  const open = useOpenAssignments(
+    action === 'suspend' && account.role !== 'CUSTOMER'
+      ? () => api.GET('/api/console/accounts/{accountId}/open-assignments', { params: { path: { accountId: account.id } } })
+      : null,
+  );
+  const [clear, setClear] = useState(false);
 
   const confirm = async () => {
     if (pending) return;
@@ -177,9 +185,13 @@ function AskDialog(props: ActionDialogProps & { action: AskedAction; mailEnabled
     const path = { params: { path: { accountId: account.id } } };
     let failed: Failure | null = null;
     let link: string | null = null;
+    let cleared: number | undefined;
     if (action === 'suspend') {
-      const result = await call(api.POST('/api/console/accounts/{accountId}/suspend', path));
+      const result = await call(
+        api.POST('/api/console/accounts/{accountId}/suspend', { params: { ...path.params, ...(clear ? { query: { clearAssignments: true } } : {}) } }),
+      );
       if (!result.ok) failed = result.failure;
+      else if (clear) cleared = result.data.cleared.issues;
     } else if (action === 'role') {
       const result = await call(api.PUT('/api/console/accounts/{accountId}/role', { ...path, body: { role: nextRole } }));
       if (!result.ok) failed = result.failure;
@@ -199,7 +211,7 @@ function AskDialog(props: ActionDialogProps & { action: AskedAction; mailEnabled
       setFailure(failed);
       return;
     }
-    if (action === 'suspend') toast(`${account.name} 님을 정지했습니다`);
+    if (action === 'suspend') toast(`${account.name} 님을 정지했습니다${clearedText(cleared)}`);
     else if (action === 'role') toast(`${account.name} 님의 역할을 ${ROLE_TO[nextRole]} 바꿨습니다`);
     else if (action === 'cancel') toast('초대를 취소했습니다');
     else if (link === null) toast('재설정 메일을 보냈습니다.');
@@ -242,6 +254,7 @@ function AskDialog(props: ActionDialogProps & { action: AskedAction; mailEnabled
         <>
           <p>{asks.text}</p>
           {action === 'reset' && !props.mailEnabled && <p>메일 설정이 없으면 메일 대신 재설정 링크를 이 화면에 한 번 보입니다.</p>}
+          {action === 'suspend' && <ClearAssignments name={account.name} open={open} scope="all" checked={clear} onChange={setClear} />}
           {action !== 'suspend' && action !== 'role' && (
             <p className="pd-muted">
               {account.name}({account.email})
@@ -361,12 +374,18 @@ export function C10MemberList() {
   const [inviting, setInviting] = useState(false);
   const [linkFor, setLinkFor] = useState<Account | null>(null);
 
-  // Filters. `query` is what the box holds, `q` what the list was asked for.
-  const [role, setRole] = useState('');
-  const [status, setStatus] = useState('');
-  // A link from another screen may open the list on one account (`?q=`, C-9 소속 요청); it is read once.
-  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
-  const [q, setQ] = useState(() => (searchParams.get('q') ?? '').trim());
+  // Filters: the address holds them, under the names the API takes (S3-AC-86). A value the list cannot take is left out.
+  const role = ROLE_OPTIONS.find((o) => o.value === searchParams.get('role'))?.value ?? '';
+  const status = STATUS_OPTIONS.find((o) => o.value === searchParams.get('status'))?.value ?? '';
+  const q = (searchParams.get('q') ?? '').trim().slice(0, 100);
+  /** A new filter starts on the first page. */
+  const setFilters = (next: { role: string; status: string; q: string }, options: { replace?: boolean } = {}) => {
+    const params = new URLSearchParams();
+    if (next.role !== '') params.set('role', next.role);
+    if (next.status !== '') params.set('status', next.status);
+    if (next.q !== '') params.set('q', next.q);
+    setParams(params, options);
+  };
 
   // Row actions
   const [opened, setOpened] = useState<{ action: AskedAction | 'rename'; account: Account } | null>(null);
@@ -376,38 +395,11 @@ export function C10MemberList() {
   const [rowFailure, setRowFailure] = useState<Failure | null>(null);
   const sending = useRef(false);
 
-  const toFirstPage = () => {
-    if (page === 1) return;
-    setParams(
-      (params) => {
-        params.delete('page');
-        return params;
-      },
-      { replace: true },
-    );
-  };
-  const toFirstPageRef = useRef(toFirstPage);
-  useLayoutEffect(() => {
-    toFirstPageRef.current = toFirstPage;
-  });
-
-  useEffect(() => {
-    const next = query.trim();
-    if (next === q) return undefined;
-    const timer = setTimeout(() => {
-      setQ(next);
-      toFirstPageRef.current();
-    }, SEARCH_DELAY_MS);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [query, q]);
-
   const load = useLoad(
     async (): Promise<Result<ListData>> => {
       const filters = {
-        ...(role === '' ? {} : { role: role as Role }),
-        ...(status === '' ? {} : { status: status as Account['status'] }),
+        ...(role === '' ? {} : { role }),
+        ...(status === '' ? {} : { status }),
         ...(q === '' ? {} : { q }),
       };
       const [accounts, system, invitations] = await Promise.all([
@@ -580,11 +572,7 @@ export function C10MemberList() {
   ];
 
   const clearFilters = () => {
-    setRole('');
-    setStatus('');
-    setQuery('');
-    setQ('');
-    toFirstPage();
+    setFilters({ role: '', status: '', q: '' });
     // The button goes away with the empty state.
     searchBox.current?.focus();
   };
@@ -614,8 +602,7 @@ export function C10MemberList() {
           options={ROLE_OPTIONS}
           value={role}
           onChange={(value) => {
-            setRole(value);
-            toFirstPage();
+            setFilters({ role: value, status, q });
           }}
         />
         <Select
@@ -624,11 +611,19 @@ export function C10MemberList() {
           options={STATUS_OPTIONS}
           value={status}
           onChange={(value) => {
-            setStatus(value);
-            toFirstPage();
+            setFilters({ role, status: value, q });
           }}
         />
-        <TextField ref={searchBox} label="이름·이메일 검색" type="search" value={query} onChange={setQuery} maxLength={100} spellCheck={false} />
+        <SearchField
+          ref={searchBox}
+          label="이름·이메일 검색"
+          value={q}
+          onSearch={(value) => {
+            const next = value.trim();
+            // Typing replaces the entry: 뒤로 가기 does not walk through every pause.
+            if (next !== q) setFilters({ role, status, q: next }, { replace: true });
+          }}
+        />
       </div>
       {load.status === 'failed' && <LoadFailed onRetry={reload} />}
       <ActionFailure failure={rowFailure} />

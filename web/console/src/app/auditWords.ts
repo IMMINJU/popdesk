@@ -122,6 +122,7 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
   member: '소속',
   manager: '담당자',
   assigned: '배정',
+  clearedIssues: '비운 담당',
   file: '파일',
   format: '형식',
   count: '건수',
@@ -211,6 +212,8 @@ function valueWord(action: string, field: string, value: unknown): string {
   }
   const text = typeof value === 'string' ? value : JSON.stringify(value);
   if (TIME_FIELDS.has(field)) return timeWord(value) ?? text;
+  // The open issues a 배정 빼기 or 계정 정지 cleared the assignee of (S3-AC-72).
+  if (field === 'clearedIssues' && typeof value === 'number') return `${text}건`;
   if (field === 'role') return word(ROLE_WORDS, text);
   // 정지 is an account's word and 멈춤 a company's for the same stored name.
   if (field === 'status') return word(action.startsWith('COMPANY_') ? PROJECT_STATUS_WORDS : ACCOUNT_STATUS_WORDS, text);
