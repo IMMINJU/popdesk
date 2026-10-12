@@ -11,7 +11,7 @@ import org.jspecify.annotations.Nullable;
  */
 public interface WebhookQueue {
 
-    /** Whether a webhook is configured ({@code NOTIFY_WEBHOOK_URL}). */
+    /** Whether the webhook is sent: {@code NOTIFY_WEBHOOK_URL} is set and this is no sandbox. */
     boolean enabled();
 
     /**

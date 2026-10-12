@@ -175,6 +175,26 @@ final class MailText {
         return value.replaceAll("[\\p{Cntrl}\\u0085\\u2028\\u2029]+", " ");
     }
 
+    /**
+     * The test email an admin sends to check the SMTP settings (S4B-AC-28): the console's address and
+     * the time it was sent, and nothing about anyone.
+     *
+     * @param consoleLink the console's address, without a path
+     * @param sentAt the time as text, with its time zone
+     */
+    static Message test(String locale, String consoleLink, String sentAt) {
+        if (korean(locale)) {
+            return new Message("popdesk 시험 메일",
+                    "popdesk의 메일 보내기 설정을 확인하는 시험 메일입니다.\n\n"
+                            + "콘솔: " + consoleLink + "\n"
+                            + "보낸 시각: " + sentAt + "\n");
+        }
+        return new Message("popdesk test email",
+                "This is a test email to check the email settings of popdesk.\n\n"
+                        + "Console: " + consoleLink + "\n"
+                        + "Sent: " + sentAt + "\n");
+    }
+
     static boolean korean(String locale) {
         return "ko".equalsIgnoreCase(locale);
     }

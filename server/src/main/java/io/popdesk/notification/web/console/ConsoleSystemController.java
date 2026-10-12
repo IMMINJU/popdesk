@@ -1,9 +1,12 @@
 package io.popdesk.notification.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.notification.ops.CleanupJobs;
 import io.popdesk.notification.outbox.DeliveryStatus;
 import io.popdesk.notification.outbox.OutboxRepository.FailedRow;
+import io.popdesk.notification.outbox.Resend;
+import io.popdesk.notification.outbox.TestMail;
+import io.popdesk.notification.web.Caller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -12,7 +15,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,9 +30,15 @@ import org.springframework.web.bind.annotation.RestController;
 class ConsoleSystemController {
 
     private final DeliveryStatus status;
+    private final CleanupJobs cleanupJobs;
+    private final Resend resend;
+    private final TestMail testMail;
 
-    ConsoleSystemController(DeliveryStatus status) {
+    ConsoleSystemController(DeliveryStatus status, CleanupJobs cleanupJobs, Resend resend, TestMail testMail) {
         this.status = status;
+        this.cleanupJobs = cleanupJobs;
+        this.resend = resend;
+        this.testMail = testMail;
     }
 
     @Operation(operationId = "getSystemStatus", summary = "Outgoing channels, the sandbox, and cleanup jobs",
@@ -46,9 +54,9 @@ class ConsoleSystemController {
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: admins only.")
     @GetMapping("/status")
     SystemStatus getSystemStatus() {
-        // Slice 4b: the sandbox and the cleanup jobs are in the contract, not read yet.
         return new SystemStatus(channel(status.mail()), channel(status.webhook()), channel(status.auditForward()),
-                false, false, List.of());
+                status.sandbox(), status.sandboxMailToSet(), cleanupJobs.list().stream()
+                        .map(job -> new CleanupJobStatus(job.name(), utc(job.lastRunAt()), job.deleted())).toList());
     }
 
     @Operation(operationId = "listFailedDeliveries", summary = "Outbox rows that stopped retrying",
@@ -82,7 +90,7 @@ class ConsoleSystemController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void resendFailedDelivery(
             @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String id) {
-        throw new NotImplementedException();
+        resend.resend(Caller.accountId(), id);
     }
 
     @Operation(operationId = "sendTestMail", summary = "Send a test email to the caller",
@@ -101,7 +109,8 @@ class ConsoleSystemController {
             + "(S4B-AC-26). Counted before the channel is checked.")
     @PostMapping("/test-mail")
     TestMailResult sendTestMail() {
-        throw new NotImplementedException();
+        TestMail.Result result = testMail.send(Caller.accountId());
+        return new TestMailResult(result.ok(), result.errorKind(), result.serverReply());
     }
 
     private static ChannelStatus channel(DeliveryStatus.Channel c) {

@@ -88,6 +88,12 @@ public class ApiException extends RuntimeException {
         return e;
     }
 
+    /** 400 {@code CHANNEL_DISABLED}: the outgoing channel is off, so nothing was sent or queued (S4B-AC-17). */
+    public static ApiException channelDisabled() {
+        return new ApiException(HttpStatus.BAD_REQUEST, ApiErrors.CHANNEL_DISABLED,
+                ApiErrors.CHANNEL_DISABLED_MESSAGE);
+    }
+
     /** 409 for a state that does not allow the change. */
     public static ApiException conflict(String code, String message) {
         return new ApiException(HttpStatus.CONFLICT, code, message);

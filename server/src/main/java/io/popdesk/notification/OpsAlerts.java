@@ -8,8 +8,8 @@ package io.popdesk.notification;
  * while it stays raised, the admins get one more item every 24 hours of the app clock. Once resolved,
  * the next raise gives items again at once.
  *
- * <p>Notification raises and resolves {@link Kind#DELIVERY_FAILED} itself. The module that knows the
- * condition of another kind raises it and resolves it.
+ * <p>Notification raises and resolves {@link Kind#DELIVERY_FAILED} and the three {@code _STALLED} kinds
+ * itself. The module that knows the condition of another kind raises it and resolves it.
  */
 public interface OpsAlerts {
 
@@ -18,7 +18,21 @@ public interface OpsAlerts {
         /** An outbox row became {@code failed}; resolved when no failed row is left. */
         DELIVERY_FAILED,
         /** Attachments are over 80% of {@code POPDESK_ATTACHMENT_QUOTA}; resolved when they are back under. */
-        ATTACHMENT_QUOTA_WARNING
+        ATTACHMENT_QUOTA_WARNING,
+        /**
+         * Sending email has only failed for over an hour (S4B-AC-29): a row has waited that long since
+         * its first failure and nothing went out meanwhile. Resolved when an email goes out.
+         */
+        MAIL_STALLED,
+        /** As {@link #MAIL_STALLED}, for the webhook. */
+        WEBHOOK_STALLED,
+        /** As {@link #MAIL_STALLED}, for the outside copy of the audit log. */
+        AUDIT_FORWARD_STALLED;
+
+        /** The kind for a channel that only fails; {@code channel} as the outbox names it. */
+        public static Kind stalled(String channel) {
+            return valueOf(channel + "_STALLED");
+        }
     }
 
     /** Raises the alert; the admins get an item now unless it is raised already. Joins the caller's transaction. */

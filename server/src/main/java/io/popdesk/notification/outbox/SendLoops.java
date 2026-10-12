@@ -120,6 +120,12 @@ class SendLoops implements SmartLifecycle {
                         delivery.dropped(row);
                         sender.forget(row.id());
                     }
+                    case STOPPED -> {
+                        delivery.stopped(row, attempt.errorKind());
+                        log.warn("Outbox row {} ({}) was not sent: {}. It is left as failed.", row.id(),
+                                sender.channel(), attempt.errorKind());
+                        sender.forget(row.id());
+                    }
                     case FAILED -> {
                         boolean givenUp = delivery.failed(row, attempt.errorKind());
                         log.warn("Sending outbox row {} ({}) failed: {}. {}", row.id(), sender.channel(),

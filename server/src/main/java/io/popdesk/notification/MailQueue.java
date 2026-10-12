@@ -11,7 +11,10 @@ import org.jspecify.annotations.Nullable;
  */
 public interface MailQueue {
 
-    /** Whether outgoing email is configured ({@code SMTP_HOST}). Without it popdesk logs a line per email. */
+    /**
+     * Whether email is sent: {@code SMTP_HOST} is set and this is no sandbox without an address. When it
+     * is not, popdesk logs a line per email.
+     */
     boolean enabled();
 
     /**

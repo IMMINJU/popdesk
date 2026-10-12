@@ -21,7 +21,6 @@ public final class AuditCopyRows {
 
     public static final String URL_KEY = "AUDIT_FORWARD_URL";
     public static final String TOKEN_KEY = "AUDIT_FORWARD_TOKEN";
-    public static final String SANDBOX_KEY = "POPDESK_SANDBOX";
 
     /** The one kind of row this channel has. */
     static final String KIND = "AUDIT_ENTRY";
@@ -29,15 +28,14 @@ public final class AuditCopyRows {
     private AuditCopyRows() {}
 
     /**
-     * Whether the copy is on: {@code AUDIT_FORWARD_URL} has a value and {@code POPDESK_SANDBOX} is not
-     * {@code true} (D-46: a copy of a real installation must not post to the real receiver).
+     * Whether the copy is on: {@code AUDIT_FORWARD_URL} has a value and this is no {@link Sandbox}
+     * (D-46: a copy of a real installation must not post to the real receiver).
      *
      * @param setting reads a setting by its key; null when it is not set
      */
     public static boolean enabled(UnaryOperator<String> setting) {
         String url = setting.apply(URL_KEY);
-        String sandbox = setting.apply(SANDBOX_KEY);
-        return url != null && !url.isBlank() && (sandbox == null || !sandbox.strip().equalsIgnoreCase("true"));
+        return url != null && !url.isBlank() && !Sandbox.on(setting);
     }
 
     /**

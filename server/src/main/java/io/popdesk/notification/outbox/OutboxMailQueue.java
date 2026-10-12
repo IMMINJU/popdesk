@@ -6,7 +6,6 @@ import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,12 +19,11 @@ class OutboxMailQueue implements MailQueue {
     private final Clock clock;
     private final boolean enabled;
 
-    OutboxMailQueue(OutboxRepository repository, Wakeups wakeups, Clock clock, Environment environment) {
+    OutboxMailQueue(OutboxRepository repository, Wakeups wakeups, Clock clock, SmtpMail smtp) {
         this.repository = repository;
         this.wakeups = wakeups;
         this.clock = clock;
-        String host = environment.getProperty("SMTP_HOST");
-        this.enabled = host != null && !host.isBlank();
+        this.enabled = smtp.enabled();
     }
 
     @Override

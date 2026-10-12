@@ -44,11 +44,15 @@ class OutboxDelivery {
         return outbox.lockNextDue(channel, now());
     }
 
-    /** The row was sent: it goes, and the channel's last success is now. */
+    /**
+     * The row was sent: it goes, the channel's last success is now, and an alert that the channel only
+     * fails is resolved (S4B-AC-29).
+     */
     @Transactional
     public void sent(OutboxRow row) {
         outbox.delete(row.id());
         outbox.updateLastSuccess(row.channel(), now());
+        alerts.resolve(OpsAlerts.Kind.stalled(row.channel()));
         metrics.sent(row.channel());
     }
 
@@ -77,6 +81,19 @@ class OutboxDelivery {
         }
         outbox.updateRetry(row.id(), attempts, firstFailedAt, now.plus(wait(attempts)), errorKind);
         return false;
+    }
+
+    /**
+     * The row was stopped before any attempt (the mail limit, S4B-AC-10): it is {@code failed} at once,
+     * as a row that was given up, and raises {@link OpsAlerts.Kind#DELIVERY_FAILED} (S4B-AC-12). Sending
+     * it again later is a person's decision.
+     */
+    @Transactional
+    public void stopped(OutboxRow row, String errorKind) {
+        Instant now = now();
+        outbox.updateFailed(row.id(), row.attempts(), row.firstFailedAt() == null ? now : row.firstFailedAt(), now,
+                errorKind);
+        alerts.raise(OpsAlerts.Kind.DELIVERY_FAILED);
     }
 
     /** The wait after the {@code attempts}-th failure: 1, 2, 4 ... seconds, at most 10 minutes. */

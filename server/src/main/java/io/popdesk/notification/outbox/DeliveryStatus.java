@@ -2,19 +2,19 @@ package io.popdesk.notification.outbox;
 
 import io.popdesk.PageRequest;
 import io.popdesk.Paged;
-import io.popdesk.notification.AuditCopyRows;
+import io.popdesk.notification.Sandbox;
 import io.popdesk.notification.outbox.OutboxRepository.Count;
 import io.popdesk.notification.outbox.OutboxRepository.FailedRow;
 import java.time.Instant;
 import java.util.List;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * What the system status shows of each channel (S0-AC-81, S1B-AC-33, OPS-3 in part): whether it is
- * configured, its last success, and its queued and failed rows. Never the SMTP password, the webhook
- * URL, or the address or token of the audit log's outside copy.
+ * What the system status shows of each channel (S0-AC-81, S1B-AC-33, OPS-3 in part): whether it is on
+ * ({@link Channels}), its last success, and its queued and failed rows; and of the sandbox, whether
+ * this is one and whether it has an address (S4B-AC-08). Never the SMTP password, the webhook URL, the
+ * address or token of the audit log's outside copy, or the sandbox address.
  */
 @Service
 public class DeliveryStatus {
@@ -23,27 +23,39 @@ public class DeliveryStatus {
     public record Channel(boolean enabled, Instant lastSuccessAt, long queued, long failed) {}
 
     private final OutboxRepository outbox;
-    private final Environment environment;
+    private final Channels channels;
+    private final Sandbox sandbox;
 
-    DeliveryStatus(OutboxRepository outbox, Environment environment) {
+    DeliveryStatus(OutboxRepository outbox, Channels channels, Sandbox sandbox) {
         this.outbox = outbox;
-        this.environment = environment;
+        this.channels = channels;
+        this.sandbox = sandbox;
     }
 
     @Transactional(readOnly = true)
     public Channel mail() {
-        return channel(OutboxRepository.MAIL, "SMTP_HOST");
+        return channel(OutboxRepository.MAIL);
     }
 
     @Transactional(readOnly = true)
     public Channel webhook() {
-        return channel(OutboxRepository.WEBHOOK, "NOTIFY_WEBHOOK_URL");
+        return channel(OutboxRepository.WEBHOOK);
     }
 
     /** The outside copy of the audit log; off in a sandbox although its address is set. */
     @Transactional(readOnly = true)
     public Channel auditForward() {
-        return channel(OutboxRepository.AUDIT_FORWARD, AuditCopyRows.enabled(environment::getProperty));
+        return channel(OutboxRepository.AUDIT_FORWARD);
+    }
+
+    /** Whether this is a sandbox ({@code POPDESK_SANDBOX=true}). */
+    public boolean sandbox() {
+        return sandbox.on();
+    }
+
+    /** Whether a sandbox has an address its email goes to. The address itself is never given out. */
+    public boolean sandboxMailToSet() {
+        return sandbox.mailTo().isPresent();
     }
 
     /** {@code failed} rows of every channel, the latest failure first. */
@@ -53,14 +65,9 @@ public class DeliveryStatus {
         return request.of(outbox.listFailed(request.offset(), request.size()), outbox.countFailed());
     }
 
-    private Channel channel(String channel, String key) {
-        String setting = environment.getProperty(key);
-        return channel(channel, setting != null && !setting.isBlank());
-    }
-
-    private Channel channel(String channel, boolean enabled) {
+    private Channel channel(String channel) {
         List<Count> counts = outbox.counts();
-        return new Channel(enabled, outbox.lastSuccess(channel).orElse(null),
+        return new Channel(channels.enabled(channel), outbox.lastSuccess(channel).orElse(null),
                 rows(counts, channel, OutboxRepository.QUEUED), rows(counts, channel, OutboxRepository.FAILED));
     }
 

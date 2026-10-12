@@ -27,8 +27,10 @@ import org.springframework.stereotype.Component;
  * (MAIL-5, S0-AC-66), and drops the email when it is no longer to be sent (MAIL-4): the account is not
  * {@code ACTIVE} ({@code INVITED} for an invitation), or may no longer see the issue (S0-AC-69,
  * S4-AC-54), the comment it is about was deleted (S4-AC-55), a mention was taken out of the comment
- * (S4-AC-56), or the recipient of a membership request is no admin any more. Without SMTP it writes one
- * log line, the address masked, in place of the email (S0-AC-73).
+ * (S4-AC-56), or the recipient of a membership request is no admin any more. Without SMTP, and in a
+ * sandbox without an address, it writes one log line, the address masked, in place of the email
+ * (S0-AC-73, S4B-AC-03). All of that is decided for the account the email is for; where a sandbox sends
+ * the email instead is {@link SmtpMail}'s business (S4B-AC-05).
  *
  * <p>The link to an issue is that of the recipient's app: the portal for a customer, the console for
  * staff (MAIL-1).
@@ -95,7 +97,8 @@ class MailSender implements Sender {
             return Attempt.dropped();
         }
         if (!smtp.enabled()) {
-            log.info("No SMTP server is set up, so the {} email to {} was not sent.", kind, masked(recipient.email()));
+            log.info("Email is off (no SMTP server, or a sandbox without an address), so the {} email to {} was "
+                    + "not sent.", kind, masked(recipient.email()));
             return Attempt.dropped();
         }
         String locale = recipient.locale();
@@ -118,7 +121,7 @@ class MailSender implements Sender {
         if (message.isEmpty()) {
             return Attempt.dropped();
         }
-        return smtp.send(recipient.email(), message.get());
+        return smtp.send(row.recipientAccountId(), recipient.email(), message.get());
     }
 
     @Override

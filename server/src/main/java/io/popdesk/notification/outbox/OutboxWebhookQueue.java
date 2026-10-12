@@ -1,5 +1,6 @@
 package io.popdesk.notification.outbox;
 
+import io.popdesk.notification.Sandbox;
 import io.popdesk.notification.WebhookKind;
 import io.popdesk.notification.WebhookQueue;
 import java.time.Clock;
@@ -11,7 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/** {@link WebhookQueue} on the {@code outbox} table. Sending is the send loop's work. */
+/**
+ * {@link WebhookQueue} on the {@code outbox} table. Sending is the send loop's work. A sandbox queues
+ * nothing although the address is set (S4B-AC-04).
+ */
 @Service
 class OutboxWebhookQueue implements WebhookQueue {
 
@@ -20,12 +24,12 @@ class OutboxWebhookQueue implements WebhookQueue {
     private final Clock clock;
     private final boolean enabled;
 
-    OutboxWebhookQueue(OutboxRepository repository, Wakeups wakeups, Clock clock, Environment environment) {
+    OutboxWebhookQueue(OutboxRepository repository, Wakeups wakeups, Clock clock, Environment environment,
+            Sandbox sandbox) {
         this.repository = repository;
         this.wakeups = wakeups;
         this.clock = clock;
-        String url = environment.getProperty("NOTIFY_WEBHOOK_URL");
-        this.enabled = url != null && !url.isBlank();
+        this.enabled = Channels.webhookOn(environment, sandbox);
     }
 
     @Override

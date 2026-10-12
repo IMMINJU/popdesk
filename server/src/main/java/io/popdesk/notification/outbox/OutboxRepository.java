@@ -20,6 +20,10 @@ public class OutboxRepository {
 
     /** The outside copy of the audit log. Its rows are queued by {@link AuditCopyRows}, not here. */
     public static final String AUDIT_FORWARD = AuditCopyRows.CHANNEL;
+
+    /** Every channel. */
+    public static final List<String> CHANNELS = List.of(MAIL, WEBHOOK, AUDIT_FORWARD);
+
     static final String QUEUED = "queued";
     static final String FAILED = "failed";
 
@@ -30,6 +34,9 @@ public class OutboxRepository {
     /** A {@code failed} row for the system status (S0-AC-81, S1B-AC-33). */
     public record FailedRow(long id, String channel, Instant createdAt, String lastErrorKind, Long recipientAccountId,
             Long auditId) {}
+
+    /** What sending a row again needs to know of it. */
+    record Kept(String channel, String kind, String state) {}
 
     /** Rows of one channel and state. */
     public record Count(String channel, String state, long rows) {}
@@ -96,6 +103,30 @@ public class OutboxRepository {
                         + "where id = ?")
                 .params(FAILED, attempts, Timestamp.from(firstFailedAt), Timestamp.from(failedAt), errorKind, id)
                 .update();
+    }
+
+    /** The row's channel, kind and state; empty when there is no such row. */
+    Optional<Kept> findKept(long id) {
+        return jdbc.sql("select channel, kind, state from outbox where id = ?").param(id)
+                .query((rs, n) -> new Kept(rs.getString("channel"), rs.getString("kind"), rs.getString("state")))
+                .optional();
+    }
+
+    /**
+     * Puts a {@code failed} row back in the queue as a row that never failed, due now (S4B-AC-14); false
+     * when the row is not {@code failed} any more, or gone.
+     */
+    boolean updateQueuedAgain(long id, Instant now) {
+        return jdbc.sql("update outbox set state = ?, attempts = 0, first_failed_at = null, failed_at = null, "
+                        + "last_error_kind = null, next_attempt_at = ? where id = ? and state = ?")
+                .params(QUEUED, Timestamp.from(now), id, FAILED).update() == 1;
+    }
+
+    /** Whether the channel has a queued row whose first failure was before {@code before} (S4B-AC-29). */
+    public boolean anyFailingSince(String channel, Instant before) {
+        return jdbc.sql("select exists (select 1 from outbox where channel = ? and state = ? "
+                        + "and first_failed_at < ?)")
+                .params(channel, QUEUED, Timestamp.from(before)).query(Boolean.class).single();
     }
 
     /** Deletes the {@code failed} rows that failed at or before {@code cutoff}; returns how many. */

@@ -30,6 +30,8 @@ public final class ApiErrors {
     public static final String INTERNAL_ERROR_MESSAGE = "Something went wrong on the server. Try again later.";
     public static final String SERVER_BUSY = "SERVER_BUSY";
     public static final String SERVER_BUSY_MESSAGE = "The server is busy. Try again later.";
+    public static final String CHANNEL_DISABLED = "CHANNEL_DISABLED";
+    public static final String CHANNEL_DISABLED_MESSAGE = "This channel is not set up, or the sandbox turned it off.";
     public static final String NOT_IMPLEMENTED = "NOT_IMPLEMENTED";
     public static final String NOT_IMPLEMENTED_MESSAGE = "Not built yet.";
 

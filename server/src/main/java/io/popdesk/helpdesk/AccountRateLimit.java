@@ -40,7 +40,9 @@ public class AccountRateLimit {
          * A list asked with a search text: the issue lists, the account list, and the list of customers
          * staff can file for, together (S3-AC-15). A list without one is not counted.
          */
-        SEARCH(60);
+        SEARCH(60),
+        /** An admin's test email (S4B-AC-26); each one opens an SMTP connection within the request. */
+        TEST_MAIL(5);
 
         final int limit;
 

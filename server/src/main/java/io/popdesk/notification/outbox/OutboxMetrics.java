@@ -20,8 +20,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class OutboxMetrics {
 
-    private static final List<String> CHANNELS = List.of(OutboxRepository.MAIL, OutboxRepository.WEBHOOK,
-            OutboxRepository.AUDIT_FORWARD);
+    private static final List<String> CHANNELS = OutboxRepository.CHANNELS;
 
     private final OutboxRepository outbox;
     private final Map<String, AtomicLong> queued;
