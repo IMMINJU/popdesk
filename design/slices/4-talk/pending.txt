@@ -6,7 +6,6 @@
 server io/popdesk/project/NoStoreTest.java
 server io/popdesk/manager/MembershipRequestMailTest.java
 server io/popdesk/issue/MentionTest.java
-web src/app/layout.inbox.test.tsx
 server io/popdesk/inbox/InboxRecipientsTest.java
 server io/popdesk/inbox/InboxRulesTest.java
 server io/popdesk/inbox/InboxReadTest.java
@@ -16,8 +15,6 @@ server io/popdesk/notify/TalkMailTest.java
 server io/popdesk/notify/KoreanTalkMailTest.java
 server io/popdesk/notify/NoSmtpTalkMailLogTest.java
 server io/popdesk/notify/TalkWebhookTest.java
-web src/screens/P7Inbox.test.tsx
-web src/screens/P5IssueDetail.comments4.test.tsx
 server io/popdesk/boundary/TalkBoundaryTest.java
 server io/popdesk/boundary/TalkStaffIdentityTest.java
 server io/popdesk/deploy/TalkUpgradeTest.java
