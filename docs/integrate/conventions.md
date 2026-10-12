@@ -101,7 +101,8 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 400 | `MEMBER_IS_MANAGER` | A customer manager tries to remove another manager of the company. An admin does that |
 | 400 | `INVITATION_NOT_RESENDABLE` | A customer manager tries to send again an invitation that cannot be sent again from the portal. One code whatever the reason |
 | 400 | `NOT_A_CUSTOMER` | The account of a membership request is an agent or an admin, so the request cannot be approved. It can be rejected |
-| 400 | `ISSUE_CLOSED` | The issue is `CLOSED`: no comments, attachments, or edits. Also when a customer closes an issue that is closed already. A status change by staff on a closed issue is `INVALID_TRANSITION` |
+| 400 | `ISSUE_CLOSED` | The issue is `CLOSED`: no comments, attachments, or edits. "No comments" covers adding a comment and editing one; deleting a comment still works. Also when a customer closes an issue that is closed already. A status change by staff on a closed issue is `INVALID_TRANSITION` |
+| 400 | `COMMENT_DELETED` | An edit of a comment that is deleted. Nothing changed |
 | 400 | `INVALID_TRANSITION` | A status change by staff: the issue cannot go from its current status to the one sent, or has that status already. Nothing changed |
 | 400 | `NOT_REOPENABLE` | The issue is neither `RESOLVED` nor `CLOSED`, or it was closed 14 days ago or longer, so it cannot be reopened |
 | 400 | `FILE_EMPTY` | The uploaded file has 0 bytes |
@@ -141,6 +142,7 @@ Codes in `fields[].code`:
 | `INVALID_FORMAT` | Does not match the expected form, for example an email address or a company code |
 | `UNKNOWN_VALUE` | Not one of the allowed values, or names something that does not exist or the caller cannot choose |
 | `OUT_OF_RANGE` | A number outside its range, for example `page` below 1 or `size` above 100 |
+| `TOO_MANY` | A list has more items than it may, for example over 10 mentions in a comment |
 | `FROM_AFTER_TO` | The start of a period is after its end: `from` after `to` in the audit log filters. Reported on `from` |
 | `NOT_ALLOWED` | The field must be left out here, for example companies when inviting staff |
 | `SAME_AS_EMAIL` | The password is the same as the account's email |
@@ -245,6 +247,22 @@ Issue content and comments are stored as the Markdown the author wrote. Clients 
 
 Some deletions keep the row and leave a trace: the content fields are cleared, and the row records `deleted`, the time of deletion, and who deleted it. Lists show the item in its place as "Deleted".
 
+- An attachment: `fileName` becomes `null`.
+- A comment: `content` becomes an empty string, and the comment's attachments are deleted with it. The comment stays in its place in the list and is counted. The portal gives `deleted` and `deletedAt` but not who deleted it; the console gives `deletedBy` too.
+
+## Notification inbox (INBOX-3)
+
+Each app has the inbox of the signed-in account: `/api/portal/notifications` and `/api/console/notifications`, with the same four requests (the list, `unread-count`, `{id}/read`, `read-all`).
+
+- A caller gets only their own items, newest first, paged (`COM-4`). Nobody else gets them: not a colleague of the same company, not another agent who sees the same issue.
+- An item about an issue is listed only while the caller can see that issue. When the caller stops seeing the issue (an agent taken off the company, a customer who left it), the item is left out; it is not deleted, and it is back when the caller can see the issue again. The issue's title is read when the list is, so it is the current title.
+- The unread count follows the same rule: the items the list would show that have no `readAt`.
+- Marking an item read sets `readAt` once; marking it again is 204 and keeps the first time. An item of another account, or one that does not exist, is 404.
+- `read-all` marks every unread item of the caller read, also those left out of the list now, so they do not come back as unread later.
+- Deleting a comment deletes the items about that comment.
+- The portal's items have their own type and their own kinds, only those a customer gets. What an agent or an admin did has the actor `SUPPORT_TEAM`, without a name, an email, or an account ID (D-49). The console gives the actor's account ID, name, and role.
+- Items about no issue (operational alerts, membership requests) go to admins only and have `null` for the issue, the comment, and the actor.
+
 ## Rate limits (COM-8)
 
 Limits are per account over a 60-second window:
@@ -252,7 +270,7 @@ Limits are per account over a 60-second window:
 | Action | Limit |
 |---|---|
 | Create an issue | 10 |
-| Add a comment | 30 |
+| Add or edit a comment | 30 (both count together; deleting a comment is not counted) |
 | Upload an attachment | 30 (each file of a new issue counts as one; a new issue whose files do not all fit is refused whole) |
 | Upload a profile photo | 10 |
 | List with a search term | 60 (the issue lists, the account list, and the list of customers staff can file for count together). A list without `q` is not counted, whatever other filters it has |

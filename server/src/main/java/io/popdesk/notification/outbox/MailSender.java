@@ -90,6 +90,9 @@ class MailSender implements Sender {
                     address.origin(App.PORTAL) + "/issues/" + issue.key()));
             case ISSUE_FILED_ON_BEHALF -> Optional.of(MailText.filedOnBehalf(recipient.locale(), issue,
                     address.origin(App.PORTAL) + "/issues/" + issue.key()));
+            // Kinds of slice 4: in the contract, not sent yet. Nothing queues them.
+            case ISSUE_RESOLVED, ISSUE_CLOSED, ISSUE_REOPENED, MENTIONED, ASSIGNED, MEMBERSHIP_REQUESTED ->
+                    throw new IllegalStateException("No email for " + kind + " yet.");
         };
         if (message.isEmpty()) {
             return Attempt.dropped();

@@ -2,6 +2,7 @@ package io.popdesk.helpdesk.web.console;
 
 import io.popdesk.ApiError;
 import io.popdesk.ApiException;
+import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.IssueStatus;
@@ -285,5 +286,23 @@ class ConsoleIssueController {
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
         return issues.history(CurrentAccount.get().viewer(), key, page, size).map(ConsoleIssueController::entry);
+    }
+
+    @Operation(operationId = "listMentionCandidates", summary = "Who can be mentioned in a comment on the issue",
+            description = "Every `ACTIVE` admin, every `ACTIVE` agent assigned to the issue's company, and, for a "
+                    + "public comment, the reporter if `ACTIVE` and still able to see the issue; never the caller "
+                    + "(S4-AC-22, MNT-1). In name order, all at once, without pages: the list fills a picker. No "
+                    + "email addresses.")
+    @ApiResponse(responseCode = "200", description = "The candidates.")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `internal` neither `true` nor `false` "
+            + "(`INVALID_FORMAT`).")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
+    @GetMapping("/{key}/mention-candidates")
+    MentionCandidates listMentionCandidates(
+            @PathVariable String key,
+            @Parameter(description = "`true`: for an internal comment, so without the reporter. Left out or "
+                    + "`false`: for a public comment.") @RequestParam(defaultValue = "false") boolean internal) {
+        throw new NotImplementedException();
     }
 }

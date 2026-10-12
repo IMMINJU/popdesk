@@ -7,7 +7,14 @@ import java.time.OffsetDateTime;
 public record Notification(
         long id,
         NotificationKind kind,
-        @Schema(description = "The company a `MEMBERSHIP_REQUESTED` item is about; null for the other kinds.",
-                nullable = true) String companyCode,
+        @Schema(description = "The issue the item is about, as it is now; null for `DELIVERY_FAILED`, "
+                + "`ATTACHMENT_QUOTA_WARNING`, and `MEMBERSHIP_REQUESTED` (S4-AC-40).", nullable = true)
+                NotificationIssue issue,
+        @Schema(description = "The company of the issue, or the company a `MEMBERSHIP_REQUESTED` item is about; "
+                + "null for the other kinds.", nullable = true) String companyCode,
+        @Schema(description = "The comment the item is about; null when it is about no comment.", nullable = true)
+                Long commentId,
+        @Schema(description = "Who did it; null for an item about no issue.", nullable = true)
+                NotificationActor actor,
         OffsetDateTime createdAt,
         @Schema(description = "When the caller marked it read.", nullable = true) OffsetDateTime readAt) {}

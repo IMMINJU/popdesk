@@ -1,5 +1,6 @@
 package io.popdesk.notification.web.console;
 
+import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.notification.ops.Inbox;
 import io.popdesk.notification.ops.OpsRepository.InboxRow;
@@ -31,7 +32,8 @@ class ConsoleNotificationController {
     }
 
     @Operation(operationId = "listNotifications", summary = "The caller's inbox",
-            description = "Own items only, newest first (S0-AC-80, INBOX-3).")
+            description = "Own items only, newest first (S0-AC-80, INBOX-3). An item about an issue the caller "
+                    + "cannot see now is left out, and is back when the caller can see the issue again (S4-AC-42).")
     @ApiResponse(responseCode = "200", description = "One page.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
@@ -42,7 +44,8 @@ class ConsoleNotificationController {
         return inbox.list(Caller.accountId(), page, size).map(ConsoleNotificationController::notification);
     }
 
-    @Operation(operationId = "countUnreadNotifications", summary = "Unread items in the caller's inbox")
+    @Operation(operationId = "countUnreadNotifications", summary = "Unread items in the caller's inbox",
+            description = "Counts what `listNotifications` would list and the caller has not read (S4-AC-43).")
     @ApiResponse(responseCode = "200", description = "The count.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @GetMapping("/unread-count")
@@ -62,8 +65,20 @@ class ConsoleNotificationController {
         inbox.markRead(Caller.accountId(), id);
     }
 
+    @Operation(operationId = "markAllNotificationsRead", summary = "Mark every item read",
+            description = "Every unread item of the caller, those of issues the caller cannot see now included; "
+                    + "nobody else's (S4-AC-45). 204 too when nothing was unread.")
+    @ApiResponse(responseCode = "204", description = "Read.")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
+    @PostMapping("/read-all")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void markAllNotificationsRead() {
+        throw new NotImplementedException();
+    }
+
     private static Notification notification(InboxRow row) {
-        return new Notification(row.id(), NotificationKind.valueOf(row.kind()), row.companyCode(),
+        return new Notification(row.id(), NotificationKind.valueOf(row.kind()), null, row.companyCode(), null, null,
                 utc(row.createdAt()), utc(row.readAt()));
     }
 
