@@ -3,30 +3,13 @@
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
 # 서버 줄은 구현 탭마다 묶는다. 탭이 병합되면 그 묶음을 지운다.
-server io/popdesk/boundary/BoundaryListTest.java
-server io/popdesk/project/NoStoreTest.java
 server io/popdesk/issue/IssueFilterTest.java
 server io/popdesk/issue/PortalIssueFilterTest.java
 server io/popdesk/issue/IssueSearchTest.java
 server io/popdesk/issue/SearchRateLimitTest.java
-server io/popdesk/issue/CompanyReportersTest.java
 server io/popdesk/ops/IssueSearchLogTest.java
-server io/popdesk/issue/IssueAssigneeTest.java
-server io/popdesk/issue/OnBehalfFilingTest.java
 server io/popdesk/issue/IdempotencyKeyTest.java
-server io/popdesk/boundary/OnBehalfIdentityTest.java
 server io/popdesk/notify/OnBehalfMailTest.java
-server io/popdesk/notify/KoreanOnBehalfMailTest.java
-server io/popdesk/issue/IssueCloseReopenTest.java
-server io/popdesk/issue/IssueHistoryTest.java
-server io/popdesk/issue/ClearAssignmentsTest.java
-server io/popdesk/audit/ClearAssignmentsAuditTest.java
-server io/popdesk/notify/IssueWebhookTest.java
-server io/popdesk/notify/IssueWebhookSnapshotTest.java
-server io/popdesk/notify/KoreanIssueWebhookSnapshotTest.java
-server io/popdesk/notify/NoIssueWebhookTest.java
-server io/popdesk/boundary/IssueBoundaryTest.java
 server io/popdesk/deploy/IssueUpgradeTest.java
 server io/popdesk/deploy/RestoreForeignExtensionTest.java
-server io/popdesk/ops/CheckOrderTest.java
 server io/popdesk/deploy/IssueSampleTest.java
