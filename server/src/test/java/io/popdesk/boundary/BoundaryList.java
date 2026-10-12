@@ -38,6 +38,9 @@ final class BoundaryList {
     private static final String PHOTO = "boundary.PhotoBoundaryTest#";
     private static final String ADMIN_ONLY = "boundary.AgentCannotManageAccountsTest#";
     private static final String ISSUE_OF_B = "boundary.IssueBoundaryTest#";
+    private static final String TALK = "boundary.TalkBoundaryTest#";
+    private static final String TALK_STAFF = "boundary.TalkStaffIdentityTest#";
+    private static final String INBOX = "inbox.InboxReadTest#";
 
     static final List<Entry> ENTRIES = List.of(
             // Before sign-in, both hosts
@@ -150,11 +153,19 @@ final class BoundaryList {
                     BOUNDARY + "agentOfAGetsNoAttachmentOfB",
                     "attachment.AttachmentNotFoundTest#unassignedAgent"),
             tested("GET", "/api/console/notifications",
-                    "ops.OpsAlertTest#failedRowAlertsEveryAdmin"),
-            none("GET", "/api/console/notifications/unread-count",
-                    "counts the caller's own inbox; no input picks a target, and the only items of this slice are ops alerts, which hold no customer data"),
+                    "ops.OpsAlertTest#failedRowAlertsEveryAdmin",
+                    TALK + "inboxesOfCompanyAHoldNothingOfCompanyB",
+                    TALK + "agentTakenOffCompanyBKeepsOnlyTheItemsOfA",
+                    INBOX + "itemOfAnIssueOutOfScopeIsHiddenUntilItIsBack",
+                    INBOX + "anItemIsForOnePersonOnly"),
+            tested("GET", "/api/console/notifications/unread-count",
+                    TALK + "inboxesOfCompanyAHoldNothingOfCompanyB",
+                    TALK + "agentTakenOffCompanyBKeepsOnlyTheItemsOfA",
+                    INBOX + "itemOfAnIssueOutOfScopeIsHiddenUntilItIsBack"),
             tested("POST", "/api/console/notifications/{id}/read",
-                    "ops.OpsAlertTest#cannotReadOthersItem"),
+                    "ops.OpsAlertTest#cannotReadOthersItem",
+                    TALK + "readingAnItemOfCompanyBIsNotFound",
+                    INBOX + "readingAnotherPersonsItemIsNotFound"),
             none("GET", "/api/console/system/status",
                     "named by the criterion as unrelated to the boundary: system status (admins only is checked by ops.SystemStatusTest#agentForbidden)"),
             tested("GET", "/api/console/system/failed-deliveries",
@@ -300,5 +311,51 @@ final class BoundaryList {
                     "ops.CheckOrderTest#roleBeforeTargetAndInput"),
             tested("GET", "/api/console/accounts/{accountId}/open-assignments",
                     "issue.ClearAssignmentsTest#agentsCannotCount",
-                    "ops.CheckOrderTest#roleBeforeTargetAndInput"));
+                    "ops.CheckOrderTest#roleBeforeTargetAndInput"),
+
+            // Slice 4 (S4-AC-70): the 10 operations it adds. The inbox operations of the console that were
+            // there before (list, unread count, read one) carry items about issues from this slice on; their
+            // lines above name the tests of this slice too.
+            // Portal
+            tested("PATCH", ISSUE + "/comments/{id}",
+                    "issue.CommentNotFoundTest#hiddenOrMissingCommentIsNotFound",
+                    "issue.CommentEditTest#onlyTheAuthorEdits",
+                    "issue.CommentEditTest#reporterWhoLeftTheCompanyMayNotEditOrDelete",
+                    "ops.TalkCheckOrderTest#scopeBeforePermissionAndInput"),
+            tested("DELETE", ISSUE + "/comments/{id}",
+                    "issue.CommentNotFoundTest#hiddenOrMissingCommentIsNotFound",
+                    "issue.CommentDeleteTest#othersMayNotDelete",
+                    "issue.CommentDeleteTest#colleagueMayNotDeleteTheReportersComment",
+                    "issue.CommentEditTest#reporterWhoLeftTheCompanyMayNotEditOrDelete"),
+            tested("GET", "/api/portal/notifications",
+                    TALK + "inboxesOfCompanyAHoldNothingOfCompanyB",
+                    INBOX + "anItemIsForOnePersonOnly",
+                    INBOX + "customersGetNoStaffKinds",
+                    TALK_STAFF + "answersAndMailsOfOneIssueHoldNoStaff"),
+            tested("GET", "/api/portal/notifications/unread-count",
+                    TALK + "inboxesOfCompanyAHoldNothingOfCompanyB",
+                    INBOX + "anItemIsForOnePersonOnly"),
+            tested("POST", "/api/portal/notifications/{id}/read",
+                    TALK + "readingAnItemOfCompanyBIsNotFound",
+                    INBOX + "readingAnotherPersonsItemIsNotFound"),
+            tested("POST", "/api/portal/notifications/read-all",
+                    INBOX + "readingAllReadsOwnItemsOnly"),
+
+            // Console
+            tested("PATCH", STAFF_ISSUE + "/comments/{id}",
+                    "issue.CommentNotFoundTest#hiddenOrMissingCommentIsNotFound",
+                    TALK + "authorTakenOffTheCompanyFindsNoCommentOfTheirs",
+                    "issue.MentionTest#accountsThatCannotBeMentionedGetTheSame400",
+                    "ops.TalkCheckOrderTest#scopeBeforePermissionAndInput"),
+            tested("DELETE", STAFF_ISSUE + "/comments/{id}",
+                    "issue.CommentNotFoundTest#hiddenOrMissingCommentIsNotFound",
+                    TALK + "authorTakenOffTheCompanyFindsNoCommentOfTheirs",
+                    "issue.CommentDeleteTest#othersMayNotDelete"),
+            tested("GET", STAFF_ISSUE + "/mention-candidates",
+                    "issue.MentionCandidatesTest#agentWhoCannotSeeTheIssueGetsNotFound",
+                    "issue.MentionCandidatesTest#candidatesForPublicAndInternalComments",
+                    "ops.TalkCheckOrderTest#scopeBeforePermissionAndInput"),
+            tested("POST", "/api/console/notifications/read-all",
+                    INBOX + "readingAllReadsOwnItemsOnly",
+                    INBOX + "readingAllReadsHiddenItemsToo"));
 }

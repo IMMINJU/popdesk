@@ -156,6 +156,28 @@ class CommentDeleteTest extends BareAppTest {
         assertThat(before.path("deleted").asBoolean(true)).isFalse();
     }
 
+    @Test
+    @DisplayName("S4-AC-11 a colleague of the same company who sees the reporter's comment on a public issue gets 403 FORBIDDEN on deleting it, and the comment stays")
+    void colleagueMayNotDeleteTheReportersComment() {
+        World w = flow.world();
+        Issue issue = fixtures.fileIssue(w.reporter(), w.code());
+        Comment target = fixtures.comment(w.reporter(), issue.key(), Unique.text("Stays"));
+        // The reporter can delete a comment of theirs, so the 403 below is about the caller.
+        TalkFlow.delete(w.reporter(), issue.key(),
+                fixtures.comment(w.reporter(), issue.key(), Unique.text("Goes")).id());
+        assertThat(TalkFlow.find(w.colleague(), issue.key(), target.id())).as("the comment as the colleague sees it")
+                .isNotNull();
+        JsonNode before = TalkFlow.comment(w.admin(), issue.key(), target.id());
+
+        ApiResponse refused = TalkFlow.deleteRequest(w.colleague(), issue.key(), target.id()).send();
+
+        assertThat(refused.status()).as(refused.request() + ": " + refused.snippet()).isEqualTo(403);
+        assertThat(refused.errorCode()).isEqualTo("FORBIDDEN");
+        assertThat(TalkFlow.comment(w.admin(), issue.key(), target.id())).as("the comment after the refused deletion")
+                .isEqualTo(before);
+        assertThat(before.path("deleted").asBoolean(true)).isFalse();
+    }
+
     // S4-AC-12
 
     @Test
