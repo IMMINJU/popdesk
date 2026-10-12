@@ -16,12 +16,14 @@ import java.util.Map;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 
 /**
  * The order of checks on the operations slice 4 adds (conventions "Order of checks", COM-1, COM-2):
  * 401, then 404 for a target out of scope, then 403 for a target the caller sees but may not act on,
  * then 400 for the input, then 400 for the current state. Each request below is wrong in several ways
- * at once and must get the first check in that order. {@link CheckOrderTest} is a list written by hand
+ * at once, or wrong in an earlier and right in a later one, and must get the first check in that order.
+ * {@link CheckOrderTest} is a list written by hand
  * and ends with slice 3; this class goes on from there.
  */
 class TalkCheckOrderTest extends BareAppTest {
@@ -43,8 +45,8 @@ class TalkCheckOrderTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S4-AC-70 without a session every operation this slice adds answers 401 first, whatever else is "
-            + "wrong")
+    @DisplayName("S4-AC-70, S4-AC-39 without a session every operation this slice adds, and the console inbox it "
+            + "fills, answers 401 first, whatever else is wrong")
     void unauthenticatedFirst() {
         ApiClient c = console();
         ApiClient p = portal();
@@ -65,6 +67,10 @@ class TalkCheckOrderTest extends BareAppTest {
                 "UNAUTHENTICATED");
         expect(soft, "console delete comment", c.delete(ci + "/comments/nope"), 401, "UNAUTHENTICATED");
         expect(soft, "mention candidates", c.get(ci + "/mention-candidates").query("internal", "maybe"), 401,
+                "UNAUTHENTICATED");
+        expect(soft, "console notifications", c.get("/api/console/notifications").query("size", 0), 401,
+                "UNAUTHENTICATED");
+        expect(soft, "console unread count", c.get("/api/console/notifications/unread-count"), 401,
                 "UNAUTHENTICATED");
         expect(soft, "console read all", c.post("/api/console/notifications/read-all"), 401, "UNAUTHENTICATED");
         soft.assertAll();
@@ -116,6 +122,29 @@ class TalkCheckOrderTest extends BareAppTest {
                 "FORBIDDEN");
         expect(soft, "admin: an agent's comment with an empty content and a mention of nobody",
                 TalkFlow.editRequest(w.admin(), key, byAgent.id(), emptyWithAMentionOfNobody()), 403, "FORBIDDEN");
+        soft.assertAll();
+    }
+
+    @Test
+    @DisplayName("S4-AC-04, S4-AC-02 an edit of someone else's comment on a CLOSED issue, with valid input, is "
+            + "403 FORBIDDEN, not ISSUE_CLOSED, and the comment stays")
+    void permissionBeforeState() {
+        OpsWorld w = OpsWorld.build(fixtures);
+        String key = w.issueA().key();
+        Comment byCustomer = fixtures.comment(w.customerA(), key, Unique.text("By the customer"));
+        Comment byAgent = fixtures.comment(w.agentA(), key, Unique.text("By the agent"));
+        IssueFlow.closeRequest(w.customerA(), key).expect(200);
+        List<JsonNode> before = TalkFlow.comments(w.admin(), key);
+        SoftAssertions soft = new SoftAssertions();
+
+        expect(soft, "assigned agent: the reporter's comment on a closed issue", TalkFlow.editRequest(w.agentA(),
+                key, byCustomer.id(), body("content", Unique.text("Not mine"))), 403, "FORBIDDEN");
+        expect(soft, "reporter: a staff comment on a closed issue", TalkFlow.editRequest(w.customerA(), key,
+                byAgent.id(), body("content", Unique.text("Not mine"))), 403, "FORBIDDEN");
+        expect(soft, "admin: an agent's comment on a closed issue", TalkFlow.editRequest(w.admin(), key,
+                byAgent.id(), body("content", Unique.text("Not mine"))), 403, "FORBIDDEN");
+        soft.assertThat(TalkFlow.comments(w.admin(), key)).as("the comments after the refused edits")
+                .isEqualTo(before);
         soft.assertAll();
     }
 

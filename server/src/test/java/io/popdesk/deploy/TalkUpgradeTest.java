@@ -7,6 +7,7 @@ import static io.popdesk.deploy.IssueInstallSteps.keptSample;
 import static io.popdesk.deploy.IssueInstallSteps.keys;
 import static io.popdesk.deploy.IssueInstallSteps.sampleAdmin;
 import static io.popdesk.deploy.IssueInstallSteps.startedOn;
+import static io.popdesk.issue.TalkFlow.isNull;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.deploy.AppSteps.Person;
@@ -95,10 +96,6 @@ class TalkUpgradeTest {
     }
 
     /** Whether the field is there and null (D-44: a missing value is null, not left out). */
-    private static boolean isNull(JsonNode node, String field) {
-        return node.has(field) && node.path(field).isNull();
-    }
-
     private static void assertNeverEditedOrDeleted(JsonNode comment, String where) {
         assertThat(isNull(comment, "editedAt")).as("editedAt is there and null in %s: %s", where, comment).isTrue();
         assertThat(comment.path("deleted").isBoolean() && !comment.path("deleted").asBoolean())

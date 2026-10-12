@@ -2,6 +2,7 @@ package io.popdesk.inbox;
 
 import static io.popdesk.inbox.InboxSteps.added;
 import static io.popdesk.inbox.InboxSteps.assertItem;
+import static io.popdesk.inbox.InboxSteps.commentIds;
 import static io.popdesk.inbox.InboxSteps.idsAbout;
 import static io.popdesk.inbox.InboxSteps.mailAbout;
 import static io.popdesk.inbox.InboxSteps.same;
@@ -22,6 +23,7 @@ import java.util.Set;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import tools.jackson.databind.JsonNode;
@@ -125,15 +127,15 @@ class InboxRecipientsTest extends ConnectedAppTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(Event.class)
-    @DisplayName("S4-AC-27 S4-AC-28 S4-AC-29 S4-AC-30 S4-AC-31 S4-AC-32 S4-AC-33 S4-AC-34 S4-AC-58 an event puts "
-            + "one item with its kind, issue, comment, and actor in the inbox of its one recipient and mails that "
+    @DisplayName("S4-AC-27 S4-AC-28 S4-AC-29 S4-AC-30 S4-AC-31 S4-AC-32 S4-AC-33 S4-AC-34 S4-AC-48 S4-AC-58 an event "
+            + "puts one item with its kind, issue, comment, and actor in the inbox of its one recipient and mails that "
             + "person where the table has a mail; the person who did it, a colleague, another agent, the assignee "
             + "before, and an admin get no item and no mail")
     void eventReachesItsOneRecipientAndNobodyElse(Event event) {
         Cast c = steps.cast();
         String filed = event == Event.FILED_ON_BEHALF ? null : steps.assignedIssue(c).key();
         Comment prepared = filed == null ? null : prepare(event, c, filed);
-        steps.awaitALaterMail(c.admin());
+        TalkFlow.awaitALaterMail(fixtures, c.admin());
         Map<String, Set<Long>> itemsBefore = new LinkedHashMap<>();
         Map<String, Integer> mailBefore = new LinkedHashMap<>();
         for (Session person : c.everyone()) {
@@ -143,7 +145,7 @@ class InboxRecipientsTest extends ConnectedAppTest {
 
         Outcome o = act(event, c, filed, prepared);
 
-        steps.awaitALaterMail(c.admin());
+        TalkFlow.awaitALaterMail(fixtures, c.admin());
         List<JsonNode> received = added(o.recipient(), o.key(), itemsBefore.get(o.recipient().email()));
         assertThat(received).as("items the event added for its recipient %s", o.recipient().email()).hasSize(1);
         assertItem(received.getFirst(), o.recipient(), o.kind(), o.key(), o.commentId(), o.actor());
@@ -159,5 +161,28 @@ class InboxRecipientsTest extends ConnectedAppTest {
             }
         }
         softly.assertAll();
+    }
+
+    @Test
+    @DisplayName("S4-AC-36 a staff answer while the reporter is suspended is no item and no mail for them, also "
+            + "once they are back; the answer before it is both")
+    void answerForASuspendedReporterIsNoItemAndNoMail() {
+        Cast c = steps.cast();
+        String key = steps.assignedIssue(c).key();
+        Comment first = fixtures.comment(c.assignee(), key, Unique.text("First"));
+        TalkFlow.awaitALaterMail(fixtures, c.admin());
+        assertThat(commentIds(TalkFlow.inboxOf(c.reporter(), key))).as("comments of the reporter's items before")
+                .containsExactly(first.id());
+        assertThat(mailAbout(mail(), c.reporter(), key)).as("mails to the reporter before").hasSize(1);
+
+        flow.suspend(c.admin(), c.reporter().accountId());
+        fixtures.comment(c.assignee(), key, Unique.text("Second"));
+        TalkFlow.awaitALaterMail(fixtures, c.admin());
+        flow.reactivate(c.admin(), c.reporter().accountId());
+
+        assertThat(commentIds(TalkFlow.inboxOf(fixtures.signInAgain(c.reporter()), key)))
+                .as("comments of the items of the reporter who is back").containsExactly(first.id());
+        assertThat(mailAbout(mail(), c.reporter(), key)).as("mails to the reporter after the answer they missed")
+                .hasSize(1);
     }
 }

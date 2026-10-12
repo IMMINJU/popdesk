@@ -17,7 +17,6 @@ import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.ReceivedMail;
 import io.popdesk.support.Unique;
-import io.popdesk.support.Wait;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +29,8 @@ import org.junit.jupiter.params.provider.EnumSource;
  * an issue, set an assignee, or mention someone, and when a membership request is made, and what the
  * six mails say in English.
  *
- * <p>"No mail" is read after a later mail arrived ({@link #awaitALaterMail}), not after a fixed wait.
+ * <p>"No mail" is read after a later mail arrived ({@link TalkFlow#awaitALaterMail}), not after a fixed
+ * wait. Who gets a mail for which event, and that nobody else does, is {@code inbox.InboxRecipientsTest}.
  */
 class TalkMailTest extends ConnectedAppTest {
 
@@ -41,25 +41,6 @@ class TalkMailTest extends ConnectedAppTest {
     void setUp() {
         steps = new NotifySteps(fixtures);
         flow = new IssueFlow(fixtures, clock);
-    }
-
-    /** Has an invitation mailed and waits for it: every mail queued before is out by then. */
-    private void awaitALaterMail(Session admin) {
-        fixtures.invite(admin, Role.AGENT);
-    }
-
-    /** Waits for {@code n} notification mails to the person and returns them, oldest first. */
-    private List<ReceivedMail> awaitNotifications(Session person, int n) {
-        return Wait.until(n + " notification mail(s) to " + person.email(), () -> {
-            List<ReceivedMail> found = notifications(mail(), person.email());
-            return found.size() >= n ? found : null;
-        });
-    }
-
-    private Session agentOf(Scene s, String prefix) {
-        Session agent = steps.person(s.admin(), Role.AGENT, prefix, null);
-        fixtures.assignAgent(s.admin(), s.code(), agent.accountId());
-        return agent;
     }
 
     // S4-AC-52, S4-AC-53
@@ -82,103 +63,42 @@ class TalkMailTest extends ConnectedAppTest {
         WebhookSnapshots.assertMatches(mail.snapshot("en"), TalkMails.snapshotForm(m, c));
     }
 
-    // S4-AC-48
-
-    @Test
-    @DisplayName("S4-AC-48 staff resolving, reopening, and closing an issue mail the reporter once each, and "
-            + "nobody else")
-    void staffTransitionsMailTheReporter() {
-        Scene s = steps.scene();
-        String key = TalkMails.issue(fixtures, s, IssueFlow.word()).key();
-
-        flow.changeStatus(s.agent(), key, "IN_PROGRESS");
-        flow.changeStatus(s.agent(), key, "RESOLVED");
-        ReceivedMail resolved = awaitNotifications(s.customer(), 1).get(0);
-        flow.reopen(s.agent(), key);
-        ReceivedMail reopened = awaitNotifications(s.customer(), 2).get(1);
-        flow.changeStatus(s.agent(), key, "CLOSED");
-        ReceivedMail closed = awaitNotifications(s.customer(), 3).get(2);
-
-        String link = NotifySteps.portalIssueLink(key);
-        WebhookSnapshots.assertMatches(Mail.ISSUE_RESOLVED.snapshot("en"),
-                TalkMails.snapshotForm(resolved, key, link, "{key}"));
-        WebhookSnapshots.assertMatches(Mail.ISSUE_REOPENED.snapshot("en"),
-                TalkMails.snapshotForm(reopened, key, link, "{key}"));
-        WebhookSnapshots.assertMatches(Mail.ISSUE_CLOSED.snapshot("en"),
-                TalkMails.snapshotForm(closed, key, link, "{key}"));
-        awaitALaterMail(s.admin());
-        assertThat(notifications(mail(), s.customer().email())).as("mails to the reporter").hasSize(3);
-        assertThat(notifications(mail(), s.agent().email())).as("mails to the agent who did it").isEmpty();
-    }
-
-    @Test
-    @DisplayName("S4-AC-48 a customer closing and reopening their issue mails nobody: the assignee has the one "
-            + "mail of the assignment, the reporter none")
-    void customersCloseAndReopenMailNobody() {
-        Scene s = steps.scene();
-        String key = TalkMails.issue(fixtures, s, IssueFlow.word()).key();
-        flow.assign(s.admin(), key, s.agent().accountId());
-        awaitNotifications(s.agent(), 1);
-
-        flow.close(s.customer(), key);
-        flow.reopen(s.customer(), key);
-
-        awaitALaterMail(s.admin());
-        assertThat(notifications(mail(), s.agent().email())).as("mails to the assignee").hasSize(1);
-        assertThat(notifications(mail(), s.customer().email())).as("mails to the reporter").isEmpty();
-    }
-
     // S4-AC-49
 
     @Test
-    @DisplayName("S4-AC-49 a new assignee is mailed once, with a console link; an agent who assigns themself, the "
-            + "assignee before, and clearing the assignee mail nobody")
-    void newAssigneeIsMailedOnce() {
+    @DisplayName("S4-AC-49 an agent who makes themself the assignee is not mailed; the agent an admin made the "
+            + "assignee before them has the one mail of that")
+    void agentWhoAssignsThemselfIsNotMailed() {
         Scene s = steps.scene();
-        Session second = agentOf(s, "Second");
+        Session second = TalkMails.agentOf(fixtures, steps, s, "Second");
         String key = TalkMails.issue(fixtures, s, IssueFlow.word()).key();
 
         flow.assign(s.admin(), key, s.agent().accountId());
-        ReceivedMail m = awaitNotification(mail(), s.agent().email());
+        awaitNotification(mail(), s.agent().email());
         flow.assign(second, key, second.accountId());
-        flow.unassign(s.admin(), key);
 
-        assertThat(m.to()).containsExactly(s.agent().email());
-        assertThat(m.text()).as("text of the mail").contains(NotifySteps.consoleIssueLink(key))
-                .doesNotContain(PORTAL_HOST);
-        awaitALaterMail(s.admin());
-        assertThat(notifications(mail(), s.agent().email())).as("mails to the agent an admin assigned").hasSize(1);
+        TalkFlow.awaitALaterMail(fixtures, s.admin());
         assertThat(notifications(mail(), second.email())).as("mails to the agent who assigned themself").isEmpty();
-        assertThat(notifications(mail(), s.customer().email())).as("mails to the reporter").isEmpty();
+        assertThat(notifications(mail(), s.agent().email())).as("mails to the agent an admin assigned").hasSize(1);
     }
 
     // S4-AC-50
 
     @Test
-    @DisplayName("S4-AC-50 a comment that mentions an agent and an admin mails each of them once, with a console "
-            + "link and without the name of who mentioned them")
-    void mentionedStaffAreMailedOnce() {
+    @DisplayName("S4-AC-50 an admin mentioned in an internal comment is mailed once, with a console link")
+    void mentionedAdminIsMailed() {
         Scene s = steps.scene();
-        Session second = agentOf(s, "Second");
         Session admin = steps.person(s.admin(), Role.ADMIN, "Adminname", null);
         String key = TalkMails.issue(fixtures, s, IssueFlow.word()).key();
 
-        TalkFlow.mention(s.agent(), key, true, List.of(second.accountId(), admin.accountId()));
+        TalkFlow.mention(s.agent(), key, true, List.of(admin.accountId()));
 
-        for (Session mentioned : List.of(second, admin)) {
-            ReceivedMail m = awaitNotification(mail(), mentioned.email());
-            assertThat(m.to()).containsExactly(mentioned.email());
-            assertThat(m.text()).as("text of the mail to %s", mentioned.role())
-                    .contains(NotifySteps.consoleIssueLink(key)).doesNotContain(PORTAL_HOST);
-            assertThat(everything(m)).as("the whole mail to %s", mentioned.role())
-                    .doesNotContainIgnoringCase(s.agent().name()).doesNotContainIgnoringCase(s.agent().email());
-        }
-        awaitALaterMail(s.admin());
-        assertThat(notifications(mail(), second.email())).as("mails to the mentioned agent").hasSize(1);
+        ReceivedMail m = awaitNotification(mail(), admin.email());
+        assertThat(m.to()).containsExactly(admin.email());
+        assertThat(m.text()).as("text of the mail").contains(NotifySteps.consoleIssueLink(key))
+                .doesNotContain(PORTAL_HOST);
+        TalkFlow.awaitALaterMail(fixtures, s.admin());
         assertThat(notifications(mail(), admin.email())).as("mails to the mentioned admin").hasSize(1);
-        assertThat(notifications(mail(), s.agent().email())).as("mails to the agent who mentioned").isEmpty();
-        assertThat(notifications(mail(), s.customer().email())).as("mails to the reporter of an internal comment")
-                .isEmpty();
     }
 
     @Test
@@ -191,7 +111,7 @@ class TalkMailTest extends ConnectedAppTest {
         TalkFlow.mention(s.agent(), key, false, List.of(s.customer().accountId()));
 
         ReceivedMail m = awaitNotification(mail(), s.customer().email());
-        awaitALaterMail(s.admin());
+        TalkFlow.awaitALaterMail(fixtures, s.admin());
         assertThat(notifications(mail(), s.customer().email())).as("mails to the mentioned reporter").hasSize(1);
         assertThat(m.text()).as("text of the mail").doesNotContain(CONSOLE_HOST);
         assertThat(everything(m)).as("the whole mail").doesNotContainIgnoringCase(s.agent().name())

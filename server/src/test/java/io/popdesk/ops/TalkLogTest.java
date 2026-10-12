@@ -1,5 +1,6 @@
 package io.popdesk.ops;
 
+import static io.popdesk.issue.TalkFlow.assertRefused;
 import static io.popdesk.issue.TalkFlow.body;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -13,8 +14,12 @@ import io.popdesk.support.Fixtures.Comment;
 import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
+import io.popdesk.support.Wait;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,8 +31,11 @@ import org.slf4j.LoggerFactory;
  * of anyone involved, on the paths that answer 2xx and on those that answer 400, 403, and 404. The
  * forms are those of {@link LogForms}: as written, percent-encoded ({@code %40}), and JSON-escaped.
  *
- * <p>The app has no SMTP here, so the mails of these comments are log lines; the masked address in
- * such a line is {@code notify.NoSmtpTalkMailLogTest}. It lives in this package for {@link LogForms}.
+ * <p>The app has no SMTP here, so the mails of these comments are log lines that the send loop writes
+ * after the request was answered; the masked address in such a line is
+ * {@code notify.NoSmtpTalkMailLogTest}. A test waits for the line of each mail before it reads the log,
+ * and before it deletes the comment or takes the person out of its mentions, which would drop a mail
+ * that is not out yet. It lives in this package for {@link LogForms}.
  */
 class TalkLogTest extends BareAppTest {
 
@@ -62,6 +70,33 @@ class TalkLogTest extends BareAppTest {
     }
 
     /**
+     * Invites someone whose address starts with a digit, as no other address here does, and waits for
+     * the log line of that mail: the lines of every mail queued before are written by then. Gives the
+     * mark from where the lines of the test's own mails are counted.
+     */
+    private Mark markAfterEarlierMails(Session admin) {
+        Mark before = log.mark();
+        fixtures.invite(admin, Role.AGENT, Unique.email("0"), Unique.text("Earlier"), List.of());
+        awaitMaskedLines(before, List.of("0"));
+        return log.mark();
+    }
+
+    /**
+     * Waits until the log since {@code mark} has, for each of these addresses, a line of its own with
+     * the address masked after its first character ({@code a***}). Addresses that start alike need as
+     * many lines as there are of them.
+     */
+    private void awaitMaskedLines(Mark mark, List<String> addresses) {
+        Map<String, Long> wanted = addresses.stream()
+                .collect(Collectors.groupingBy(a -> a.substring(0, 1), Collectors.counting()));
+        wanted.forEach((first, n) -> {
+            Pattern masked = Pattern.compile("(?<![A-Za-z0-9])" + Pattern.quote(first) + "[*•…]+");
+            Wait.until(n + " log line(s) of a mail to an address masked as " + first + "***",
+                    () -> log.lines(mark).stream().filter(l -> masked.matcher(l).find()).count() >= n ? n : null);
+        });
+    }
+
+    /**
      * Fails unless the log since {@code mark} has lines and holds no form of any of {@code values}.
      * A line of the test's own is written first and waited for, so the log read here is complete up
      * to this call.
@@ -83,17 +118,24 @@ class TalkLogTest extends BareAppTest {
         List<String> values = new ArrayList<>(List.of(w.reporter().email(), w.agent().email()));
         Session mentioned = namedAgent(w, values);
         Session later = namedAgent(w, values);
-        Mark mark = log.mark();
+        Mark mark = markAfterEarlierMails(w.admin());
         String key = fixtures.fileIssue(w.reporter(), w.code()).key();
+        List<String> mailed = new ArrayList<>();
 
         Comment question = fixtures.comment(w.reporter(), key, content("Question", values));
         TalkFlow.editContent(w.reporter(), key, question.id(), content("Question, edited", values));
         Comment answer = TalkFlow.add(w.agent(), key, body("content", content("Answer", values), "mentions",
                 List.of(mentioned.accountId(), w.reporter().accountId())));
+        mailed.addAll(List.of(mentioned.email(), w.reporter().email()));
+        awaitMaskedLines(mark, mailed);
         TalkFlow.edit(w.agent(), key, answer.id(), body("content", content("Answer, edited", values), "mentions",
                 List.of(later.accountId())));
+        mailed.add(later.email());
+        awaitMaskedLines(mark, mailed);
         Comment note = TalkFlow.add(w.agent(), key, body("content", content("Note", values), "internal", true,
                 "mentions", List.of(mentioned.accountId())));
+        mailed.add(mentioned.email());
+        awaitMaskedLines(mark, mailed);
         TalkFlow.candidates(w.agent(), key, false);
         TalkFlow.delete(w.reporter(), key, question.id());
         TalkFlow.delete(w.admin(), key, answer.id());
@@ -111,10 +153,12 @@ class TalkLogTest extends BareAppTest {
         List<String> values = new ArrayList<>(List.of(w.reporter().email(), w.agent().email(),
                 w.colleague().email(), w.unassignedAgent().email()));
         Session mentioned = namedAgent(w, values);
-        Mark mark = log.mark();
+        Mark mark = markAfterEarlierMails(w.admin());
         String key = fixtures.fileIssue(w.reporter(), w.code()).key();
         Comment question = fixtures.comment(w.reporter(), key, content("Question", values));
         Comment answer = fixtures.comment(w.agent(), key, content("Answer", values));
+        // The one mail of this test: the answer, to the reporter. No refused request below queues one.
+        awaitMaskedLines(mark, List.of(w.reporter().email()));
         String tooLong = content("Too long", values) + " " + "x".repeat(4_000);
         values.add(tooLong);
 
@@ -145,10 +189,5 @@ class TalkLogTest extends BareAppTest {
         assertRefused(noComment, 404, "NOT_FOUND");
         assertRefused(hiddenCandidates, 404, "NOT_FOUND");
         assertNotLogged(mark, values);
-    }
-
-    private static void assertRefused(ApiResponse response, int status, String code) {
-        assertThat(response.status()).as(response.request() + ": " + response.snippet()).isEqualTo(status);
-        assertThat(response.errorCode()).as("code of %s", response.request()).isEqualTo(code);
     }
 }

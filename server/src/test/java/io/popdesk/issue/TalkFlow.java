@@ -4,7 +4,9 @@ import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.DbInspector;
 import io.popdesk.support.DbInspector.Column;
+import io.popdesk.support.Fixtures;
 import io.popdesk.support.Fixtures.Comment;
+import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
 import java.util.ArrayList;
@@ -17,7 +19,8 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * Steps shared by the tests of slice 4 (talk): editing and deleting comments, mentions and their
- * candidates, and a person's inbox on either app. Only HTTP, except {@link #tablesContaining}. What
+ * candidates, a person's inbox on either app, and reading and checking what those answer. Only HTTP,
+ * except {@link #tablesContaining}. What
  * {@link IssueFlow} and the fixtures already do (plain comments, statuses, assignees, people) is used
  * from there.
  *
@@ -33,6 +36,9 @@ public final class TalkFlow {
     /** A comment ID far above any the app has given out. */
     public static final long NO_COMMENT = 9_000_000_000_000_000L;
 
+    /** An inbox item ID far above any the app has given out. */
+    public static final long NO_ITEM = 9_000_000_000_000_000L;
+
     private static final int MAX_PAGES = 50;
 
     private TalkFlow() {}
@@ -44,6 +50,30 @@ public final class TalkFlow {
             body.put((String) pairs[i], pairs[i + 1]);
         }
         return body;
+    }
+
+    // Reading and checking an answer
+
+    /** The {@code items} of a page body. */
+    public static List<JsonNode> items(ApiResponse page) {
+        return IssueSteps.items(page);
+    }
+
+    /** Whether the field is there and null (D-44: a missing value is null, not left out). */
+    public static boolean isNull(JsonNode node, String field) {
+        return node.has(field) && node.path(field).isNull();
+    }
+
+    /** Fails unless the answer has this status and this {@code code} in its error body. */
+    public static void assertRefused(ApiResponse response, int status, String code) {
+        if (response.status() != status) {
+            throw new AssertionError(response.request() + ": expected " + status + " but got " + response.status()
+                    + ": " + response.snippet());
+        }
+        if (!code.equals(response.errorCode())) {
+            throw new AssertionError(response.request() + ": expected the code " + code + " but got "
+                    + response.errorCode() + ": " + response.snippet());
+        }
     }
 
     // Comments
@@ -111,7 +141,7 @@ public final class TalkFlow {
 
     /** The first 100 comments of the issue as the caller sees them, oldest first. */
     public static List<JsonNode> comments(Session session, String key) {
-        return IssueSteps.items(commentPage(session, key));
+        return items(commentPage(session, key));
     }
 
     /** The comment in the caller's list, or null when the caller's list does not have it. */
@@ -174,7 +204,7 @@ public final class TalkFlow {
         for (int page = 1; page <= MAX_PAGES; page++) {
             ApiResponse response = session.client().get(session.api("/notifications")).query("page", page)
                     .query("size", 100).expect(200);
-            out.addAll(IssueSteps.items(response));
+            out.addAll(items(response));
             if (page >= response.json().path("totalPages").asInt(0)) {
                 return out;
             }
@@ -185,6 +215,20 @@ public final class TalkFlow {
     /** The caller's inbox items about one issue, newest first. */
     public static List<JsonNode> inboxOf(Session session, String issueKey) {
         return inbox(session).stream().filter(n -> issueKey.equals(IssueSteps.text(n.path("issue"), "key"))).toList();
+    }
+
+    /** {@code id} of each inbox item, in the order given. */
+    public static List<Long> ids(List<JsonNode> items) {
+        return items.stream().map(n -> n.path("id").asLong(-1)).toList();
+    }
+
+    /** {@code kind} of an inbox item, or null. */
+    public static String kind(JsonNode item) {
+        return item.path("kind").asString(null);
+    }
+
+    public static List<String> kinds(List<JsonNode> items) {
+        return items.stream().map(TalkFlow::kind).toList();
     }
 
     /** The caller's unread count. */
@@ -203,6 +247,16 @@ public final class TalkFlow {
 
     public static void markAllRead(Session session) {
         session.client().post(session.api("/notifications/read-all")).expect(204);
+    }
+
+    // Mail
+
+    /**
+     * Has an invitation mailed and waits for it: every mail queued before is out by then. So "no mail"
+     * is read after this, not after a fixed wait.
+     */
+    public static void awaitALaterMail(Fixtures fixtures, Session admin) {
+        fixtures.invite(admin, Role.AGENT);
     }
 
     // Searching

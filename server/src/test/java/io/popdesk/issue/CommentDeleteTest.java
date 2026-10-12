@@ -116,20 +116,22 @@ class CommentDeleteTest extends BareAppTest {
     /** Someone who sees a comment they may not delete. */
     enum Intruder {
         AGENT_ON_ANOTHER_AGENTS_COMMENT,
+        AGENT_ON_ANOTHER_AGENTS_INTERNAL_COMMENT,
         AGENT_ON_THE_REPORTERS_COMMENT,
-        REPORTER_ON_A_STAFF_COMMENT
+        REPORTER_ON_A_STAFF_COMMENT,
+        COLLEAGUE_ON_THE_REPORTERS_COMMENT
     }
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(Intruder.class)
-    @DisplayName("S4-AC-11 an agent deleting someone else's comment and the reporter deleting a staff comment get 403 FORBIDDEN, and the comment stays")
+    @DisplayName("S4-AC-11 an agent deleting someone else's comment, public or internal, the reporter deleting a staff comment, and a colleague deleting the reporter's comment get 403 FORBIDDEN, and the comment stays")
     void othersMayNotDelete(Intruder intruder) {
         World w = flow.world();
         Issue issue = fixtures.fileIssue(w.reporter(), w.code());
         Session caller;
         Session author;
         switch (intruder) {
-            case AGENT_ON_ANOTHER_AGENTS_COMMENT -> {
+            case AGENT_ON_ANOTHER_AGENTS_COMMENT, AGENT_ON_ANOTHER_AGENTS_INTERNAL_COMMENT -> {
                 caller = fixtures.agent(w.admin(), w.code());
                 author = w.agent();
             }
@@ -137,42 +139,27 @@ class CommentDeleteTest extends BareAppTest {
                 caller = w.agent();
                 author = w.reporter();
             }
-            default -> {
+            case REPORTER_ON_A_STAFF_COMMENT -> {
                 caller = w.reporter();
                 author = w.agent();
             }
+            default -> {
+                caller = w.colleague();
+                author = w.reporter();
+            }
         }
-        Comment target = fixtures.comment(author, issue.key(), Unique.text("Stays"));
+        Comment target = intruder == Intruder.AGENT_ON_ANOTHER_AGENTS_INTERNAL_COMMENT
+                ? fixtures.internalComment(author, issue.key(), Unique.text("Stays"))
+                : fixtures.comment(author, issue.key(), Unique.text("Stays"));
         // The author can delete a comment of theirs, so the 403 below is about the caller.
         TalkFlow.delete(author, issue.key(), fixtures.comment(author, issue.key(), Unique.text("Goes")).id());
+        assertThat(TalkFlow.find(caller, issue.key(), target.id())).as("the comment as the caller sees it")
+                .isNotNull();
         JsonNode before = TalkFlow.comment(w.admin(), issue.key(), target.id());
 
         ApiResponse refused = TalkFlow.deleteRequest(caller, issue.key(), target.id()).send();
 
-        assertThat(refused.status()).as(refused.request() + ": " + refused.snippet()).isEqualTo(403);
-        assertThat(refused.errorCode()).isEqualTo("FORBIDDEN");
-        assertThat(TalkFlow.comment(w.admin(), issue.key(), target.id())).as("the comment after the refused deletion")
-                .isEqualTo(before);
-        assertThat(before.path("deleted").asBoolean(true)).isFalse();
-    }
-
-    @Test
-    @DisplayName("S4-AC-11 a colleague of the same company who sees the reporter's comment on a public issue gets 403 FORBIDDEN on deleting it, and the comment stays")
-    void colleagueMayNotDeleteTheReportersComment() {
-        World w = flow.world();
-        Issue issue = fixtures.fileIssue(w.reporter(), w.code());
-        Comment target = fixtures.comment(w.reporter(), issue.key(), Unique.text("Stays"));
-        // The reporter can delete a comment of theirs, so the 403 below is about the caller.
-        TalkFlow.delete(w.reporter(), issue.key(),
-                fixtures.comment(w.reporter(), issue.key(), Unique.text("Goes")).id());
-        assertThat(TalkFlow.find(w.colleague(), issue.key(), target.id())).as("the comment as the colleague sees it")
-                .isNotNull();
-        JsonNode before = TalkFlow.comment(w.admin(), issue.key(), target.id());
-
-        ApiResponse refused = TalkFlow.deleteRequest(w.colleague(), issue.key(), target.id()).send();
-
-        assertThat(refused.status()).as(refused.request() + ": " + refused.snippet()).isEqualTo(403);
-        assertThat(refused.errorCode()).isEqualTo("FORBIDDEN");
+        TalkFlow.assertRefused(refused, 403, "FORBIDDEN");
         assertThat(TalkFlow.comment(w.admin(), issue.key(), target.id())).as("the comment after the refused deletion")
                 .isEqualTo(before);
         assertThat(before.path("deleted").asBoolean(true)).isFalse();

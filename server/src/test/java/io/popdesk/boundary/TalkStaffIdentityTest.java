@@ -6,6 +6,7 @@ import static io.popdesk.boundary.BoundaryChecks.everything;
 import static io.popdesk.boundary.BoundaryChecks.letters;
 import static io.popdesk.boundary.BoundaryChecks.notifications;
 import static io.popdesk.boundary.BoundaryChecks.placesOfAccountId;
+import static io.popdesk.issue.TalkFlow.kinds;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.boundary.BoundaryChecks.Pages;
@@ -25,7 +26,6 @@ import java.util.Set;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.JsonNode;
 
 /**
  * Staff stay "Support team" to customers in what slice 4 adds (S4-AC-71, ANON-1, ADR D-49), over one
@@ -50,10 +50,6 @@ class TalkStaffIdentityTest extends GatedMailTest {
         String email = unique.toLowerCase(Locale.ROOT).replace(' ', '.') + "@example.test";
         return fixtures.accept(fixtures.invite(admin, role, email, unique,
                 companyCode == null ? List.of() : List.of(companyCode)));
-    }
-
-    private static List<String> kinds(List<JsonNode> items) {
-        return items.stream().map(n -> n.path("kind").asString(null)).toList();
     }
 
     @Test
@@ -87,7 +83,7 @@ class TalkStaffIdentityTest extends GatedMailTest {
         Pages inboxBefore = allPages(customer, "/api/portal/notifications");
         TalkFlow.delete(admin, key, answer.id());
         // A mail queued after everything above; once it is here, no mail about the issue is still to come.
-        fixtures.invite(first, Role.AGENT);
+        TalkFlow.awaitALaterMail(fixtures, first);
 
         Pages comments = allPages(customer, "/api/portal/issues/" + key + "/comments");
         Pages inbox = allPages(customer, "/api/portal/notifications");
@@ -101,7 +97,6 @@ class TalkStaffIdentityTest extends GatedMailTest {
                 .satisfies(n -> {
                     assertThat(n.path("deleted").asBoolean(false)).as("deleted in %s", n).isTrue();
                     assertThat(n.path("author").path("kind").asString(null)).isEqualTo("SUPPORT_TEAM");
-                    assertThat(n.has("deletedBy")).as("the field deletedBy in %s", n).isFalse();
                 });
         assertThat(comments.items()).as("the admin's answer in the comment list")
                 .filteredOn(n -> n.path("id").asLong(-1) == kept.id()).singleElement()

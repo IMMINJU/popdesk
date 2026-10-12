@@ -1,5 +1,8 @@
 package io.popdesk.inbox;
 
+import static io.popdesk.issue.TalkFlow.ids;
+import static io.popdesk.issue.TalkFlow.isNull;
+import static io.popdesk.issue.TalkFlow.kind;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.issue.IssueFlow;
@@ -13,7 +16,6 @@ import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.MailServer;
 import io.popdesk.support.ReceivedMail;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -26,9 +28,6 @@ import tools.jackson.databind.JsonNode;
  * {@link TalkFlow} and {@link IssueFlow}.
  */
 final class InboxSteps {
-
-    /** An inbox item ID far above any the app has given out. */
-    static final long NO_ITEM = 9_000_000_000_000_000L;
 
     /** The fields of an inbox item on either app ({@code design.md} 0절 4, the contract). */
     static final Set<String> ITEM_FIELDS = Set.of("id", "kind", "issue", "companyCode", "commentId", "actor",
@@ -77,21 +76,7 @@ final class InboxSteps {
         return issue;
     }
 
-    /** Has an invitation mailed and waits for it: every mail queued before is out by then. */
-    void awaitALaterMail(Session admin) {
-        fixtures.invite(admin, Role.AGENT);
-    }
-
     // Reading
-
-    /** The {@code items} of a page body. */
-    static List<JsonNode> items(ApiResponse page) {
-        JsonNode items = page.json().path("items");
-        if (!items.isArray()) {
-            throw new AssertionError(page.request() + ": no items array in " + page.snippet());
-        }
-        return new ArrayList<>(items.values());
-    }
 
     /** One page of the caller's inbox; expects 200. */
     static ApiResponse page(Session session, int page, int size) {
@@ -102,18 +87,6 @@ final class InboxSteps {
     /** {@code totalElements} of the caller's inbox. */
     static long total(Session session) {
         return page(session, 1, 1).jsonLong("totalElements");
-    }
-
-    static List<Long> ids(List<JsonNode> items) {
-        return items.stream().map(n -> n.path("id").asLong(-1)).toList();
-    }
-
-    static String kind(JsonNode item) {
-        return item.path("kind").asString(null);
-    }
-
-    static List<String> kinds(List<JsonNode> items) {
-        return items.stream().map(InboxSteps::kind).toList();
     }
 
     /** The comment ID of an item, or null when the item is about no comment. */
@@ -145,11 +118,6 @@ final class InboxSteps {
     static JsonNode item(Session session, long id) {
         return TalkFlow.inbox(session).stream().filter(n -> n.path("id").asLong(-1) == id).findFirst()
                 .orElseThrow(() -> new AssertionError("Item " + id + " is not in the inbox of " + session.email()));
-    }
-
-    /** Whether the field is there and null (D-44: a missing value is null, not left out). */
-    static boolean isNull(JsonNode node, String field) {
-        return node.has(field) && node.path(field).isNull();
     }
 
     // Mail
@@ -195,12 +163,6 @@ final class InboxSteps {
             assertThat(new TreeSet<>(actor.propertyNames())).as("fields of %s", actor)
                     .isEqualTo(new TreeSet<>(Set.of("kind", "accountId", "name", "photoUpdatedAt")));
         }
-    }
-
-    /** Checks status and {@code code} of an error body. */
-    static void assertError(ApiResponse response, int status, String code) {
-        assertThat(response.status()).as(response.request() + ": " + response.snippet()).isEqualTo(status);
-        assertThat(response.errorCode()).as("code of " + response.request()).isEqualTo(code);
     }
 
     static boolean same(Session a, Session b) {

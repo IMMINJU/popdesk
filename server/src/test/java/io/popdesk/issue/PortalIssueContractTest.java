@@ -17,17 +17,19 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The customer's issue and comment types in the committed contract file
- * {@code docs/integrate/openapi-portal.json}. No app is started: the file is generated from the code
- * and CI checks that it matches (S0-AC-91), so this snapshot holds the code to it.
+ * {@code docs/integrate/openapi-portal.json}: what the issue and comment endpoints answer with, and
+ * what the comment endpoints take. No app is started: the file is generated from the code and CI
+ * checks that it matches (S0-AC-91), so this snapshot holds the code to it.
  */
 class PortalIssueContractTest {
 
     /**
      * Name parts of staff-only fields: assignee, labels, due date, history, first response, created by, internal,
-     * and the channel an issue came in by (S3-AC-29).
+     * the channel an issue came in by (S3-AC-29), who is mentioned (S4-AC-25), and who deleted a comment
+     * (S4-AC-15).
      */
     static final List<String> STAFF_ONLY = List.of("assignee", "label", "due", "history", "firstresponse",
-            "createdby", "creator", "internal", "channel");
+            "createdby", "creator", "internal", "channel", "mention", "deletedby");
 
     /**
      * The customer's issue and comment types and their fields, as fixed for this slice.
@@ -36,9 +38,12 @@ class PortalIssueContractTest {
      * the agent who filed: S3-AC-36), {@code resolvedAt} and {@code closedAt}, and on the issue
      * {@code reopenable} (S3-AC-59). Slice 4 added to the comment {@code editedAt} (S4-AC-07) and the
      * trace of a deleted one, {@code deleted} and {@code deletedAt}, never who deleted it (S4-AC-15).
+     * The two bodies a customer sends for a comment hold the content alone: no mentions (S4-AC-25).
      */
     private static final Map<String, List<String>> SNAPSHOT = new TreeMap<>(Map.of(
             "Comment", List.of("author", "content", "createdAt", "deleted", "deletedAt", "editedAt", "id"),
+            "CreateCommentRequest", List.of("content"),
+            "UpdateCommentRequest", List.of("content"),
             "Issue", List.of("closedAt", "companyCode", "companyName", "content", "createdAt", "filedBySupport",
                     "key", "priority", "private", "reopenable", "reporter", "resolvedAt", "status", "title",
                     "updatedAt", "version"),
@@ -53,16 +58,23 @@ class PortalIssueContractTest {
         return JsonMapper.builder().build().readTree(Files.readString(file));
     }
 
-    /** Fields of every schema an issue or comment endpoint of the portal answers with, by schema name. */
+    /**
+     * Fields of every schema an issue or comment endpoint of the portal answers with, and of every
+     * schema a comment endpoint takes as its body, by schema name.
+     */
     private static Map<String, List<String>> answeredTypes(JsonNode contract) {
         Map<String, List<String>> out = new TreeMap<>();
         JsonNode paths = contract.path("paths");
+        JsonNode schemas = contract.path("components").path("schemas");
         for (String path : paths.propertyNames()) {
             if (!path.startsWith("/api/portal/issues") || path.contains("/attachments")) {
                 continue;
             }
             for (JsonNode operation : paths.path(path).values()) {
-                collect(operation.path("responses"), contract.path("components").path("schemas"), out);
+                collect(operation.path("responses"), schemas, out);
+                if (path.contains("/comments")) {
+                    collect(operation.path("requestBody"), schemas, out);
+                }
             }
         }
         out.remove("ApiError");
@@ -96,7 +108,8 @@ class PortalIssueContractTest {
     void noStaffOnlyFields() throws IOException {
         Map<String, List<String>> types = answeredTypes(contract());
 
-        assertThat(types).containsKeys("Issue", "IssueSummary", "Comment");
+        assertThat(types).containsKeys("Issue", "IssueSummary", "Comment", "CreateCommentRequest",
+                "UpdateCommentRequest");
         types.forEach((type, fields) -> assertThat(fields)
                 .as("fields of %s", type)
                 .noneMatch(f -> STAFF_ONLY.stream().anyMatch(f.toLowerCase(Locale.ROOT)::contains)));

@@ -1,7 +1,10 @@
 package io.popdesk.boundary;
 
 import static io.popdesk.issue.IssueFlow.NO_KEY;
+import static io.popdesk.issue.TalkFlow.assertRefused;
 import static io.popdesk.issue.TalkFlow.body;
+import static io.popdesk.issue.TalkFlow.ids;
+import static io.popdesk.issue.TalkFlow.kinds;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.issue.IssueFlow;
@@ -18,8 +21,6 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -30,19 +31,11 @@ import tools.jackson.databind.JsonNode;
  *
  * <p>A customer of A and an agent of A editing or deleting a comment on B's issue is
  * {@code issue.CommentNotFoundTest}; the mention candidates of an issue the agent cannot see is
- * {@code issue.MentionCandidatesTest}; an item of a colleague or of another agent of the same company
- * is {@code inbox.InboxReadTest}. {@link BoundaryList} names them next to the tests here.
+ * {@code issue.MentionCandidatesTest}; an item of a colleague or of another agent of the same company,
+ * and reading an item that is someone else's, whatever their company, is {@code inbox.InboxReadTest}.
+ * {@link BoundaryList} names them next to the tests here.
  */
 class TalkBoundaryTest extends BareAppTest {
-
-    /** An inbox item ID far above any the app has given out. */
-    private static final long NO_ITEM = 9_000_000_000_000_000L;
-
-    /** The app whose inbox a case reads. */
-    enum Side {
-        PORTAL,
-        CONSOLE
-    }
 
     /**
      * Two companies, each with a customer, an agent assigned to it alone, and a public issue its agent
@@ -50,16 +43,7 @@ class TalkBoundaryTest extends BareAppTest {
      * one (the assignment), all unread.
      */
     private record Two(Session admin, Company a, Company b, Session customerOfA, Session agentOfA,
-            Session customerOfB, Session agentOfB, Issue ofA, Issue ofB) {
-
-        Session ofA(Side side) {
-            return side == Side.PORTAL ? customerOfA : agentOfA;
-        }
-
-        Session ofB(Side side) {
-            return side == Side.PORTAL ? customerOfB : agentOfB;
-        }
-    }
+            Session customerOfB, Session agentOfB, Issue ofA, Issue ofB) {}
 
     private IssueFlow flow;
 
@@ -97,14 +81,6 @@ class TalkBoundaryTest extends BareAppTest {
         return items.stream().map(n -> n.path("issue").path("key").asString(null)).toList();
     }
 
-    private static List<String> kinds(List<JsonNode> items) {
-        return items.stream().map(n -> n.path("kind").asString(null)).toList();
-    }
-
-    private static List<Long> ids(List<JsonNode> items) {
-        return items.stream().map(n -> n.path("id").asLong(-1)).toList();
-    }
-
     /** The newest item of the caller about the issue. Fails when there is none. */
     private static JsonNode newestItem(Session session, String key) {
         List<JsonNode> items = TalkFlow.inboxOf(session, key);
@@ -112,14 +88,9 @@ class TalkBoundaryTest extends BareAppTest {
         return items.getFirst();
     }
 
-    private static boolean unread(JsonNode item) {
-        return item.has("readAt") && item.path("readAt").isNull();
-    }
-
     private static void assertNotFound(ApiResponse answer, ApiResponse missing) {
-        assertThat(missing.status()).as(missing.request() + ": " + missing.snippet()).isEqualTo(404);
-        assertThat(answer.status()).as(answer.request() + ": " + answer.snippet()).isEqualTo(404);
-        assertThat(answer.errorCode()).as("code of %s", answer.request()).isEqualTo("NOT_FOUND");
+        assertRefused(missing, 404, "NOT_FOUND");
+        assertRefused(answer, 404, "NOT_FOUND");
         assertThat(answer.text()).as("body of %s, like for a target nobody has", answer.request())
                 .isEqualTo(missing.text());
     }
@@ -235,29 +206,5 @@ class TalkBoundaryTest extends BareAppTest {
 
         assertThat(ids(TalkFlow.inbox(agent))).as("the items once assigned back to B").isEqualTo(ids(all));
         assertThat(TalkFlow.unreadCount(agent)).as("unread count once assigned back to B").isEqualTo(3);
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @EnumSource(Side.class)
-    @DisplayName("S4-AC-70, S4-AC-44 reading an item of a person of company B with its ID is, for a person of "
-            + "company A, the 404 of an item ID nobody has, and B's item stays unread")
-    void readingAnItemOfCompanyBIsNotFound(Side side) {
-        Two t = two();
-        Session ofA = t.ofA(side);
-        Session ofB = t.ofB(side);
-        JsonNode itemOfB = newestItem(ofB, t.ofB().key());
-        long id = itemOfB.path("id").asLong();
-        assertThat(unread(itemOfB)).as("the item of B is unread: %s", itemOfB).isTrue();
-        // Reading an item of their own works, so the 404 below is about whose item it is.
-        TalkFlow.markRead(ofA, newestItem(ofA, t.ofA().key()).path("id").asLong());
-
-        ApiResponse answer = TalkFlow.markReadRequest(ofA, id).send();
-        ApiResponse missing = TalkFlow.markReadRequest(ofA, NO_ITEM).send();
-
-        assertNotFound(answer, missing);
-        JsonNode after = TalkFlow.inboxOf(ofB, t.ofB().key()).stream().filter(n -> n.path("id").asLong(-1) == id)
-                .findFirst().orElseThrow(() -> new AssertionError("Item " + id + " is gone from the inbox of B"));
-        assertThat(after).as("the item of B after the request").isEqualTo(itemOfB);
-        assertThat(TalkFlow.unreadCount(ofB)).as("unread count of the person of B").isEqualTo(1);
     }
 }

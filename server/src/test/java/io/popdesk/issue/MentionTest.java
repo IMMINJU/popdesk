@@ -117,11 +117,11 @@ class MentionTest extends BareAppTest {
 
     // S4-AC-20
 
-    /** One refused mention: the kind of comment and the account. */
-    private record Mention(boolean internal, long accountId) {}
+    /** One refused mention: the issue, the kind of comment, and the account. */
+    private record Mention(String key, boolean internal, long accountId) {}
 
     @Test
-    @DisplayName("S4-AC-20 the author, the reporter in an internal comment, a colleague, a customer of another company, an agent who is not assigned, a suspended or invited agent, and an ID of nobody get the same 400 with mentions UNKNOWN_VALUE, alone or next to people who can be mentioned, and no comment is added")
+    @DisplayName("S4-AC-20 the author, the reporter in an internal comment, a colleague, a customer of another company, an agent who is not assigned, a suspended or invited agent, a suspended admin, a suspended reporter, and an ID of nobody get the same 400 with mentions UNKNOWN_VALUE, alone or next to people who can be mentioned, and no comment is added")
     void accountsThatCannotBeMentionedGetTheSame400() {
         World w = flow.world();
         Session outsider = fixtures.customer(w.admin(), w.elsewhere().code());
@@ -129,23 +129,33 @@ class MentionTest extends BareAppTest {
         fixtures.assignAgent(w.admin(), w.code(), invited.accountId());
         Session suspended = fixtures.agent(w.admin(), w.code());
         flow.suspend(w.admin(), suspended.accountId());
+        Session suspendedAdmin = fixtures.admin(w.admin());
+        flow.suspend(w.admin(), suspendedAdmin.accountId());
         Session otherAgent = fixtures.agent(w.admin(), w.code());
-        Issue issue = fixtures.fileIssue(w.reporter(), w.code());
+        String key = fixtures.fileIssue(w.reporter(), w.code()).key();
+        // An issue of its own for the reporter who is suspended: the reporter of the first one stays active.
+        Session suspendedReporter = fixtures.customer(w.admin(), w.code());
+        String theirs = fixtures.fileIssue(suspendedReporter, w.code()).key();
+        flow.suspend(w.admin(), suspendedReporter.accountId());
         Map<String, Mention> mentions = new LinkedHashMap<>();
-        mentions.put("the author", new Mention(false, w.agent().accountId()));
-        mentions.put("the reporter, in an internal comment", new Mention(true, w.reporter().accountId()));
-        mentions.put("a colleague of the reporter", new Mention(false, w.colleague().accountId()));
-        mentions.put("a customer of another company", new Mention(false, outsider.accountId()));
-        mentions.put("an agent assigned to no company", new Mention(false, w.unassignedAgent().accountId()));
-        mentions.put("an agent assigned to another company only", new Mention(true, w.agentElsewhere().accountId()));
-        mentions.put("a suspended agent of the company", new Mention(true, suspended.accountId()));
-        mentions.put("an invited agent of the company", new Mention(false, invited.accountId()));
-        mentions.put("an ID of nobody", new Mention(false, IssueFlow.NO_ACCOUNT));
+        mentions.put("the author", new Mention(key, false, w.agent().accountId()));
+        mentions.put("the reporter, in an internal comment", new Mention(key, true, w.reporter().accountId()));
+        mentions.put("a colleague of the reporter", new Mention(key, false, w.colleague().accountId()));
+        mentions.put("a customer of another company", new Mention(key, false, outsider.accountId()));
+        mentions.put("an agent assigned to no company", new Mention(key, false, w.unassignedAgent().accountId()));
+        mentions.put("an agent assigned to another company only",
+                new Mention(key, true, w.agentElsewhere().accountId()));
+        mentions.put("a suspended agent of the company", new Mention(key, true, suspended.accountId()));
+        mentions.put("an invited agent of the company", new Mention(key, false, invited.accountId()));
+        mentions.put("a suspended admin", new Mention(key, true, suspendedAdmin.accountId()));
+        mentions.put("the suspended reporter, in a public comment",
+                new Mention(theirs, false, suspendedReporter.accountId()));
+        mentions.put("an ID of nobody", new Mention(key, false, IssueFlow.NO_ACCOUNT));
 
         Map<String, ApiResponse> answers = new LinkedHashMap<>();
-        mentions.forEach((who, m) -> answers.put(who, TalkFlow.addRequest(w.agent(), issue.key(),
+        mentions.forEach((who, m) -> answers.put(who, TalkFlow.addRequest(w.agent(), m.key(),
                 body("content", "Refused", "internal", m.internal(), "mentions", List.of(m.accountId()))).send()));
-        ApiResponse mixed = TalkFlow.addRequest(w.agent(), issue.key(), body("content", "Refused", "mentions",
+        ApiResponse mixed = TalkFlow.addRequest(w.agent(), key, body("content", "Refused", "mentions",
                 List.of(otherAgent.accountId(), w.colleague().accountId(), w.admin().accountId()))).send();
 
         ApiResponse first = answers.values().iterator().next();
@@ -154,7 +164,10 @@ class MentionTest extends BareAppTest {
             assertThat(answer.text()).as("body for %s, like for the author", who).isEqualTo(first.text());
         });
         assertRefused(mixed, "UNKNOWN_VALUE");
-        assertThat(TalkFlow.comments(w.admin(), issue.key())).as("comments after the refused mentions").isEmpty();
+        for (String issueKey : List.of(key, theirs)) {
+            assertThat(TalkFlow.comments(w.admin(), issueKey)).as("comments of %s after the refused mentions",
+                    issueKey).isEmpty();
+        }
     }
 
     // S4-AC-21
@@ -233,25 +246,42 @@ class MentionTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S4-AC-24 an edit checks the mentions as adding does: an account that cannot be mentioned is 400 UNKNOWN_VALUE, eleven accounts 400 TOO_MANY, and the comment stays")
+    @DisplayName("S4-AC-24, S4-AC-20 an edit checks the mentions as adding does: an account that cannot be mentioned is 400 UNKNOWN_VALUE, the reporter in an internal comment too, with the body adding gives and no item for the reporter, eleven accounts 400 TOO_MANY, and the comments stay")
     void editChecksTheMentions() {
         World w = flow.world();
         List<Long> eleven = assignedAgents(w, 11);
         Issue issue = fixtures.fileIssue(w.reporter(), w.code());
         Comment added = TalkFlow.mention(w.agent(), issue.key(), false, List.of(w.admin().accountId()));
-        // A list the edit takes, so the refusals below are about the accounts and their number.
+        Comment note = TalkFlow.mention(w.agent(), issue.key(), true, List.of(w.admin().accountId()));
+        // Lists the edits take, so the refusals below are about the accounts and their number.
         TalkFlow.editMentions(w.agent(), issue.key(), added.id(), List.of(w.admin().accountId(), eleven.getFirst()));
-        JsonNode before = TalkFlow.comment(w.admin(), issue.key(), added.id());
+        TalkFlow.editMentions(w.agent(), issue.key(), note.id(), List.of(w.admin().accountId(), eleven.getFirst()));
+        List<JsonNode> before = TalkFlow.comments(w.admin(), issue.key());
+        List<Long> reporter = List.of(w.reporter().accountId());
 
         ApiResponse unknown = TalkFlow.editRequest(w.agent(), issue.key(), added.id(),
                 body("mentions", List.of(w.admin().accountId(), w.colleague().accountId()))).send();
         ApiResponse tooMany = TalkFlow.editRequest(w.agent(), issue.key(), added.id(), body("mentions", eleven))
                 .send();
+        ApiResponse reporterInANote = TalkFlow.editRequest(w.agent(), issue.key(), note.id(),
+                body("mentions", reporter)).send();
+        ApiResponse reporterInANewNote = TalkFlow.addRequest(w.agent(), issue.key(),
+                body("content", "Refused", "internal", true, "mentions", reporter)).send();
 
         assertRefused(unknown, "UNKNOWN_VALUE");
         assertRefused(tooMany, "TOO_MANY");
-        assertThat(TalkFlow.comment(w.admin(), issue.key(), added.id())).as("the comment after the refused edits")
+        assertRefused(reporterInANote, "UNKNOWN_VALUE");
+        assertRefused(reporterInANewNote, "UNKNOWN_VALUE");
+        assertThat(reporterInANote.text()).as("body for the reporter in an edited internal comment, like in a new one")
+                .isEqualTo(reporterInANewNote.text());
+        assertThat(TalkFlow.comments(w.admin(), issue.key())).as("the comments after the refused requests")
                 .isEqualTo(before);
+        // The reporter has the item of the public answer and none of the internal comment.
+        assertThat(TalkFlow.inboxOf(w.reporter(), issue.key())).as("the reporter's items about %s", issue.key())
+                .singleElement().satisfies(item -> {
+                    assertThat(TalkFlow.kind(item)).as("kind of %s", item).isEqualTo("STAFF_COMMENT");
+                    assertThat(item.path("commentId").asLong(-1)).as("commentId of %s", item).isEqualTo(added.id());
+                });
     }
 
     @Test

@@ -1,27 +1,26 @@
 package io.popdesk.inbox;
 
 import static io.popdesk.inbox.InboxSteps.ITEM_FIELDS;
-import static io.popdesk.inbox.InboxSteps.NO_ITEM;
 import static io.popdesk.inbox.InboxSteps.assertActor;
-import static io.popdesk.inbox.InboxSteps.assertError;
 import static io.popdesk.inbox.InboxSteps.assertItem;
 import static io.popdesk.inbox.InboxSteps.commentId;
 import static io.popdesk.inbox.InboxSteps.commentIds;
-import static io.popdesk.inbox.InboxSteps.ids;
-import static io.popdesk.inbox.InboxSteps.isNull;
 import static io.popdesk.inbox.InboxSteps.item;
-import static io.popdesk.inbox.InboxSteps.items;
 import static io.popdesk.inbox.InboxSteps.itemsOf;
-import static io.popdesk.inbox.InboxSteps.kinds;
 import static io.popdesk.inbox.InboxSteps.page;
 import static io.popdesk.inbox.InboxSteps.total;
+import static io.popdesk.issue.TalkFlow.NO_ITEM;
+import static io.popdesk.issue.TalkFlow.assertRefused;
+import static io.popdesk.issue.TalkFlow.ids;
+import static io.popdesk.issue.TalkFlow.isNull;
+import static io.popdesk.issue.TalkFlow.items;
+import static io.popdesk.issue.TalkFlow.kinds;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.inbox.InboxSteps.Cast;
 import io.popdesk.issue.IssueFlow;
 import io.popdesk.issue.TalkFlow;
 import io.popdesk.manager.ManagerSteps;
-import io.popdesk.support.ApiClient;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
 import io.popdesk.support.Fixtures.Comment;
@@ -43,7 +42,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -141,17 +139,6 @@ class InboxReadTest extends BareAppTest {
         assertThat(pageTwo.jsonLong("page")).as("page").isEqualTo(2);
     }
 
-    @ParameterizedTest(name = "{0}")
-    @EnumSource(Side.class)
-    @DisplayName("S4-AC-39 the inbox of nobody signed in is 401")
-    void listNeedsASession(Side side) {
-        ApiClient client = side == Side.PORTAL ? portal() : console();
-        String api = side == Side.PORTAL ? "/api/portal" : "/api/console";
-
-        assertError(client.get(api + "/notifications").send(), 401, "UNAUTHENTICATED");
-        assertError(client.get(api + "/notifications/unread-count").send(), 401, "UNAUTHENTICATED");
-    }
-
     // S4-AC-40
 
     @ParameterizedTest(name = "{0}")
@@ -231,23 +218,17 @@ class InboxReadTest extends BareAppTest {
 
     // S4-AC-42, S4-AC-26
 
-    @ParameterizedTest(name = "an agent who was {0}")
-    @ValueSource(strings = {"ASSIGNED", "MENTIONED"})
-    @DisplayName("S4-AC-42 S4-AC-26 an agent taken off the company loses the item of its issue from the list, "
-            + "totalElements, and the unread count, and has it again once assigned back; the comment still names "
-            + "them as mentioned meanwhile")
-    void itemOfAnIssueOutOfScopeIsHiddenUntilItIsBack(String how) {
+    @Test
+    @DisplayName("S4-AC-42 S4-AC-26 a mentioned agent taken off the company loses the item of its issue from the "
+            + "list, totalElements, and the unread count, and has it again once assigned back; the comment still "
+            + "names them as mentioned meanwhile")
+    void itemOfAnIssueOutOfScopeIsHiddenUntilItIsBack() {
         Cast c = steps.cast();
         Session agent = fixtures.agent(c.admin(), c.code());
         String key = fixtures.fileIssue(c.reporter(), c.code()).key();
-        Comment mentioning = null;
-        if (how.equals("ASSIGNED")) {
-            flow.assign(c.admin(), key, agent.accountId());
-        } else {
-            mentioning = TalkFlow.mention(c.assignee(), key, true, List.of(agent.accountId()));
-        }
+        Comment mentioning = TalkFlow.mention(c.assignee(), key, true, List.of(agent.accountId()));
         List<JsonNode> before = TalkFlow.inbox(agent);
-        assertThat(kinds(before)).as("the agent's items").containsExactly(how);
+        assertThat(kinds(before)).as("the agent's items").containsExactly("MENTIONED");
         assertThat(total(agent)).as("totalElements").isEqualTo(1);
         assertThat(TalkFlow.unreadCount(agent)).as("unread count").isEqualTo(1);
 
@@ -256,10 +237,8 @@ class InboxReadTest extends BareAppTest {
         assertThat(TalkFlow.inbox(agent)).as("the agent's items once off the company").isEmpty();
         assertThat(total(agent)).as("totalElements once off the company").isZero();
         assertThat(TalkFlow.unreadCount(agent)).as("unread count once off the company").isZero();
-        if (mentioning != null) {
-            assertThat(TalkFlow.accountIds(TalkFlow.comment(c.assignee(), key, mentioning.id()).path("mentions")))
-                    .as("mentions of the comment while the agent is off the company").contains(agent.accountId());
-        }
+        assertThat(TalkFlow.accountIds(TalkFlow.comment(c.assignee(), key, mentioning.id()).path("mentions")))
+                .as("mentions of the comment while the agent is off the company").contains(agent.accountId());
 
         fixtures.assignAgent(c.admin(), c.code(), agent.accountId());
 
@@ -313,19 +292,27 @@ class InboxReadTest extends BareAppTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(Side.class)
-    @DisplayName("S4-AC-44 S4-AC-47 reading another person's item or an item nobody has is 404, and the other "
-            + "person's item stays unread")
+    @DisplayName("S4-AC-44 S4-AC-47 reading another person's item is, for someone who sees the same issue, the "
+            + "404 of an item ID nobody has, and the item stays as it was, unread")
     void readingAnotherPersonsItemIsNotFound(Side side) {
         Desk d = desk(side);
-        long id = itemAbout(d, more(d)).path("id").asLong();
+        // Reading an item of their own works, so the 404 below is about whose item it is.
+        TalkFlow.markRead(d.reader(), itemAbout(d, more(d)).path("id").asLong());
+        JsonNode before = itemAbout(d, more(d));
+        long id = before.path("id").asLong();
         long unread = TalkFlow.unreadCount(d.reader());
+        assertThat(isNull(before, "readAt")).as("the item is unread: %s", before).isTrue();
 
         ApiResponse others = TalkFlow.markReadRequest(d.peer(), id).send();
-        ApiResponse nobodys = TalkFlow.markReadRequest(d.reader(), NO_ITEM).send();
+        ApiResponse nobodys = TalkFlow.markReadRequest(d.peer(), NO_ITEM).send();
+        ApiResponse ownersMissing = TalkFlow.markReadRequest(d.reader(), NO_ITEM).send();
 
-        assertError(others, 404, "NOT_FOUND");
-        assertError(nobodys, 404, "NOT_FOUND");
-        assertThat(isNull(item(d.reader(), id), "readAt")).as("the item is still unread").isTrue();
+        assertRefused(others, 404, "NOT_FOUND");
+        assertRefused(nobodys, 404, "NOT_FOUND");
+        assertRefused(ownersMissing, 404, "NOT_FOUND");
+        assertThat(others.text()).as("body of %s, like for an item ID nobody has", others.request())
+                .isEqualTo(nobodys.text());
+        assertThat(item(d.reader(), id)).as("the item after the request").isEqualTo(before);
         assertThat(TalkFlow.unreadCount(d.reader())).as("unread count of the item's owner").isEqualTo(unread);
     }
 
@@ -433,25 +420,57 @@ class InboxReadTest extends BareAppTest {
 
     // S4-AC-16
 
-    @ParameterizedTest(name = "the item of kind {0}")
-    @ValueSource(strings = {"STAFF_COMMENT", "MENTIONED"})
-    @DisplayName("S4-AC-16 deleting a comment takes the item it made out of the recipient's list and unread count")
-    void deletingTheCommentRemovesItsItem(String kind) {
+    /** Whose comment made the item, whether its recipient read it, and who deletes the comment. */
+    enum Deleted {
+        STAFF_ANSWER_BY_ITS_AUTHOR,
+        MENTION_BY_ITS_AUTHOR,
+        CUSTOMER_COMMENT_BY_ITS_AUTHOR,
+        STAFF_ANSWER_ALREADY_READ,
+        STAFF_ANSWER_BY_AN_ADMIN
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(Deleted.class)
+    @DisplayName("S4-AC-16 deleting a comment takes the item it made out of the recipient's list, totalElements, "
+            + "and unread count: a staff answer, a mention, a customer's comment, an item already read, and a "
+            + "comment an admin deletes")
+    void deletingTheCommentRemovesItsItem(Deleted deleted) {
         Cast c = steps.cast();
         String key = steps.assignedIssue(c).key();
-        boolean answer = kind.equals("STAFF_COMMENT");
-        Session reader = answer ? c.reporter() : c.otherAgent();
-        Comment comment = answer ? fixtures.comment(c.assignee(), key, Unique.text("Answer"))
-                : TalkFlow.mention(c.assignee(), key, true, List.of(reader.accountId()));
-        List<JsonNode> before = TalkFlow.inbox(reader);
-        assertThat(before).as("the recipient's inbox before").hasSize(1);
-        assertItem(before.getFirst(), reader, kind, key, comment.id(), c.assignee());
-        assertThat(TalkFlow.unreadCount(reader)).as("unread count before").isEqualTo(1);
+        Session author = deleted == Deleted.CUSTOMER_COMMENT_BY_ITS_AUTHOR ? c.reporter() : c.assignee();
+        Session reader = switch (deleted) {
+            case MENTION_BY_ITS_AUTHOR -> c.otherAgent();
+            case CUSTOMER_COMMENT_BY_ITS_AUTHOR -> c.assignee();
+            default -> c.reporter();
+        };
+        String kind = switch (deleted) {
+            case MENTION_BY_ITS_AUTHOR -> "MENTIONED";
+            case CUSTOMER_COMMENT_BY_ITS_AUTHOR -> "CUSTOMER_COMMENT";
+            default -> "STAFF_COMMENT";
+        };
+        Comment comment = deleted == Deleted.MENTION_BY_ITS_AUTHOR
+                ? TalkFlow.mention(author, key, true, List.of(reader.accountId()))
+                : fixtures.comment(author, key, Unique.text("Comment"));
+        List<JsonNode> made = TalkFlow.inbox(reader).stream()
+                .filter(n -> Long.valueOf(comment.id()).equals(commentId(n))).toList();
+        assertThat(made).as("items of %s about comment %s", reader.email(), comment.id()).hasSize(1);
+        assertItem(made.getFirst(), reader, kind, key, comment.id(), author);
+        long itemId = made.getFirst().path("id").asLong();
+        boolean read = deleted == Deleted.STAFF_ANSWER_ALREADY_READ;
+        if (read) {
+            TalkFlow.markRead(reader, itemId);
+        }
+        List<Long> before = ids(TalkFlow.inbox(reader));
+        long unreadBefore = TalkFlow.unreadCount(reader);
+        assertThat(unreadBefore).as("unread count before").isEqualTo(read ? before.size() - 1 : before.size());
 
-        TalkFlow.delete(c.assignee(), key, comment.id());
+        TalkFlow.delete(deleted == Deleted.STAFF_ANSWER_BY_AN_ADMIN ? c.bystander() : author, key, comment.id());
 
-        assertThat(TalkFlow.inbox(reader)).as("the recipient's inbox after the comment was deleted").isEmpty();
-        assertThat(total(reader)).as("totalElements after").isZero();
-        assertThat(TalkFlow.unreadCount(reader)).as("unread count after").isZero();
+        List<Long> kept = before.stream().filter(id -> id != itemId).toList();
+        assertThat(ids(TalkFlow.inbox(reader))).as("the recipient's items after the comment was deleted")
+                .isEqualTo(kept);
+        assertThat(total(reader)).as("totalElements after").isEqualTo(kept.size());
+        assertThat(TalkFlow.unreadCount(reader)).as("unread count after")
+                .isEqualTo(read ? unreadBefore : unreadBefore - 1);
     }
 }

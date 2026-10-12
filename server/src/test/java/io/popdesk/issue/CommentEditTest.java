@@ -3,6 +3,7 @@ package io.popdesk.issue;
 import static io.popdesk.issue.IssueSteps.fieldCode;
 import static io.popdesk.issue.IssueSteps.fieldNames;
 import static io.popdesk.issue.IssueSteps.text;
+import static io.popdesk.issue.TalkFlow.assertRefused;
 import static io.popdesk.issue.TalkFlow.body;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -66,11 +67,6 @@ class CommentEditTest extends BareAppTest {
                     ? List.of(w.agent(), w.admin())
                     : List.of(w.agent(), w.admin(), w.reporter());
         }
-    }
-
-    private static void assertRefused(ApiResponse response, int status, String code) {
-        assertThat(response.status()).as(response.request() + ": " + response.snippet()).isEqualTo(status);
-        assertThat(response.errorCode()).as("code of %s", response.request()).isEqualTo(code);
     }
 
     // S4-AC-01
@@ -157,6 +153,7 @@ class CommentEditTest extends BareAppTest {
     enum Intruder {
         AGENT_ON_ANOTHER_AGENTS_COMMENT,
         ADMIN_ON_AN_AGENTS_COMMENT,
+        ADMIN_ON_THE_REPORTERS_COMMENT,
         AGENT_ON_THE_REPORTERS_COMMENT,
         REPORTER_ON_A_STAFF_COMMENT,
         COLLEAGUE_ON_THE_REPORTERS_COMMENT
@@ -178,6 +175,10 @@ class CommentEditTest extends BareAppTest {
             case ADMIN_ON_AN_AGENTS_COMMENT -> {
                 caller = w.admin();
                 target = fixtures.internalComment(w.agent(), issue.key(), Unique.text("By an agent"));
+            }
+            case ADMIN_ON_THE_REPORTERS_COMMENT -> {
+                caller = w.admin();
+                target = fixtures.comment(w.reporter(), issue.key(), Unique.text("By the reporter"));
             }
             case AGENT_ON_THE_REPORTERS_COMMENT -> {
                 caller = w.agent();
@@ -225,22 +226,6 @@ class CommentEditTest extends BareAppTest {
         assertRefused(refused, 400, "ISSUE_CLOSED");
         assertThat(TalkFlow.comment(w.admin(), issue.key(), written.id())).as("the comment after the refused edit")
                 .isEqualTo(before);
-    }
-
-    @Test
-    @DisplayName("S4-AC-04, S4-AC-02 an edit of someone else's comment on a CLOSED issue is 403 FORBIDDEN, not ISSUE_CLOSED")
-    void notTheAuthorComesBeforeClosed() {
-        World w = flow.world();
-        Issue issue = fixtures.fileIssue(w.reporter(), w.code());
-        Comment byReporter = fixtures.comment(w.reporter(), issue.key(), Unique.text("By the reporter"));
-        flow.close(w.reporter(), issue.key());
-        JsonNode before = TalkFlow.comment(w.admin(), issue.key(), byReporter.id());
-
-        ApiResponse refused = TalkFlow.editRequest(w.agent(), issue.key(), byReporter.id(),
-                body("content", Unique.text("Not mine"))).send();
-
-        assertRefused(refused, 403, "FORBIDDEN");
-        assertThat(TalkFlow.comment(w.admin(), issue.key(), byReporter.id())).isEqualTo(before);
     }
 
     // S4-AC-05
@@ -374,7 +359,7 @@ class CommentEditTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S4-AC-08, S4-AC-04 the author's edit of a deleted comment on a CLOSED issue is 400 with COMMENT_DELETED or ISSUE_CLOSED")
+    @DisplayName("S4-AC-08, S4-AC-04 the author's edit of a deleted comment on a CLOSED issue is 400 COMMENT_DELETED, not ISSUE_CLOSED")
     void deletedCommentOnClosedIssueCannotBeEdited() {
         World w = flow.world();
         Issue issue = fixtures.fileIssue(w.reporter(), w.code());
@@ -385,8 +370,7 @@ class CommentEditTest extends BareAppTest {
         ApiResponse refused = TalkFlow.editRequest(w.agent(), issue.key(), written.id(),
                 body("content", Unique.text("Back again"))).send();
 
-        assertThat(refused.status()).as(refused.request() + ": " + refused.snippet()).isEqualTo(400);
-        assertThat(refused.errorCode()).isIn("COMMENT_DELETED", "ISSUE_CLOSED");
+        assertRefused(refused, 400, "COMMENT_DELETED");
         assertThat(text(TalkFlow.comment(w.admin(), issue.key(), written.id()), "content")).isEmpty();
     }
 }

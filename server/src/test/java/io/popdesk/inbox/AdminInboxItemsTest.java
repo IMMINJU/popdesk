@@ -1,11 +1,12 @@
 package io.popdesk.inbox;
 
-import static io.popdesk.inbox.InboxSteps.isNull;
-import static io.popdesk.inbox.InboxSteps.kind;
+import static io.popdesk.issue.TalkFlow.isNull;
+import static io.popdesk.issue.TalkFlow.kind;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.issue.TalkFlow;
 import io.popdesk.manager.ManagerSteps;
+import io.popdesk.support.AppLog.Mark;
 import io.popdesk.support.ConnectedAppTest;
 import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.Issue;
@@ -26,6 +27,9 @@ import tools.jackson.databind.JsonNode;
 class AdminInboxItemsTest extends ConnectedAppTest {
 
     private static final String STATUS = "/api/console/system/status";
+
+    /** The end of the log line the send loop writes after it stored a failed attempt that is tried again. */
+    private static final String FIRST_FAILURE_STORED = "It is tried again later.";
 
     private static JsonNode awaitItem(Session admin, String kind) {
         return Wait.until(kind + " in the inbox of " + admin.email(), () -> TalkFlow.inbox(admin).stream()
@@ -68,9 +72,13 @@ class AdminInboxItemsTest extends ConnectedAppTest {
         Company company = fixtures.createCompany(first);
         Session customer = fixtures.customer(first, company.code());
         Session admin = fixtures.admin(first);
+        Mark mark = log.mark();
         webhook().respondWith(500);
         Issue issue = fixtures.fileIssue(customer, company.code());
         webhook().await("a first attempt for " + issue.key(), r -> r.text().contains(issue.key()));
+        // The app writes this line once the first failure and its time are stored. Moving the clock before
+        // that would make the time 25 hours on the time of the first failure, and nothing would be given up.
+        log.awaitLine(mark, FIRST_FAILURE_STORED);
 
         clock.advance(Duration.ofHours(25));
 

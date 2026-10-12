@@ -1,11 +1,11 @@
 package io.popdesk.inbox;
 
-import static io.popdesk.inbox.InboxSteps.assertError;
 import static io.popdesk.inbox.InboxSteps.assertItem;
 import static io.popdesk.inbox.InboxSteps.commentIds;
 import static io.popdesk.inbox.InboxSteps.idsAbout;
 import static io.popdesk.inbox.InboxSteps.itemsOf;
-import static io.popdesk.inbox.InboxSteps.kinds;
+import static io.popdesk.issue.TalkFlow.assertRefused;
+import static io.popdesk.issue.TalkFlow.kinds;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.inbox.InboxSteps.Cast;
@@ -206,20 +206,24 @@ class InboxRulesTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S4-AC-36 a staff answer while the reporter is suspended is no item for them, also once they are "
-            + "back; the answer before it is")
+    @DisplayName("S4-AC-36 a staff answer and a resolution while the reporter is suspended are no items for "
+            + "them, also once they are back; the answer before it is")
     void suspendedReporterGetsNoItem() {
         Cast c = steps.cast();
         String key = steps.assignedIssue(c).key();
+        flow.changeStatus(c.assignee(), key, "IN_PROGRESS");
         Comment first = fixtures.comment(c.assignee(), key, Unique.text("First"));
         assertThat(commentIds(TalkFlow.inboxOf(c.reporter(), key))).as("items before").containsExactly(first.id());
 
         flow.suspend(c.admin(), c.reporter().accountId());
         fixtures.comment(c.assignee(), key, Unique.text("Second"));
+        flow.changeStatus(c.assignee(), key, "RESOLVED");
         flow.reactivate(c.admin(), c.reporter().accountId());
 
-        assertThat(commentIds(TalkFlow.inboxOf(fixtures.signInAgain(c.reporter()), key)))
-                .as("items of the reporter who is back").containsExactly(first.id());
+        List<JsonNode> back = TalkFlow.inboxOf(fixtures.signInAgain(c.reporter()), key);
+        assertThat(kinds(back)).as("kinds of the items of the reporter who is back").containsExactly("STAFF_COMMENT");
+        assertThat(commentIds(back)).as("comments of the items of the reporter who is back")
+                .containsExactly(first.id());
     }
 
     @Test
@@ -240,8 +244,9 @@ class InboxRulesTest extends BareAppTest {
     // S4-AC-37
 
     @Test
-    @DisplayName("S4-AC-37 requests that fail (400, 403, 404, 409, INVALID_TRANSITION) and requests that change "
-            + "nothing (the same assignee, the same content) put no item in any inbox")
+    @DisplayName("S4-AC-37 S4-AC-20 requests that fail (400, a mention that is refused, 403, 404, 409, "
+            + "INVALID_TRANSITION) and requests that change nothing (the same assignee, the same content) put no "
+            + "item in any inbox")
     void failedAndUnchangedRequestsAreNoItems() {
         Cast c = steps.cast();
         Session stranger = fixtures.agent(c.admin());
@@ -259,14 +264,19 @@ class InboxRulesTest extends BareAppTest {
         assertThat(kinds(TalkFlow.inbox(c.colleague()))).as("the colleague's items after the filing for them")
                 .containsExactly("ISSUE_FILED_ON_BEHALF");
 
-        assertError(TalkFlow.addRequest(c.assignee(), key, TalkFlow.body("content", "")).send(), 400, "INVALID_INPUT");
-        assertError(TalkFlow.addRequest(c.reporter(), key, TalkFlow.body("content", "")).send(), 400, "INVALID_INPUT");
-        assertError(TalkFlow.editRequest(c.colleague(), key, question.id(), TalkFlow.body("content", "Not mine"))
+        assertRefused(TalkFlow.addRequest(c.assignee(), key, TalkFlow.body("content", "")).send(), 400,
+                "INVALID_INPUT");
+        assertRefused(TalkFlow.addRequest(c.reporter(), key, TalkFlow.body("content", "")).send(), 400,
+                "INVALID_INPUT");
+        assertRefused(TalkFlow.addRequest(c.assignee(), key, TalkFlow.body("content", "Refused", "internal", true,
+                "mentions", List.of(c.otherAgent().accountId(), c.reporter().accountId()))).send(), 400,
+                "INVALID_INPUT");
+        assertRefused(TalkFlow.editRequest(c.colleague(), key, question.id(), TalkFlow.body("content", "Not mine"))
                 .send(), 403, "FORBIDDEN");
-        assertError(TalkFlow.addRequest(stranger, key, TalkFlow.body("content", "Out of scope")).send(), 404,
+        assertRefused(TalkFlow.addRequest(stranger, key, TalkFlow.body("content", "Out of scope")).send(), 404,
                 "NOT_FOUND");
-        assertError(IssueFlow.statusRequest(c.assignee(), key, "RESOLVED").send(), 400, "INVALID_TRANSITION");
-        assertError(flow.onBehalfRequest(c.assignee(), filing.title(Unique.text("Other content")))
+        assertRefused(IssueFlow.statusRequest(c.assignee(), key, "RESOLVED").send(), 400, "INVALID_TRANSITION");
+        assertRefused(flow.onBehalfRequest(c.assignee(), filing.title(Unique.text("Other content")))
                 .header("Idempotency-Key", idempotencyKey).send(), 409, "IDEMPOTENCY_KEY_REUSED");
         flow.assign(c.admin(), key, c.assignee().accountId());
         TalkFlow.editContent(c.assignee(), key, answer.id(), text);

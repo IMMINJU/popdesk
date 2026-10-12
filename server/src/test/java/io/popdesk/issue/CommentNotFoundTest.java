@@ -23,8 +23,8 @@ import tools.jackson.databind.JsonNode;
 /**
  * Editing and deleting a comment the caller cannot see, or one that is not there, is 404 and changes
  * nothing: an internal comment for a customer, another company's issue, an issue of a company the
- * agent is not assigned to, a colleague's private issue, a comment ID of another issue, an ID nobody
- * has, and an ID that is no number.
+ * agent is not assigned to, a colleague's private issue, a comment ID of another issue on either app,
+ * an ID nobody has, and an ID that is no number.
  */
 class CommentNotFoundTest extends BareAppTest {
 
@@ -43,6 +43,8 @@ class CommentNotFoundTest extends BareAppTest {
         ISSUE_FOR_AN_AGENT_OF_ANOTHER_COMPANY,
         PRIVATE_ISSUE_FOR_A_COLLEAGUE,
         COMMENT_OF_ANOTHER_ISSUE_THE_CALLER_SEES,
+        OWN_COMMENT_WITH_THE_KEY_OF_ANOTHER_ISSUE_FOR_AN_AGENT,
+        COMMENT_OF_A_HIDDEN_ISSUE_WITH_THE_KEY_OF_ONE_THE_AGENT_SEES,
         ID_OF_NO_COMMENT,
         ID_THAT_IS_NO_NUMBER;
 
@@ -77,6 +79,13 @@ class CommentNotFoundTest extends BareAppTest {
             case PRIVATE_ISSUE_FOR_A_COLLEAGUE -> new Attempt(w.colleague(), privateIssue.key(), onPrivate.id());
             case COMMENT_OF_ANOTHER_ISSUE_THE_CALLER_SEES -> new Attempt(w.reporter(), second.key(),
                     byReporter.id());
+            case OWN_COMMENT_WITH_THE_KEY_OF_ANOTHER_ISSUE_FOR_AN_AGENT -> new Attempt(w.agent(), second.key(),
+                    fixtures.comment(w.agent(), issue.key(), Unique.text("By the agent")).id());
+            case COMMENT_OF_A_HIDDEN_ISSUE_WITH_THE_KEY_OF_ONE_THE_AGENT_SEES -> {
+                Session customerElsewhere = fixtures.customer(w.admin(), w.elsewhere().code());
+                Issue seen = fixtures.fileIssue(customerElsewhere, w.elsewhere().code());
+                yield new Attempt(w.agentElsewhere(), seen.key(), byReporter.id());
+            }
             case ID_OF_NO_COMMENT -> new Attempt(w.reporter(), issue.key(), TalkFlow.NO_COMMENT);
             case ID_THAT_IS_NO_NUMBER -> new Attempt(w.reporter(), issue.key(), "abc");
         };

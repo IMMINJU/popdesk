@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.issue.IssueFlow;
 import io.popdesk.issue.TalkFlow;
+import io.popdesk.manager.ManagerSteps;
 import io.popdesk.notify.NotifySteps.Scene;
 import io.popdesk.notify.Rows.Row;
 import io.popdesk.notify.Rows.Snapshot;
@@ -47,12 +48,6 @@ class KoreanTalkMailTest extends GatedMailTest {
         rows = new Rows(db);
     }
 
-    private Session agentOf(Scene s, String prefix) {
-        Session agent = steps.person(s.admin(), Role.AGENT, prefix, null);
-        fixtures.assignAgent(s.admin(), s.code(), agent.accountId());
-        return agent;
-    }
-
     /** The one mail row the request added for the recipient, read while the gate holds its mail. */
     private List<Row> heldMailRow(String queueTable, Snapshot before, Session recipient) {
         gate().awaitHeldTo(recipient.email());
@@ -69,7 +64,7 @@ class KoreanTalkMailTest extends GatedMailTest {
         gate().pass();
         clock.advance(Duration.ofSeconds(1));
         rows.awaitGone("the mail row of " + recipient.email() + " handled", mailRows);
-        fixtures.invite(admin, Role.AGENT);
+        TalkFlow.awaitALaterMail(fixtures, admin);
         assertThat(notifications(mail(), recipient.email())).as("mails to %s", recipient.email()).isEmpty();
         assertThat(gate().held()).as("attempts that reached the mail server").filteredOn(h -> h.isTo(recipient.email()))
                 .hasSize(1);
@@ -101,18 +96,24 @@ class KoreanTalkMailTest extends GatedMailTest {
         NEW_ASSIGNEE_SUSPENDED,
         REPORTER_SUSPENDED,
         NEW_ASSIGNEE_OFF_THE_COMPANY,
-        MENTIONED_AGENT_OFF_THE_COMPANY
+        MENTIONED_AGENT_OFF_THE_COMPANY,
+        ADMIN_OF_A_MEMBERSHIP_REQUEST_SUSPENDED
     }
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(Gone.class)
-    @DisplayName("S4-AC-54 a queued new mail is not sent, and its row is deleted, when its recipient was suspended "
-            + "or taken off the company before it goes out")
+    @DisplayName("S4-AC-54 S4-AC-51 a queued new mail is not sent, and its row is deleted, when its recipient was "
+            + "suspended or taken off the company before it goes out; the mail of a membership request too, when "
+            + "the admin it is for was suspended")
     void queuedMailForSomeoneWhoMayNotGetItIsDropped(Gone gone) {
         Scene s = steps.scene();
-        Session second = agentOf(s, "Second");
+        Session second = TalkMails.agentOf(fixtures, steps, s, "Second");
         String key = TalkMails.issue(fixtures, s, IssueFlow.word()).key();
         flow.changeStatus(s.agent(), key, "IN_PROGRESS");
+        // For the membership request: an admin of its own to mail, a manager who asks, and whom they ask for.
+        Session approver = steps.person(s.admin(), Role.ADMIN, "Approver", null);
+        Session manager = ManagerSteps.manager(fixtures, s.admin(), s.code());
+        Session wanted = steps.person(s.admin(), Role.CUSTOMER, "Wanted", fixtures.createCompany(s.admin()).code());
         String queue = TalkMails.mailQueueTable(rows, gate(), clock, mail(), s.admin());
         gate().hold();
         Snapshot before = rows.snapshot();
@@ -130,12 +131,16 @@ class KoreanTalkMailTest extends GatedMailTest {
                 TalkFlow.mention(s.agent(), key, true, List.of(second.accountId()));
                 yield second;
             }
+            case ADMIN_OF_A_MEMBERSHIP_REQUEST_SUSPENDED -> {
+                ManagerSteps.invited(manager, s.code(), wanted.email(), Unique.text("Typed"));
+                yield approver;
+            }
         };
         List<Row> mailRows = heldMailRow(queue, before, recipient);
-        if (gone == Gone.NEW_ASSIGNEE_SUSPENDED || gone == Gone.REPORTER_SUSPENDED) {
-            flow.suspend(s.admin(), recipient.accountId());
-        } else {
+        if (gone == Gone.NEW_ASSIGNEE_OFF_THE_COMPANY || gone == Gone.MENTIONED_AGENT_OFF_THE_COMPANY) {
             flow.unassignAgent(s.admin(), s.code(), recipient.accountId());
+        } else {
+            flow.suspend(s.admin(), recipient.accountId());
         }
 
         assertDropped(s.admin(), mailRows, recipient);
@@ -149,7 +154,7 @@ class KoreanTalkMailTest extends GatedMailTest {
             + "row is deleted, when the comment was deleted before it goes out")
     void queuedMailOfADeletedCommentIsDropped(String kind) {
         Scene s = steps.scene();
-        Session second = agentOf(s, "Second");
+        Session second = TalkMails.agentOf(fixtures, steps, s, "Second");
         String key = TalkMails.issue(fixtures, s, IssueFlow.word()).key();
         String queue = TalkMails.mailQueueTable(rows, gate(), clock, mail(), s.admin());
         boolean answer = kind.equals("STAFF_COMMENT");
@@ -172,7 +177,7 @@ class KoreanTalkMailTest extends GatedMailTest {
             + "person out of the mentions before it goes out; their inbox item goes too")
     void queuedMailOfARemovedMentionIsDropped() {
         Scene s = steps.scene();
-        Session second = agentOf(s, "Second");
+        Session second = TalkMails.agentOf(fixtures, steps, s, "Second");
         String key = TalkMails.issue(fixtures, s, IssueFlow.word()).key();
         String queue = TalkMails.mailQueueTable(rows, gate(), clock, mail(), s.admin());
         gate().hold();

@@ -64,6 +64,13 @@ final class TalkMails {
         return "http://" + AppTest.CONSOLE_HOST + "/companies/" + code;
     }
 
+    /** A new agent assigned to the scene's company, named and mailed as {@link NotifySteps#person} does. */
+    static Session agentOf(Fixtures fixtures, NotifySteps steps, Scene s, String prefix) {
+        Session agent = steps.person(s.admin(), Role.AGENT, prefix, null);
+        fixtures.assignAgent(s.admin(), s.code(), agent.accountId());
+        return agent;
+    }
+
     /** A public issue of the scene's customer, titled {@link WebhookSnapshots#TITLE}, whose content holds {@code word}. */
     static Issue issue(Fixtures fixtures, Scene s, String word) {
         return fixtures.fileIssue(s.customer(), NewIssue.in(s.code()).title(WebhookSnapshots.TITLE)
@@ -106,8 +113,7 @@ final class TalkMails {
                 return new Caused(mail, s.customer(), key, portal, true, List.of(s.agent()), List.of(word));
             }
             case MENTIONED -> {
-                Session mentioned = steps.person(s.admin(), Role.AGENT, "Mentioned", null);
-                fixtures.assignAgent(s.admin(), s.code(), mentioned.accountId());
+                Session mentioned = agentOf(fixtures, steps, s, "Mentioned");
                 String said = IssueFlow.word();
                 TalkFlow.add(s.agent(), key, TalkFlow.body("content", "Please look at " + said + ".", "internal", true,
                         "mentions", List.of(mentioned.accountId())));
