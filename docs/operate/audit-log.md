@@ -48,7 +48,7 @@ With `AUDIT_FORWARD_URL` set, popdesk posts every audit entry to that address as
 - **Authentication.** Set `AUDIT_FORWARD_TOKEN` and popdesk sends `Authorization: Bearer <token>` with every entry. Without it, no `Authorization` header is sent. Do not put a token or a password into the address: an address ends up in proxy logs. The address and the token are never written to popdesk's log, API answers, or metrics. Both can be given as a file (`AUDIT_FORWARD_URL_FILE`, `AUDIT_FORWARD_TOKEN_FILE`).
 - **Use `https`.** With an `http` address popdesk logs a warning at startup, and a second one when a token is set, because the token then crosses the network unencrypted. Redirects are not followed, so the token goes only to the host you set.
 - **The copy holds personal data.** Each entry carries the name and email address of the person who acted, and often of the account it was done to. The receiver stores them under its own rules: deleting or anonymizing an account in popdesk later does not change what was already sent. Choose a receiver you may send that data to.
-- **When the receiver is down.** popdesk tries again for 24 hours (after 1 second, then 2, 4, and so on, at most every 10 minutes). After that the entry's copy is given up: it shows as failed in the console's system status with the entry's ID, every admin gets an item in the console inbox, and the row is deleted 7 days later. There is no way yet to send a failed copy again. Export the entries of that time and load them into the receiver; they have the same fields.
+- **When the receiver is down.** popdesk tries again for 24 hours (after 1 second, then 2, 4, and so on, at most every 10 minutes). After that the entry's copy is given up: it shows as failed in the console's system status with the entry's ID, every admin gets an item in the console inbox, and the row is deleted 7 days later. Until then an admin can send it again from the system status. For copies that are gone, export the entries of that time and load them into the receiver; they have the same fields. When the copy has only failed for over an hour, every admin gets an `AUDIT_FORWARD_STALLED` item in the console inbox.
 - **Watching it.** The system status shows the copy as a channel of its own: on or off, the last successful send, and the queued and failed copies. The metrics `popdesk_outbox_queued`, `popdesk_outbox_failed`, and `popdesk_outbox_sent_total` have the label `channel="audit_forward"`.
 - **Commands.** `popdesk backup`, `popdesk restore`, and `popdesk admin reset-password` also write audit entries. They read the same environment as the app, so run them in the app's container (`docker compose exec app …`, `docker compose run app …`) as [configuration.md](configuration.md#commands) shows; the app then sends their copies.
 
@@ -56,6 +56,17 @@ With `AUDIT_FORWARD_URL` set, popdesk posts every audit entry to that address as
 
 A copy of your database started with your real settings would post its own audit entries to your real receiver and mix them with the real ones. Start such an installation with `POPDESK_SANDBOX=true`: the outside copy is then off although `AUDIT_FORWARD_URL` is set. Nothing is queued, copies that were waiting in the copied database are dropped without being sent, and the system status shows the copy as off.
 
-Check in the system status that the copy is off before you use the test installation. In this version `POPDESK_SANDBOX` turns off the outside copy only: email and the webhook are still sent, so also leave `SMTP_HOST` and `NOTIFY_WEBHOOK_URL` empty there ([configuration.md](configuration.md)).
+Check in the system status that the copy is off before you use the test installation. A sandbox also turns off the webhook and sends email to one address only, or to none ([configuration.md](configuration.md#a-sandbox)).
 
 The same happens on any start with the copy off, also on your real installation: when you remove `AUDIT_FORWARD_URL` or turn the sandbox on, the copies that were waiting at that moment are dropped and not sent later. Export the entries of that time if the receiver must have them.
+
+## Sending again and test emails in the log
+
+Two kinds of entry record what an admin did in the system status. Neither has a target; what happened is in the changes.
+
+| Kind | Written when | Changes |
+|---|---|---|
+| `DELIVERY_RESENT` | An admin sent a failed message again and it went back into the queue. A request that changed nothing (no such message, a channel that is off, a message that is in the queue already) writes no entry | `channel` (`MAIL`, `WEBHOOK`, or `AUDIT_FORWARD`) and `kind`, the kind of the message, for example `STAFF_COMMENT` |
+| `TEST_MAIL_SENT` | An admin sent a test email, whether the SMTP server took it or not. A refused request (email is off, too many test emails) writes no entry | `ok` (`true` or `false`), and `errorKind` when it failed, for example `SMTP_REFUSED` |
+
+An entry never holds the address a message went to, an issue's title, the webhook address, or what the SMTP server answered.

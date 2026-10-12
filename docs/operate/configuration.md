@@ -12,11 +12,11 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `POPDESK_PORTAL_HOST`, `POPDESK_CONSOLE_HOST` | Host names of the customer portal and the agent console | `portal.localhost`, `console.localhost` |
 | `POPDESK_PUBLIC_SCHEME`, `POPDESK_PUBLIC_PORT` | Scheme and port used to build links in emails | `http`, `8080` |
 | `POPDESK_ADMIN_EMAIL`, `POPDESK_ADMIN_PASSWORD` | First admin, created on first start | None. If the database has no admin and these are missing (or the password breaks the password rules), popdesk does not serve requests: the process keeps running, logs what to set, and its health check stays unhealthy. It does not exit, so the container does not restart in a loop |
-| `POPDESK_TIMEZONE` | Time zone used to judge dates (for example whether a due date has passed) | `UTC` |
+| `POPDESK_TIMEZONE` | Time zone used to judge dates (for example whether a due date has passed). The test email gives the time it was sent in this zone | `UTC` |
 | `POPDESK_LOCALE` | Default language of emails and server messages: `en` or `ko`. Upper case and spaces around the value are accepted (`KO` is `ko`) | `en` when the variable is not set. With an empty value (`POPDESK_LOCALE=`) or any other value, such as `ko-KR`, popdesk does not serve requests, as with a missing first admin: the process keeps running, logs the name of the setting, and its health check stays unhealthy |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | Outgoing email | None. Without `SMTP_HOST`, nothing is sent and popdesk writes one log line (the address masked) in place of each email. A password reset request is still accepted then, but its email does not go out; on such an installation an admin's password reset shows the reset link on the screen once. `SMTP_PORT` defaults to `587`. Without `SMTP_USER` popdesk does not sign in to the server. Without `MAIL_FROM` the sender is `SMTP_USER` when it is an address, else `popdesk@<console host>` |
 | `SMTP_ALLOW_PLAINTEXT` | `true` allows an unencrypted SMTP connection when the server does not offer STARTTLS. popdesk logs a warning at startup while it is on. Use it only for local test servers such as Mailpit | `false` |
-| `NOTIFY_WEBHOOK_URL` | Team notification webhook | None. Without it, no webhook is sent |
+| `NOTIFY_WEBHOOK_URL` | Team notification webhook | None. Without it, no webhook is sent. Also off while `POPDESK_SANDBOX=true` |
 | `POPDESK_ATTACHMENT_QUOTA` | Total size limit for all attachments, internal ones included (`MB` and `GB` are 2^20 and 2^30 bytes). Over 80%, popdesk logs a warning naming this setting and puts an alert in every admin's inbox | `10GB` |
 | `POPDESK_STORAGE` | Where attachment files are stored: `db`, `disk`, or `s3`. This version stores in `db` only; with `disk` or `s3` popdesk does not start, so that files do not land somewhere a backup of the folder or bucket would miss | `db` |
 | `POPDESK_STORAGE_DIR` | Folder for attachments when `POPDESK_STORAGE=disk` (mount a volume here) | `/data/attachments` |
@@ -34,8 +34,8 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `OIDC_APPS` | Which apps show the OIDC sign-in button: `console`, `portal`, or `both` | `console` |
 | `POPDESK_TRUSTED_PROXIES` | Addresses (IPs or CIDR ranges, comma-separated) whose `X-Forwarded-*` headers popdesk trusts | Loopback and private ranges (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `::1`, `fc00::/7`) |
 | `POPDESK_INSTANCE_LOCK_WAIT` | How long a starting instance waits for the single-instance database lock before it stops with a message (ISO-8601 duration). Raise it if a restarted container starts before the old one has let go | `PT30S` |
-| `POPDESK_SANDBOX` | `true` for a copy of a real installation. In this version it turns off the audit copy only ([audit-log.md](audit-log.md#a-test-installation-from-a-copy-of-the-real-database)). Email, incoming email, and the webhook are not turned off yet; a later release does that. Until then, leave `SMTP_HOST` and `NOTIFY_WEBHOOK_URL` empty on a test installation made from a copy of the real database | `false` |
-| `POPDESK_SANDBOX_MAIL_TO` | Planned: the only address that receives email when `POPDESK_SANDBOX=true`. This version does not read it | None |
+| `POPDESK_SANDBOX` | `true` for a copy of a real installation ([A sandbox](#a-sandbox)): the webhook and the audit copy are off, and email goes to `POPDESK_SANDBOX_MAIL_TO` only, or nowhere without it. Only the value `true` counts, in any case and with spaces around it; `1`, `yes`, and an empty value are not a sandbox. Incoming email is not turned off | `false` |
+| `POPDESK_SANDBOX_MAIL_TO` | The one address that receives every email while `POPDESK_SANDBOX=true`. Read only in a sandbox | None. A sandbox without it, or with an empty value, sends no email at all. With a value that is not one email address (two addresses with a comma between them are not), a sandbox does not start, and the log names this setting without its value |
 
 Changing the attachment storage does not move existing files. Each attachment records where it is stored, and popdesk keeps reading old files from there.
 
@@ -204,9 +204,25 @@ When `AUDIT_FORWARD_URL` uses `http` and `AUDIT_FORWARD_TOKEN` is set, popdesk l
 Emails, webhook messages, and the copies of audit entries (`AUDIT_FORWARD_URL`) wait in a queue in the database and are sent by the app in the background, oldest first. Each of the three has its own sender, so a slow receiver of one does not hold up the others. The address, the language, and the text are read when a message is sent, not when it is queued.
 
 - A message that fails is tried again after 1 second, then 2, 4, and so on, at most every 10 minutes. 24 hours after its first failure it is given up: it stays in the queue as failed, every admin gets an item in the console inbox, and it is deleted 7 days later.
-- Admins see, per channel, whether it is set up, the last successful send, and the queued and failed messages in the console's system status. The metrics `popdesk_outbox_queued`, `popdesk_outbox_failed`, and `popdesk_outbox_sent_total` (label `channel`: `mail`, `webhook`, `audit_forward`) show the same.
+- Admins see, per channel, whether it is on, the last successful send, and the queued and failed messages in the console's system status. A channel is on when it is set up and the sandbox did not turn it off. The metrics `popdesk_outbox_queued`, `popdesk_outbox_failed`, and `popdesk_outbox_sent_total` (label `channel`: `mail`, `webhook`, `audit_forward`) show the same.
+- **Sending a failed message again.** In the system status an admin can send a failed message of any of the three channels again. It goes back into the queue as a new message: it is sent at once, and when it fails again it is tried for another 24 hours. What popdesk checks before every email is checked again, so an email whose recipient was suspended meanwhile, or may no longer see the issue, is dropped and not sent. A failed message of a channel that is off cannot be sent again.
+- **When a channel only fails.** When a message has waited over an hour since its first failure and the channel sent nothing in that hour, every admin gets an item in the console inbox: `MAIL_STALLED`, `WEBHOOK_STALLED`, or `AUDIT_FORWARD_STALLED`. The item comes again every 24 hours until the channel sends one message. A channel that is off raises none.
+- **At most 50 emails an hour to one address.** The 51st email to an address within 60 minutes is not sent. Its message is failed at once, with the error kind `RATE_LIMITED`, and is not tried again by itself; send it again from the system status once the hour has passed. The limit stops a loop that went wrong and cannot be changed. The count is kept in memory, so it starts at none when popdesk restarts. The metric `popdesk_mail_rate_limited_total` counts the emails that were stopped.
+- **Test email.** In the system status an admin can send a test email to their own address. It is sent within the request, and the page shows whether the SMTP server took it and, when it refused, what it answered, without the SMTP user name and password. An admin can send 5 test emails a minute.
+- The system status also lists every cleanup job with the time of its last run and how many rows that run deleted.
 - An invitation email gets a new link each time the app restarts before it was sent; the link of an earlier failed attempt then stops working.
 - Any `2xx` answer from the receiver of a webhook message or an audit copy counts as sent. Redirects are not followed.
+
+### A sandbox
+
+A copy of your real database, started with your real settings, would email your real customers and post to your real webhook and audit receiver. Start such an installation with `POPDESK_SANDBOX=true`:
+
+- **Email goes to one address.** Every email, invitations, password resets, and the test email included, goes to `POPDESK_SANDBOX_MAIL_TO` in place of its recipient. Its subject starts with `[sandbox]`, and the first line of its text names the account ID of the person it was for, never their address. Whether an email is sent at all is still decided for that person: an email to a suspended account is not sent to the sandbox address either.
+- **Without `POPDESK_SANDBOX_MAIL_TO` no email is sent**, although `SMTP_HOST` is set. popdesk writes one log line per email, the address masked, as without `SMTP_HOST`, and invitations show their link on the screen.
+- **The webhook and the audit copy are off.** Nothing is queued for them, and what was waiting in the copied database is dropped without being sent ([audit-log.md](audit-log.md#a-test-installation-from-a-copy-of-the-real-database)).
+- **The 50 emails an hour count the sandbox address**, so all email of the installation together is 50 an hour. An email over that shows as failed with `RATE_LIMITED`.
+- popdesk logs one warning at startup that says what is off and where email goes, the address masked after its first character. The system status says that this is a sandbox and whether it has an address; it never shows the address.
+- Incoming email is not turned off. Leave the `IMAP_*` settings empty on a sandbox.
 
 ## Attachments
 

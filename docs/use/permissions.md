@@ -182,6 +182,7 @@ Staff can link two issues as duplicate or related, even across customer companie
 | SLA policy and business hours | – | – | Edit |
 | Branding | Read (public, also before sign-in) | Read | Edit |
 | Audit log: view, export, integrity check | – | – | Yes |
+| System status: channels, failed messages, cleanup jobs; send a failed message again; send a test email to oneself | – | – | Yes |
 
 The inbox is per account. An item of another account is 404, also for a colleague of the same company or another agent who sees the same issue. A customer's inbox holds only what a customer is told (a staff answer, the issue resolved, closed, or reopened by staff, an issue filed for them, a mention); what staff did shows as the support team, without a name. Items about an assignment, a customer's comment, an operational alert, or a membership request go to staff only (`INBOX-1` to `INBOX-3`).
 

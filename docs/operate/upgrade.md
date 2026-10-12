@@ -61,6 +61,12 @@ The next version adds editing and deleting comments, mentions, and the notificat
 - **There is no way back to the old image.** After this migration the 0.3.0 image does not start on the database (see [below](#the-database-is-newer-than-the-app)). To go back, restore the backup you took before the upgrade; what was written after it is lost.
 - Nothing has to be set. Customers get an inbox on the portal, and both apps show the unread count.
 - **More email goes out.** With `SMTP_HOST` set, popdesk now also emails the reporter when staff resolve, close, or reopen an issue, a person who is mentioned in a comment, the new assignee of an issue, and every active admin when a customer manager asks for an existing account to join a company. Without `SMTP_HOST` each of these is one log line, as for the emails before.
+- **`POPDESK_SANDBOX=true` now holds back email and the webhook.** Until 0.3.0 it turned off the audit copy only. From this version on a sandbox also posts no webhook, and sends every email to `POPDESK_SANDBOX_MAIL_TO`, or no email at all when that is not set ([configuration.md](configuration.md#a-sandbox)). Webhook messages waiting in the queue of a sandbox are dropped. If an installation of yours runs with `POPDESK_SANDBOX=true` and should send real email, remove the setting before you upgrade.
+- **`POPDESK_SANDBOX_MAIL_TO` is read now**, in a sandbox only. With a value that is not one email address a sandbox does not start; an empty value is as none.
+- **At most 50 emails an hour go to one address.** An email over that is failed at once with the error kind `RATE_LIMITED`. New metric: `popdesk_mail_rate_limited_total`.
+- **New in the system status**: sending a failed message again, a test email, the sandbox, and the cleanup jobs. The two new API operations answer 400 with the new error code `CHANNEL_DISABLED` when the channel is off.
+- **New inbox items for admins**: `MAIL_STALLED`, `WEBHOOK_STALLED`, and `AUDIT_FORWARD_STALLED`, when a channel has only failed for over an hour. An installation whose queue holds only messages that were given up gets none.
+- **New kinds of audit entry**: `DELIVERY_RESENT` and `TEST_MAIL_SENT` ([audit-log.md](audit-log.md#sending-again-and-test-emails-in-the-log)). A receiver of the audit copy or of exports that lists the kinds it knows needs these two.
 
 ## A migration failed
 
