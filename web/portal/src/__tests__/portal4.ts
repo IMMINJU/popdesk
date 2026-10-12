@@ -5,7 +5,7 @@
 import type { PortalComponents } from '@popdesk/api/portal';
 import { http, HttpResponse } from 'msw/http';
 import { beforeEach, expect } from 'vitest';
-import { ME_PERSON, T0, comment, errors, found, paged, screen, server, state, text, within, type Comment } from './portal';
+import { ME_PERSON, T0, comment, errors, found, liveRegions, paged, screen, server, state, text, within, type Comment } from './portal';
 // The 1a handlers too: `/api/portal/me` answers `session.me`.
 import { rejected, session } from './portal1a';
 
@@ -32,14 +32,17 @@ export const DELETED_AT = '2026-10-10T04:05:06Z';
 /** Who caused an item, as the portal API shows the staff: no name, no ID (S4-AC-68). */
 export const SUPPORT_ACTOR: NotificationActor = { accountId: null, kind: 'SUPPORT_TEAM', name: null, photoUpdatedAt: null };
 
-/** An unread item about ACME-7: the support team answered. */
+/** The kinds that are about a comment: the contract gives these a `commentId`. */
+const COMMENT_KINDS: readonly NotificationKind[] = ['STAFF_COMMENT', 'MENTIONED'];
+
+/** An unread item about ACME-7: the support team answered. An item of another kind is about no comment. */
 export function notification(over: Partial<Notification> = {}): Notification {
   return {
     id: 501,
     kind: 'STAFF_COMMENT',
     issue: { key: 'ACME-7', title: '로그인이 안 됩니다' },
     companyCode: 'ACME',
-    commentId: null,
+    commentId: COMMENT_KINDS.includes(over.kind ?? 'STAFF_COMMENT') ? 12 : null,
     actor: SUPPORT_ACTOR,
     createdAt: T0,
     readAt: null,
@@ -216,6 +219,13 @@ export function buttonIn(scope: () => HTMLElement | null, name: string | RegExp)
 /** The inbox link of the head: named "알림" or "알림 N건". */
 export function inboxLink(): Promise<HTMLAnchorElement> {
   return found(() => screen.queryByRole<HTMLAnchorElement>('link', { name: /^알림( \d+건)?$/ }), '머리의 알림 링크');
+}
+
+/** What the live regions say now: a failure that is to stay silent leaves this as it was (alert, status and aria-live alike). */
+export function liveText(): string[] {
+  return liveRegions()
+    .map((el) => text(el))
+    .filter((words) => words !== '');
 }
 
 /** Waits until focus is on `el`. */

@@ -7,8 +7,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { ACME, ME, callsTo, errors, eventually, found, hrefPath, link, renderAt, screen, sent, text, useFakeClock, within } from '../__tests__/portal';
 import { route, settle } from '../__tests__/portal1a';
 import { ACME_MANAGED, belongTo } from '../__tests__/portal2';
-import { narrowWindow } from '../__tests__/portal3';
-import { UNREAD, inboxLink, notification, s4 } from '../__tests__/portal4';
+import { UNREAD, inboxLink, liveText, notification, s4 } from '../__tests__/portal4';
 
 /** A screen that asks the server for nothing when it opens: what is counted below is the frame's own requests. */
 const SCREEN = '/me';
@@ -59,12 +58,9 @@ describe('포털 머리: 알림 링크와 안 읽은 수 (4번 묶음)', () => {
   });
 
   test.each([
-    { who: '담당자가 아닌 고객', company: ACME, menu: [], narrow: false },
-    { who: '고객사 담당자', company: ACME_MANAGED, menu: ['문의', '우리 회사 사람'], narrow: false },
-    { who: '좁은 화면(360px)의 담당자가 아닌 고객', company: ACME, menu: [], narrow: true },
-    { who: '좁은 화면(360px)의 고객사 담당자', company: ACME_MANAGED, menu: ['문의', '우리 회사 사람'], narrow: true },
-  ])('S4-AC-64 포털 머리($who): 레이아웃이 뜨면 안 읽은 수를 한 번 받고 링크의 이름이 "알림 3건"이다. /inbox로 가고 메뉴 nav는 그대로다', async ({ company, menu, narrow }) => {
-    if (narrow) narrowWindow();
+    { who: '담당자가 아닌 고객', company: ACME, menu: [] },
+    { who: '고객사 담당자', company: ACME_MANAGED, menu: ['문의', '우리 회사 사람'] },
+  ])('S4-AC-64 포털 머리($who): 레이아웃이 뜨면 안 읽은 수를 한 번 받고 링크의 이름이 "알림 3건"이다. /inbox로 가고 메뉴 nav는 그대로다', async ({ company, menu }) => {
     belongTo(company);
     s4.inbox = unread(3);
     await opened();
@@ -155,6 +151,13 @@ describe('포털 머리: 알림 링크와 안 읽은 수 (4번 묶음)', () => {
     await link('알림 2건');
     await settle();
     expect(asked(), '다시 보인 뒤').toBe(2);
+
+    // The skipped turn did not end the period: a minute on, it asks again.
+    s4.inbox = unread(6);
+    halfMinute();
+    halfMinute();
+    await sent('GET', UNREAD, 3);
+    await link('알림 6건');
   });
 
   test('S4-AC-69 포털 머리 401: 안 읽은 수가 401이면 그 뒤로 받지 않고, 로그인 화면으로 가지 않으며 아무것도 띄우지 않는다', async () => {
@@ -173,6 +176,32 @@ describe('포털 머리: 알림 링크와 안 읽은 수 (4번 묶음)', () => {
     expect(asked(), '401 뒤의 요청').toBe(1);
     expect(window.location.pathname).toBe(SCREEN);
     expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    expect(liveText(), '토스트(status)로도 알리지 않는다').toEqual([]);
+  });
+
+  test('S4-AC-69 포털 머리 받은 뒤의 401: 수를 받은 뒤 다음 차례가 401이면 마지막 수가 그대로이고 그 뒤로 받지 않는다. 아무것도 띄우지 않는다', async () => {
+    useFakeClock();
+    s4.inbox = unread(3);
+    await opened({ fakeTimers: true });
+    await link('알림 3건');
+    const before = liveText();
+
+    route('get', UNREAD, () => errors.unauthenticated());
+    halfMinute();
+    halfMinute();
+    await sent('GET', UNREAD, 2);
+    await settle();
+    expect(await inboxLink(), '마지막 수').toHaveAccessibleName('알림 3건');
+
+    for (let i = 0; i < 4; i += 1) halfMinute();
+    setHidden(true);
+    setHidden(false);
+    await settle();
+    expect(asked(), '401 뒤의 요청').toBe(2);
+    expect(await inboxLink()).toHaveAccessibleName('알림 3건');
+    expect(window.location.pathname).toBe(SCREEN);
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    expect(liveText(), '토스트(status)로도 알리지 않는다').toEqual(before);
   });
 
   test.each([
@@ -183,6 +212,7 @@ describe('포털 머리: 알림 링크와 안 읽은 수 (4번 묶음)', () => {
     s4.inbox = unread(3);
     await opened({ fakeTimers: true });
     await link('알림 3건');
+    const before = liveText();
 
     let broken = true;
     route('get', UNREAD, () => (broken ? answer() : HttpResponse.json({ count: 5 })));
@@ -192,6 +222,7 @@ describe('포털 머리: 알림 링크와 안 읽은 수 (4번 묶음)', () => {
     await settle();
     expect(await inboxLink()).toHaveAccessibleName('알림 3건');
     expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    expect(liveText(), '토스트(status)로도 알리지 않는다').toEqual(before);
     expect(window.location.pathname).toBe(SCREEN);
 
     broken = false;

@@ -89,7 +89,7 @@ describe('CommentItem 4번 묶음', () => {
     expect(text(article())).not.toContain('알림:');
   });
 
-  test('S4-AC-62 CommentItem 지운 댓글: "지워진 댓글" 옆에 지운 사람과 지운 시각이 있고 본문은 없다', () => {
+  test('S4-AC-62 CommentItem 지운 댓글: "지워진 댓글" 옆에 지운 사람과 지운 시각이 있다', () => {
     render(item({ deleted: true, body: '', deletedByLabel: '최관리 님이 지움', deletedAt: DELETED }));
 
     expect(text(article())).toContain('지워진 댓글');

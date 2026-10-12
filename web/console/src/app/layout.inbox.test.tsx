@@ -7,7 +7,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { ADMIN, AGENT, callsTo, errors, eventually, hrefPath, link, menuLinks, on, renderAt, screen, sent, state, text, useFakeClock } from '../__tests__/console';
 import { settle } from '../__tests__/console1a';
 import { REQUESTS } from '../__tests__/console2';
-import { UNREAD, inboxLink, notification, s4 } from '../__tests__/console4';
+import { UNREAD, inboxLink, liveText, notification, s4 } from '../__tests__/console4';
 
 /** A screen that asks for nothing of the inbox itself: what is counted below is the frame's own requests. */
 const SCREEN = '/me';
@@ -140,6 +140,13 @@ describe('콘솔 머리: 알림 링크와 안 읽은 수 (4번 묶음)', () => {
     await link('알림 2건');
     await settle();
     expect(asked(), '다시 보인 뒤').toBe(2);
+
+    // The skipped turn did not end the period: a minute on, it asks again.
+    s4.inbox = unread(6);
+    halfMinute();
+    halfMinute();
+    await sent('GET', UNREAD, 3);
+    await link('알림 6건');
   });
 
   test('S4-AC-69 콘솔 머리 401: 안 읽은 수가 401이면 그 뒤로 받지 않고, 로그인 화면으로 가지 않으며 아무것도 띄우지 않는다', async () => {
@@ -158,22 +165,53 @@ describe('콘솔 머리: 알림 링크와 안 읽은 수 (4번 묶음)', () => {
     expect(asked(), '401 뒤의 요청').toBe(1);
     expect(window.location.pathname).toBe(SCREEN);
     expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    expect(liveText(), '토스트(status)로도 알리지 않는다').toEqual([]);
   });
 
-  test('S4-AC-69 콘솔 머리 5xx: 다시 받기가 실패하면 마지막 수가 그대로이고 alert가 없다. 다음 차례에 다시 받는다', async () => {
+  test('S4-AC-69 콘솔 머리 받은 뒤의 401: 수를 받은 뒤 다음 차례가 401이면 마지막 수가 그대로이고 그 뒤로 받지 않는다. 아무것도 띄우지 않는다', async () => {
     useFakeClock();
     s4.inbox = unread(3);
     await opened({ fakeTimers: true });
     await link('알림 3건');
+    const before = liveText();
+
+    on('get', UNREAD, () => errors.unauthenticated());
+    halfMinute();
+    halfMinute();
+    await sent('GET', UNREAD, 2);
+    await settle();
+    expect(await inboxLink(), '마지막 수').toHaveAccessibleName('알림 3건');
+
+    for (let i = 0; i < 4; i += 1) halfMinute();
+    setHidden(true);
+    setHidden(false);
+    await settle();
+    expect(asked(), '401 뒤의 요청').toBe(2);
+    expect(await inboxLink()).toHaveAccessibleName('알림 3건');
+    expect(window.location.pathname).toBe(SCREEN);
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    expect(liveText(), '토스트(status)로도 알리지 않는다').toEqual(before);
+  });
+
+  test.each([
+    { what: '5xx', answer: () => errors.internal() },
+    { what: '연결 실패', answer: () => HttpResponse.error() },
+  ])('S4-AC-69 콘솔 머리 $what: 다시 받기가 실패하면 마지막 수가 그대로이고 alert가 없다. 다음 차례에 다시 받는다', async ({ answer }) => {
+    useFakeClock();
+    s4.inbox = unread(3);
+    await opened({ fakeTimers: true });
+    await link('알림 3건');
+    const before = liveText();
 
     let broken = true;
-    on('get', UNREAD, () => (broken ? errors.internal() : HttpResponse.json({ count: 5 })));
+    on('get', UNREAD, () => (broken ? answer() : HttpResponse.json({ count: 5 })));
     halfMinute();
     halfMinute();
     await sent('GET', UNREAD, 2);
     await settle();
     expect(await inboxLink()).toHaveAccessibleName('알림 3건');
     expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    expect(liveText(), '토스트(status)로도 알리지 않는다').toEqual(before);
     expect(window.location.pathname).toBe(SCREEN);
 
     broken = false;

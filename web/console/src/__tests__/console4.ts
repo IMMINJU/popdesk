@@ -13,6 +13,7 @@ import {
   comment,
   errors,
   found,
+  liveRegions,
   paged,
   screen,
   server,
@@ -43,14 +44,17 @@ export const DELETED_AT = '2026-10-10T04:05:06Z';
 // ---------------------------------------------------------------------------
 // Fixtures
 
-/** An unread item about ACME-7: 김고객 wrote a comment. */
+/** The kinds that are about a comment: the contract gives these a `commentId`. */
+const COMMENT_KINDS: readonly NotificationKind[] = ['CUSTOMER_COMMENT', 'STAFF_COMMENT', 'MENTIONED'];
+
+/** An unread item about ACME-7: 김고객 wrote a comment. An item of another kind is about no comment. */
 export function notification(over: Partial<Notification> = {}): Notification {
   return {
     id: 501,
     kind: 'CUSTOMER_COMMENT',
     issue: { key: 'ACME-7', title: '로그인이 안 됩니다' },
     companyCode: 'ACME',
-    commentId: null,
+    commentId: COMMENT_KINDS.includes(over.kind ?? 'CUSTOMER_COMMENT') ? 12 : null,
     actor: CUSTOMER_PERSON,
     createdAt: T0,
     readAt: null,
@@ -80,7 +84,7 @@ export function deletedFrom(c: Comment, by: Person): Comment {
 export const s4: {
   /** The caller's inbox, newest first, as the server orders it. */
   inbox: Notification[];
-  /** Who can be mentioned on the issue, by the kind of comment. */
+  /** Who can be mentioned on the issue, by the kind of comment. The caller is taken out when the server answers. */
   candidates: { public: Person[]; internal: Person[] };
 } = { inbox: [], candidates: { public: [], internal: [] } };
 
@@ -110,10 +114,17 @@ function me(): Person {
 function mentioned(ids: readonly number[], internal: boolean): Person[] | Response {
   const unique = [...new Set(ids)];
   if (unique.length > 10) return errors.invalid([{ field: 'mentions', code: 'TOO_MANY' }]);
-  const allowed = internal ? s4.candidates.internal : s4.candidates.public;
+  const allowed = candidates(internal);
   const people = unique.map((id) => allowed.find((p) => p.accountId === id));
   if (people.some((p) => p === undefined)) return errors.invalid([{ field: 'mentions', code: 'UNKNOWN_VALUE' }]);
   return people as Person[];
+}
+
+/** The candidates as the contract gives them: never the caller, in name order. */
+export function candidates(internal: boolean): Person[] {
+  return (internal ? s4.candidates.internal : s4.candidates.public)
+    .filter((p) => p.accountId !== state.me.id)
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 }
 
 /** The page of the inbox a list request asks for. */
@@ -124,7 +135,7 @@ export function inboxPage(request: Request): Response {
   return HttpResponse.json(paged(s4.inbox.slice((page - 1) * size, page * size), { page, size, totalElements: s4.inbox.length }));
 }
 
-function noContent(): Response {
+export function noContent(): Response {
   return new HttpResponse(null, { status: 204 });
 }
 
@@ -150,7 +161,7 @@ const handlers4 = [
     const denied = unknownIssue(params.key);
     if (denied) return denied;
     const internal = new URL(request.url).searchParams.get('internal') === 'true';
-    return HttpResponse.json({ items: internal ? s4.candidates.internal : s4.candidates.public });
+    return HttpResponse.json({ items: candidates(internal) });
   }),
   // 댓글 달기 again: this one keeps the mentions (the handler of console.ts does not know them).
   http.post('*/api/console/issues/:key/comments', async ({ request, params }) => {
@@ -177,11 +188,12 @@ const handlers4 = [
     const before = state.comments.find((c) => String(c.id) === params.id);
     if (!before) return errors.notFound();
     if (before.author.accountId !== state.me.id) return errors.forbidden();
-    if (before.deleted) return rejected('COMMENT_DELETED');
-    if (state.issue.status === 'CLOSED') return errors.issueClosed();
+    // The order of the checks: scope (404), rights (403), input (400), then the state (400).
     const body = (await request.json()) as UpdateCommentRequest;
     const mentions = body.mentions === undefined ? before.mentions : mentioned(body.mentions, before.internal);
     if (mentions instanceof Response) return mentions;
+    if (before.deleted) return rejected('COMMENT_DELETED');
+    if (state.issue.status === 'CLOSED') return errors.issueClosed();
     const changed = body.content !== undefined && body.content !== before.content;
     const after: Comment = { ...before, content: body.content ?? before.content, mentions, editedAt: changed ? EDITED_AT : before.editedAt };
     state.comments = state.comments.map((c) => (c === before ? after : c));
@@ -330,6 +342,13 @@ export function inboxLink(): Promise<HTMLAnchorElement> {
 export function mentionsOf(body: unknown): number[] | null {
   const value = (body as { mentions?: number[] }).mentions;
   return value === undefined ? null : [...value].sort((a, b) => a - b);
+}
+
+/** What the live regions say now: a failure that is to stay silent leaves this as it was (alert, status and aria-live alike). */
+export function liveText(): string[] {
+  return liveRegions()
+    .map((el) => text(el))
+    .filter((words) => words !== '');
 }
 
 /** Waits until focus is on `el`. */

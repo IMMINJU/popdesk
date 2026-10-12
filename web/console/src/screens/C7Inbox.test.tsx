@@ -2,6 +2,7 @@
 import { HttpResponse } from 'msw/http';
 import { describe, expect, test } from 'vitest';
 import {
+  ADMIN,
   ADMIN_PERSON,
   CUSTOMER_PERSON,
   OTHER_AGENT_PERSON,
@@ -23,12 +24,26 @@ import {
   renderAt,
   screen,
   sent,
+  state,
   text,
   within,
 } from '../__tests__/console';
 import { settle } from '../__tests__/console1a';
-import { said } from '../__tests__/console2';
-import { NOTIFICATIONS, READ_ALL, UNREAD, alertItem, inboxLink, inboxPage, notification, s4, type Notification, type NotificationKind } from '../__tests__/console4';
+import { REQUESTS, said } from '../__tests__/console2';
+import {
+  NOTIFICATIONS,
+  READ_ALL,
+  UNREAD,
+  alertItem,
+  inboxLink,
+  inboxPage,
+  liveText,
+  noContent,
+  notification,
+  s4,
+  type Notification,
+  type NotificationKind,
+} from '../__tests__/console4';
 
 const URL_INBOX = '/inbox';
 const SERVER_DOWN = '서버에 연결하지 못했습니다. 잠시 뒤 다시 하세요.';
@@ -43,14 +58,14 @@ const lastPage = () => new URL(lists().at(-1)?.url ?? 'http://x/').searchParams.
 const addressPage = () => new URLSearchParams(window.location.search).get('page');
 
 /** The link of the item whose line holds `part`, inside `main`. */
-function item(part: string | RegExp): Promise<HTMLAnchorElement> {
+function item(part: string): Promise<HTMLAnchorElement> {
   return found(() => {
     const root = main();
     if (!root) return null;
     return within(root)
       .queryAllByRole<HTMLAnchorElement>('link')
-      .find((a) => (typeof part === 'string' ? text(a).includes(part) : part.test(text(a))));
-  }, `알림 항목 ${String(part)}`);
+      .find((a) => text(a).includes(part));
+  }, `알림 항목 ${part}`);
 }
 
 /** An item about its own issue, so a line is found by the title. */
@@ -94,9 +109,11 @@ describe('C-7 알림함', () => {
     // The time adds no Tab stop to the line: one Tab for each item.
     for (const a of links) expect(a.querySelector('[tabindex]'), '줄 안의 Tab 자리').toBeNull();
 
-    expect(text(rows[0])).toContain('안 읽음');
+    // In the name of the link, where a screen reader hears it: not beside the link, not aria-hidden.
+    expect(links[0]).toHaveAccessibleName(/안 읽음/);
+    expect(links[1]).not.toHaveAccessibleName(/안 읽음/);
     expect(text(rows[1])).not.toContain('안 읽음');
-    expect(text(rows[2])).toContain('안 읽음');
+    expect(links[2]).toHaveAccessibleName(/안 읽음/);
     expect(lastPage()).toBe('1');
   });
 
@@ -109,7 +126,7 @@ describe('C-7 알림함', () => {
     { kind: 'MEMBERSHIP_REQUESTED', item: alertItem('MEMBERSHIP_REQUESTED'), says: '고객사 ACME에 소속 요청이 있습니다' },
     { kind: 'DELIVERY_FAILED', item: alertItem('DELIVERY_FAILED'), says: '보내지 못한 메일이나 웹훅이 있습니다' },
     { kind: 'ATTACHMENT_QUOTA_WARNING', item: alertItem('ATTACHMENT_QUOTA_WARNING'), says: '첨부 용량이 한도의 80%를 넘었습니다' },
-    { kind: '일으킨 사람이 null인 ISSUE_CLOSED', item: notification({ kind: 'ISSUE_CLOSED', actor: null }), says: /누군가.*문의를 종료했습니다/ },
+    { kind: '일으킨 사람이 null인 ISSUE_CLOSED', item: notification({ kind: 'ISSUE_CLOSED', actor: null }), says: '누군가 문의를 종료했습니다' },
     { kind: '콘솔에 오지 않는 STAFF_COMMENT', item: notification({ kind: 'STAFF_COMMENT', actor: ADMIN_PERSON, commentId: 12 }), says: '새 알림이 있습니다' },
     { kind: '콘솔에 오지 않는 ISSUE_RESOLVED', item: notification({ kind: 'ISSUE_RESOLVED', actor: ADMIN_PERSON }), says: '새 알림이 있습니다' },
     { kind: '콘솔에 오지 않는 ISSUE_FILED_ON_BEHALF', item: notification({ kind: 'ISSUE_FILED_ON_BEHALF', actor: ADMIN_PERSON }), says: '새 알림이 있습니다' },
@@ -130,6 +147,22 @@ describe('C-7 알림함', () => {
     expect(mainText()).not.toContain('지원팀');
   });
 
+  test('S4-AC-66 C-7 모르는 종류이고 문의도 없는 항목: "새 알림이 있습니다"라는 글자만 있는 줄이다. 링크가 아니고 누를 것이 없다', async () => {
+    s4.inbox = [alertItem(LATER_KIND, { id: 601 }), notification({ kind: 'ASSIGNED', actor: ADMIN_PERSON })];
+    renderAt(URL_INBOX);
+
+    // The item under it is a link as ever: the list is drawn.
+    const next = await item('최관리 님이 이 문의를 나에게 맡겼습니다');
+    const rows = within(next.closest('ul') as HTMLElement).queryAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    const plain = rows[0] as HTMLElement;
+    expect(text(plain)).toContain('새 알림이 있습니다');
+    expect(within(plain).queryAllByRole('link'), '링크').toHaveLength(0);
+    expect(within(plain).queryAllByRole('button'), '버튼').toHaveLength(0);
+    expect(plain.querySelector('[tabindex]'), 'Tab 자리').toBeNull();
+    expect(Date.parse(plain.querySelector('time')?.getAttribute('datetime') ?? ''), '시각은 그대로 있다').toBe(Date.parse(s4.inbox[0]?.createdAt ?? ''));
+  });
+
   test.each([
     { what: '문의의 항목', item: notification({ kind: 'ASSIGNED', actor: ADMIN_PERSON }), path: '/issues/ACME-7', hash: '' },
     { what: '댓글의 항목', item: notification({ kind: 'CUSTOMER_COMMENT', commentId: 12 }), path: '/issues/ACME-7', hash: '#comment-12' },
@@ -143,12 +176,17 @@ describe('C-7 알림함', () => {
     const a = await found(() => (main() ? within(main() as HTMLElement).queryAllByRole<HTMLAnchorElement>('link')[0] : null), '알림 항목');
     expect(hrefPath(a)).toBe(path);
     expect(new URL(a.href).hash).toBe(hash);
+    await sent('GET', UNREAD);
+    await settle();
+    const counted = callsTo('GET', UNREAD).length;
 
     await user.click(a);
 
     await sent('POST', `${NOTIFICATIONS}/${String(given.id)}/read`);
     await atPath(path);
     expect(window.location.hash).toBe(hash);
+    await settle();
+    expect(callsTo('GET', UNREAD).length, '누른 그때 수를 다시 받지 않는다').toBe(counted);
   });
 
   test('S4-AC-66 S4-AC-69 C-7 읽음 실패: 읽음의 답을 기다리지 않고 옮긴다. 떠난 뒤에 온 5xx는 아무것도 띄우지 않는다', async () => {
@@ -166,6 +204,8 @@ describe('C-7 알림함', () => {
     await sent('POST', `${NOTIFICATIONS}/501/read`);
     await atPath('/issues/ACME-7');
     await found(() => screen.queryByRole('heading', { level: 1, name: '로그인이 안 됩니다' }), '문의 상세의 제목');
+    await settle();
+    const before = liveText();
 
     release.open();
     await eventually(() => {
@@ -173,22 +213,27 @@ describe('C-7 알림함', () => {
     });
     await settle();
     expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    expect(liveText(), '토스트(status)로도 알리지 않는다').toEqual(before);
     expect(window.location.pathname).toBe('/issues/ACME-7');
   });
 
-  test('S4-AC-67 C-7 모두 읽음: 안 읽은 것이 있을 때만 버튼이 있다. 누르면 read-all을 보내고(보내는 중 버튼 막힘) 목록과 머리의 수를 다시 받으며 토스트 "모두 읽음으로 했습니다"', async () => {
+  test('S4-AC-67 C-7 모두 읽음: 안 읽은 것이 있을 때만 버튼이 있다. 누르면 read-all을 보내고(보내는 중 버튼 막힘) 목록과 머리의 수를 다시 받으며 토스트 "모두 읽음으로 했습니다". 소속 요청 수는 다시 받지 않는다', async () => {
+    state.me = ADMIN;
     s4.inbox = [about(1), about(2, { readAt: READ_AT }), about(3)];
     const release = gate();
     on('post', READ_ALL, async () => {
       await release.opened;
       s4.inbox = s4.inbox.map((n) => ({ ...n, readAt: n.readAt ?? READ_AT }));
-      return new HttpResponse(null, { status: 204 });
+      return noContent();
     });
     const { user } = renderAt(URL_INBOX);
     await item('문의 제목 001번');
     await link('알림 2건');
+    await sent('GET', REQUESTS);
+    await settle();
     const listed = lists().length;
     const counted = callsTo('GET', UNREAD).length;
+    const requests = callsTo('GET', REQUESTS).length;
 
     await user.click(await button(MARK_ALL));
     await sent('POST', READ_ALL);
@@ -212,6 +257,9 @@ describe('C-7 알림함', () => {
     });
     expect(callsTo('POST', READ_ALL)).toHaveLength(1);
     await item('문의 제목 003번');
+    await settle();
+    // The count of the inbox has its own way of being asked again, apart from the count of 소속 요청 (screens.md 4절).
+    expect(callsTo('GET', REQUESTS).length, '소속 요청 수를 다시 받지 않는다').toBe(requests);
   });
 
   test('S4-AC-67 C-7 모두 읽음 실패: 오류 띠가 보이고 목록은 그대로다. 버튼을 다시 누를 수 있다', async () => {
@@ -223,7 +271,7 @@ describe('C-7 알림함', () => {
     await user.click(await button(MARK_ALL));
 
     await alertWith(SERVER_DOWN);
-    expect(text(first.closest('li'))).toContain('안 읽음');
+    expect(first).toHaveAccessibleName(/안 읽음/);
     await item('문의 제목 002번');
     await eventually(() => {
       const again = markAll();
@@ -232,8 +280,8 @@ describe('C-7 알림함', () => {
     await link('알림 1건');
   });
 
-  test('S4-AC-65 S4-AC-67 C-7 빈 상태와 읽은 것뿐: 항목이 없으면 "알림이 없습니다". 안 읽은 것이 없으면 "모두 읽음" 버튼이 없다', async () => {
-    const empty = renderAt(URL_INBOX);
+  test('S4-AC-65 S4-AC-67 C-7 빈 상태: 항목이 없으면 "알림이 없습니다"이고 "모두 읽음" 버튼이 없다', async () => {
+    renderAt(URL_INBOX);
 
     await eventually(() => {
       expect(mainText()).toContain('알림이 없습니다');
@@ -241,12 +289,24 @@ describe('C-7 알림함', () => {
     expect(text(await heading1())).toBe('알림함');
     expect(markAll()).toBeNull();
     expect(mainText()).not.toContain('이 쪽에는');
-    empty.unmount();
+  });
 
+  test.each([
+    { what: '안 읽은 수가 2', count: 2, name: '알림 2건', has: true },
+    { what: '안 읽은 수가 0', count: 0, name: '알림', has: false },
+  ])('S4-AC-67 C-7 "모두 읽음" 버튼($what): 이 쪽의 항목이 모두 읽은 것이어도 버튼은 안 읽은 수(머리의 수)가 1 이상이면 있고 0이면 없다', async ({ count, name, has }) => {
+    // The unread ones are on another page: the count is what the head asks, not what this page holds.
     s4.inbox = [about(1, { readAt: READ_AT }), about(2, { readAt: READ_AT })];
+    on('get', UNREAD, () => HttpResponse.json({ count }));
     renderAt(URL_INBOX);
+
     await item('문의 제목 002번');
-    expect(markAll()).toBeNull();
+    await link(name);
+    await settle();
+    await eventually(() => {
+      expect(markAll() !== null, '"모두 읽음" 버튼').toBe(has);
+    });
+    expect(mainText()).not.toContain('안 읽음');
     expect(mainText()).not.toContain('알림이 없습니다');
   });
 

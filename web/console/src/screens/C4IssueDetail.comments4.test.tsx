@@ -55,6 +55,8 @@ import {
   editForm,
   editFormShown,
   focused,
+  noContent,
+  writeBox,
   writeForm,
   type UpdateCommentRequest,
 } from '../__tests__/console4';
@@ -74,6 +76,8 @@ const FROM_CUSTOMER = comment({ id: 4, author: CUSTOMER_PERSON, content: '확인
 const MINE = comment({ id: 5, author: AGENT_PERSON, content: '확인하고 있습니다', createdAt: '2026-10-08T03:30:00Z' });
 const FROM_OTHER = comment({ id: 6, author: OTHER_AGENT_PERSON, content: '제가 이어서 봅니다', createdAt: '2026-10-08T03:40:00Z' });
 const MINE_TOO = comment({ id: 7, author: AGENT_PERSON, content: '재현했습니다', createdAt: '2026-10-08T03:50:00Z' });
+
+const OTHER_FILE = '7f1c2a9e-0c4b-4d8e-9a51-3b2f6c1d0e02';
 
 const patches = () => callsTo('PATCH', /\/comments\/\d+$/);
 const deletes = () => callsTo('DELETE', /\/comments\/\d+$/);
@@ -102,6 +106,13 @@ async function retype(user: User, box: HTMLTextAreaElement, words: string) {
 async function openDelete(user: User, part: string) {
   await user.click(await commentAction(part, DELETE));
   return found(() => screen.queryByRole('alertdialog', { name: DELETE }) ?? screen.queryByRole('dialog', { name: DELETE }), `대화상자 "${DELETE}"`);
+}
+
+/** The question about text not saved: the dialog leaving the screen asks with, so it holds "떠나기". */
+async function leaveQuestion() {
+  const box = await dialog();
+  expect(within(box).queryByRole('button', { name: '떠나기' }), '떠나기 물음의 "떠나기" 버튼').not.toBeNull();
+  return box;
 }
 
 const confirmDelete = (box: HTMLElement) => within(box).getByRole('button', { name: /^(댓글 지우기|지우는 중…)$/ });
@@ -205,13 +216,15 @@ describe('C-4 댓글 고치기 (4번 묶음)', () => {
     expect(patches()).toHaveLength(0);
   });
 
-  test('S4-AC-61 C-4 댓글 고치기 저장: 내용만 바꾸면 PATCH에 content만 보낸다. 보내는 중 버튼이 막히고, 성공하면 닫히고 목록을 다시 받으며 "고침"이 보이고 토스트 "댓글을 고쳤습니다", 포커스는 그 댓글', async () => {
-    asAgent([FROM_CUSTOMER, MINE]);
+  test('S4-AC-61 C-4 댓글 고치기 저장: 내용만 바꾸면 PATCH에 content만 보낸다(멘션이 있는 댓글이어도 바뀌지 않은 mentions는 보내지 않는다). 보내는 중 버튼이 막히고, 성공하면 닫히고 목록을 다시 받으며 "고침"이 보이고 토스트 "댓글을 고쳤습니다", 포커스는 그 댓글', async () => {
+    // 정상담 is mentioned and stays so: sending the list again would be refused once they can no longer be mentioned.
+    const mentioning = comment({ ...MINE, mentions: [OTHER_AGENT_PERSON] });
+    asAgent([FROM_CUSTOMER, mentioning]);
     const release = gate();
     route('patch', `${COMMENTS_7}/:id`, async ({ request }) => {
       const body = (await request.json()) as UpdateCommentRequest;
       await release.opened;
-      const after = { ...MINE, content: body.content ?? MINE.content, editedAt: EDITED_AT };
+      const after = { ...mentioning, content: body.content ?? MINE.content, editedAt: EDITED_AT };
       state.comments = state.comments.map((c) => (c.id === MINE.id ? after : c));
       return HttpResponse.json(after);
     });
@@ -239,6 +252,7 @@ describe('C-4 댓글 고치기 (4번 묶음)', () => {
     });
     const after = await commentWith('재설정 링크를 보냈습니다');
     expect(text(after)).toContain('고침');
+    expect(text(after), '멘션은 그대로').toContain('알림: 정상담');
     expect(timeAt(after, EDITED_AT)).toBe(true);
     await focused(() => commentById(MINE.id), '고친 댓글');
     expect(commentActions(after)).toEqual([EDIT, DELETE]);
@@ -283,6 +297,7 @@ describe('C-4 댓글 고치기 (4번 묶음)', () => {
       },
       says: '문의가 종료되어 댓글을 고칠 수 없습니다.',
       reads: ISSUE_7,
+      left: MINE.content,
     },
     {
       what: '400 COMMENT_DELETED',
@@ -292,17 +307,11 @@ describe('C-4 댓글 고치기 (4번 묶음)', () => {
       },
       says: '이 댓글은 지워졌습니다.',
       reads: COMMENTS_7,
+      left: '최관리 님이 지움',
     },
-    {
-      what: '404',
-      answer: () => {
-        state.comments = [deletedFrom(MINE, ADMIN_PERSON)];
-        return errors.notFound();
-      },
-      says: '이 댓글은 지워졌습니다.',
-      reads: COMMENTS_7,
-    },
-  ])('S4-AC-61 C-4 댓글 고치기 $what: 오류 띠 "$says"와 함께 다시 받고, 입력은 "보내지 못한 글"로 남긴다', async ({ answer, says, reads }) => {
+    // A real 404: the comment or the issue went out of sight. A deleted comment answers COMMENT_DELETED, never this.
+    { what: '404', answer: () => errors.notFound(), says: '이 댓글을 찾을 수 없습니다.', reads: COMMENTS_7, left: MINE.content },
+  ])('S4-AC-61 C-4 댓글 고치기 $what: 오류 띠 "$says"와 함께 다시 받고, 입력은 "보내지 못한 글"로 남긴다', async ({ answer, says, reads, left }) => {
     asAgent([MINE]);
     route('patch', `${COMMENTS_7}/:id`, answer);
     const { user } = renderAt(URL_7);
@@ -319,7 +328,8 @@ describe('C-4 댓글 고치기 (4번 묶음)', () => {
     expect(draftKept('닫히기 직전에 고친 글')).toBe(true);
     expectNotSaid('댓글을 고쳤습니다');
     expect(editForm(), '편집기는 닫힌다').toBeNull();
-    if (reads === COMMENTS_7) expect(text(await commentWith('지워진 댓글'))).toContain('최관리 님이 지움');
+    // The list is drawn as the server has it now.
+    await commentWith(left);
   });
 
   test.each([
@@ -354,13 +364,13 @@ describe('C-4 댓글 고치기 (4번 묶음)', () => {
 
     await user.type(await openEdit(user, MINE.content), ' (쓰는 중)');
     await user.click(await buttonIn(editForm, CANCEL));
-    await dialog();
+    await leaveQuestion();
     await user.keyboard('{Escape}');
     await closed();
     expect(await editBox(), '취소를 물은 뒤').toHaveValue(`${MINE.content} (쓰는 중)`);
 
     await user.click(await link('고객사'));
-    await dialog();
+    await leaveQuestion();
     expect(window.location.pathname).toBe(URL_7);
     await user.keyboard('{Escape}');
     await closed();
@@ -387,7 +397,7 @@ describe('C-4 댓글 고치기 (4번 묶음)', () => {
 
     await user.type(await editBox(), ' 추가');
     await user.click(within(first).getByRole('button', { name: EDIT }));
-    await dialog();
+    await leaveQuestion();
     await user.keyboard('{Escape}');
     await closed();
     expect(await editBox(), '물은 뒤').toHaveValue(`${MINE_TOO.content} 추가`);
@@ -428,7 +438,11 @@ describe('C-4 댓글 고치기 (4번 묶음)', () => {
 
 describe('C-4 댓글 지우기 (4번 묶음)', () => {
   test.each([
-    { what: '첨부가 없는 댓글', files: [], second: false },
+    {
+      what: '첨부가 없는 댓글(문의와 다른 댓글의 첨부는 세지 않는다)',
+      files: [attachment({ commentId: null }), attachment({ id: OTHER_FILE, commentId: FROM_CUSTOMER.id, fileName: 'screen.png' })],
+      second: false,
+    },
     { what: '첨부가 있는 댓글', files: [attachment({ commentId: MINE.id, uploadedBy: AGENT_PERSON })], second: true },
   ])('S4-AC-62 C-4 댓글 지우기를 누름($what): 대화상자 "댓글 지우기"가 되돌릴 수 없다고 묻는다. "그만두기"는 요청 없이 닫는다', async ({ files, second }) => {
     asAgent([FROM_CUSTOMER, MINE]);
@@ -458,7 +472,7 @@ describe('C-4 댓글 지우기 (4번 묶음)', () => {
       await release.opened;
       state.comments = state.comments.map((c) => (c.id === MINE.id ? deletedFrom(MINE, AGENT_PERSON) : c));
       state.attachments = state.attachments.map((a) => ({ ...a, deleted: true, fileName: null, deletedAt: DELETED_AT, deletedBy: AGENT_PERSON }));
-      return new HttpResponse(null, { status: 204 });
+      return noContent();
     });
     const { user } = renderAt(URL_7);
     await link(/capture\.png/);
@@ -518,11 +532,8 @@ describe('C-4 댓글 지우기 (4번 묶음)', () => {
 
   test('S4-AC-62 C-4 댓글 지우기 404: 대화상자를 닫고 댓글 목록을 다시 받는다', async () => {
     asAgent([FROM_CUSTOMER, MINE]);
-    route('delete', `${COMMENTS_7}/:id`, () => {
-      // An admin deleted it first, and the issue's comments say so now.
-      state.comments = state.comments.map((c) => (c.id === MINE.id ? deletedFrom(MINE, ADMIN_PERSON) : c));
-      return errors.notFound();
-    });
+    // A real 404: the comment went out of sight. One deleted first answers 204 (the next test).
+    route('delete', `${COMMENTS_7}/:id`, () => errors.notFound());
     const { user } = renderAt(URL_7);
     const box = await openDelete(user, MINE.content);
     const reads = commentReads();
@@ -533,8 +544,29 @@ describe('C-4 댓글 지우기 (4번 묶음)', () => {
     await eventually(() => {
       expect(commentReads()).toBeGreaterThan(reads);
     });
-    expect(text(await commentWith('지워진 댓글'))).toContain('최관리 님이 지움');
     expectNotSaid('댓글을 지웠습니다');
+  });
+
+  test('S4-AC-62 C-4 댓글 지우기(먼저 지워진 댓글): 서버가 204를 주고 화면은 보통의 성공과 같다. 닫고 다시 받아 "지워진 댓글"과 먼저 지운 사람이 보이며 토스트 "댓글을 지웠습니다"', async () => {
+    asAgent([FROM_CUSTOMER, MINE]);
+    route('delete', `${COMMENTS_7}/:id`, () => {
+      // An admin deleted it first: the server answers as if this request had done it, and the trace names the admin.
+      state.comments = state.comments.map((c) => (c.id === MINE.id ? deletedFrom(MINE, ADMIN_PERSON) : c));
+      return noContent();
+    });
+    const { user } = renderAt(URL_7);
+    const box = await openDelete(user, MINE.content);
+    const reads = commentReads();
+
+    await user.click(confirmDelete(box));
+
+    await closed();
+    await said('댓글을 지웠습니다');
+    await eventually(() => {
+      expect(commentReads()).toBeGreaterThan(reads);
+    });
+    expect(text(await commentWith('지워진 댓글'))).toContain('최관리 님이 지움');
+    await focused(() => commentById(MINE.id), '지운 댓글');
   });
 
   test('S4-AC-69 C-4 닫힌 뒤 온 답(댓글 지우기): 지우는 중에 닫은 뒤 온 실패는 버린다. 다른 댓글로 다시 열면 오류 없이 처음부터 묻는다', async () => {
@@ -568,7 +600,7 @@ describe('C-4 댓글 지우기 (4번 묶음)', () => {
 });
 
 describe('C-4 주소의 #comment-ID (4번 묶음)', () => {
-  test('S4-AC-66 C-4 #comment-ID: 받은 댓글에 없는 ID면 포커스가 화면 제목 그대로이고, 있는 ID면 댓글을 받은 뒤 그 댓글이 포커스를 받는다', async () => {
+  test('S4-AC-66 C-4 #comment-ID: 받은 댓글에 없는 ID면 포커스가 화면 제목 그대로이고, 있는 ID면 댓글을 받은 뒤 그 댓글이 포커스를 한 번 받는다. 그 뒤 댓글 편집칸에 글을 쓸 수 있다', async () => {
     asAgent([FROM_CUSTOMER, comment({ ...MINE, id: 12 }), FROM_OTHER]);
     const missing = renderAt(`${URL_7}#comment-999`);
     await commentWith(FROM_OTHER.content);
@@ -576,11 +608,18 @@ describe('C-4 주소의 #comment-ID (4번 묶음)', () => {
     expect(document.activeElement).toBe(await heading1());
     missing.unmount();
 
-    renderAt(`${URL_7}#comment-12`);
+    const { user } = renderAt(`${URL_7}#comment-12`);
     await commentWith(MINE.content);
     await focused(() => commentById(12), '댓글 12');
     expect(commentById(12)).toHaveAttribute('tabindex', '-1');
     expect(text(commentById(12))).toContain(MINE.content);
+
+    // Once: drawing the screen again does not take focus back to the comment, so a comment can be written.
+    const box = await writeBox();
+    await user.type(box, '이어서 씁니다');
+    await settle();
+    expect(box, '편집칸에 친 글').toHaveValue('이어서 씁니다');
+    expect(document.activeElement, '포커스는 편집칸에 남는다').toBe(box);
   });
 });
 

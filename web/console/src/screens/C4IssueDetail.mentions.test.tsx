@@ -32,6 +32,7 @@ import {
   COMMENTS_7,
   EDIT,
   buttonIn,
+  candidates,
   commentAction,
   commentWith,
   editBox,
@@ -175,6 +176,31 @@ describe('C-4 알릴 사람 (4번 묶음)', () => {
     await said('내부 메모를 남겼습니다');
   });
 
+  test('S4-AC-63 C-4 알릴 사람(접힌 채로 댓글 종류를 바꿈): 받아 둔 후보를 버리고, 다시 펼치면 internal=true로 후보를 다시 받아 올린 고객이 없다', async () => {
+    asAgent();
+    const { user } = renderAt(URL_7);
+    await openPicker(user);
+    await eventually(() => {
+      expect(picker.lines()).toEqual(PUBLIC_LINES);
+    });
+    const toggle = await picker.toggle();
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(await internalTab());
+    await user.click(toggle);
+
+    await picker.opened();
+    await eventually(() => {
+      expect(askedFor().at(-1), '펼칠 때의 후보 요청').toBe('true');
+      expect(picker.lines()).toEqual(INTERNAL_LINES);
+    });
+    await settle();
+    expect(picker.lines(), '공개 답변의 후보(올린 고객)가 남지 않는다').toEqual(INTERNAL_LINES);
+    expect(askedFor().filter((kind) => kind === 'true'), '내부 메모의 후보는 한 번 받는다').toHaveLength(1);
+    expect(picker.says()).not.toContain('김고객');
+  });
+
   test('S4-AC-63 C-4 알릴 사람 10명: 10명을 고르면 나머지 상자가 막히고 "10명까지 고를 수 있습니다"가 보인다. 하나를 빼면 풀린다', async () => {
     asAgent();
     s4.candidates.public = Array.from({ length: 12 }, (_, i) => agentNo(i + 1));
@@ -226,10 +252,12 @@ describe('C-4 알릴 사람 (4번 묶음)', () => {
     expect(within(newForm() as HTMLElement).queryAllByRole('checkbox')).toHaveLength(0);
   });
 
-  test('S4-AC-63 C-4 알릴 사람(후보 받기 실패): 구역 안에 "후보를 불러오지 못했습니다"와 "다시 불러오기"가 보이고, 누르면 후보가 나온다', async () => {
+  test('S4-AC-63 C-4 알릴 사람(후보 받기 실패): 구역 안에 "후보를 불러오지 못했습니다"와 "다시 불러오기"가 보이고, 누르면 후보가 나온다. 후보를 받지 못한 채로도 댓글은 멘션 없이 보낼 수 있다', async () => {
     asAgent();
     let broken = true;
-    on('get', CANDIDATES_7, () => (broken ? errors.internal() : HttpResponse.json({ items: s4.candidates.public })));
+    on('get', CANDIDATES_7, ({ request }) =>
+      broken ? errors.internal() : HttpResponse.json({ items: candidates(new URL(request.url).searchParams.get('internal') === 'true') }),
+    );
     const { user } = renderAt(URL_7);
     await user.click(await picker.toggle());
 
@@ -245,26 +273,22 @@ describe('C-4 알릴 사람 (4번 묶음)', () => {
       expect(picker.lines()).toEqual(PUBLIC_LINES);
     });
     expect(picker.says()).not.toContain('후보를 불러오지 못했습니다');
-  });
 
-  test('S4-AC-63 C-4 알릴 사람(후보 받기 실패): 후보를 받지 못해도 댓글은 멘션 없이 보낼 수 있다', async () => {
-    asAgent();
-    on('get', CANDIDATES_7, () => errors.internal());
-    const { user } = renderAt(URL_7);
-    await user.click(await picker.toggle());
+    // It fails again, for the other kind of comment: the comment goes out all the same, with nobody mentioned.
+    broken = true;
+    await user.click(await internalTab());
     await eventually(() => {
       expect(picker.says()).toContain('후보를 불러오지 못했습니다');
     });
-
-    await user.type(await writeBox(), '후보 없이 보내는 답변');
-    await user.click(await sendPublic());
+    await user.type(await writeBox(), '후보 없이 남기는 메모');
+    await user.click(await sendInternal());
 
     const [post] = await sent('POST', COMMENTS_7);
     const body = (await post?.body) as { content: string };
-    expect(body.content).toBe('후보 없이 보내는 답변');
+    expect(body.content).toBe('후보 없이 남기는 메모');
     expect('mentions' in body, '본문의 mentions 키').toBe(false);
-    await said('답변을 보냈습니다');
-    await commentWith('후보 없이 보내는 답변');
+    await said('내부 메모를 남겼습니다');
+    await commentWith('후보 없이 남기는 메모');
   });
 
   test('S4-AC-63 C-4 알릴 사람 400 UNKNOWN_VALUE: "지금 알릴 수 없는 사람이 있습니다. 다시 골라 주세요."와 함께 후보를 다시 받고, 없는 사람을 고른 것에서 뺀다. 내용은 그대로다', async () => {
@@ -323,10 +347,10 @@ describe('C-4 알릴 사람 (4번 묶음)', () => {
     const release = gate();
     let late = false;
     on('get', CANDIDATES_7, async ({ request }) => {
-      if (new URL(request.url).searchParams.get('internal') === 'true') return HttpResponse.json({ items: s4.candidates.internal });
+      if (new URL(request.url).searchParams.get('internal') === 'true') return HttpResponse.json({ items: candidates(true) });
       await release.opened;
       late = true;
-      return HttpResponse.json({ items: s4.candidates.public });
+      return HttpResponse.json({ items: candidates(false) });
     });
     const { user } = renderAt(URL_7);
     await user.click(await picker.toggle());
@@ -385,6 +409,32 @@ describe('C-4 알릴 사람 (4번 묶음)', () => {
       expect(editForm()).toBeNull();
     });
     expect((await commentWith('내부 확인 중')).textContent).toMatch(/알림: (최관리, 정상담|정상담, 최관리)/);
+  });
+
+  test('S4-AC-63 C-4 알릴 사람(고치기 폼에서 모두 뺌): 멘션된 사람을 모두 빼고 저장하면 PATCH에 빈 목록 mentions: []를 보내고, 댓글의 "알림:" 줄이 사라진다', async () => {
+    asAgent();
+    state.comments = [comment({ id: 5, author: AGENT_PERSON, content: '내부 확인 중', internal: true, mentions: [OTHER_AGENT_PERSON] })];
+    const { user } = renderAt(URL_7);
+    expect((await commentWith('내부 확인 중')).textContent).toContain('알림: 정상담');
+    await user.click(await commentAction('내부 확인 중', EDIT));
+    await editFormShown();
+    const editing = people(editForm);
+    await user.click(await editing.toggle());
+    await editing.opened();
+
+    await user.click(await editing.box('정상담'));
+    await eventually(() => {
+      expect(editing.summary()).toBe(NONE);
+    });
+    await user.click(await buttonIn(editForm, '고친 댓글 저장'));
+
+    const [patch] = await sent('PATCH', `${COMMENTS_7}/5`);
+    expect(await patch?.body).toEqual({ mentions: [] });
+    await said('댓글을 고쳤습니다');
+    await eventually(() => {
+      expect(editForm()).toBeNull();
+    });
+    expect((await commentWith('내부 확인 중')).textContent).not.toContain('알림:');
   });
 
   test('C-4 axe (알릴 사람): 후보를 펼쳐 둘을 고른 댓글 쓰기 폼에 접근성 위반이 없다', async () => {
