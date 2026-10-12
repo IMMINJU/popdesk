@@ -191,7 +191,9 @@ class ConsoleIssueController {
     @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
     @PutMapping("/{key}/status")
     Issue changeIssueStatus(@PathVariable String key, @RequestBody ChangeIssueStatusRequest request) {
-        return issue(issues.changeStatus(CurrentAccount.get().viewer(), key, request.status()));
+        String unknown = ReceivedStatus.unknown();
+        String status = unknown != null ? unknown : request.status() == null ? null : request.status().name();
+        return issue(issues.changeStatus(CurrentAccount.get().viewer(), key, status));
     }
 
     @Operation(operationId = "reopenIssue", summary = "Reopen an issue",

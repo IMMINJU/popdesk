@@ -141,12 +141,19 @@ public class IssueService {
 
     /**
      * Staff move an issue to one of the statuses its status allows ({@link IssueStatus#next}, S3-AC-48);
-     * any other, and the status it has, is 400 {@code INVALID_TRANSITION} (S3-AC-49).
+     * any other, and the status it has, is 400 {@code INVALID_TRANSITION} (S3-AC-49). The status comes as
+     * the name sent, or null, so that a missing or unknown one is 400 only after the issue was found.
      */
-    public IssueRow changeStatus(Viewer viewer, String key, IssueStatus status) {
+    public IssueRow changeStatus(Viewer viewer, String key, String statusName) {
         return move(viewer, key, (issue, now) -> {
-            if (status == null) {
+            if (statusName == null) {
                 throw ApiException.invalid("status", "REQUIRED");
+            }
+            IssueStatus status;
+            try {
+                status = IssueStatus.valueOf(statusName);
+            } catch (IllegalArgumentException e) {
+                throw ApiException.invalid("status", "UNKNOWN_VALUE");
             }
             if (!issue.status().next().contains(status)) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_TRANSITION",
