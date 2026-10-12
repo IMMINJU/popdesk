@@ -9,7 +9,9 @@ import io.popdesk.helpdesk.Viewer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,17 +28,30 @@ public class IssueRepository {
     /** One issue with its company and reporter; {@code reporterPhotoUpdatedAt} is null without a profile photo. */
     public record IssueRow(UUID id, long companyId, String companyCode, String companyName, int number, String title,
             String content, IssueStatus status, Priority priority, boolean privateIssue, long reporterId,
-            String reporterName, Role reporterRole, Instant reporterPhotoUpdatedAt, String channel, Instant firstResponseAt, long version,
-            Instant createdAt, Instant updatedAt) {
+            String reporterName, Role reporterRole, Instant reporterPhotoUpdatedAt, String channel, Instant firstResponseAt,
+            Instant resolvedAt, Instant closedAt, long version, Instant createdAt, Instant updatedAt) {
 
         public String key() {
             return companyCode + "-" + number;
         }
+
+        /**
+         * Whether the issue can be reopened at {@code now} (STATUS-4): it is {@code RESOLVED}, or it was
+         * closed less than {@link #REOPEN_WINDOW} ago. It says nothing about who asks.
+         */
+        public boolean reopenable(Instant now) {
+            return status == IssueStatus.RESOLVED
+                    || status == IssueStatus.CLOSED && closedAt != null && closedAt.isAfter(now.minus(REOPEN_WINDOW));
+        }
     }
+
+    /** How long after it was closed an issue can still be reopened (STATUS-4). */
+    public static final Duration REOPEN_WINDOW = Duration.ofDays(14);
 
     private static final String SELECT = "select i.id, i.company_id, c.code, c.name, i.number, i.title, i.content, "
             + "i.status, i.priority, i.is_private, i.reporter_id, r.name as reporter_name, r.role as reporter_role, "
-            + "rp.updated_at as reporter_photo_updated_at, i.channel, i.first_response_at, i.version, i.created_at, i.updated_at "
+            + "rp.updated_at as reporter_photo_updated_at, i.channel, i.first_response_at, i.resolved_at, i.closed_at, "
+            + "i.version, i.created_at, i.updated_at "
             + "from issue i join company c on c.id = i.company_id join account r on r.id = i.reporter_id "
             + "left join account_photo rp on rp.account_id = i.reporter_id ";
 
@@ -109,8 +124,57 @@ public class IssueRepository {
                 .update();
     }
 
+    /**
+     * Moves the issue from one status to another, if it still has the first one (STATUS-7): a change
+     * that came in between leaves this one without a row to change, and the caller reads the issue
+     * again. {@code RESOLVED} sets the resolved time and {@code CLOSED} the closed time; {@code CLOSED}
+     * keeps the resolved time, every other status clears both (STATUS-6, STATUS-4).
+     *
+     * @param closedAfter for a reopening: a {@code CLOSED} issue only changes when it was closed after
+     *     this time; null for every other change
+     * @return whether the issue changed
+     */
+    boolean updateStatus(UUID id, IssueStatus from, IssueStatus to, Instant now, Instant closedAfter) {
+        Timestamp at = Timestamp.from(now);
+        List<Object> params = new ArrayList<>(List.of(to.name()));
+        String times = switch (to) {
+            case RESOLVED -> {
+                params.add(at);
+                yield "resolved_at = ?, closed_at = null";
+            }
+            case CLOSED -> {
+                params.add(at);
+                yield "closed_at = ?";
+            }
+            default -> "resolved_at = null, closed_at = null";
+        };
+        params.addAll(List.of(at, id, from.name()));
+        String stillOpenable = "";
+        if (closedAfter != null) {
+            stillOpenable = " and (status <> 'CLOSED' or closed_at > ?)";
+            params.add(Timestamp.from(closedAfter));
+        }
+        return jdbc.sql("update issue set status = ?, " + times + ", updated_at = ?, version = version + 1 "
+                        + "where id = ? and status = ?" + stillOpenable)
+                .params(params)
+                .update() == 1;
+    }
+
+    /**
+     * Stores the title, the content, and the priority of an edit, and the text the search looks in
+     * (S3-AC-16). The caller has locked the issue row and checked its version.
+     */
+    void updateFields(UUID id, String title, String content, Priority priority, Instant now) {
+        jdbc.sql("update issue set title = ?, content = ?, priority = ?, search_text = ?, updated_at = ?, "
+                        + "version = version + 1 where id = ?")
+                .params(title, content, priority.name(), SearchText.of(title, content), Timestamp.from(now), id)
+                .update();
+    }
+
     private static IssueRow issue(ResultSet rs, int row) throws SQLException {
         Timestamp firstResponse = rs.getTimestamp("first_response_at");
+        Timestamp resolved = rs.getTimestamp("resolved_at");
+        Timestamp closed = rs.getTimestamp("closed_at");
         Timestamp reporterPhoto = rs.getTimestamp("reporter_photo_updated_at");
         return new IssueRow(rs.getObject("id", UUID.class), rs.getLong("company_id"), rs.getString("code"),
                 rs.getString("name"), rs.getInt("number"), rs.getString("title"), rs.getString("content"),
@@ -118,7 +182,9 @@ public class IssueRepository {
                 rs.getBoolean("is_private"), rs.getLong("reporter_id"), rs.getString("reporter_name"),
                 Role.valueOf(rs.getString("reporter_role")), reporterPhoto == null ? null : reporterPhoto.toInstant(),
                 rs.getString("channel"),
-                firstResponse == null ? null : firstResponse.toInstant(), rs.getLong("version"),
+                firstResponse == null ? null : firstResponse.toInstant(),
+                resolved == null ? null : resolved.toInstant(), closed == null ? null : closed.toInstant(),
+                rs.getLong("version"),
                 rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant());
     }
 }

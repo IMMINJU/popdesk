@@ -2,8 +2,8 @@ package io.popdesk.helpdesk.web.portal;
 
 import io.popdesk.ApiError;
 import io.popdesk.ApiException;
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.PatchText;
 import io.popdesk.helpdesk.IssueStatus;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
@@ -54,16 +54,18 @@ class PortalIssueController {
         this.attachments = attachments;
     }
 
-    static Issue issue(IssueRow row) {
+    /** The issue with whether its status and closed time allow reopening now, whoever asks (S3-AC-59). */
+    private Issue issue(IssueRow row) {
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
-                false, null, null, false, row.version(), utc(row.createdAt()), utc(row.updatedAt()));
+                false, utc(row.resolvedAt()), utc(row.closedAt()), issues.reopenable(row), row.version(),
+                utc(row.createdAt()), utc(row.updatedAt()));
     }
 
     static IssueSummary summary(IssueRow row) {
         return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
-                false, null, null, utc(row.createdAt()));
+                false, utc(row.resolvedAt()), utc(row.closedAt()), utc(row.createdAt()));
     }
 
     /**
@@ -77,7 +79,7 @@ class PortalIssueController {
     }
 
     static OffsetDateTime utc(Instant instant) {
-        return instant.atOffset(ZoneOffset.UTC);
+        return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
     }
 
     private static IssueService.NewIssue received(CreateIssueRequest request) {
@@ -229,7 +231,9 @@ class PortalIssueController {
             + "one; nothing changed. Read the issue again (S3-AC-19).")
     @PatchMapping("/{key}")
     Issue updateIssue(@PathVariable String key, @RequestBody UpdateIssueRequest request) {
-        throw new NotImplementedException();
+        return issue(issues.edit(CurrentAccount.get().viewer(), key, new IssueService.Edit(
+                PatchText.of("title", request.title()), PatchText.of("content", request.content()),
+                PatchText.of("priority", request.priority()), request.version())));
     }
 
     @Operation(operationId = "closeIssue", summary = "Close an issue",
@@ -242,7 +246,7 @@ class PortalIssueController {
     @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
     @PostMapping("/{key}/close")
     Issue closeIssue(@PathVariable String key) {
-        throw new NotImplementedException();
+        return issue(issues.close(CurrentAccount.get().viewer(), key));
     }
 
     @Operation(operationId = "reopenIssue", summary = "Reopen an issue",
@@ -258,6 +262,6 @@ class PortalIssueController {
     @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
     @PostMapping("/{key}/reopen")
     Issue reopenIssue(@PathVariable String key) {
-        throw new NotImplementedException();
+        return issue(issues.reopen(CurrentAccount.get().viewer(), key));
     }
 }

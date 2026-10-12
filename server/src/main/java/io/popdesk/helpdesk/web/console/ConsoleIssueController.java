@@ -2,9 +2,12 @@ package io.popdesk.helpdesk.web.console;
 
 import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.PatchText;
 import io.popdesk.helpdesk.IssueStatus;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.issue.IssueHistoryRepository;
+import io.popdesk.helpdesk.issue.IssueHistoryRepository.HistoryRow;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.helpdesk.issue.IssueService;
 import java.time.Instant;
@@ -42,11 +45,13 @@ class ConsoleIssueController {
         this.issues = issues;
     }
 
-    static Issue issue(IssueRow row) {
+    /** The issue with what its status allows now: the transitions of staff and reopening (S3-AC-59). */
+    private Issue issue(IssueRow row) {
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
-                null, IssueChannel.valueOf(row.channel()), null, false, List.of(), false,
-                utc(row.firstResponseAt()), null, null, row.version(), utc(row.createdAt()), utc(row.updatedAt()));
+                null, IssueChannel.valueOf(row.channel()), null, false, row.status().next(), issues.reopenable(row),
+                utc(row.firstResponseAt()), utc(row.resolvedAt()), utc(row.closedAt()), row.version(),
+                utc(row.createdAt()), utc(row.updatedAt()));
     }
 
     static IssueSummary summary(IssueRow row) {
@@ -58,6 +63,19 @@ class ConsoleIssueController {
     /** Staff see every person by name, with the time of the profile photo for the photo's address. */
     static Person person(long accountId, String name, Role role, Instant photoUpdatedAt) {
         return new Person(accountId, name, role, utc(photoUpdatedAt));
+    }
+
+    private static Person person(IssueHistoryRepository.Person person) {
+        return person == null ? null
+                : person(person.accountId(), person.name(), person.role(), person.photoUpdatedAt());
+    }
+
+    /** An assignee change names people; every other change gives its values as text (S3-AC-64). */
+    private static IssueHistoryEntry entry(HistoryRow row) {
+        return new IssueHistoryEntry(row.id(), IssueHistoryKind.valueOf(row.kind()), row.field(), row.oldValue(),
+                row.newValue(), person(row.oldPerson()), person(row.newPerson()),
+                new IssueHistoryActor(row.actorId(), row.actorName(), row.actorRole(), utc(row.actorPhotoUpdatedAt())),
+                utc(row.createdAt()));
     }
 
     static OffsetDateTime utc(Instant instant) {
@@ -154,7 +172,9 @@ class ConsoleIssueController {
             + "one; nothing changed. Read the issue again (S3-AC-19).")
     @PatchMapping("/{key}")
     Issue updateIssue(@PathVariable String key, @RequestBody UpdateIssueRequest request) {
-        throw new NotImplementedException();
+        return issue(issues.edit(CurrentAccount.get().viewer(), key, new IssueService.Edit(
+                PatchText.of("title", request.title()), PatchText.of("content", request.content()),
+                PatchText.of("priority", request.priority()), request.version())));
     }
 
     @Operation(operationId = "changeIssueStatus", summary = "Change an issue's status",
@@ -171,7 +191,7 @@ class ConsoleIssueController {
     @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
     @PutMapping("/{key}/status")
     Issue changeIssueStatus(@PathVariable String key, @RequestBody ChangeIssueStatusRequest request) {
-        throw new NotImplementedException();
+        return issue(issues.changeStatus(CurrentAccount.get().viewer(), key, request.status()));
     }
 
     @Operation(operationId = "reopenIssue", summary = "Reopen an issue",
@@ -186,7 +206,7 @@ class ConsoleIssueController {
     @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
     @PostMapping("/{key}/reopen")
     Issue reopenIssue(@PathVariable String key) {
-        throw new NotImplementedException();
+        return issue(issues.reopen(CurrentAccount.get().viewer(), key));
     }
 
     @Operation(operationId = "setIssueAssignee", summary = "Set an issue's assignee",
@@ -228,6 +248,6 @@ class ConsoleIssueController {
             @PathVariable String key,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return issues.history(CurrentAccount.get().viewer(), key, page, size).map(ConsoleIssueController::entry);
     }
 }

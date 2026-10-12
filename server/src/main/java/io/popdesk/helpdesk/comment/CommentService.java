@@ -10,10 +10,10 @@ import io.popdesk.helpdesk.AccountRateLimit;
 import io.popdesk.helpdesk.IssueStatus;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.comment.CommentRepository.CommentRow;
-import io.popdesk.helpdesk.company.CompanyRepository;
 import io.popdesk.helpdesk.issue.IssueKey;
 import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
+import io.popdesk.helpdesk.issue.ReporterAccess;
 import io.popdesk.notification.MailKind;
 import io.popdesk.notification.MailQueue;
 import io.popdesk.notification.WebhookKind;
@@ -38,18 +38,18 @@ public class CommentService {
 
     private final CommentRepository comments;
     private final IssueRepository issues;
-    private final CompanyRepository companies;
+    private final ReporterAccess reporters;
     private final MailQueue mail;
     private final WebhookQueue webhooks;
     private final AccountRateLimit rateLimit;
     private final Transactions transactions;
     private final Clock clock;
 
-    CommentService(CommentRepository comments, IssueRepository issues, CompanyRepository companies, MailQueue mail,
+    CommentService(CommentRepository comments, IssueRepository issues, ReporterAccess reporters, MailQueue mail,
             WebhookQueue webhooks, AccountRateLimit rateLimit, Transactions transactions, Clock clock) {
         this.comments = comments;
         this.issues = issues;
-        this.companies = companies;
+        this.reporters = reporters;
         this.mail = mail;
         this.webhooks = webhooks;
         this.rateLimit = rateLimit;
@@ -71,8 +71,7 @@ public class CommentService {
         IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
         return transactions.run(() -> {
             IssueRow issue = issues.lockByKey(viewer, issueKey).orElseThrow(ApiException::notFound);
-            if (viewer.customer() && (internal || issue.reporterId() != viewer.accountId()
-                    || companies.findByCode(viewer, issue.companyCode()).isEmpty())) {
+            if (viewer.customer() && (internal || !reporters.writes(viewer, issue))) {
                 throw ApiException.forbidden();
             }
             List<ApiError.FieldError> errors = new ArrayList<>();
