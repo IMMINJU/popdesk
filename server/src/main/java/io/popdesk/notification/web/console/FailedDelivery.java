@@ -8,7 +8,7 @@ public record FailedDelivery(
         long id,
         DeliveryChannel channel,
         OffsetDateTime createdAt,
-        @Schema(description = "Kind of the last error, for example `CONNECTION_REFUSED`, or `RATE_LIMITED` "
+        @Schema(description = "Kind of the last error, for example `CONNECTION_FAILED`, or `RATE_LIMITED` "
                 + "for an email over the 50 an hour one address gets (S4B-AC-10); never the error text.")
                 String lastErrorKind,
         @Schema(description = "The receiving account of an email; null for a webhook.", nullable = true)

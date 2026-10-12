@@ -1523,7 +1523,7 @@ export interface components {
             createdAt: string;
             /** Format: int64 */
             id: number;
-            /** @description Kind of the last error, for example `CONNECTION_REFUSED`, or `RATE_LIMITED` for an email over the 50 an hour one address gets (S4B-AC-10); never the error text. */
+            /** @description Kind of the last error, for example `CONNECTION_FAILED`, or `RATE_LIMITED` for an email over the 50 an hour one address gets (S4B-AC-10); never the error text. */
             lastErrorKind: string;
             /**
              * Format: int64
@@ -2072,11 +2072,11 @@ export interface components {
             webhook: components["schemas"]["ChannelStatus"];
         };
         TestMailResult: {
-            /** @description Kind of the error, for example `SMTP_AUTHENTICATION_FAILED` or `CONNECTION_FAILED`, as in `FailedDelivery.lastErrorKind`; null when `ok`. */
+            /** @description Kind of the error, for example `SMTP_AUTHENTICATION_FAILED` or `CONNECTION_FAILED`, as in `FailedDelivery.lastErrorKind`, or `RATE_LIMITED` when the address already got its 50 emails this hour; null when `ok`. */
             errorKind: string | null;
             /** @description The SMTP server took the email. */
             ok: boolean;
-            /** @description What the SMTP server answered, as plain text of up to 500 characters, with line breaks but no other control characters; show it as text, never as markup. null when the server gave no answer, for example when it could not be reached. */
+            /** @description What the SMTP server answered, as plain text of up to 500 characters, with line breaks but no other control characters; show it as text, never as markup. The address the email went to is masked after its first character, and the SMTP user name and password are replaced by `***`. null when the server gave no answer: when the email was taken, or when the server could not be reached. */
             serverReply: string | null;
         };
         UnreadCount: {
