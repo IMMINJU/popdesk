@@ -52,6 +52,8 @@ class ConsoleAccountController {
             + "(`TOO_SHORT`, `TOO_LONG`).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: admins only.")
+    @ApiResponse(responseCode = "429", description = "`RATE_LIMITED`: more than 60 lists with `q` in 60 seconds, "
+            + "counted together with the other lists that search (S3-AC-15, COM-8).")
     @GetMapping("/api/console/accounts")
     Paged<Account> listAccounts(
             @Parameter(description = "Only accounts with this role.") @RequestParam(required = false) @Nullable Role role,
