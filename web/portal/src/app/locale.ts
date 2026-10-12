@@ -9,3 +9,8 @@ export type { Locale };
 export function t(key: MessageKey): string {
   return ko[key];
 }
+
+/** `t` with the `{name}` places of the text filled in, e.g. `tf('inbox.count', { count: 3 })`. */
+export function tf(key: MessageKey, values: Record<string, string | number>): string {
+  return t(key).replace(/\{(\w+)\}/g, (place, name: string) => (name in values ? String(values[name]) : place));
+}
