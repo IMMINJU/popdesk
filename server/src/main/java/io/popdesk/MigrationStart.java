@@ -22,7 +22,8 @@ import org.springframework.stereotype.Component;
 /**
  * The first steps of a start (architecture.md section 7 "Start order"): take the single-instance
  * lock, check that the database user may create tables, refuse a schema that is newer than the app
- * or has a failed migration, then migrate. Spring Boot runs this before the web server opens its
+ * or has a failed migration, then migrate. A migration that could not create the {@code pg_trgm}
+ * extension stops the start with the statement an administrator runs. Spring Boot runs this before the web server opens its
  * ports, so health checks are refused while migrations run (S0-AC-09).
  *
  * <p>Each refusal logs one line saying what to do and then fails the start with an exception, which
@@ -33,6 +34,9 @@ class MigrationStart implements FlywayMigrationStrategy {
 
     /** The recovery steps for a failed migration. */
     static final String RECOVERY_DOC = "docs/operate/upgrade.md";
+
+    /** The migration whose first statement is {@code CREATE EXTENSION IF NOT EXISTS pg_trgm}. */
+    static final String TRIGRAM_MIGRATION = "9";
 
     private static final Logger log = LoggerFactory.getLogger(MigrationStart.class);
 
@@ -53,10 +57,38 @@ class MigrationStart implements FlywayMigrationStrategy {
             flyway.migrate();
         } catch (FlywayException e) {
             String version = failedVersion(flyway, e).map(MigrationVersion::getVersion).orElse("(unknown)");
-            String message = "Database migration " + version + " failed, so popdesk did not start. Follow the "
-                    + "recovery steps in " + RECOVERY_DOC + " before starting again.";
+            String message = (TRIGRAM_MIGRATION.equals(version) ? missingTrigramExtension() : Optional.<String>empty())
+                    .orElse("Database migration " + version + " failed, so popdesk did not start. Follow the "
+                            + "recovery steps in " + RECOVERY_DOC + " before starting again.");
             log.error(message);
             throw new IllegalStateException(message, e);
+        }
+    }
+
+    /**
+     * What to do when the migration that creates the {@code pg_trgm} extension failed and the extension
+     * is not there: the app's user may not create it, or the server does not have it (S3-AC-91). One
+     * line with the statement and the database to run it in. Empty when the extension is there, so the
+     * migration failed on something else.
+     */
+    private Optional<String> missingTrigramExtension() {
+        try (Connection c = dataSource.getConnection();
+                Statement s = c.createStatement();
+                ResultSet rs = s.executeQuery("select current_database(), current_user, "
+                        + "exists (select 1 from pg_extension where extname = 'pg_trgm')")) {
+            rs.next();
+            if (rs.getBoolean(3)) {
+                return Optional.empty();
+            }
+            String database = rs.getString(1);
+            return Optional.of("Database migration " + TRIGRAM_MIGRATION + " failed, so popdesk did not start: the "
+                    + "database " + database + " has no pg_trgm extension, which the issue search needs, and the "
+                    + "database user " + rs.getString(2) + " could not create it. Have a database administrator run "
+                    + "CREATE EXTENSION pg_trgm; in the database " + database + ", then start popdesk again. "
+                    + "Nothing of this migration was kept.");
+        } catch (SQLException again) {
+            log.warn("Could not check for the pg_trgm extension after the failure (SQL state {})", again.getSQLState());
+            return Optional.empty();
         }
     }
 
