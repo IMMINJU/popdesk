@@ -18,3 +18,12 @@ web src/app/layout.inbox.test.tsx
 web src/screens/C7Inbox.test.tsx
 web src/screens/C4IssueDetail.comments4.test.tsx
 web src/screens/C4IssueDetail.mentions.test.tsx
+server io/popdesk/inbox/InboxRecipientsTest.java
+server io/popdesk/inbox/InboxRulesTest.java
+server io/popdesk/inbox/InboxReadTest.java
+server io/popdesk/inbox/AdminInboxItemsTest.java
+server io/popdesk/inbox/PortalNotificationContractTest.java
+server io/popdesk/notify/TalkMailTest.java
+server io/popdesk/notify/KoreanTalkMailTest.java
+server io/popdesk/notify/NoSmtpTalkMailLogTest.java
+server io/popdesk/notify/TalkWebhookTest.java
