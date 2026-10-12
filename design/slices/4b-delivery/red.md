@@ -1,0 +1,129 @@
+# 실패 확인
+
+> 실패한 테스트는 이름만 적었다. 실패 메시지는 넣지 않았다. 숨긴 E2E는 여기 없다(레포 밖).
+
+- 단언 실패 107, 통과 0, 허용한 통과 10, 오류 0, 건너뜀 0
+- 판정: 통과
+
+## 처음부터 통과해도 된다고 허용한 테스트 (점검에서 이유를 본다)
+
+- `io.popdesk.boundary.BoundaryListTest.everyNamedTestExists`: 있던 테스트다. 목록에 4b의 연산 둘을 올려 통과한다
+- `io.popdesk.boundary.BoundaryListTest.everyListedOperationIsInTheContract`: 있던 테스트다. 목록에 4b의 연산 둘을 올려 통과한다
+- `io.popdesk.boundary.BoundaryListTest.eachOperationHasTestsOrReason`: 있던 테스트다. 목록에 4b의 연산 둘을 올려 통과한다
+- `io.popdesk.boundary.BoundaryListTest.everyContractOperationIsListed`: 있던 테스트다. 목록에 4b의 연산 둘을 올려 통과한다
+- `io.popdesk.notify.SandboxOffTest.falseIsNoSandbox`: POPDESK_SANDBOX=false는 지금도 보통 앱이다. 값 false를 샌드박스로 읽는 틀린 구현을 잡는다(S4B-AC-09)
+- `io.popdesk.start.SandboxMailToSettingTest.notASandboxDoesNotReadTheKey(String)[1]`: 지금은 POPDESK_SANDBOX_MAIL_TO를 읽지 않아 틀린 값으로도 뜬다. 구현 뒤에도 그래야 한다(S4B-AC-06)
+- `io.popdesk.start.SandboxMailToSettingTest.notASandboxDoesNotReadTheKey(String)[2]`: 지금은 POPDESK_SANDBOX_MAIL_TO를 읽지 않아 틀린 값으로도 뜬다. 구현 뒤에도 그래야 한다(S4B-AC-06)
+- `io.popdesk.ops.DeliveryAccessTest.signedOutIsUnauthenticated`: 로그인 전 401은 보안 설정이 이미 한다
+- `io.popdesk.ops.DeliveryAccessTest.withoutCsrfTokenIsForbidden`: CSRF 403은 보안 설정이 이미 한다
+- `io.popdesk.ops.DeliveryAccessTest.portalHostHasNeitherEndpoint`: 포털 호스트의 콘솔 경로 404는 앱 나누기(D-43)가 이미 한다
+
+## 단언에서 실패한 테스트
+
+- `io.popdesk.notify.MailLimitTest.fiftyFirstMailIsStopped`
+- `io.popdesk.notify.MailLimitTest.stoppedMailIsCountedAndAlerts`
+- `io.popdesk.notify.MailLimitTest.refusedAttemptIsNotCounted`
+- `io.popdesk.notify.MailLimitTest.limitEndsAfterAnHour`
+- `io.popdesk.notify.SandboxChannelsTest.status`
+- `io.popdesk.notify.SandboxChannelsTest.startupWarning`
+- `io.popdesk.notify.SandboxChannelsTest.noWebhook`
+- `io.popdesk.notify.SandboxMailLimitTest.mailForTwoPeopleAddsUp`
+- `io.popdesk.notify.SandboxMailTest.everyKindGoesToTheSandboxAddress`
+- `io.popdesk.notify.SandboxMailTest.checksBeforeSendingUseTheOriginalRecipient(Gone)[1]`
+- `io.popdesk.notify.SandboxMailTest.checksBeforeSendingUseTheOriginalRecipient(Gone)[2]`
+- `io.popdesk.notify.SandboxMailTest.checksBeforeSendingUseTheOriginalRecipient(Gone)[3]`
+- `io.popdesk.notify.SandboxMailTest.testMailGoesToTheSandboxAddress`
+- `io.popdesk.notify.SandboxMailTest.redirectedMailSaysSo(Mail)[1]`
+- `io.popdesk.notify.SandboxMailTest.redirectedMailSaysSo(Mail)[2]`
+- `io.popdesk.notify.SandboxNoAddressTest.answerIsLoggedNotSent`
+- `io.popdesk.notify.SandboxNoAddressTest.status`
+- `io.popdesk.notify.SandboxNoAddressTest.startupWarning`
+- `io.popdesk.notify.SandboxNoAddressTest.invitationIsLoggedNotSent`
+- `io.popdesk.start.SandboxMailToSettingTest.sandboxWithABadAddressDoesNotStart(String)[1]`
+- `io.popdesk.start.SandboxMailToSettingTest.sandboxWithABadAddressDoesNotStart(String)[2]`
+- `io.popdesk.notify.ResendTest.resendingIsAuditedWithoutAddressesOrTitles`
+- `io.popdesk.notify.ResendTest.rowThatWentOutIsNotFound`
+- `io.popdesk.notify.ResendTest.resendingTheOnlyFailedRowResolvesTheAlert`
+- `io.popdesk.notify.ResendTest.missingRowIsNotFound`
+- `io.popdesk.notify.ResendTest.resentRowThatFailsAgainIsRetriedAndThenFailed`
+- `io.popdesk.notify.ResendTest.failedRowGoesOutWhenSentAgain(String)[1]`
+- `io.popdesk.notify.ResendTest.failedRowGoesOutWhenSentAgain(String)[2]`
+- `io.popdesk.notify.ResendTest.failedRowGoesOutWhenSentAgain(String)[3]`
+- `io.popdesk.notify.ResendTest.rowAlreadyQueuedIsLeftAlone`
+- `io.popdesk.notify.ResendTest.resentMailIsCheckedAgain(Since)[1]`
+- `io.popdesk.notify.ResendTest.resentMailIsCheckedAgain(Since)[2]`
+- `io.popdesk.notify.ResendTest.resentMailIsCheckedAgain(Since)[3]`
+- `io.popdesk.notify.TestMailCountsTest.testMailIsCountedAgainstTheLimitOfItsAddress`
+- `io.popdesk.notify.TestMailTest.serverThatGoesAwayIsAFailureWithoutAReply`
+- `io.popdesk.notify.TestMailTest.refusedTestMailSaysWhatTheServerAnswered(String, String)[1]`
+- `io.popdesk.notify.TestMailTest.refusedTestMailSaysWhatTheServerAnswered(String, String)[2]`
+- `io.popdesk.notify.TestMailTest.refusedTestMailSaysWhatTheServerAnswered(String, String)[3]`
+- `io.popdesk.notify.TestMailTest.testMailInTheRecipientsLanguage(String)[1]`
+- `io.popdesk.notify.TestMailTest.testMailInTheRecipientsLanguage(String)[2]`
+- `io.popdesk.notify.TestMailTest.controlCharactersAreTakenOutAndLineBreaksKept`
+- `io.popdesk.notify.TestMailTest.sixthTestMailInAMinuteIsLimited`
+- `io.popdesk.notify.TestMailTest.replyComesBackWithoutTheSmtpUserAndPassword`
+- `io.popdesk.notify.TestMailTest.testMailGoesToTheCallerWithinTheRequest`
+- `io.popdesk.notify.TestMailTest.replyComesBackWithTheAddressMasked`
+- `io.popdesk.notify.TestMailTest.longReplyIsCut`
+- `io.popdesk.notify.TestMailTest.testMailIsAuditedWithItsResultOnly`
+- `io.popdesk.ops.CleanupJobsStatusTest.statusListsCleanupJobsWithTheirLastRun`
+- `io.popdesk.ops.DeliveryAccessTest.agentIsForbiddenAndNothingHappens`
+- `io.popdesk.ops.DeliveryCheckOrderTest.testMailWithoutSmtpIsRefused`
+- `io.popdesk.ops.DeliveryCheckOrderTest.checksComeInOrder`
+- `io.popdesk.ops.DeliveryCheckOrderTest.limitIsCountedBeforeTheChannelCheck`
+- `io.popdesk.ops.DeliverySecretsTest.answersHoldNoSecret`
+- `io.popdesk.ops.SandboxChannelsOffTest.testMailIsRefused`
+- `io.popdesk.ops.SandboxChannelsOffTest.channelsThatAreOffRaiseNoAlert`
+- `io.popdesk.ops.StalledAlertTest.channelFailingForOverAnHourAlertsAdminsUntilItSendsAgain(String)[1]`
+- `io.popdesk.ops.StalledAlertTest.channelFailingForOverAnHourAlertsAdminsUntilItSendsAgain(String)[2]`
+- `io.popdesk.ops.StalledAlertTest.channelFailingForOverAnHourAlertsAdminsUntilItSendsAgain(String)[3]`
+- `io.popdesk.ops.TestMailLogTest.testMailsLeaveNoAddressOrReplyInTheLog`
+- `src/screens/C12AuditLog.4b.test.tsx.C-12 감사 로그 (4b) > S4B-AC-20 S4B-AC-27 C-12 일의 종류: DELIVERY_RESENT는 "다시 보내기", TEST_MAIL_SENT는 "시험 메일"이고 바뀐 값은 한국어 말로 보인다`
+- `src/screens/C12AuditLog.4b.test.tsx.C-12 감사 로그 (4b) > S4B-AC-20 S4B-AC-27 C-12 종류 필터의 묶음 "보내기": 묶음 선택지의 맨 끝이고 그 아래 두 종류가 있다. 고르면 action이 그 둘이다`
+- `src/screens/C12AuditLog.4b.test.tsx.C-12 감사 로그 (4b) > S4B-AC-20 changeLines 다시 보내기의 채널 MAIL: "채널: 메일", 종류는 서버 글자 그대로`
+- `src/screens/C12AuditLog.4b.test.tsx.C-12 감사 로그 (4b) > S4B-AC-20 changeLines 다시 보내기의 채널 WEBHOOK: "채널: 웹훅", 종류는 서버 글자 그대로`
+- `src/screens/C12AuditLog.4b.test.tsx.C-12 감사 로그 (4b) > S4B-AC-20 changeLines 다시 보내기의 채널 AUDIT_FORWARD: "채널: 감사 바깥 사본", 종류는 서버 글자 그대로`
+- `src/screens/C12AuditLog.4b.test.tsx.C-12 감사 로그 (4b) > S4B-AC-27 changeLines 시험 메일의 결과(됐다): [ '보냄: 예' ]`
+- `src/screens/C12AuditLog.4b.test.tsx.C-12 감사 로그 (4b) > S4B-AC-27 changeLines 시험 메일의 결과(실패): [ '보냄: 아니오', …(1) ]`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 샌드박스 띠 > S4B-AC-32 C-18 샌드박스 띠(메일 주소 있음): 제목 아래, 채널 표 위에 "샌드박스로 떠 있습니다. 메일은 설정한 한 주소로만 가고, 웹훅과 감사…"`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 샌드박스 띠 > S4B-AC-32 C-18 샌드박스 띠(메일 주소 없음): 제목 아래, 채널 표 위에 "샌드박스로 떠 있습니다. 메일, 웹훅, 감사 바깥 사본을 보내지 않습니…"`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 샌드박스 띠 > S4B-AC-32 C-18 샌드박스가 아님: 4b의 화면(시험 메일 구역)이 그려지고 샌드박스 띠는 없다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 샌드박스 띠 > S4B-AC-32 C-18 샌드박스가 끈 채널 줄(주소 없음: 세 채널 모두): 상태 칸이 "꺼짐(샌드박스)"이고 링크는 "샌드박스 안내" 하나다. 설정 방법 링크는 없다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 샌드박스 띠 > S4B-AC-32 C-18 샌드박스가 끈 채널 줄(주소 있음: 웹훅과 감사 바깥 사본): 상태 칸이 "꺼짐(샌드박스)"이고 링크는 "샌드박스 안내" 하나다. 설정 방법 링크는 없다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 샌드박스 띠 > S4B-AC-32 C-18 샌드박스이고 주소가 있는데 메일 설정이 없음: 메일 줄은 "설정 없음"과 설정 방법 링크 그대로이고, 웹훅 줄은 "꺼짐(샌드박스)"`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 다시 보내기 > S4B-AC-33 C-18 `failed` 표의 마지막 열: 열 머리 "동작", 줄마다 버튼 "다시 보내기"가 aria-describedby로 그 줄의 채널과 만든 시각에 이어진다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 다시 보내기 > S4B-AC-33 C-18 다시 보내기 성공(204): 본문 없이 그 줄의 ID로 보내고, 목록과 시스템 상태를 다시 받으며 토스트로 알린다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 다시 보내기 > S4B-AC-33 C-18 다시 보내는 중: 그 줄의 버튼만 막히고 "보내는 중…"이다. 다른 줄은 눌린다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 다시 보내기 > S4B-AC-33 C-18 다시 보내기 400 CHANNEL_DISABLED: 오류 띠 "채널이 꺼져 있어 보낼 수 없습니다."와 함께 시스템 상태를 다시 받는다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 다시 보내기 > S4B-AC-33 C-18 다시 보내기 404: 토스트도 오류 띠도 없이 목록을 다시 받는다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 다시 보내기 > S4B-AC-33 C-18 다시 보내기 403: 공통 오류 띠 "이 작업을 할 권한이 없습니다.". 버튼은 다시 눌린다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 다시 보내기 > S4B-AC-33 C-18 다시 보내기 5xx: 공통 오류 띠 "서버에 연결하지 못했습니다. 잠시 뒤 다시 하세요.". 버튼은 다시 눌린다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 다시 보내기 > S4B-AC-33 C-18 꺼진 채널의 줄: 버튼 대신 "채널이 꺼져 있습니다". 켜진 채널의 줄에는 버튼이 있다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 다시 보내기 > S4B-AC-33 C-18 RATE_LIMITED 줄: 오류 종류는 code 그대로이고 그 아래 "한 주소에 한 시간 50통을 넘겼습니다."`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 시험 메일 구역(보통): 채널 표 아래 h2 "시험 메일", 설명 "지금 로그인한 계정의 주소로 메일 한 통을 보냅니다.", 버튼 "시험 메일 보내기"`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 시험 메일 구역(샌드박스(주소 있음)): 채널 표 아래 h2 "시험 메일", 설명 "샌드박스 주소로 메일 한 통을 보냅니다.", 버튼 "시험 메일 보내기"`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 시험 메일 보내는 중: 본문 없이 보내고, 버튼이 막히며 "보내는 중…"과 30초까지 걸릴 수 있다는 안내가 보인다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 시험 메일 됐다(서버의 답 있음): 구역 안 role="status"에 "보냈습니다. 메일함을 확인하세요."와 서버가 한 답의 글`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 시험 메일 됐다(serverReply가 null): 결과 줄은 그 문장뿐이고 답의 글 자리를 그리지 않는다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 시험 메일 실패(서버가 거절): 구역 안 role="alert"에 "보내지 못했습니다."와 오류의 종류(code), 서버가 한 답은 있을 때만`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 시험 메일 실패(서버에 닿지 못함(serverReply가 null)): 구역 안 role="alert"에 "보내지 못했습니다."와 오류의 종류(code), 서버가 한 답은 있을 때만`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 서버가 한 답은 글자 그대로: <b>와 http://… 가 든 여러 줄의 답이 굵은 글씨나 링크가 되지 않는다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 메일이 꺼져 있음(SMTP 설정 없음): 구역은 있고 버튼 대신 "메일 보내기가 꺼져 있습니다."`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 메일이 꺼져 있음(주소 없는 샌드박스): 구역은 있고 버튼 대신 "메일 보내기가 꺼져 있습니다."`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 시험 메일 400 CHANNEL_DISABLED: 오류 띠 "메일 보내기가 꺼져 있습니다."와 함께 시스템 상태를 다시 받는다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 시험 메일 429: 공통 오류 띠가 보이고 결과 줄은 없다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 시험 메일 5xx: 공통 오류 띠가 보이고 결과 줄은 없다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 시험 메일 연결 끊김: 공통 오류 띠가 보이고 결과 줄은 없다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 시험 메일 > S4B-AC-34 C-18 시험 메일 다시 누름: 앞 결과를 지우고 새로 보낸다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 정리 작업 > S4B-AC-35 C-18 정리 작업 표: `failed` 표 아래 h2 "정리 작업", 열 머리 "작업", "마지막으로 돈 시각", "지운 수", 줄은 받은 순서(이름순) 그대로`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 정리 작업 > S4B-AC-35 C-18 한 번도 돌지 않은 정리 작업: 시각 칸과 지운 수 칸이 "아직 없음"`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 정리 작업 > S4B-AC-35 C-18 정리 작업이 하나도 없음: 4b의 화면(시험 메일 구역)은 그려지고 "정리 작업" 구역은 없다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 떠난 뒤 온 답과 접근성 > S4B-AC-36 C-18 떠난 뒤 온 답(다시 보내기의 204): 다른 화면으로 간 뒤에 온 답은 토스트도 오류 띠도 띄우지 않는다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 떠난 뒤 온 답과 접근성 > S4B-AC-36 C-18 떠난 뒤 온 답(다시 보내기의 5xx): 다른 화면으로 간 뒤에 온 답은 토스트도 오류 띠도 띄우지 않는다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 떠난 뒤 온 답과 접근성 > S4B-AC-36 C-18 떠난 뒤 온 답(시험 메일의 실패 결과): 다른 화면으로 간 뒤에 온 답은 토스트도 오류 띠도 띄우지 않는다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 떠난 뒤 온 답과 접근성 > S4B-AC-36 C-18 떠난 뒤 온 답(시험 메일의 5xx): 다른 화면으로 간 뒤에 온 답은 토스트도 오류 띠도 띄우지 않는다`
+- `src/screens/C18SystemStatus.4b.test.tsx.C-18 시스템 상태 (4b): 떠난 뒤 온 답과 접근성 > C-18 axe (4b): 샌드박스 띠, 버튼이 있는 `failed` 표, 시험 메일 결과, 정리 작업 표가 다 있는 화면에 접근성 위반이 없다`
+- `src/screens/C7Inbox.4b.test.tsx.C-7 알림함 (4b) > S4B-AC-29 C-7 경보 MAIL_STALLED: "메일 보내기가 한 시간 넘게 실패하고 있습니다"이고, 누르면 읽음 요청을 보내고 /system 으로 간다`
+- `src/screens/C7Inbox.4b.test.tsx.C-7 알림함 (4b) > S4B-AC-29 C-7 경보 WEBHOOK_STALLED: "웹훅 보내기가 한 시간 넘게 실패하고 있습니다"이고, 누르면 읽음 요청을 보내고 /system 으로 간다`
+- `src/screens/C7Inbox.4b.test.tsx.C-7 알림함 (4b) > S4B-AC-29 C-7 경보 AUDIT_FORWARD_STALLED: "감사 바깥 사본 보내기가 한 시간 넘게 실패하고 있습니다"이고, 누르면 읽음 요청을 보내고 /system 으로 간다`
