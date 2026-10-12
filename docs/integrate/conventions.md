@@ -101,7 +101,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 400 | `MEMBER_IS_MANAGER` | A customer manager tries to remove another manager of the company. An admin does that |
 | 400 | `INVITATION_NOT_RESENDABLE` | A customer manager tries to send again an invitation that cannot be sent again from the portal. One code whatever the reason |
 | 400 | `NOT_A_CUSTOMER` | The account of a membership request is an agent or an admin, so the request cannot be approved. It can be rejected |
-| 400 | `ISSUE_CLOSED` | The issue is `CLOSED`: no comments, attachments, edits, or status changes. A customer closes an issue that is closed already |
+| 400 | `ISSUE_CLOSED` | The issue is `CLOSED`: no comments, attachments, or edits. Also when a customer closes an issue that is closed already. A status change by staff on a closed issue is `INVALID_TRANSITION` |
 | 400 | `INVALID_TRANSITION` | A status change by staff: the issue cannot go from its current status to the one sent, or has that status already. Nothing changed |
 | 400 | `NOT_REOPENABLE` | The issue is neither `RESOLVED` nor `CLOSED`, or it was closed 14 days ago or longer, so it cannot be reopened |
 | 400 | `FILE_EMPTY` | The uploaded file has 0 bytes |

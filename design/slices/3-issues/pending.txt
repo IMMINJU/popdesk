@@ -11,16 +11,12 @@ server io/popdesk/issue/IssueSearchTest.java
 server io/popdesk/issue/SearchRateLimitTest.java
 server io/popdesk/issue/CompanyReportersTest.java
 server io/popdesk/ops/IssueSearchLogTest.java
-server io/popdesk/issue/IssueEditTest.java
 server io/popdesk/issue/IssueAssigneeTest.java
 server io/popdesk/issue/OnBehalfFilingTest.java
 server io/popdesk/issue/IdempotencyKeyTest.java
 server io/popdesk/boundary/OnBehalfIdentityTest.java
 server io/popdesk/notify/OnBehalfMailTest.java
 server io/popdesk/notify/KoreanOnBehalfMailTest.java
-server io/popdesk/issue/IssueStatusTest.java
-server io/popdesk/issue/IssueStatusRaceTest.java
-server io/popdesk/issue/IssueCloseRaceTest.java
 server io/popdesk/issue/IssueCloseReopenTest.java
 server io/popdesk/issue/IssueHistoryTest.java
 server io/popdesk/issue/ClearAssignmentsTest.java
@@ -30,7 +26,6 @@ server io/popdesk/notify/IssueWebhookSnapshotTest.java
 server io/popdesk/notify/KoreanIssueWebhookSnapshotTest.java
 server io/popdesk/notify/NoIssueWebhookTest.java
 server io/popdesk/boundary/IssueBoundaryTest.java
-server io/popdesk/start/TrigramExtensionTest.java
 server io/popdesk/deploy/IssueUpgradeTest.java
 server io/popdesk/deploy/RestoreForeignExtensionTest.java
 server io/popdesk/ops/CheckOrderTest.java
