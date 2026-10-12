@@ -20,8 +20,10 @@
     "./unread": "./src/unread.ts"
   },
   "scripts": {
+    "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "mutate": "stryker run"
   },
   "dependencies": {
     "@popdesk/i18n": "workspace:*",
@@ -33,11 +35,21 @@
     "react-router": "catalog:"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "catalog:",
+    "@stryker-mutator/vitest-runner": "catalog:",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "msw": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   }
 }
