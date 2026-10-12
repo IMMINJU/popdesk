@@ -14,6 +14,7 @@ import io.popdesk.helpdesk.Priority;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.company.CompanyRepository;
 import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
+import io.popdesk.helpdesk.company.CompanyRepository.StaffRow;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository.Field;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository.HistoryRow;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
@@ -526,6 +527,23 @@ public class IssueService {
             webhooks.queue(WebhookKind.ASSIGNEE_CHANGED, issue.id(), null);
             return issues.findByKey(viewer, issueKey).orElseThrow();
         });
+    }
+
+    /**
+     * Everyone the viewer, who is staff, can mention in a comment on the issue (S4-AC-22): whoever can
+     * be its assignee and, for a public comment, its reporter while {@code ACTIVE}; never the viewer.
+     * The issue out of the viewer's scope is 404 before {@code internal} is read (S4-AC-23).
+     *
+     * @param internal {@code true} or {@code false} as the request had it; anything else is 400
+     */
+    @Transactional(readOnly = true)
+    public List<StaffRow> mentionCandidates(Viewer viewer, String key, String internal) {
+        IssueRow issue = get(viewer, key);
+        if (!"true".equals(internal) && !"false".equals(internal)) {
+            throw ApiException.invalid("internal", "INVALID_FORMAT");
+        }
+        return companies.listMentionable(viewer, issue.companyId(),
+                "true".equals(internal) ? null : issue.reporterId());
     }
 
     /** One page of the history of an issue the viewer may see, oldest first; else 404 (S3-AC-64, S3-AC-67). */

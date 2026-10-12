@@ -37,7 +37,10 @@ public class CompanyRepository {
     public record MemberRow(long companyId, long accountId, String name, String email, AccountStatus status,
             Instant photoUpdatedAt, boolean manager) {}
 
-    /** An admin or agent who can be the assignee of an issue; {@code photoUpdatedAt} is null without a profile photo. */
+    /**
+     * An account by name and role: an admin or agent who can be the assignee of an issue, or someone who
+     * can be mentioned in a comment; {@code photoUpdatedAt} is null without a profile photo.
+     */
     public record StaffRow(long accountId, String name, Role role, Instant photoUpdatedAt) {}
 
     /** A company the caller belongs to as a customer, and whether they are a manager of it. */
@@ -189,6 +192,21 @@ public class CompanyRepository {
                         + "where a.id = ? and " + ASSIGNABLE + " and " + SCOPE)
                 .params(with(new Object[] {companyId, accountId}, scope(viewer)))
                 .query(CompanyRepository::staff).optional();
+    }
+
+    /**
+     * Everyone the viewer can mention in a comment on an issue of this company, in name order, if the
+     * viewer may see the company (MNT-1, S4-AC-20, S4-AC-22): whoever can be its assignee
+     * ({@link #ASSIGNABLE}), and the issue's reporter while an {@code ACTIVE} customer, but never the
+     * viewer. {@code reporterId} is null for an internal comment, which no customer is told about.
+     */
+    public List<StaffRow> listMentionable(Viewer viewer, long companyId, Long reporterId) {
+        return jdbc.sql("select a.id, a.name, a.role, p.updated_at from account a "
+                        + "join company c on c.id = ? left join account_photo p on p.account_id = a.id "
+                        + "where a.id <> ? and ((" + ASSIGNABLE + ") or (a.id = cast(? as bigint) and " + REPORTER
+                        + ")) and " + SCOPE + " order by a.name, a.id")
+                .params(with(new Object[] {companyId, viewer.accountId(), reporterId}, scope(viewer)))
+                .query(CompanyRepository::staff).list();
     }
 
     /**

@@ -2,7 +2,6 @@ package io.popdesk.helpdesk.web.console;
 
 import io.popdesk.ApiError;
 import io.popdesk.ApiException;
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.IssueStatus;
@@ -22,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.jspecify.annotations.Nullable;
@@ -302,7 +302,9 @@ class ConsoleIssueController {
     MentionCandidates listMentionCandidates(
             @PathVariable String key,
             @Parameter(description = "`true`: for an internal comment, so without the reporter. Left out or "
-                    + "`false`: for a public comment.") @RequestParam(defaultValue = "false") boolean internal) {
-        throw new NotImplementedException();
+                    + "`false`: for a public comment.", schema = @Schema(type = "boolean", defaultValue = "false"))
+                    @RequestParam(defaultValue = "false") String internal) {
+        return new MentionCandidates(issues.mentionCandidates(CurrentAccount.get().viewer(), key, internal).stream()
+                .map(p -> person(p.accountId(), p.name(), p.role(), p.photoUpdatedAt())).toList());
     }
 }
