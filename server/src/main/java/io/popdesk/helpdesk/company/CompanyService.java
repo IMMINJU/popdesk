@@ -7,6 +7,7 @@ import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.TextInput;
 import io.popdesk.Transactions;
+import io.popdesk.helpdesk.AccountRateLimit;
 import io.popdesk.helpdesk.CompanyStatus;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
@@ -57,12 +58,15 @@ public class CompanyService {
     private final MembershipRequestRepository requests;
     private final AccountRepository accounts;
     private final AssigneeClearing assignments;
+    private final AccountRateLimit rateLimit;
     private final AuditLog audit;
     private final Transactions transactions;
     private final Clock clock;
 
     CompanyService(CompanyRepository companies, MembershipRequestRepository requests, AccountRepository accounts,
-            AssigneeClearing assignments, AuditLog audit, Transactions transactions, Clock clock) {
+            AssigneeClearing assignments, AccountRateLimit rateLimit, AuditLog audit, Transactions transactions,
+            Clock clock) {
+        this.rateLimit = rateLimit;
         this.companies = companies;
         this.requests = requests;
         this.accounts = accounts;
@@ -166,12 +170,16 @@ public class CompanyService {
 
     /**
      * The customers staff can file an issue for in the company, in name order (S3-AC-40): its
-     * {@code ACTIVE} customers, narrowed by {@code q} to those whose name or email holds it. The company
-     * first (404), then the input (400). {@code q} is a one-line value of 1 to 100 characters after
+     * {@code ACTIVE} customers, narrowed by {@code q} to those whose name or email holds it. A request
+     * with {@code q} is counted against the search limit before the company is looked up, so a 429
+     * does not tell whether the company is there (S3-AC-15). Then the company (404), then the input (400). {@code q} is a one-line value of 1 to 100 characters after
      * trimming, like the search text of the issue lists (S3-AC-14).
      */
     @Transactional(readOnly = true)
     public Paged<MemberRow> reporters(Viewer viewer, String code, String q, int page, int size) {
+        if (q != null) {
+            rateLimit.count(AccountRateLimit.Action.SEARCH, viewer.accountId());
+        }
         CompanyRow company = get(viewer, code);
         String text = TextInput.oneLine(q);
         if (text != null && text.isEmpty()) {

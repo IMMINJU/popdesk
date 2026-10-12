@@ -7,6 +7,7 @@ import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.TextInput;
 import io.popdesk.Transactions;
+import io.popdesk.helpdesk.AccountRateLimit;
 import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
@@ -52,12 +53,15 @@ public class AccountService {
     private final Sessions sessions;
     private final PasswordResetService resets;
     private final AssigneeClearing assignments;
+    private final AccountRateLimit rateLimit;
     private final AuditLog audit;
     private final Transactions transactions;
     private final Clock clock;
 
     AccountService(AccountRepository accounts, Sessions sessions, PasswordResetService resets,
-            AssigneeClearing assignments, AuditLog audit, Transactions transactions, Clock clock) {
+            AssigneeClearing assignments, AccountRateLimit rateLimit, AuditLog audit, Transactions transactions,
+            Clock clock) {
+        this.rateLimit = rateLimit;
         this.accounts = accounts;
         this.sessions = sessions;
         this.resets = resets;
@@ -70,10 +74,15 @@ public class AccountService {
     /**
      * Every account, or those with {@code role} and {@code status} whose name or email holds {@code q},
      * newest first (S1A-AC-29). {@code q} is 1 to 100 characters and is searched as it is: {@code %} and
-     * {@code _} find themselves (S1A-AC-89).
+     * {@code _} find themselves (S1A-AC-89). A request with {@code q} is counted against the admin's
+     * search limit first (S3-AC-15).
      */
     @Transactional(readOnly = true)
-    public Paged<AccountRow> list(Role role, AccountStatus status, String q, int page, int size) {
+    public Paged<AccountRow> list(CurrentAccount admin, Role role, AccountStatus status, String q, int page,
+            int size) {
+        if (q != null) {
+            rateLimit.count(AccountRateLimit.Action.SEARCH, admin.id());
+        }
         String text = q == null ? null : Normalizer.normalize(q, Normalizer.Form.NFC);
         if (text != null && text.isEmpty()) {
             throw ApiException.invalid("q", "TOO_SHORT");

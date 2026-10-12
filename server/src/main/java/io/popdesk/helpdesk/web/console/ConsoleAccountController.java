@@ -62,7 +62,7 @@ class ConsoleAccountController {
                     @RequestParam(required = false) @Nullable String q,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        Paged<AccountRow> rows = accounts.list(role, status, q, page, size);
+        Paged<AccountRow> rows = accounts.list(CurrentAccount.get(), role, status, q, page, size);
         return new Paged<>(rows.items().stream().map(ConsoleAccountController::account).toList(), rows.page(),
                 rows.size(), rows.totalElements(), rows.totalPages());
     }

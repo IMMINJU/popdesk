@@ -35,7 +35,12 @@ public class AccountRateLimit {
         /** Uploading a profile photo (S1A-AC-28). */
         PHOTO(10),
         /** A customer manager inviting to a company or sending an invitation again, together (S2-AC-20). */
-        MEMBER_INVITATION(20);
+        MEMBER_INVITATION(20),
+        /**
+         * A list asked with a search text: the issue lists, the account list, and the list of customers
+         * staff can file for, together (S3-AC-15). A list without one is not counted.
+         */
+        SEARCH(60);
 
         final int limit;
 

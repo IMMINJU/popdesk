@@ -462,10 +462,14 @@ public class IssueService {
     /**
      * One page of the issues the viewer may see that match the filters, newest first (S0-AC-47,
      * S3-AC-06, S3-AC-11). A value a filter cannot have is 400; a company or an account the viewer cannot see is
-     * no error and gives an empty page, like one that does not exist (S3-AC-02, S3-AC-05).
+     * no error and gives an empty page, like one that does not exist (S3-AC-02, S3-AC-05). A request
+     * with a search text is counted against the search limit first, whatever the text is (S3-AC-15).
      */
     @Transactional(readOnly = true)
     public Paged<IssueRow> list(Viewer viewer, Filters filters, int page, int size) {
+        if (filters.q() != null) {
+            rateLimit.count(AccountRateLimit.Action.SEARCH, viewer.accountId());
+        }
         List<ApiError.FieldError> errors = new ArrayList<>();
         IssueFilter.Assignee assignee = filters.assignee() == null ? null
                 : assignee(viewer, filters.assignee(), errors);
