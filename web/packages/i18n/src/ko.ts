@@ -147,6 +147,9 @@ export const ko = {
   'inbox.membershipRequested': '고객사 {code}에 소속 요청이 있습니다',
   'inbox.deliveryFailed': '보내지 못한 메일이나 웹훅이 있습니다',
   'inbox.quotaWarning': '첨부 용량이 한도의 80%를 넘었습니다',
+  'inbox.mailStalled': '메일 보내기가 한 시간 넘게 실패하고 있습니다',
+  'inbox.webhookStalled': '웹훅 보내기가 한 시간 넘게 실패하고 있습니다',
+  'inbox.auditForwardStalled': '감사 바깥 사본 보내기가 한 시간 넘게 실패하고 있습니다',
   'inbox.other': '새 알림이 있습니다',
   // The portal's sentences: whoever did it is "지원팀", never a name (S4-AC-68).
   'inbox.portal.staffComment': '지원팀이 답변했습니다',

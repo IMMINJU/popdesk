@@ -1,83 +1,35 @@
-// C-18 시스템 상태 (관리자, screens.md 4절, 1b screens.md 2절). Read only: the
-// channels (mail, webhook, the outside copy of the audit log) and the `failed`
-// rows (OPS-3 part, S0-AC-81, S1B-AC-33). No secret values.
-import { Badge, DataTable, EmptyState, RelativeTime, type DataTableColumn } from '@popdesk/ui';
-import { useRef } from 'react';
+// C-18 시스템 상태 (관리자, screens.md 4절, 1b screens.md 2절, 4b screens.md). The channels
+// (mail, webhook, the outside copy of the audit log), the `failed` rows with 다시 보내기,
+// 시험 메일 and the cleanup jobs (OPS-3 part, S0-AC-81, S1B-AC-33, S4B-AC-32~36). No secret values.
+import { EmptyState } from '@popdesk/ui';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { api, type Schemas } from '../api';
+import { RateLimitBand, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
-import { useLoad } from '../app/hooks';
+import { useCooldown, useLive, useLoad } from '../app/hooks';
 import { LoadFailed, NoPermission, PageTitle } from '../app/layout';
 import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, usePageMove, usePageParam } from '../app/paging';
-import { call, type Result } from '../app/result';
+import { call, type Failure, type Result } from '../app/result';
+import { useToast } from '../app/toastContext';
+import { ChannelTable, CleanupJobs, FailedTable, SandboxBand, TestMail, type TestMailState } from './C18Parts';
 
-type ChannelStatus = Schemas['ChannelStatus'];
 type FailedDelivery = Schemas['FailedDelivery'];
-
-/** Where an operator reads which environment variables turn a channel on. */
-const CONFIG_DOC = 'https://github.com/IMMINJU/popdesk/blob/main/docs/operate/configuration.md';
-
-interface ChannelRow {
-  key: 'mail' | 'webhook' | 'auditForward';
-  name: string;
-  /** What the state says while the channel is not set up. */
-  off: string;
-  hint: string;
-  status: ChannelStatus;
-}
-
-const channelColumns: DataTableColumn<ChannelRow>[] = [
-  { key: 'name', header: '채널', cell: (c) => <span className="pd-strong">{c.name}</span> },
-  {
-    key: 'enabled',
-    header: '상태',
-    cell: (c) =>
-      c.status.enabled ? (
-        <span className="pd-on">켜짐</span>
-      ) : (
-        <span className="pd-inline">
-          <Badge tone="neutral">{c.off}</Badge>
-          <a href={CONFIG_DOC} target="_blank" rel="noopener noreferrer">
-            {c.hint}
-          </a>
-        </span>
-      ),
-  },
-  {
-    key: 'last',
-    header: '마지막 성공',
-    cell: (c) => (c.status.lastSuccessAt ? <RelativeTime dateTime={c.status.lastSuccessAt} focusable={false} /> : <span className="pd-muted">없음</span>),
-  },
-  { key: 'queued', header: '보낼 차례', cell: (c) => c.status.queued.toLocaleString('ko'), align: 'end' },
-  { key: 'failed', header: '실패 수', cell: (c) => c.status.failed.toLocaleString('ko'), align: 'end' },
-];
-
-const FORWARD = '감사 바깥 사본';
-const CHANNEL_WORDS: Record<FailedDelivery['channel'], string> = { MAIL: '메일', WEBHOOK: '웹훅', AUDIT_FORWARD: FORWARD };
-
-const failedColumns: DataTableColumn<FailedDelivery>[] = [
-  { key: 'channel', header: '채널', cell: (f) => CHANNEL_WORDS[f.channel] },
-  { key: 'created', header: '만든 시각', cell: (f) => <RelativeTime dateTime={f.createdAt} focusable={false} /> },
-  { key: 'error', header: '마지막 오류 종류', cell: (f) => <code className="pd-code">{f.lastErrorKind}</code> },
-  {
-    key: 'recipient',
-    header: '받는 계정 ID',
-    cell: (f) => (f.recipientAccountId === null ? <span className="pd-muted">없음</span> : String(f.recipientAccountId)),
-    align: 'end',
-  },
-  {
-    key: 'auditEntry',
-    header: '감사 항목 ID',
-    cell: (f) => (f.auditEntryId === null ? <span className="pd-muted">없음</span> : String(f.auditEntryId)),
-    align: 'end',
-  },
-];
 
 interface StatusData {
   status: Schemas['SystemStatus'];
   failed: Schemas['PagedFailedDelivery'];
 }
+
+/** A request the server refused, with the screen's own text for the codes it knows. */
+interface Refusal {
+  failure: Failure;
+  known: Record<string, string>;
+}
+
+const RESEND_KNOWN = { CHANNEL_DISABLED: '채널이 꺼져 있어 보낼 수 없습니다.' };
+const TEST_MAIL_KNOWN = { CHANNEL_DISABLED: '메일 보내기가 꺼져 있습니다.' };
 
 export function C18SystemStatus() {
   const page = usePageParam();
@@ -97,17 +49,62 @@ export function C18SystemStatus() {
   useMainBusy(firstLoad);
   const move = usePageMove(load.data?.failed, failedHeading);
 
+  const live = useLive();
+  const toast = useToast();
+  const cooldown = useCooldown();
+  const [refusal, setRefusal] = useState<Refusal | null>(null);
+  const [sending, setSending] = useState<ReadonlySet<number>>(new Set());
+  const [testMail, setTestMail] = useState<TestMailState>({ step: 'idle' });
+
+  const refused = (failure: Failure, known: Record<string, string>) => {
+    if (failure.kind === 'rateLimited') cooldown.start(failure.seconds);
+    else setRefusal({ failure, known });
+    // The channel went off meanwhile: the channel table says so.
+    if (failure.kind === 'rejected' && failure.code === 'CHANNEL_DISABLED') void load.reload();
+  };
+
+  // An answer that comes after the screen has gone is dropped: no band, no toast, nothing read again (S4B-AC-36).
+  const resend = async (row: FailedDelivery) => {
+    if (sending.has(row.id)) return;
+    setSending((current) => new Set(current).add(row.id));
+    setRefusal(null);
+    cooldown.clearEnded();
+    const result = await call(api.POST('/api/console/system/failed-deliveries/{id}/resend', { params: { path: { id: row.id } } }));
+    if (!live()) return;
+    setSending((current) => {
+      const next = new Set(current);
+      next.delete(row.id);
+      return next;
+    });
+    if (result.ok) {
+      await load.reload();
+      if (live()) toast('다시 보냈습니다. 결과는 잠시 뒤 이 화면에 반영됩니다.');
+      return;
+    }
+    // Sent already, or cleaned up: the list just reads again.
+    if (result.failure.kind === 'notFound') void load.reload();
+    else refused(result.failure, RESEND_KNOWN);
+  };
+
+  const sendTestMail = async () => {
+    if (testMail.step === 'sending' || cooldown.active) return;
+    setTestMail({ step: 'sending' });
+    setRefusal(null);
+    cooldown.clearEnded();
+    const result = await call(api.POST('/api/console/system/test-mail'));
+    if (!live()) return;
+    if (result.ok) {
+      setTestMail({ step: 'done', result: result.data });
+      return;
+    }
+    setTestMail({ step: 'idle' });
+    refused(result.failure, TEST_MAIL_KNOWN);
+  };
+
   // The role changed meanwhile: the same whole-screen state as for an agent (S0-AC-81).
   if (load.status === 'failed' && load.failure?.kind === 'forbidden') return <NoPermission />;
 
   const data = load.data;
-  const channels: ChannelRow[] = data
-    ? [
-        { key: 'mail', name: '메일 보내기', off: '설정 없음', hint: '메일 서버 설정 방법', status: data.status.mail },
-        { key: 'webhook', name: '웹훅', off: '설정 없음', hint: '웹훅 설정 방법', status: data.status.webhook },
-        { key: 'auditForward', name: FORWARD, off: '꺼짐', hint: `${FORWARD} 설정 방법`, status: data.status.auditForward },
-      ]
-    : [];
   const failed = data?.failed;
 
   return (
@@ -115,6 +112,8 @@ export function C18SystemStatus() {
       <div className="pd-screen-head">
         <PageTitle titleRef={heading}>시스템 상태</PageTitle>
       </div>
+      <SaveFailure failure={refusal?.failure ?? null} {...(refusal ? { known: refusal.known } : {})} />
+      <RateLimitBand {...cooldown} />
       {load.status === 'failed' && (
         <LoadFailed
           onRetry={() => {
@@ -122,33 +121,37 @@ export function C18SystemStatus() {
           }}
         />
       )}
+      {data?.status.sandbox && <SandboxBand mailToSet={data.status.sandboxMailToSet} />}
       <section className="pd-section" aria-labelledby="channels-title">
         <h2 id="channels-title" className="pd-section-title">
           보내기 채널
         </h2>
-        {(load.status !== 'failed' || data) && (
-          <DataTable
-            caption="보내기 채널"
-            columns={channelColumns}
-            rows={channels}
-            rowKey={(c) => c.key}
-            status={firstLoad ? 'loading' : 'ready'}
-            skeletonRows={load.slow ? 3 : 0}
-            density="compact"
-          />
-        )}
+        {(load.status !== 'failed' || data) && <ChannelTable status={data?.status} loading={firstLoad} skeletonRows={load.slow ? 3 : 0} />}
       </section>
+      {data && (
+        <TestMail
+          enabled={data.status.mail.enabled}
+          sandbox={data.status.sandbox}
+          state={testMail}
+          blocked={cooldown.active}
+          onSend={() => {
+            void sendTestMail();
+          }}
+        />
+      )}
       {data && failed && (
         <section className="pd-section" aria-labelledby="failed-title">
           <h2 id="failed-title" ref={failedHeading} className="pd-section-title" tabIndex={-1}>
             보내지 못한 항목
           </h2>
-          <DataTable
-            caption={`보내지 못한 항목, ${String(failed.totalElements)}건`}
-            columns={failedColumns}
+          <FailedTable
             rows={failed.items}
-            rowKey={(f) => String(f.id)}
-            density="compact"
+            total={failed.totalElements}
+            status={data.status}
+            sending={sending}
+            onResend={(row) => {
+              void resend(row);
+            }}
             empty={
               page > 1 && failed.items.length === 0 ? (
                 <EmptyState title="이 쪽에는 항목이 없습니다" headingLevel={3} action={<Link to="/system">1쪽으로</Link>} />
@@ -160,6 +163,7 @@ export function C18SystemStatus() {
           <PageNav path="/system" page={failed.page} pageCount={failed.totalPages} onPageChange={move.onPageChange} />
         </section>
       )}
+      {data && <CleanupJobs jobs={data.status.cleanupJobs} />}
       <p role="status" className="pd-sr-only">
         {move.announcement}
       </p>

@@ -365,6 +365,35 @@
   max-width: 44rem;
 }
 
+/* C-18 system status */
+
+/* One line under a section title, or beside its button. */
+.pd-section-note {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+  word-break: keep-all;
+}
+
+/* What the SMTP server answered, as it came: a long line scrolls inside its own box. */
+.pd-server-reply {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+}
+
+.pd-server-reply pre {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--sunken);
+  font-family: var(--font-mono);
+  white-space: pre;
+  overflow-x: auto;
+}
+
 /* C-4 detail */
 
 .pd-detail {

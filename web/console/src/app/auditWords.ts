@@ -59,6 +59,7 @@ export const KIND_GROUPS: readonly KindGroup[] = [
   },
   { key: 'OPERATION', name: '운영 명령', kinds: { ADMIN_PASSWORD_RESET: '관리자 비밀번호 복구', BACKUP_CREATED: '백업', DATABASE_RESTORED: '복원' } },
   { key: 'EXPORT', name: '내보내기', kinds: { AUDIT_EXPORTED: '감사 로그 내보내기' } },
+  { key: 'DELIVERY', name: '보내기', kinds: { DELIVERY_RESENT: '다시 보내기', TEST_MAIL_SENT: '시험 메일' } },
 ];
 
 /** The 종류 choice "로그인 기록 빼고": every kind outside the first group. */
@@ -129,6 +130,10 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
   filter: '조건',
   expiresAt: '만료',
   lockedUntil: '잠금 풀림',
+  channel: '채널',
+  kind: '종류',
+  ok: '보냄',
+  errorKind: '오류 종류',
 };
 
 /** Fields that hold a time. */
@@ -136,6 +141,8 @@ const TIME_FIELDS: ReadonlySet<string> = new Set(['expiresAt', 'lockedUntil']);
 const NONE = '없음';
 
 const ROLE_WORDS: Readonly<Record<string, string>> = { CUSTOMER: '고객', AGENT: '상담원', ADMIN: '관리자' };
+// The channel of a row sent again, as C-18 names it.
+const CHANNEL_WORDS: Readonly<Record<string, string>> = { MAIL: '메일', WEBHOOK: '웹훅', AUDIT_FORWARD: '감사 바깥 사본' };
 
 function word(words: Readonly<Record<string, string>>, name: string): string {
   return Object.hasOwn(words, name) ? (words[name] ?? name) : name;
@@ -215,6 +222,7 @@ function valueWord(action: string, field: string, value: unknown): string {
   // The open issues a 배정 빼기 or 계정 정지 cleared the assignee of (S3-AC-72).
   if (field === 'clearedIssues' && typeof value === 'number') return `${text}건`;
   if (field === 'role') return word(ROLE_WORDS, text);
+  if (field === 'channel') return word(CHANNEL_WORDS, text);
   // 정지 is an account's word and 멈춤 a company's for the same stored name.
   if (field === 'status') return word(action.startsWith('COMPANY_') ? PROJECT_STATUS_WORDS : ACCOUNT_STATUS_WORDS, text);
   return text;

@@ -43,6 +43,12 @@ function sentence(n: Notification): string {
       return t('inbox.deliveryFailed');
     case 'ATTACHMENT_QUOTA_WARNING':
       return t('inbox.quotaWarning');
+    case 'MAIL_STALLED':
+      return t('inbox.mailStalled');
+    case 'WEBHOOK_STALLED':
+      return t('inbox.webhookStalled');
+    case 'AUDIT_FORWARD_STALLED':
+      return t('inbox.auditForwardStalled');
     default:
       return t('inbox.other');
   }
@@ -59,6 +65,9 @@ function hrefOf(n: Notification): string | undefined {
       return n.companyCode === null ? undefined : `/companies/${encodeURIComponent(n.companyCode)}`;
     case 'DELIVERY_FAILED':
     case 'ATTACHMENT_QUOTA_WARNING':
+    case 'MAIL_STALLED':
+    case 'WEBHOOK_STALLED':
+    case 'AUDIT_FORWARD_STALLED':
       return '/system';
     default:
       return undefined;

@@ -148,6 +148,9 @@ export const en: Record<keyof typeof ko, string> = {
   'inbox.membershipRequested': 'Company {code} has a membership request',
   'inbox.deliveryFailed': 'Some mail or webhooks could not be sent',
   'inbox.quotaWarning': 'Attachments have passed 80% of the storage limit',
+  'inbox.mailStalled': 'Email has been failing to send for over an hour',
+  'inbox.webhookStalled': 'Webhooks have been failing to send for over an hour',
+  'inbox.auditForwardStalled': 'The outside copy of the audit log has been failing to send for over an hour',
   'inbox.other': 'You have a new notification',
   // The portal's sentences: whoever did it is the support team, never a name (S4-AC-68).
   'inbox.portal.staffComment': 'The support team answered',
