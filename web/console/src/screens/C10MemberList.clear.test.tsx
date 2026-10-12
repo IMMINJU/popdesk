@@ -36,8 +36,13 @@ describe('C-10 구성원 목록 (3번 묶음)', () => {
 
     await sent('GET', `${ACCOUNTS}/${String(who.id)}/open-assignments`);
     await eventually(() => {
-      expect(text(box)).toMatch(new RegExp(`${who.name} 님이 .*담당인 열린 문의가 4건 있습니다\\.`));
+      expect(text(box)).toContain(`${who.name} 님이 담당인 열린 문의가 4건 있습니다.`);
     });
+    const toList = await found(() => within(box).queryByRole<HTMLAnchorElement>('link', { name: /4건/ }), '"4건" 링크');
+    expect(new URL(toList.href).pathname).toBe('/issues');
+    expect(new URL(toList.href).searchParams.get('assignee')).toBe(String(who.id));
+    expect(new URL(toList.href).searchParams.has('companyCode'), '고객사로 거르지 않는다').toBe(false);
+    expect(text(box)).toContain('비우지 않으면 담당자로 남지만 문의를 볼 수 없습니다.');
     expect(text(box)).toContain(`${who.name} 님을 정지합니다.`);
     const check = await found(() => clearBox(box), `체크 상자 "${CLEAR}"`);
     expect(check).not.toBeChecked();

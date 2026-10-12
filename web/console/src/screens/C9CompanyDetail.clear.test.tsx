@@ -45,7 +45,7 @@ async function openRemove(user: User, list: RegExp, name: string): Promise<HTMLE
 }
 
 const openUnassign = (user: User, name = LEE.name) => openRemove(user, /배정 상담원/, name);
-/** The button that takes the agent out. Not the first button of the dialog: 다시 확인 may come before it. */
+/** The button that takes the agent out. */
 const go = (box: HTMLElement) => within(box).getByRole('button', { name: '빼기' });
 const clearBox = (box: HTMLElement) => within(box).queryByRole<HTMLInputElement>('checkbox', { name: CLEAR });
 const lastDelete = (path: string) => new URL(callsTo('DELETE', path).at(-1)?.url ?? 'http://x/').searchParams;
@@ -56,10 +56,10 @@ describe('C-9 배정 빼기와 담당 비우기', () => {
     const { user } = renderAt(URL_ACME);
     const box = await openUnassign(user);
 
+    const done = answered('GET', COUNT_LEE);
     await sent('GET', COUNT_LEE);
-    await eventually(() => {
-      expect(isBlocked(go(box)), '수가 온 뒤의 "빼기"').toBe(false);
-    });
+    await done;
+    await settle();
     expect(text(box)).toContain(NOW_TEXT);
     expect(text(box)).not.toContain('담당인 열린 문의');
     expect(clearBox(box)).toBeNull();
@@ -71,7 +71,7 @@ describe('C-9 배정 빼기와 담당 비우기', () => {
     expectNotSaid(/담당 \d+건을 비웠습니다/);
   });
 
-  test('S3-AC-85 C-9 배정 빼기 수를 받는 중: 대화상자는 바로 열리고 "빼기"는 수가 올 때까지 막힌다', async () => {
+  test('S3-AC-85 C-9 배정 빼기 수를 받는 중: 대화상자는 바로 열리고 수 자리만 비어 있다. "빼기"는 막지 않는다', async () => {
     state.agents = [LEE];
     s3.openAssignments = 2;
     const release = gate();
@@ -84,14 +84,14 @@ describe('C-9 배정 빼기와 담당 비우기', () => {
 
     await sent('GET', COUNT_LEE);
     expect(text(box)).toContain(NOW_TEXT);
-    expect(isBlocked(go(box)), '수를 받는 중의 "빼기"').toBe(true);
+    expect(isBlocked(go(box)), '수를 받는 중의 "빼기"').toBe(false);
     expect(text(box)).not.toMatch(/\d+건/);
 
     release.open();
     await eventually(() => {
-      expect(text(box)).toContain('2건');
-      expect(isBlocked(go(box)), '수가 온 뒤의 "빼기"').toBe(false);
+      expect(text(box)).toContain('담당인 열린 문의가 2건 있습니다.');
     });
+    expect(isBlocked(go(box)), '수가 온 뒤의 "빼기"').toBe(false);
   });
 
   test('S3-AC-85 C-9 배정 빼기 1건 이상: 한 줄과 꺼진 체크 상자, 도움말, 거른 문의 목록으로 가는 새 탭 링크. 체크하지 않고 빼면 쿼리가 없고 토스트에 비운 수가 없다', async () => {
@@ -138,26 +138,24 @@ describe('C-9 배정 빼기와 담당 비우기', () => {
     await said('담당 2건을 비웠습니다');
   });
 
-  test('S3-AC-85 C-9 수를 받지 못함: "담당인 문의 수를 확인하지 못했습니다."와 "다시 확인". 빼기는 할 수 있고 체크 상자는 수 없이 보인다', async () => {
+  test('S3-AC-85 C-9 수를 받지 못함: "담당인 문의 수를 확인하지 못했습니다."와 수 없는 체크 상자. 체크하고 빼면 clearAssignments=true로 보낸다', async () => {
     state.agents = [LEE];
-    let broken = true;
-    on('get', COUNT_LEE, () => (broken ? errors.internal() : HttpResponse.json({ issues: 4 })));
+    s3.openAssignments = 4;
+    on('get', COUNT_LEE, () => errors.internal());
     const { user } = renderAt(URL_ACME);
     const box = await openUnassign(user);
 
     await eventually(() => {
       expect(text(box)).toContain('담당인 문의 수를 확인하지 못했습니다.');
     });
-    expect(clearBox(box), '수 없이 보이는 체크 상자').not.toBeNull();
     expect(text(box)).not.toMatch(/\d+건/);
-    expect(isBlocked(go(box)), '"빼기"').toBe(false);
+    expect(within(box).queryByRole('button', { name: '다시 확인' }), '"다시 확인"은 두지 않는다').toBeNull();
 
-    broken = false;
-    await user.click(await found(() => within(box).queryByRole('button', { name: '다시 확인' }), '"다시 확인"'));
-    await sent('GET', COUNT_LEE, 2);
-    await eventually(() => {
-      expect(text(box)).toContain('담당인 열린 문의가 4건 있습니다.');
-    });
+    await user.click(await found(() => clearBox(box), '수 없이 보이는 체크 상자'));
+    await user.click(go(box));
+    await sent('DELETE', `${AGENTS}/2`);
+    expect(lastDelete(`${AGENTS}/2`).get('clearAssignments')).toBe('true');
+    await said('담당 4건을 비웠습니다');
   });
 
   test('S3-AC-85 C-9 소속 고객 빼기: 담당인 문의 수를 부르지 않는다', async () => {

@@ -31,7 +31,7 @@ import {
   useFakeClock,
   within,
 } from '../__tests__/console';
-import { answered, rowAction, settle } from '../__tests__/console1a';
+import { answered, settle } from '../__tests__/console1a';
 import {
   ISSUES,
   OPEN_STATUSES,
@@ -51,7 +51,7 @@ import {
 
 const MINE = { assignee: 'me', status: [...OPEN_STATUSES] };
 const UNASSIGNED = { assignee: 'none', status: [...OPEN_STATUSES] };
-/** An address with one filter, so the screen does not move to 내 담당. */
+const URL_MINE = '/issues?assignee=me&status=RECEIVED&status=CONFIRMED&status=IN_PROGRESS&status=RESOLVED';
 const URL_ACME = '/issues?companyCode=ACME';
 
 type User = ReturnType<typeof renderAt>['user'];
@@ -73,20 +73,34 @@ async function search(user: User, words: string) {
 }
 
 describe('C-3 문의 목록 (3번 묶음)', () => {
-  test('S3-AC-77 C-3 처음: 쿼리 없이 /issues로 오면 주소를 "내 담당"으로 바꾸고(replace) 첫 요청부터 그 필터로 부른다', async () => {
-    const before = window.history.length;
-    renderAt('/issues');
+  test('S3-AC-77 C-3 처음: 콘솔의 /로 오면 "내 담당" 주소가 되고 첫 요청부터 그 필터로 부른다. 옆 메뉴의 "문의"도 그 주소다', async () => {
+    renderAt('/');
 
     await listed(MINE);
     await issueRow('ACME-7');
+    expect(window.location.pathname).toBe('/issues');
     expect(currentViews()).toEqual(['내 담당']);
     expect(callsTo('GET', ISSUES).map((c) => new URL(c.url).searchParams.get('assignee')), '거르지 않은 요청이 없다').not.toContain(null);
-    expect(window.history.length, '뒤로 가기에 빈 주소를 남기지 않는다').toBe(before);
+    const menu = await found(() => screen.queryByRole<HTMLAnchorElement>('link', { name: '문의' }), '메뉴 "문의"');
+    expect(new URL(menu.href).pathname).toBe('/issues');
+    expect(filtersOf(new URL(menu.href).searchParams), '메뉴 "문의"의 주소').toEqual(filters({ ...MINE, status: [...MINE.status].sort() }));
   });
 
-  test('S3-AC-77 C-3 보기 고르기: nav 안의 링크 "내 담당", "담당 없음", "전체". 누르면 그 필터로 바뀌고 aria-current가 옮겨 간다. "전체"는 "내 담당"으로 돌아가지 않는다', async () => {
-    const { user } = renderAt('/issues');
+  test('S3-AC-77 C-3 쿼리 없는 /issues: "전체"다. 다른 보기로 바꿔 열지 않는다', async () => {
+    renderAt('/issues');
+
+    await issueRow('ACME-7');
+    await view('전체');
+    await settle();
+    expect(window.location.search).toBe('');
+    expect(filtersOf(lastList())).toEqual(filters());
+    expect(currentViews()).toEqual(['전체']);
+  });
+
+  test('S3-AC-77 C-3 보기 고르기: nav 안의 링크 "내 담당", "담당 없음", "전체". 누르면 그 필터로 바뀌고 aria-current가 옮겨 간다. "전체"의 주소에는 쿼리가 없다', async () => {
+    const { user } = renderAt(URL_MINE);
     await listed(MINE);
+    expect(currentViews()).toEqual(['내 담당']);
 
     await user.click(await view('담당 없음'));
     await listed(UNASSIGNED);
@@ -94,9 +108,8 @@ describe('C-3 문의 목록 (3번 묶음)', () => {
 
     await user.click(await view('전체'));
     await listed({});
-    await settle();
+    expect(window.location.search).toBe('');
     expect(currentViews()).toEqual(['전체']);
-    expect(filtersOf(lastList()), '"전체"에 머문다').toEqual(filters());
 
     await user.click(await view('내 담당'));
     await listed(MINE);
@@ -104,7 +117,7 @@ describe('C-3 문의 목록 (3번 묶음)', () => {
   });
 
   test('S3-AC-77 C-3 보기와 필터: 필터를 손으로 바꿔 세 보기 어느 것과도 다르면 아무 보기도 골라지지 않는다', async () => {
-    const { user } = renderAt('/issues');
+    const { user } = renderAt(URL_MINE);
     await listed(MINE);
     for (const word of ['접수', '확인', '처리 중', '해결']) expect(await statusBox(word), `"${word}"`).toBeChecked();
     expect(await statusBox('종료')).not.toBeChecked();
@@ -221,17 +234,34 @@ describe('C-3 문의 목록 (3번 묶음)', () => {
     expect(clearFilters(), '"전체"에는 없다').toHaveLength(0);
   });
 
-  test('S3-AC-76 C-3 올린 사람으로 거르기: 줄의 올린 사람 메뉴 "이 사람이 올린 문의만"을 누르면 reporter를 싣고 필터 줄에 "올린 사람: 김고객" 조각이 생긴다', async () => {
-    const { user } = renderAt(URL_ACME);
+  test('S3-AC-76 C-3 올린 사람 조각: reporter가 걸려 있으면 필터 줄에 "올린 사람: 김고객"과 "올린 사람 필터 지우기"가 있다. 누르면 그 필터만 지운다. 줄에는 메뉴가 없다', async () => {
+    const { user } = renderAt(`${URL_ACME}&reporter=11`);
     const row = await issueRow('ACME-7');
-    expect(pageText()).not.toContain('올린 사람:');
-
-    await user.click(await rowAction(user, row, '이 사람이 올린 문의만'));
-
-    await listed({ companyCode: 'ACME', reporter: '11' });
     await eventually(() => {
       expect(pageText()).toContain('올린 사람: 김고객');
     });
+    expect(within(row).queryAllByRole('button'), '줄 안의 버튼').toHaveLength(0);
+
+    await user.click(await found(() => screen.queryByRole('button', { name: '올린 사람 필터 지우기' }), '"올린 사람 필터 지우기"'));
+
+    await listed({ companyCode: 'ACME' });
+    expect(pageText()).not.toContain('올린 사람:');
+    expect(screen.queryByRole('button', { name: '올린 사람 필터 지우기' })).toBeNull();
+  });
+
+  test('S3-AC-76 C-3 고객사를 바꾸면: 사람으로 건 담당자 필터는 비우고 "나"는 남긴다', async () => {
+    state.companies = [ACME, BETA];
+    const { user } = renderAt('/issues?companyCode=BETA&assignee=3');
+    await listed({ companyCode: 'BETA', assignee: '3' });
+
+    await user.selectOptions(await select(/^고객사/), ACME.name);
+    await listed({ companyCode: 'ACME' });
+    expect(chosen(await select(/^담당자/))).toBe('전체');
+
+    await user.selectOptions(await select(/^담당자/), '나');
+    await listed({ companyCode: 'ACME', assignee: 'me' });
+    await user.selectOptions(await select(/^고객사/), BETA.name);
+    await listed({ companyCode: 'BETA', assignee: 'me' });
   });
 
   test('S3-AC-78 C-3 표: "올린 사람" 다음에 담당자 칸. 이름, "담당 없음", 볼 수 없으면 이름 뒤에 글자 "볼 수 없음". 대리 등록한 문의의 제목 칸에 "대리 등록"', async () => {
@@ -274,7 +304,7 @@ describe('C-3 문의 목록 (3번 묶음)', () => {
   test('S3-AC-77 C-3 "내 담당"이 빔: "담당인 열린 문의가 없습니다"와 "담당 없음 보기" 링크', async () => {
     state.me = AGENT;
     state.issues = [];
-    const { user } = renderAt('/issues');
+    const { user } = renderAt(URL_MINE);
     await listed(MINE);
 
     await eventually(() => {
@@ -411,7 +441,6 @@ describe('C-3 문의 목록 (3번 묶음)', () => {
     state.companies = [];
     state.issues = [];
     renderAt('/issues');
-    await listed(MINE);
 
     expect((await action('대리 등록')).closest('table'), '표 밖').toBeNull();
   });

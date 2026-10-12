@@ -73,10 +73,10 @@ describe('C-3 문의 목록', () => {
     expect(table.tagName).toBe('TABLE');
     expect(table.querySelector('caption')).not.toBeNull();
     const headers = within(table).getAllByRole('columnheader').map(text);
-    for (const h of ['키', '제목', '고객사', '상태', '우선순위', '올린 사람']) {
+    for (const h of ['키', '제목', '고객사', '상태', '우선순위', '올린 사람', '담당자']) {
       expect(headers.some((x) => x.includes(h)), `열 머리 "${h}"`).toBe(true);
     }
-    for (const h of ['담당자', '라벨', '마감일', 'SLA']) {
+    for (const h of ['라벨', '마감일', 'SLA']) {
       expect(headers.some((x) => x.includes(h)), `첫 묶음에 없는 열 "${h}"`).toBe(false);
     }
   });

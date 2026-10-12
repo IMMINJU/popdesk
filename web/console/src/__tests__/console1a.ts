@@ -182,6 +182,9 @@ const handlers1a = [
     state.agents = state.agents.filter((m) => String(m.accountId) !== params.accountId);
     return new HttpResponse(null, { status: 200 });
   }),
+  // Slice 3: the 배정 빼기 and 정지 dialogs ask for the open issues the account is the assignee of. None here.
+  http.get('*/api/console/companies/:code/agents/:accountId/open-assignments', () => requireAdmin() ?? HttpResponse.json({ issues: 0 })),
+  http.get('*/api/console/accounts/:accountId/open-assignments', () => requireAdmin() ?? HttpResponse.json({ issues: 0 })),
 ];
 
 beforeEach(() => {

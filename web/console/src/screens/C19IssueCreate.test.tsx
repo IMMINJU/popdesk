@@ -98,6 +98,18 @@ describe('C-19 대리 등록', () => {
     expect(pageText()).not.toContain('의 이름으로 올립니다');
   });
 
+  test('S3-AC-84 C-19 고객사가 하나뿐: 처음부터 골라져 있고 고객 칸이 열려 그 고객사의 고객이 나온다', async () => {
+    renderAt(URL_NEW);
+
+    const only = await companySelect();
+    await eventually(() => {
+      expect(chosen(only)).toBe(ACME.name);
+    });
+    await sent('GET', REPORTERS_ACME);
+    await found(() => customer(customerLine(KIM)), `"${customerLine(KIM)}"`);
+    expect(await found(customerSearch, '고객 찾기 칸')).toBeEnabled();
+  });
+
   test('S3-AC-84 C-19 고객 고르기: 고객사를 고르면 그 고객사의 고객 20명을 부르고 줄은 "이름 (이메일)"이다. 글자를 치면 q로 다시 부른다. 칸은 고객사, 고객, 받은 경로, 제목, 내용, 우선순위, 비공개 순서다', async () => {
     state.companies = [ACME, BETA];
     const { user } = renderAt(URL_NEW);

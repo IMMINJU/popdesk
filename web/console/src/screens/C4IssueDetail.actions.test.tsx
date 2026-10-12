@@ -98,6 +98,19 @@ describe('C-4 문의 상세 (3번 묶음)', () => {
     expect(pageText()).toMatch(/대리 등록:? ?이상담/);
   });
 
+  test('S3-AC-76 C-4 머리의 올린 사람 줄: 링크 "이 사람이 올린 문의 보기"가 그 사람으로 거른 문의 목록으로 간다', async () => {
+    state.issue = issueIn('RECEIVED');
+    renderAt(URL_7);
+
+    const toList = await found(
+      () => (metaOf('올린 사람') ? within(metaOf('올린 사람') as HTMLElement).queryByRole<HTMLAnchorElement>('link', { name: '이 사람이 올린 문의 보기' }) : null),
+      '올린 사람 줄의 링크',
+    );
+    const target = new URL(toList.href);
+    expect(target.pathname).toBe('/issues');
+    expect(Array.from(target.searchParams.entries())).toEqual([['reporter', '11']]);
+  });
+
   test('S3-AC-80 C-4 머리(값이 없음): 첫 응답은 "아직 없음", 해결·종료 시각 줄과 대리 등록 줄은 없다', async () => {
     state.issue = issueIn('RECEIVED');
     renderAt(URL_7);
@@ -169,23 +182,17 @@ describe('C-4 문의 상세 (3번 묶음)', () => {
     expect(screen.queryByRole('button', { name: '고치기' })).toBeNull();
   });
 
-  test('S3-AC-80 C-4 "나에게 맡기기": 내가 후보일 때만 있고, 누르면 나를 담당자로 보낸다', async () => {
+  test('S3-AC-80 C-4 "나에게 맡기기": 내가 후보일 때만 있고, 누르면 "저장" 없이 바로 나를 담당자로 보낸다', async () => {
     state.me = AGENT;
     const { user } = renderAt(URL_7);
     const box = await openAssignee(user);
     await radio(box, /정상담/);
 
     await user.click(await found(() => within(box).queryByRole('button', { name: '나에게 맡기기' }), '"나에게 맡기기"'));
-    // The button may save at once, or pick me and leave 저장 to press.
-    await eventually(() => {
-      const picked = within(box).queryByRole<HTMLInputElement>('radio', { name: /이상담/ })?.checked === true;
-      expect(picked || callsTo('PUT', `${ISSUE_7}/assignee`).length > 0, '나를 고르거나 바로 보냄').toBe(true);
-    });
-    const later = openDialog() === null ? null : within(box).queryByRole('button', { name: '저장' });
-    if (callsTo('PUT', `${ISSUE_7}/assignee`).length === 0 && later) await user.click(later);
 
     const [call] = await sent('PUT', `${ISSUE_7}/assignee`);
     expect(await call?.body).toEqual({ accountId: AGENT.id });
+    await closed();
     await said('담당자를 이상담 님으로 바꿨습니다');
   });
 
@@ -318,8 +325,7 @@ describe('C-4 문의 상세 (3번 묶음)', () => {
       const [call] = await sent(method, `${ISSUE_7}/${path}`);
       expect(await call?.body).toEqual(body);
       expect(openDialog(), asks === null ? '묻지 않고 바로 한다' : '대화상자가 닫힘').toBeNull();
-      // 조사는 "로"든 "으로"든 구현이 고른다.
-      await said(new RegExp(`상태를 ${word}(으로|로|\\(으\\)로) 바꿨습니다`));
+      await said(`상태를 바꿨습니다: ${word}`);
       await eventually(() => {
         expect(actionsShown()).toEqual(after);
       });
