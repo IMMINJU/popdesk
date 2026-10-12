@@ -18,8 +18,6 @@ import io.popdesk.helpdesk.company.CompanyRepository.StaffRow;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository.Field;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository.HistoryRow;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
-import io.popdesk.notification.MailKind;
-import io.popdesk.notification.MailQueue;
 import io.popdesk.notification.WebhookKind;
 import io.popdesk.notification.WebhookQueue;
 import java.time.Clock;
@@ -134,21 +132,21 @@ public class IssueService {
     private final ReporterAccess reporters;
     private final CompanyRepository companies;
     private final WebhookQueue webhooks;
-    private final MailQueue mail;
+    private final IssueNotifications notifications;
     private final AccountRateLimit rateLimit;
     private final Transactions transactions;
     private final Clock clock;
 
     IssueService(IssueRepository issues, IssueHistoryRepository history, IdempotencyKeyRepository keys,
-            ReporterAccess reporters, CompanyRepository companies, WebhookQueue webhooks, MailQueue mail, AccountRateLimit rateLimit,
-            Transactions transactions, Clock clock) {
+            ReporterAccess reporters, CompanyRepository companies, WebhookQueue webhooks,
+            IssueNotifications notifications, AccountRateLimit rateLimit, Transactions transactions, Clock clock) {
         this.issues = issues;
         this.history = history;
         this.keys = keys;
         this.reporters = reporters;
         this.companies = companies;
         this.webhooks = webhooks;
-        this.mail = mail;
+        this.notifications = notifications;
         this.rateLimit = rateLimit;
         this.transactions = transactions;
         this.clock = clock;
@@ -283,8 +281,8 @@ public class IssueService {
      * <p>A filing by staff for a customer goes the same way (ISSUE-9). Before anything is written the
      * reporter is looked at again, in this transaction: a customer who was suspended or taken out of the
      * company since {@link #prepareOnBehalf} gets nothing filed in their name (S3-AC-33). It posts the
-     * same webhook message (S3-AC-75), and the reporter's email is queued with the other new rows
-     * (S3-AC-37). The staff member is the one the history names.
+     * same webhook message (S3-AC-75), and the reporter's inbox item and email are written with the other
+     * new rows (S3-AC-37, S4-AC-32). The staff member is the one the history names.
      */
     public IssueRow file(Viewer viewer, Draft draft, Runnable storeAttachments) {
         try {
@@ -310,7 +308,7 @@ public class IssueService {
             }
             webhooks.queue(WebhookKind.ISSUE_CREATED, draft.id(), null);
             if (onBehalf) {
-                mail.queue(MailKind.ISSUE_FILED_ON_BEHALF, draft.reporterId(), draft.id(), null);
+                notifications.filedOnBehalf(viewer, draft.id(), draft.reporterId());
             }
             int number = companies.updateNextIssueNumber(draft.company().id());
             issues.insert(draft.id(), draft.company().id(), number, draft.title(), draft.content(), draft.priority(),
@@ -382,8 +380,9 @@ public class IssueService {
      * update the row on the condition that it still has the status read. When another change got there
      * first no row changes: the issue is read again and judged from the start, so the answer is the one
      * this request would get after that change, and a refused request leaves nothing. After a few lost
-     * tries the row is locked, which is still before any INSERT. The history entry and the webhook row
-     * are written only after the UPDATE changed the row (S3-AC-51, S3-AC-63, S3-AC-73).
+     * tries the row is locked, which is still before any INSERT. The history entry, the webhook row, and
+     * the inbox item and email of whoever is told are written only after the UPDATE changed the row
+     * (S3-AC-51, S3-AC-63, S3-AC-73, S4-AC-37).
      *
      * @param target given the issue and the time of this try, throws when the caller may not do this or
      *     the status does not allow it; else the status to set
@@ -407,7 +406,9 @@ public class IssueService {
                         case RECEIVED -> webhooks.queue(WebhookKind.ISSUE_REOPENED, issue.id(), null);
                         default -> { }
                     }
-                    return issues.findByKey(viewer, issueKey).orElseThrow();
+                    IssueRow moved = issues.findByKey(viewer, issueKey).orElseThrow();
+                    notifications.statusChanged(viewer, moved, to);
+                    return moved;
                 }
                 tries++;
                 issue = (tries < STATUS_RETRIES ? issues.findByKey(viewer, issueKey)
@@ -505,8 +506,8 @@ public class IssueService {
      * A change of the assignee in one transaction, retried once on a lock conflict (slice 3 design
      * section 2): the issue row {@code FOR NO KEY UPDATE} first, in the caller's scope; then
      * {@code assignee} reads, in the same transaction, who it is to be; then the UPDATE, the history
-     * entry, and the webhook row (S3-AC-62, S3-AC-73). No other row is locked. An assignee that does not
-     * change writes nothing (S3-AC-63).
+     * entry, the webhook row, and the new assignee's inbox item and email (S3-AC-62, S3-AC-73,
+     * S4-AC-31). No other row is locked. An assignee that does not change writes nothing (S3-AC-63).
      *
      * @param assignee given the locked issue, throws when the account cannot be its assignee; else the
      *     account ID, or null for nobody
@@ -525,6 +526,9 @@ public class IssueService {
             history.insertChanged(issue.id(), Field.ASSIGNEE, from == null ? null : from.toString(),
                     to == null ? null : to.toString(), viewer.accountId(), now);
             webhooks.queue(WebhookKind.ASSIGNEE_CHANGED, issue.id(), null);
+            if (to != null) {
+                notifications.assigned(viewer, issue, to);
+            }
             return issues.findByKey(viewer, issueKey).orElseThrow();
         });
     }

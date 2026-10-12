@@ -1,9 +1,11 @@
 package io.popdesk.notification.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.notification.InboxFacts.Actor;
+import io.popdesk.notification.InboxFacts.Reader;
 import io.popdesk.notification.ops.Inbox;
-import io.popdesk.notification.ops.OpsRepository.InboxRow;
+import io.popdesk.notification.ops.Inbox.Item;
+import io.popdesk.notification.web.Caller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -41,7 +43,8 @@ class ConsoleNotificationController {
     Paged<Notification> listNotifications(
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        return inbox.list(Caller.accountId(), page, size).map(ConsoleNotificationController::notification);
+        return inbox.list(Caller.accountId(), Reader.STAFF, page, size)
+                .map(ConsoleNotificationController::notification);
     }
 
     @Operation(operationId = "countUnreadNotifications", summary = "Unread items in the caller's inbox",
@@ -50,7 +53,7 @@ class ConsoleNotificationController {
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @GetMapping("/unread-count")
     UnreadCount countUnreadNotifications() {
-        return new UnreadCount(inbox.unread(Caller.accountId()));
+        return new UnreadCount(inbox.unread(Caller.accountId(), Reader.STAFF));
     }
 
     @Operation(operationId = "markNotificationRead", summary = "Mark an item read",
@@ -74,12 +77,19 @@ class ConsoleNotificationController {
     @PostMapping("/read-all")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void markAllNotificationsRead() {
-        throw new NotImplementedException();
+        inbox.markAllRead(Caller.accountId());
     }
 
-    private static Notification notification(InboxRow row) {
-        return new Notification(row.id(), NotificationKind.valueOf(row.kind()), null, row.companyCode(), null, null,
-                utc(row.createdAt()), utc(row.readAt()));
+    private static Notification notification(Item item) {
+        return new Notification(item.id(), NotificationKind.valueOf(item.kind()),
+                item.issue() == null ? null : new NotificationIssue(item.issue().key(), item.issue().title()),
+                item.companyCode(), item.commentId(), actor(item.actor()), utc(item.createdAt()),
+                utc(item.readAt()));
+    }
+
+    private static NotificationActor actor(Actor actor) {
+        return actor == null ? null : new NotificationActor(actor.accountId(), actor.name(),
+                NotificationActor.Role.valueOf(actor.kind().name()), utc(actor.photoUpdatedAt()));
     }
 
     private static OffsetDateTime utc(Instant at) {

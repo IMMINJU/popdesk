@@ -14,11 +14,10 @@ import io.popdesk.helpdesk.comment.CommentRepository.CommentRow;
 import io.popdesk.helpdesk.company.CompanyRepository;
 import io.popdesk.helpdesk.company.CompanyRepository.StaffRow;
 import io.popdesk.helpdesk.issue.IssueKey;
+import io.popdesk.helpdesk.issue.IssueNotifications;
 import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.helpdesk.issue.ReporterAccess;
-import io.popdesk.notification.MailKind;
-import io.popdesk.notification.MailQueue;
 import io.popdesk.notification.WebhookKind;
 import io.popdesk.notification.WebhookQueue;
 import java.time.Clock;
@@ -64,21 +63,21 @@ public class CommentService {
     private final ReporterAccess reporters;
     private final CompanyRepository companies;
     private final AttachmentService attachments;
-    private final MailQueue mail;
+    private final IssueNotifications notifications;
     private final WebhookQueue webhooks;
     private final AccountRateLimit rateLimit;
     private final Transactions transactions;
     private final Clock clock;
 
     CommentService(CommentRepository comments, IssueRepository issues, ReporterAccess reporters,
-            CompanyRepository companies, AttachmentService attachments, MailQueue mail, WebhookQueue webhooks,
-            AccountRateLimit rateLimit, Transactions transactions, Clock clock) {
+            CompanyRepository companies, AttachmentService attachments, IssueNotifications notifications,
+            WebhookQueue webhooks, AccountRateLimit rateLimit, Transactions transactions, Clock clock) {
         this.comments = comments;
         this.issues = issues;
         this.reporters = reporters;
         this.companies = companies;
         this.attachments = attachments;
-        this.mail = mail;
+        this.notifications = notifications;
         this.webhooks = webhooks;
         this.rateLimit = rateLimit;
         this.transactions = transactions;
@@ -91,9 +90,9 @@ public class CommentService {
      *
      * <p>One transaction, retried once on a lock conflict, in the lock order of architecture.md: the
      * issue row {@code FOR NO KEY UPDATE} before any INSERT (S0-AC-51), then the comment, its mentions,
-     * and the outbox rows. A public staff comment sets the first response time once (S0-AC-46) and
-     * emails the reporter (S0-AC-70); an internal one does neither (S0-AC-53). A customer's comment goes
-     * to the webhook.
+     * the webhook row, and the inbox items and emails of whoever {@link IssueNotifications} tells. A
+     * public staff comment sets the first response time once (S0-AC-46) and tells the reporter
+     * (S0-AC-70); an internal one does neither (S0-AC-53). A customer's comment goes to the webhook.
      *
      * @param mentions the accounts staff mention with the comment (S4-AC-19), or null; a customer's
      *     are ignored (S4-AC-25)
@@ -109,7 +108,7 @@ public class CommentService {
             List<ApiError.FieldError> errors = new ArrayList<>();
             String text = TextInput.multiLine("content", content, true, CONTENT_MAX, errors);
             Set<Long> mentioned = viewer.staff() && mentions != null
-                    ? mentionable(viewer, issue, internal, mentions, errors) : Set.of();
+                    ? mentionable(viewer, issue, internal, mentions, List.of(), errors) : Set.of();
             if (!errors.isEmpty()) {
                 throw ApiException.invalid(errors);
             }
@@ -121,8 +120,9 @@ public class CommentService {
             comments.insertMentions(id, mentioned, now);
             if (viewer.customer()) {
                 webhooks.queue(WebhookKind.CUSTOMER_COMMENT, issue.id(), id);
-            } else if (!internal) {
-                mail.queue(MailKind.STAFF_COMMENT, issue.reporterId(), issue.id(), id);
+            }
+            notifications.commented(viewer, issue, id, internal, mentioned);
+            if (viewer.staff() && !internal) {
                 issues.updateFirstResponse(issue.id(), now);
             }
             return comments.find(viewer, issue.id(), id).orElseThrow();
@@ -133,7 +133,10 @@ public class CommentService {
      * The author changes a comment (CMT-3): its content, and for staff the accounts it mentions. A field
      * that is null was left out and stays; {@code content} sent as JSON {@code null} is refused, and
      * {@code mentions} sent as {@code null} or an empty list mentions nobody (S4-AC-24). Counted with
-     * {@link #add} toward one limit (S4-AC-09).
+     * {@link #add} toward one limit (S4-AC-09). Of the mentions only the accounts new to the list must be
+     * ones the author can mention now; an account the comment mentions already may stay in the list
+     * after it was suspended or taken off the company, and gets nothing new (S4-AC-26). The limit of
+     * {@value #MENTIONS_MAX} counts the whole list.
      *
      * <p>One transaction, retried once on a lock conflict: the issue row {@code FOR NO KEY UPDATE} as in
      * {@link #add}, then the comment in the caller's scope (404, S4-AC-03), the author alone, and a
@@ -158,10 +161,13 @@ public class CommentService {
             }
             List<ApiError.FieldError> errors = new ArrayList<>();
             String text = content == null ? comment.content() : content(content, errors);
+            List<Long> mentionedNow = List.of();
             Set<Long> mentioned = null;
             if (viewer.staff() && mentions != null) {
                 List<Long> received = accountIds(mentions, errors);
-                mentioned = received == null ? null : mentionable(viewer, issue, comment.internal(), received, errors);
+                mentionedNow = comments.mentionedIds(commentId);
+                mentioned = received == null ? null
+                        : mentionable(viewer, issue, comment.internal(), received, mentionedNow, errors);
             }
             if (!errors.isEmpty()) {
                 throw ApiException.invalid(errors);
@@ -173,8 +179,7 @@ public class CommentService {
                 throw issueClosed();
             }
             boolean contentChanged = !text.equals(comment.content());
-            MentionChange change = mentioned == null ? MentionChange.NONE
-                    : mentionChange(comments.mentionedIds(commentId), mentioned);
+            MentionChange change = mentioned == null ? MentionChange.NONE : mentionChange(mentionedNow, mentioned);
             if (!contentChanged && change.empty()) {
                 return comment;
             }
@@ -184,6 +189,7 @@ public class CommentService {
             }
             comments.deleteMentions(commentId, change.removed());
             comments.insertMentions(commentId, change.added(), now);
+            notifications.mentionsChanged(viewer, issue, commentId, change.added(), change.removed());
             return comments.find(viewer, issue.id(), commentId).orElseThrow();
         });
     }
@@ -218,6 +224,7 @@ public class CommentService {
             Instant now = now();
             List<UUID> purging = attachments.purgeOfComment(commentId, viewer.accountId(), now);
             comments.updateDeleted(commentId, viewer.accountId(), now);
+            notifications.commentDeleted(commentId);
             return purging;
         });
         attachments.removeFiles(files);
@@ -286,9 +293,12 @@ public class CommentService {
      * this kind of comment is {@code UNKNOWN_VALUE}, one answer whatever the reason (S4-AC-20). Who can
      * be mentioned is read after the issue row was locked, without locking account or assignment rows.
      * An invalid list adds its entry to {@code errors} and gives an empty set.
+     *
+     * @param kept the accounts the comment mentions already, which are not checked again; empty for a
+     *     new comment
      */
     private Set<Long> mentionable(Viewer viewer, IssueRow issue, boolean internal, List<Long> received,
-            List<ApiError.FieldError> errors) {
+            List<Long> kept, List<ApiError.FieldError> errors) {
         if (received.stream().anyMatch(Objects::isNull)) {
             errors.add(new ApiError.FieldError("mentions", "INVALID_FORMAT"));
             return Set.of();
@@ -298,13 +308,14 @@ public class CommentService {
             errors.add(new ApiError.FieldError("mentions", "TOO_MANY"));
             return Set.of();
         }
-        if (ids.isEmpty()) {
+        Set<Long> added = ids.stream().filter(id -> !kept.contains(id)).collect(Collectors.toSet());
+        if (added.isEmpty()) {
             return ids;
         }
         Set<Long> candidates = companies
                 .listMentionable(viewer, issue.companyId(), internal ? null : issue.reporterId()).stream()
                 .map(StaffRow::accountId).collect(Collectors.toSet());
-        if (!candidates.containsAll(ids)) {
+        if (!candidates.containsAll(added)) {
             errors.add(new ApiError.FieldError("mentions", "UNKNOWN_VALUE"));
             return Set.of();
         }

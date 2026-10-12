@@ -1,11 +1,19 @@
 package io.popdesk.notification.web.portal;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.notification.InboxFacts.Actor;
+import io.popdesk.notification.InboxFacts.ActorKind;
+import io.popdesk.notification.InboxFacts.Reader;
+import io.popdesk.notification.ops.Inbox;
+import io.popdesk.notification.ops.Inbox.Item;
+import io.popdesk.notification.web.Caller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +28,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/portal/notifications")
 class PortalNotificationController {
 
+    private final Inbox inbox;
+
+    PortalNotificationController(Inbox inbox) {
+        this.inbox = inbox;
+    }
+
     @Operation(operationId = "listNotifications", summary = "The caller's inbox",
             description = "Own items only, newest first (S4-AC-39, INBOX-3). An item about an issue the caller "
                     + "cannot see now is left out, and is back when the caller can see the issue again (S4-AC-42). "
@@ -31,7 +45,8 @@ class PortalNotificationController {
     Paged<Notification> listNotifications(
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return inbox.list(Caller.accountId(), Reader.CUSTOMER, page, size)
+                .map(PortalNotificationController::notification);
     }
 
     @Operation(operationId = "countUnreadNotifications", summary = "Unread items in the caller's inbox",
@@ -40,7 +55,7 @@ class PortalNotificationController {
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @GetMapping("/unread-count")
     UnreadCount countUnreadNotifications() {
-        throw new NotImplementedException();
+        return new UnreadCount(inbox.unread(Caller.accountId(), Reader.CUSTOMER));
     }
 
     @Operation(operationId = "markNotificationRead", summary = "Mark an item read",
@@ -52,7 +67,7 @@ class PortalNotificationController {
     @PostMapping("/{id}/read")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void markNotificationRead(@PathVariable long id) {
-        throw new NotImplementedException();
+        inbox.markRead(Caller.accountId(), id);
     }
 
     @Operation(operationId = "markAllNotificationsRead", summary = "Mark every item read",
@@ -64,6 +79,27 @@ class PortalNotificationController {
     @PostMapping("/read-all")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void markAllNotificationsRead() {
-        throw new NotImplementedException();
+        inbox.markAllRead(Caller.accountId());
+    }
+
+    private static Notification notification(Item item) {
+        return new Notification(item.id(), NotificationKind.valueOf(item.kind()),
+                new NotificationIssue(item.issue().key(), item.issue().title()), item.companyCode(),
+                item.commentId(), actor(item.actor()), utc(item.createdAt()), utc(item.readAt()));
+    }
+
+    /**
+     * Who did it, as helpdesk gave it for a customer: staff come as the support team already, without
+     * name or ID (ADR D-49). So does an item whose actor is not an account.
+     */
+    private static NotificationActor actor(Actor actor) {
+        return actor == null || actor.kind() != ActorKind.CUSTOMER
+                ? new NotificationActor(NotificationActor.Kind.SUPPORT_TEAM, null, null, null)
+                : new NotificationActor(NotificationActor.Kind.CUSTOMER, actor.accountId(), actor.name(),
+                        utc(actor.photoUpdatedAt()));
+    }
+
+    private static OffsetDateTime utc(Instant at) {
+        return at == null ? null : at.atOffset(ZoneOffset.UTC);
     }
 }
