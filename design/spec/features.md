@@ -18,7 +18,7 @@
 
 ## 1. 로그인과 계정 (AUTH, ACCT)
 
-→ AUTH-1~5·7, ACCT-1~6·8은 `../archive/1a-people/rules.md`로, ACCT-7은 `../slices/3-issues/rules.md`로 옮김(3번 묶음). 아래는 11번 묶음의 것이다.
+→ AUTH-1~5·7, ACCT-1~6·8은 `../archive/1a-people/rules.md`로, ACCT-7은 `../archive/3-issues/rules.md`로 옮김(3번 묶음). 아래는 11번 묶음의 것이다.
 
 | ID | 규칙 |
 |---|---|
@@ -34,7 +34,7 @@
 
 ## 4. 문의 (ISSUE)
 
-→ ISSUE-1~12, 상태 표, STATUS-1~4·6·7은 `../slices/3-issues/rules.md`로 옮김(3번 묶음). 아래는 7번 묶음의 것이다.
+→ ISSUE-1~12, 상태 표, STATUS-1~4·6·7은 `../archive/3-issues/rules.md`로 옮김(3번 묶음). 아래는 7번 묶음의 것이다.
 
 | ID | 규칙 |
 |---|---|
@@ -104,7 +104,7 @@
 
 ## 9. 이력과 휴지통 (HIST, TRASH)
 
-→ HIST-1~3은 `../slices/3-issues/rules.md`로 옮김(3번 묶음). 아래는 7번 묶음의 것이다.
+→ HIST-1~3은 `../archive/3-issues/rules.md`로 옮김(3번 묶음). 아래는 7번 묶음의 것이다.
 
 | ID | 규칙 |
 |---|---|
