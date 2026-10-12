@@ -4,6 +4,7 @@ import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.CompanyStatus;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
+import io.popdesk.helpdesk.account.AccountRepository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -68,6 +69,14 @@ public class CompanyRepository {
 
     /** Who staff can file an issue for (ISSUE-9), as SQL on the member's account {@code a}. */
     private static final String REPORTER = "a.role = 'CUSTOMER' and a.status = 'ACTIVE'";
+
+    /**
+     * The reporters of one company with the search text, with the parameters of {@link #reporters}. The
+     * search is one condition in brackets, so the company and the status hold for a name and for an email
+     * alike. The text is a LIKE pattern in which {@code %} and {@code _} find only themselves (COM-5).
+     */
+    private static final String REPORTERS = "m.company_id = ? and " + REPORTER + " and " + SCOPE
+            + " and (cast(? as text) is null or a.name ilike ? escape '\\' or a.email ilike ? escape '\\')";
 
     private final JdbcClient jdbc;
 
@@ -192,6 +201,31 @@ public class CompanyRepository {
                         + " and " + SCOPE)
                 .params(with(new Object[] {companyId, accountId}, scope(viewer)))
                 .query(Long.class).single() > 0;
+    }
+
+    /**
+     * One page of the customers staff can file an issue for in this company, in name order, if the
+     * viewer may see the company (S3-AC-40). {@code q} narrows them to those whose name or email holds
+     * it, ignoring case; null leaves that out.
+     */
+    public List<MemberRow> listReporters(Viewer viewer, long companyId, String q, long offset, int limit) {
+        return jdbc.sql("select m.company_id, a.id, a.name, a.email, a.status, p.updated_at, m.manager "
+                        + "from company_member m join account a on a.id = m.account_id "
+                        + "join company c on c.id = m.company_id left join account_photo p on p.account_id = a.id "
+                        + "where " + REPORTERS + " order by a.name, a.id offset ? limit ?")
+                .params(with(reporters(viewer, companyId, q), offset, limit))
+                .query(CompanyRepository::member).list();
+    }
+
+    public long countReporters(Viewer viewer, long companyId, String q) {
+        return jdbc.sql("select count(*) from company_member m join account a on a.id = m.account_id "
+                        + "join company c on c.id = m.company_id where " + REPORTERS)
+                .params(reporters(viewer, companyId, q)).query(Long.class).single();
+    }
+
+    private static Object[] reporters(Viewer viewer, long companyId, String q) {
+        String pattern = q == null ? null : AccountRepository.containing(q);
+        return with(with(new Object[] {companyId}, scope(viewer)), pattern, pattern, pattern);
     }
 
     /** The companies that these customers belong to, among those the viewer may see. */

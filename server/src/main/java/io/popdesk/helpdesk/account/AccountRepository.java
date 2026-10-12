@@ -173,12 +173,18 @@ public class AccountRepository {
                 .params(filter(role, status, q)).query(Long.class).single();
     }
 
+    /**
+     * The LIKE pattern that finds {@code q} anywhere in a value, as it is (COM-5): a backslash before
+     * LIKE's wildcards and before its escape, the backslash, makes them ordinary characters.
+     */
+    public static String containing(String q) {
+        return "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+    }
+
     private static Object[] filter(Role role, AccountStatus status, String q, Object... more) {
         String roleName = role == null ? null : role.name();
         String statusName = status == null ? null : status.name();
-        // A backslash before LIKE's wildcards and before its escape, the backslash, makes them ordinary.
-        String pattern = q == null ? null
-                : "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        String pattern = q == null ? null : containing(q);
         Object[] filters = {roleName, roleName, statusName, statusName, pattern, pattern, pattern};
         Object[] all = Arrays.copyOf(filters, filters.length + more.length);
         System.arraycopy(more, 0, all, filters.length, more.length);

@@ -50,6 +50,9 @@ public class CompanyService {
     static final Pattern CODE = Pattern.compile("[A-Z0-9]{2,10}");
     static final int NAME_MAX = 100;
 
+    /** The longest search text (COM-5). */
+    static final int SEARCH_MAX = 100;
+
     private final CompanyRepository companies;
     private final MembershipRequestRepository requests;
     private final AccountRepository accounts;
@@ -159,6 +162,27 @@ public class CompanyService {
     public List<StaffRow> assigneeCandidates(Viewer viewer, String code) {
         CompanyRow company = get(viewer, code);
         return companies.listAssignable(viewer, company.id());
+    }
+
+    /**
+     * The customers staff can file an issue for in the company, in name order (S3-AC-40): its
+     * {@code ACTIVE} customers, narrowed by {@code q} to those whose name or email holds it. The company
+     * first (404), then the input (400). {@code q} is a one-line value of 1 to 100 characters after
+     * trimming, like the search text of the issue lists (S3-AC-14).
+     */
+    @Transactional(readOnly = true)
+    public Paged<MemberRow> reporters(Viewer viewer, String code, String q, int page, int size) {
+        CompanyRow company = get(viewer, code);
+        String text = TextInput.oneLine(q);
+        if (text != null && text.isEmpty()) {
+            throw ApiException.invalid("q", "TOO_SHORT");
+        }
+        if (text != null && TextInput.length(text) > SEARCH_MAX) {
+            throw ApiException.invalid("q", "TOO_LONG");
+        }
+        PageRequest request = PageRequest.of(page, size);
+        return request.of(companies.listReporters(viewer, company.id(), text, request.offset(), request.size()),
+                companies.countReporters(viewer, company.id(), text));
     }
 
     /**

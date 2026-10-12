@@ -1,6 +1,5 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.Role;
@@ -50,6 +49,11 @@ class ConsoleCompanyController {
     private Company company(CompanyRow row) {
         return company(row, companies.pendingRequests(CurrentAccount.get().viewer(), List.of(row))
                 .getOrDefault(row.code(), 0));
+    }
+
+    private static CompanyReporter reporter(MemberRow row) {
+        return new CompanyReporter(row.accountId(), row.name(), row.email(),
+                row.photoUpdatedAt() == null ? null : row.photoUpdatedAt().atOffset(ZoneOffset.UTC));
     }
 
     static CompanyMember member(MemberRow row) {
@@ -274,7 +278,8 @@ class ConsoleCompanyController {
                     @RequestParam(required = false) @Nullable String q,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return companies.reporters(CurrentAccount.get().viewer(), code, q, page, size)
+                .map(ConsoleCompanyController::reporter);
     }
 
     @Operation(operationId = "countCompanyOpenAssignments",
