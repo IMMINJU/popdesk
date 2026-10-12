@@ -261,7 +261,7 @@ c2d564e52a2809c29e53bd12bfa89c387331ffa402e7d0661cd8db934856cfab  server/src/tes
 c8bc4df4fef4454a7cae02e171316200e52c5dc2ef3abda95d8db1a96d4559d7  server/src/test/java/io/popdesk/notify/Rows.java
 76e95a7304d0b9c8e5832602fd75bfec8e288f2d511b7173e14a5839dc7fd65f  server/src/test/java/io/popdesk/notify/SandboxChannelsTest.java
 c2385fd3318d960f7da564555290b8f9b9738ea5fe88686988774b1c68aee5b3  server/src/test/java/io/popdesk/notify/SandboxMailLimitTest.java
-533a8dda91b6b27913e697ee9c1f737e027891192e24f69d2ac6a131458993b7  server/src/test/java/io/popdesk/notify/SandboxMailTest.java
+7e2d2daadd8da4637efa2a52a137b4456344f067d94e4e0e0f1c13fb8d896d3a  server/src/test/java/io/popdesk/notify/SandboxMailTest.java
 8c870c1812cc6d78c3d3cbedec9bdb0df8fcb44c7a657ca718566c77e31b7913  server/src/test/java/io/popdesk/notify/SandboxNoAddressTest.java
 d5e0d96a7406e6353c9b8447e89bd0766e5c2ad24bcb3d271c6c93d55c6aa468  server/src/test/java/io/popdesk/notify/SandboxOffTest.java
 7771faac3ea2cab52505ebbeba10504c2cb6a30440de0f332ac10e550a524860  server/src/test/java/io/popdesk/notify/SendLoopBrokenRowTest.java

@@ -270,7 +270,7 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
     /** What happens to a mail's recipient or comment while the mail waits. */
     enum Gone {
         RECIPIENT_SUSPENDED,
-        RECIPIENT_OUT_OF_THE_COMPANY,
+        NEW_ASSIGNEE_OFF_THE_COMPANY,
         COMMENT_DELETED
     }
 
@@ -281,14 +281,22 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
     void checksBeforeSendingUseTheOriginalRecipient(Gone gone) {
         Cast c = cast();
         String key = fixtures.fileIssue(c.customer(), c.code()).key();
+        // A customer taken out of the company still sees the issues they reported (PROJ-4), so the
+        // recipient who stops seeing the issue is an agent taken off the company.
+        var recipient = gone == Gone.NEW_ASSIGNEE_OFF_THE_COMPANY ? c.agent() : c.customer();
         gate.hold();
-        Comment answer = fixtures.comment(c.agent(), key, "Answer " + Unique.number());
-        Wait.until("the answer's mail tried at the sandbox address",
+        Comment answer = null;
+        if (gone == Gone.NEW_ASSIGNEE_OFF_THE_COMPANY) {
+            flow.assign(c.admin(), key, c.agent().accountId());
+        } else {
+            answer = fixtures.comment(c.agent(), key, "Answer " + Unique.number());
+        }
+        Wait.until("the mail tried at the sandbox address",
                 () -> heldAtSandboxAddress().stream().filter(h -> h.text().contains(key)).findFirst().orElse(null));
 
         switch (gone) {
             case RECIPIENT_SUSPENDED -> flow.suspend(c.admin(), c.customer().accountId());
-            case RECIPIENT_OUT_OF_THE_COMPANY -> flow.removeCustomer(c.admin(), c.code(), c.customer().accountId());
+            case NEW_ASSIGNEE_OFF_THE_COMPANY -> flow.unassignAgent(c.admin(), c.code(), c.agent().accountId());
             case COMMENT_DELETED -> TalkFlow.delete(c.agent(), key, answer.id());
         }
         gate.pass();
@@ -297,9 +305,9 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
         awaitALaterMail(c.admin());
         assertThat(mail().messages()).as("mail about %s at any address", key)
                 .noneMatch(m -> (m.subject() + "\n" + m.text()).contains(key));
-        Wait.untilAsserted("the mail row of the customer dropped", () -> assertThat(db.count(
+        Wait.untilAsserted("the mail row of the recipient dropped", () -> assertThat(db.count(
                 "select count(*) from outbox where channel = 'MAIL' and recipient_account_id = ?",
-                c.customer().accountId())).isZero());
+                recipient.accountId())).isZero());
         assertThat(mail().messages()).as("mail about %s at any address, after its row was dropped", key)
                 .noneMatch(m -> (m.subject() + "\n" + m.text()).contains(key));
     }
