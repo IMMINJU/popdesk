@@ -20,7 +20,7 @@
 | 7 | 등록 키를 두는 곳 | 새 표 `issue_idempotency`: 계정, 키, 내용의 SHA-256, 문의 ID, 만든 시각. 기본 키는 (계정, 키) | TM-48: 키는 계정에 묶인다. 유니크가 같은 때 온 둘 가운데 하나를 막는다(S3-AC-44) | 메모리에 두기. 다시 뜨면 사라지고 24시간을 지키지 못한다 |
 | 8 | 새 오류 코드 | 400 `INVALID_TRANSITION`, 400 `NOT_REOPENABLE`, 409 `VERSION_CONFLICT`, 409 `IDEMPOTENCY_KEY_REUSED`. 담당자와 대리 등록 고객이 맞지 않는 것은 새 코드 없이 `INVALID_INPUT`과 `fields`의 `UNKNOWN_VALUE`다 | 코드는 공개 계약이다. 계약 탭이 `conventions.md` 표에 먼저 더한다. `UNKNOWN_VALUE`는 "고를 수 없는 것을 가리킴"으로 이미 있다 [소스: `conventions.md`] | `ASSIGNEE_NOT_ELIGIBLE` 같은 코드. 까닭을 가르게 된다 |
 | 9 | 웹훅과 메일의 종류 이름 | 웹훅 `ISSUE_RESOLVED`, `ISSUE_CLOSED`, `ISSUE_REOPENED`, `ASSIGNEE_CHANGED`. 메일 `ISSUE_FILED_ON_BEHALF`. 대리 등록의 웹훅은 있던 `ISSUE_CREATED`다 | 대기 표의 `kind`에 들어간다. 올라오는 중에 대기에 남은 행이 있을 수 있어 이름을 바꾸지 못한다. `kind`에는 값 제약이 없다 [소스: V3] | 상태마다 종류 하나씩 |
-| 10 | 담당 비우기의 감사 값 | 있던 종류(`AGENT_UNASSIGNED`, `ACCOUNT_SUSPENDED`)의 바뀐 값에 키 `clearedIssues`(정수)를 더한다. 비우지 않았으면 키가 없다 | 키 이름은 해시에 들어가 바꿀 수 없다 [소스: `conventions.md` 해시 사슬]. 키를 더하는 것은 된다. 비우지 않은 항목이 지금과 같아야 1a의 잠긴 테스트가 그대로 통과한다 [추론] | 새 종류 `ASSIGNMENTS_CLEARED` |
+| 10 | 담당 비우기의 감사 값 | 있던 종류(`AGENT_UNASSIGNED`, `ACCOUNT_SUSPENDED`)의 바뀐 값에 키 `clearedIssues`(정수)를 더한다. "담당 비우기"를 고르지 않았으면 키가 없다. 골랐는데 비울 문의가 없었으면 0이다 | 키 이름은 해시에 들어가 바꿀 수 없다 [소스: `conventions.md` 해시 사슬]. 키를 더하는 것은 된다. 비우지 않은 항목이 지금과 같아야 1a의 잠긴 테스트가 그대로 통과한다 [추론] | 새 종류 `ASSIGNMENTS_CLEARED` |
 | 11 | `pg_trgm`을 만드는 곳 | V9의 첫 문장 `CREATE EXTENSION IF NOT EXISTS pg_trgm`. 실패하면 앱이 뜨지 않고 까닭을 남긴다(S3-AC-91) | `pg_trgm`은 DB 주인이 만들 수 있는 확장이고 compose의 이미지에 들어 있다 [실험 1]. 권한이 없으면 SQLSTATE `42501`이다. 관리자가 미리 만들어 두면 `IF NOT EXISTS`가 지난다 | 확장 없이 순차 검색. D-13과 어긋난다 |
 | 12 | 마이그레이션의 차례 | V9(SQL: 확장, 칸, 표, 있던 문의의 `CREATED`, 계정 색인) → V10(Java: 있던 문의의 `search_text` 채우기) → V11(SQL: `search_text`의 GIN 색인) | 색인을 먼저 만들고 채우면 10만 건에 8분, 채운 뒤 만들면 70초다 [실험 4] | V9에서 색인까지 만들기 |
 
@@ -62,11 +62,14 @@
 
 | 요청 | 차례 |
 |---|---|
-| 상태 변경, 종료, 재오픈 | ① 범위 안에서 문의를 읽는다(없으면 404) ② 권한(403) ③ `UPDATE issue SET status …, version = version + 1 WHERE id = ? AND status = ?(읽은 값)`. 재오픈은 조건에 종료 시각의 14일을 넣는다 ④ 바뀐 행이 0이면 다시 읽어 지금 상태로 400을 답한다 ⑤ 이력과 웹훅 대기 행을 넣는다 |
+| 상태 변경, 종료, 재오픈 | ① 범위 안에서 문의를 읽는다(없으면 404) ② 권한(403) ③ `UPDATE issue SET status …, version = version + 1 WHERE id = ? AND status = ?(읽은 값)`. 재오픈은 조건에 종료 시각의 14일을 넣는다 ④ 바뀐 행이 0이면(그사이 다른 요청이 상태를 바꿨다) 다시 읽어 전이를 처음부터 다시 판정한다. 지금 상태에서 되는 전이면 ③을 다시 하고, 안 되면 400이다. 같은 때 온 "접수 → 확인"과 "접수 → 종료"는 확인이 먼저 되면 종료가 "확인 → 종료"로 다시 판정되어 둘 다 된다(S3-AC-51의 "어떤 한 순서의 결과". 점검 탭이 짚음). 다시 하기는 몇 번으로 끊는다 ⑤ 이력과 웹훅 대기 행을 넣는다 |
 | 고치기 | ① 읽기 ② 권한 ③ 문의 행을 `FOR NO KEY UPDATE`로 잠그고 `version`과 `CLOSED`를 다시 본다(409, 400) ④ 바뀐 칸만 UPDATE하고 `search_text`를 다시 만든다 ⑤ 바뀐 칸마다 이력 |
 | 담당자 | ① 읽기 ② 문의 행 잠금 ③ 새 담당자가 자격이 있는지 같은 트랜잭션에서 본다 ④ UPDATE와 이력, 웹훅 |
 | 담당 비우기 | 배정 빼기나 정지의 트랜잭션 안에서 `UPDATE issue SET assignee_id = NULL … WHERE assignee_id = ? AND status <> 'CLOSED' [AND company_id = ?] RETURNING id`. 돌아온 문의마다 이력을 넣는다. 문의 행을 하나씩 잠그지 않는다(조건부 UPDATE다, STATUS-7) |
 
+- 닫힌 문의에 옛 `version`으로 고치면 400 `ISSUE_CLOSED`가 먼저다(409가 아니다).
+- 고치기 본문의 모르는 칸은 무시한다(등록과 같다). 빈 `Idempotency-Key` 머리글은 틀린 키다(400).
+- 배정되지 않은 상담원의 그 고객사 열린 담당 수는 0이다(404가 아니다. 관리자가 묻는 것이고 고객사와 계정은 있다).
 - 상태 변경은 `version`을 받지 않는다(ISSUE-6). 고치기만 받는다. 그래서 상태가 바뀐 뒤의 고치기는 409가 된다. 화면은 최신 값을 다시 읽어 보인다(S3-AC-81).
 - 전이 표는 한 곳(상태 enum의 함수 하나)에 둔다. 콘솔 화면의 버튼은 서버가 준 "지금 되는 전이" 목록으로 그린다 [추론: 계약 탭이 응답에 넣을지 화면이 표를 따로 가질지 정한다. 메인의 추천은 서버가 주는 것이다. 표가 두 곳에 있으면 어긋난다].
 - "올린 고객이고 소속이 남아 있는가"는 댓글이 이미 본다 [소스: `CommentService`]. 고치기, 재오픈이 같은 함수를 쓰고, 종료만 소속을 보지 않는다(S3-AC-54).
