@@ -32,6 +32,6 @@ server io/popdesk/boundary/TalkBoundaryTest.java
 server io/popdesk/boundary/TalkStaffIdentityTest.java
 server io/popdesk/deploy/TalkUpgradeTest.java
 server io/popdesk/deploy/TalkSampleTest.java
-server io/popdesk/issue/CommentDeleteWebhookTest.java
+server io/popdesk/notify/CommentDeleteWebhookTest.java
 server io/popdesk/ops/TalkCheckOrderTest.java
 server io/popdesk/ops/TalkLogTest.java

@@ -5,8 +5,6 @@ io.popdesk.boundary.BoundaryListTest.eachOperationHasTestsOrReason | 있던 테�
 io.popdesk.boundary.BoundaryListTest.everyContractOperationIsListed | 있던 테스트다. 목록에 4번의 연산 열을 올려 통과한다
 io.popdesk.inbox.AdminInboxItemsTest.membershipRequestItemHasNoIssue | 관리자 항목은 앞 묶음부터 들어가고, 계약 껍데기가 새 칸 셋을 null로 준다(S4-AC-38은 있던 동작이 그대로인지를 본다)
 io.popdesk.inbox.AdminInboxItemsTest.deliveryFailedItemHasNoIssue | 관리자 항목은 앞 묶음부터 들어가고, 계약 껍데기가 새 칸 셋을 null로 준다(S4-AC-38은 있던 동작이 그대로인지를 본다)
-io.popdesk.inbox.InboxReadTest.listNeedsASession(Side)[1] | 로그인 전 401은 보안 설정이 이미 한다
-io.popdesk.inbox.InboxReadTest.listNeedsASession(Side)[2] | 로그인 전 401은 보안 설정이 이미 한다
 io.popdesk.inbox.PortalNotificationContractTest.typesMatchSnapshot | 계약 파일의 스냅샷이다. 포털 알림 타입은 C-4 계약에 이미 있다
 io.popdesk.inbox.PortalNotificationContractTest.kindsAreTheCustomersOnly | 계약 파일의 스냅샷이다. 포털 알림 타입은 C-4 계약에 이미 있다
 io.popdesk.issue.CommentEditTest.neverEditedCommentHasNullEditedAt | 계약 껍데기가 editedAt을 null로 준다. 칸이 빠지지 않는지를 본다
