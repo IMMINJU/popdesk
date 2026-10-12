@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider, type RouteObject } from 'react-router';
+import { MY_ISSUES_HREF } from './app/issueFilters';
 import { AdminOnly, ConsoleLayout, NotFound } from './app/layout';
 import { SessionProvider } from './app/session';
 import { ToastProvider } from './app/toast';
@@ -18,13 +19,13 @@ import { C8CompanyList } from './screens/C8CompanyList';
 import { C9CompanyDetail } from './screens/C9CompanyDetail';
 
 // First-slice screens (design/slices/0-first/screens.md 4절). `/` opens the issue
-// list; signed-in screens sit in ConsoleLayout, admin screens also in AdminOnly.
+// list on 내 담당 (slice 3); signed-in screens sit in ConsoleLayout, admin screens also in AdminOnly.
 // Slice 1a adds C-16 and C-17 (signed out; C-17 takes its token after `#`, like
 // the invitation) and C-6 (signed in, every role).
 // Slice 1b adds C-12 (admin only).
 // Slice 3 adds C-19 (every role), before `/issues/:issueKey` so `new` is not read as a key.
 const routes: RouteObject[] = [
-  { index: true, element: <Navigate to="/issues" replace /> },
+  { index: true, element: <Navigate to={MY_ISSUES_HREF} replace /> },
   { path: '/login', element: <C1Login /> },
   { path: '/invite', element: <C2InviteAccept /> },
   { path: '/forgot-password', element: <C16PasswordForgot /> },

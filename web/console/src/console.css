@@ -144,10 +144,85 @@
   width: 9rem;
 }
 
-.pd-filters > .pd-field[data-pd='TextField'] {
+.pd-filters > .pd-field[data-pd='TextField'],
+.pd-filters > .pd-field[data-pd='SearchField'] {
   flex: 1;
   min-width: 12rem;
   max-width: 20rem;
+}
+
+/* C-3: 보기 고르기 above the filter row, the row itself, and what it shows when a filter is on.
+   The parts of the row line up on the input; a narrow window wraps them onto more lines. */
+.pd-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.pd-views a {
+  padding: var(--space-2) 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.pd-views a:hover {
+  color: var(--text);
+}
+
+.pd-views a[aria-current] {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.pd-issue-filters {
+  align-items: flex-start;
+}
+
+.pd-issue-filters > .pd-field[data-pd='Select'] {
+  width: 11rem;
+}
+
+.pd-issue-filters > .pd-group {
+  gap: 0;
+}
+
+.pd-issue-filters > .pd-group > legend {
+  margin-bottom: var(--space-1);
+}
+
+.pd-issue-filters > .pd-group > .pd-group-options {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  min-height: var(--field-height);
+}
+
+/* The label line above an input, kept empty so the chip and the link stand beside the inputs. */
+.pd-filter-chip,
+.pd-filters-clear {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--field-height);
+  margin-top: calc(var(--text-sm-line) + var(--space-1));
+  font-size: var(--text-sm);
+}
+
+.pd-filter-chip {
+  gap: var(--space-1);
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.pd-filter-chip .pd-icon-button {
+  color: inherit;
 }
 
 .pd-person {
@@ -253,6 +328,11 @@
 .pd-audit .pd-table .pd-table-expanded .pd-code {
   white-space: normal;
   word-break: break-all;
+}
+
+/* C-19 대리 등록: one column of fields, as wide as the detail's text */
+.pd-create .pd-create-form {
+  max-width: 44rem;
 }
 
 /* C-4 detail */

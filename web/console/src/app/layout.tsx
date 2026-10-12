@@ -6,6 +6,7 @@ import { Link, Outlet, useLocation } from 'react-router';
 import { api } from '../api';
 import { BusyContext } from './busy';
 import { useDocumentTitle, useFocusWhenReady } from './hooks';
+import { MY_ISSUES_HREF } from './issueFilters';
 import { t } from './locale';
 import { TEXT } from './messages';
 import { NavCountContext } from './navCount';
@@ -16,7 +17,8 @@ import { useSession, useToLogin, type Me } from './sessionContext';
 
 /** `requests`: the open membership requests of all companies, shown on 고객사 (S2-AC-48). */
 function menu(me: Me, requests: number): Omit<NavItem, 'current'>[] {
-  const items: Omit<NavItem, 'current'>[] = [{ href: '/issues', label: '문의' }];
+  // 문의 opens the 내 담당 view (S3-AC-77).
+  const items: Omit<NavItem, 'current'>[] = [{ href: MY_ISSUES_HREF, label: '문의' }];
   if (me.role === 'ADMIN') {
     items.push(
       { href: '/companies', label: '고객사', count: requests, countLabel: `소속 요청 ${String(requests)}건` },
@@ -29,7 +31,8 @@ function menu(me: Me, requests: number): Omit<NavItem, 'current'>[] {
 }
 
 function isCurrent(pathname: string, href: string): boolean {
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const path = href.split('?')[0] ?? href;
+  return pathname === path || pathname.startsWith(`${path}/`);
 }
 
 export function ConsoleLayout() {
