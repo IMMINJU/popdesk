@@ -9,7 +9,7 @@
 
 services:
   app:
-    image: ghcr.io/imminju/popdesk:0.2.0
+    image: ghcr.io/imminju/popdesk:0.3.0
     restart: unless-stopped
     depends_on:
       db:

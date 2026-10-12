@@ -31,15 +31,15 @@ Migrations only move forward. There are no down migrations: to go back to an old
 - **There is no way back to the old image.** After this migration the 0.1.0 image does not start on the database (see [below](#the-database-is-newer-than-the-app)). To go back, restore the backup you took before the upgrade; what was written after it is lost.
 - Entries written before the upgrade are checked by the integrity check like any other from then on. The hash covers what the database held at the time of the upgrade; it says nothing about changes made before.
 
-## Upgrading to the version after 0.2.0
+## Upgrading to 0.3.0
 
-This version adds customer managers (migration 8): a manager mark and a row ID on every membership of a customer in a company, a table for membership requests, and the company an inbox item is about.
+0.3.0 adds customer managers (migration 8): a manager mark and a row ID on every membership of a customer in a company, a table for membership requests, and the company an inbox item is about.
 
 - **It does not take long.** The migration adds columns and a table and computes nothing. Every membership that is there gets a random row ID from the column default; no customer is a manager after the upgrade.
 - **There is no way back to the old image.** After this migration the 0.2.0 image does not start on the database (see [below](#the-database-is-newer-than-the-app)). To go back, restore the backup you took before the upgrade; what was written after it is lost.
 - Nothing has to be set. An admin marks managers on the console afterwards.
 
-The same version adds the search of issues, their assignee and history, and the keys that keep an issue from being filed twice (migrations 9 to 11). Migration 9 creates the `pg_trgm` extension, new columns and tables, and one history entry ("created") for every issue that is there. Migration 10 reads every issue and stores the text the search looks in: the title and the content without its Markdown marks. Migration 11 builds the search index.
+It also adds the search of issues, their assignee and history, and the keys that keep an issue from being filed twice (migrations 9 to 11). Migration 9 creates the `pg_trgm` extension, new columns and tables, and one history entry ("created") for every issue that is there. Migration 10 reads every issue and stores the text the search looks in: the title and the content without its Markdown marks. Migration 11 builds the search index.
 
 - **The database needs the `pg_trgm` extension.** With the Compose file's database nothing has to be done. With your own or a managed PostgreSQL, the app's database user must be allowed to create the extension, or an administrator creates it before the upgrade (`CREATE EXTENSION pg_trgm;` in popdesk's database); see [configuration.md](configuration.md#a-database-you-run-yourself). When the extension is missing and cannot be created, popdesk does not start and logs this line; nothing of migration 9 is kept, so create the extension and start again:
 
