@@ -228,6 +228,15 @@ function IssueDetail(props: { issueKey: string }) {
       const wanted = /^#(comment-\d+)$/.exec(hash)?.[1];
       const el = wanted === undefined ? null : document.getElementById(wanted);
       if (el) {
+        // Marked while it holds this focus, so the ring shows which comment the address named.
+        el.dataset.arrived = 'true';
+        el.addEventListener(
+          'blur',
+          () => {
+            delete el.dataset.arrived;
+          },
+          { once: true },
+        );
         el.focus();
         // jsdom has none.
         if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'center' });

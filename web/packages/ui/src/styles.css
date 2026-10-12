@@ -134,8 +134,17 @@ textarea {
 /* Line breaks ------------------------------------------------------------ */
 
 /* Korean text breaks between any two letters unless told otherwise. In the text places of the
-   shared parts (a band, a dialog, a toast, a row of a list, a table cell) it breaks between
-   words only. Screens do not repeat this. */
+   shared parts (a band, a dialog, a toast, a row of a list, a table cell) and of every screen (its
+   title, the head of a detail, a Markdown body, the line under a field, a value shown in a field's
+   place, the title of a row) it breaks between words only. Screens do not repeat this. */
+.pd-page-title,
+.pd-section-title,
+.pd-detail-head,
+.pd-markdown,
+.pd-field-help,
+.pd-field-error,
+.pd-static-value,
+.pd-issue-row-title-text,
 .pd-alert-body,
 .pd-dialog-title,
 .pd-dialog-description,
@@ -153,7 +162,16 @@ textarea {
 
 /* A run without a space (an English word, a URL) breaks where the line ends rather than run out
    of its box. Not in a table cell: there it would let a narrow window press a column down to one
-   letter a line. A cell keeps its words whole and the table scrolls sideways (.pd-table-wrap). */
+   letter a line. A cell keeps its words whole and the table scrolls sideways (.pd-table-wrap).
+   A code block keeps its lines and scrolls inside itself (.pd-markdown pre). */
+.pd-page-title,
+.pd-section-title,
+.pd-detail-head,
+.pd-markdown,
+.pd-field-help,
+.pd-field-error,
+.pd-static-value,
+.pd-issue-row-title-text,
 .pd-alert-body,
 .pd-dialog-title,
 .pd-dialog-description,
@@ -1728,6 +1746,14 @@ textarea {
   gap: var(--space-2);
   padding: var(--space-4) 0;
   border-radius: var(--radius-md);
+}
+
+/* The comment the address named (#comment-ID). Focus given by a script draws no ring by itself
+   ([tabindex='-1']:focus), so the screen marks the comment it went to; one focused by a click is
+   not marked. */
+.pd-comment[data-arrived]:focus {
+  outline: var(--focus-ring-width) solid var(--focus);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .pd-comment[data-visibility='internal'] {
