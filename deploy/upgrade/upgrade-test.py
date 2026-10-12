@@ -23,13 +23,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from popdesk_stack import (  # noqa: E402
     ADMIN_EMAIL, ADMIN_PASSWORD, CONSOLE_HOST, FAILED_ROWS_KEPT_DAYS, ApiError, Project, log, read_audit,
-    read_comments, read_issues, read_notifications, read_outbox, read_password_resets, read_photos, sha256)
+    read_comments, read_issues, read_mentions, read_notifications, read_outbox, read_password_resets, read_photos,
+    sha256)
 
 # The checks every sample has, and those only a later sample has: profile photos and password reset
-# links (after 0.1.0), comments and inbox items about issues (after 0.3.0). A later check runs when
-# sample.expected.json names it.
+# links (after 0.1.0), comments, mentions, and inbox items about issues (after 0.3.0). A later check
+# runs when sample.expected.json names it.
 CHECKS = ("issues", "attachments", "outbox", "audit")
-LATER_CHECKS = ("photos", "passwordResets", "comments", "notifications")
+LATER_CHECKS = ("photos", "passwordResets", "comments", "mentions", "notifications")
 
 # The app's health check gives a start period of 3 minutes and then 6 tries 10 seconds apart; a long
 # migration on a large sample can take longer, so the harness waits longer than that.
@@ -135,8 +136,17 @@ def check_rows(name, actual, expected):
 
 
 def check_comments(project, expected):
-    """Every comment of the sample is as it was: edited or not, deleted or not, mentioning the same accounts."""
+    """Every comment of the sample is as it was: edited or not, deleted or not."""
     return check_rows("comments", read_comments(project), expected)
+
+
+def check_mentions(project, expected):
+    """Every mention of the sample is still there."""
+    actual = read_mentions(project)
+    missing = [row for row in expected["mentions"] if row not in actual]
+    if missing:
+        log(f"mentions: missing {missing}")
+    return not missing
 
 
 def check_notifications(project, expected):
@@ -158,6 +168,7 @@ def run_checks(project, expected):
                                 ("photos", check_photos, console),
                                 ("passwordResets", check_password_resets, project),
                                 ("comments", check_comments, project),
+                                ("mentions", check_mentions, project),
                                 ("notifications", check_notifications, project)):
         if name in LATER_CHECKS and name not in expected:
             continue

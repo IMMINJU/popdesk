@@ -22,8 +22,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from popdesk_stack import (  # noqa: E402
     ADMIN_EMAIL, ADMIN_PASSWORD, CONSOLE_HOST, PEOPLE_PASSWORD, PORTAL_HOST, HarnessError, Project, image_id,
-    log, read_audit, read_comments, read_issues, read_notifications, read_outbox, read_password_resets, read_photos,
-    sha256)
+    log, read_audit, read_comments, read_issues, read_mentions, read_notifications, read_outbox,
+    read_password_resets, read_photos, sha256)
 
 # Low, so a few small uploads pass 80% and raise the quota alert (ops_alert, notification rows).
 QUOTA = "1MB"
@@ -236,6 +236,7 @@ def main():
             "photos": read_photos(admin, with_photo),
             "passwordResets": read_password_resets(project),
             "comments": read_comments(project),
+            "mentions": read_mentions(project),
             "notifications": read_notifications(project),
         }
         if not expected["outbox"]:
@@ -243,9 +244,11 @@ def main():
         if not expected["passwordResets"]:
             raise HarnessError("The sample has no password reset link.")
         comments = expected["comments"]
-        if not (any(c["edited"] and not c["deleted"] for c in comments) and any(c["deleted"] for c in comments)
-                and any(c["mentions"] and not c["deleted"] for c in comments)):
-            raise HarnessError("The sample needs an edited comment, a deleted one, and one that mentions someone.")
+        if not (any(c["edited"] and not c["deleted"] for c in comments) and any(c["deleted"] for c in comments)):
+            raise HarnessError("The sample needs an edited comment and a deleted one.")
+        kept = {c["id"] for c in comments if not c["deleted"]}
+        if not any(m["commentId"] in kept for m in expected["mentions"]):
+            raise HarnessError("The sample needs a comment that mentions someone and is not deleted.")
         if {n["read"] for n in expected["notifications"]} != {True, False}:
             raise HarnessError("The sample needs a read and an unread inbox item about an issue.")
 

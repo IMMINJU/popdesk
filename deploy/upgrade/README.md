@@ -14,7 +14,7 @@ Starts IMAGE on an empty database and fills every business table through the API
 |---|---|
 | `DIR/sample.dump` | the dump |
 | `DIR/sample.image` | the image ID (`sha256:...`) that made it |
-| `DIR/sample.expected.json` | what the sample check expects: issue keys, attachment hashes, failed queue rows, audit rows, profile photo hashes (`photos`), password reset links (`passwordResets`, without the token hash), comments (`comments`: the issue, edited, deleted, mentioned accounts), inbox items about issues (`notifications`: the account, kind, issue, comment, read) |
+| `DIR/sample.expected.json` | what the sample check expects: issue keys, attachment hashes, failed queue rows, audit rows, profile photo hashes (`photos`), password reset links (`passwordResets`, without the token hash), comments (`comments`: the issue, edited, deleted), mentions (`mentions`: the comment and the account), inbox items about issues (`notifications`: the account, kind, issue, comment, read) |
 
 Exit code 0 when it worked, 3 when it did not. It also fails when a business table is left empty, so a new table without sample data is noticed.
 
@@ -24,9 +24,9 @@ Exit code 0 when it worked, 3 when it did not. It also fails when a business tab
 python deploy/upgrade/upgrade-test.py --sample DIR --image IMAGE --work WORK --project NAME [--compose-file FILE ...]
 ```
 
-Restores `DIR/sample.dump` with `popdesk restore` into a new database, starts IMAGE on it, waits until it is healthy, and checks the sample through the API (issues, attachment contents, profile photos, as the sample's admin) and SQL (failed queue rows, audit rows, password reset links, comments, inbox items about issues). Writes `WORK/result.json` and `WORK/app.log`.
+Restores `DIR/sample.dump` with `popdesk restore` into a new database, starts IMAGE on it, waits until it is healthy, and checks the sample through the API (issues, attachment contents, profile photos, as the sample's admin) and SQL (failed queue rows, audit rows, password reset links, comments, mentions, inbox items about issues). Writes `WORK/result.json` and `WORK/app.log`.
 
-The checks `issues`, `attachments`, `outbox`, and `audit` always run. `photos`, `passwordResets`, `comments`, and `notifications` run only when `sample.expected.json` names them: the 0.1.0 sample was made before the first two existed, so with it `result.json` has the four checks only, and the samples up to 0.3.0 do not name the last two. `notifications` covers the items about an issue only; the app adds operations alerts of its own while it runs.
+The checks `issues`, `attachments`, `outbox`, and `audit` always run. `photos`, `passwordResets`, `comments`, `mentions`, and `notifications` run only when `sample.expected.json` names them: the 0.1.0 sample was made before the first two existed, so with it `result.json` has the four checks only, and the samples up to 0.3.0 do not name the last three. `notifications` covers the items about an issue only; the app adds operations alerts of its own while it runs.
 
 | Exit code | Meaning |
 |---|---|

@@ -266,13 +266,18 @@ def read_password_resets(project):
 
 
 def read_comments(project):
-    """Every comment: its issue, whether it was edited and deleted, and the accounts it mentions."""
+    """Every comment: its issue, and whether it was edited and deleted."""
     return project.sql_json(
         "select coalesce(json_agg(json_build_object('id', c.id, 'issue', co.code || '-' || i.number, "
-        "'edited', c.edited_at is not null, 'deleted', c.deleted_at is not null, 'mentions', "
-        "(select coalesce(json_agg(m.account_id order by m.account_id), '[]') from comment_mention m "
-        "where m.comment_id = c.id)) order by c.id), '[]') "
+        "'edited', c.edited_at is not null, 'deleted', c.deleted_at is not null) order by c.id), '[]') "
         "from comment c join issue i on i.id = c.issue_id join company co on co.id = i.company_id")
+
+
+def read_mentions(project):
+    """Every mention: the comment and the account it mentions."""
+    return project.sql_json(
+        "select coalesce(json_agg(json_build_object('commentId', comment_id, 'accountId', account_id) "
+        "order by comment_id, account_id), '[]') from comment_mention")
 
 
 def read_notifications(project):
