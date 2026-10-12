@@ -50,6 +50,7 @@ public class IssueService {
 
     static final int TITLE_MAX = 200;
     static final int CONTENT_MAX = 10_000;
+    static final int SEARCH_MAX = 100;
     static final String CHANNEL_PORTAL = "PORTAL";
 
     /** How a request staff file for a customer can have come in (ISSUE-9); the names are stored. */
@@ -87,9 +88,11 @@ public class IssueService {
 
     /**
      * The filters of a list request, as received; a null one was not sent (ISSUE-5). {@code assignee}
-     * is an account ID or one of the words {@code me}, {@code none}, {@code unavailable}.
+     * is an account ID or one of the words {@code me}, {@code none}, {@code unavailable}; {@code q} is
+     * the search text.
      */
-    public record Filters(List<IssueStatus> statuses, String companyCode, String assignee, Long reporterId) {}
+    public record Filters(List<IssueStatus> statuses, String companyCode, String assignee, Long reporterId,
+            String q) {}
 
     /**
      * What an edit sent (S3-AC-18). A field that was not sent keeps its value; {@code version} is the
@@ -458,7 +461,7 @@ public class IssueService {
 
     /**
      * One page of the issues the viewer may see that match the filters, newest first (S0-AC-47,
-     * S3-AC-06). A value a filter cannot have is 400; a company or an account the viewer cannot see is
+     * S3-AC-06, S3-AC-11). A value a filter cannot have is 400; a company or an account the viewer cannot see is
      * no error and gives an empty page, like one that does not exist (S3-AC-02, S3-AC-05).
      */
     @Transactional(readOnly = true)
@@ -466,15 +469,42 @@ public class IssueService {
         List<ApiError.FieldError> errors = new ArrayList<>();
         IssueFilter.Assignee assignee = filters.assignee() == null ? null
                 : assignee(viewer, filters.assignee(), errors);
+        String q = filters.q() == null ? null : searchText(filters.q(), errors);
         if (!errors.isEmpty()) {
             throw ApiException.invalid(errors);
         }
         PageRequest request = PageRequest.of(page, size);
         IssueFilter filter = new IssueFilter(
                 filters.statuses() == null ? List.of() : filters.statuses().stream().filter(Objects::nonNull).toList(),
-                filters.companyCode(), assignee, filters.reporterId());
-        return request.of(issues.list(viewer, filter, request.offset(), request.size()),
-                issues.count(viewer, filter));
+                filters.companyCode(), assignee, filters.reporterId(), q);
+        if (q == null) {
+            return request.of(issues.list(viewer, filter, request.offset(), request.size()),
+                    issues.count(viewer, filter));
+        }
+        IssueRepository.Found found = issues.search(viewer, filter, request.offset(), request.size());
+        return request.of(found.rows(), found.total());
+    }
+
+    /**
+     * The search text of a list (S3-AC-14): a one-line value, so NFC and without the whitespace around
+     * it, of 1 to {@link #SEARCH_MAX} code points. An empty one, also one of whitespace only, is
+     * {@code TOO_SHORT} in {@code errors}.
+     */
+    private static String searchText(String received, List<ApiError.FieldError> errors) {
+        if (!TextInput.storable(received)) {
+            errors.add(new ApiError.FieldError("q", "INVALID_FORMAT"));
+            return null;
+        }
+        String text = TextInput.oneLine(received);
+        if (text.isEmpty()) {
+            errors.add(new ApiError.FieldError("q", "TOO_SHORT"));
+            return null;
+        }
+        if (TextInput.length(text) > SEARCH_MAX) {
+            errors.add(new ApiError.FieldError("q", "TOO_LONG"));
+            return null;
+        }
+        return text;
     }
 
     /**

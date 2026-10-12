@@ -210,7 +210,7 @@ class PortalIssueController {
         Viewer viewer = CurrentAccount.get().viewer();
         // "Mine" is the reporter filter with the caller's own account; a customer names no other (S3-AC-09).
         Long reporter = Boolean.TRUE.equals(mine) ? viewer.accountId() : null;
-        return issues.list(viewer, new IssueService.Filters(status, companyCode, null, reporter), page, size)
+        return issues.list(viewer, new IssueService.Filters(status, companyCode, null, reporter, q), page, size)
                 .map(PortalIssueController::summary);
     }
 

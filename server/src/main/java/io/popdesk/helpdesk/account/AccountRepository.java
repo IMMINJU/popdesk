@@ -47,11 +47,13 @@ public class AccountRepository {
 
     /**
      * The list filters, with the parameters of {@link #filter}. The search text is a LIKE pattern in
-     * which {@code %} and {@code _} are escaped, so they find only themselves (COM-5, S1A-AC-89).
+     * which {@code %} and {@code _} are escaped, so they find only themselves (COM-5, S1A-AC-89). The
+     * escape character is named, so the pattern does not lean on the database's default.
      */
     private static final String FILTER = "(cast(? as text) is null or a.role = ?) "
             + "and (cast(? as text) is null or a.status = ?) "
-            + "and (cast(? as text) is null or a.name ilike ? or a.email ilike ?)";
+            + "and (cast(? as text) is null or a.name ilike ? escape '\\' "
+            + "or a.email ilike ? escape '\\')";
 
     private final JdbcClient jdbc;
 

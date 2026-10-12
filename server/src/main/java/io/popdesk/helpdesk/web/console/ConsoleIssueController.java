@@ -142,7 +142,7 @@ class ConsoleIssueController {
             throw ApiException.invalid(unknown);
         }
         return issues.list(CurrentAccount.get().viewer(),
-                        new IssueService.Filters(status, companyCode, assignee, reporter), page, size)
+                        new IssueService.Filters(status, companyCode, assignee, reporter, q), page, size)
                 .map(ConsoleIssueController::summary);
     }
 

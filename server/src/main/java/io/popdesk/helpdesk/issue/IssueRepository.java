@@ -6,6 +6,7 @@ import io.popdesk.helpdesk.IssueStatus;
 import io.popdesk.helpdesk.Priority;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
+import io.popdesk.helpdesk.account.AccountRepository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -70,22 +71,29 @@ public class IssueRepository {
     /** Open issues an account is the assignee of (ACCT-7), as SQL on {@code i} with one parameter, the account. */
     private static final String OPEN_ASSIGNMENT = "i.assignee_id = ? and i.status <> 'CLOSED'";
 
-    private static final String SELECT = "select i.id, i.company_id, c.code, c.name, i.number, i.title, i.content, "
+    private static final String COLUMNS = "i.id, i.company_id, c.code, c.name, i.number, i.title, i.content, "
             + "i.status, i.priority, i.is_private, i.reporter_id, r.name as reporter_name, r.role as reporter_role, "
             + "rp.updated_at as reporter_photo_updated_at, i.channel, i.first_response_at, i.resolved_at, i.closed_at, "
             + "i.version, i.created_at, i.updated_at, "
             + "i.created_by, cb.name as created_by_name, cb.role as created_by_role, "
             + "cbp.updated_at as created_by_photo_updated_at, "
             + "i.assignee_id, asg.name as assignee_name, asg.role as assignee_role, "
-            + "asgp.updated_at as assignee_photo_updated_at, " + ASSIGNEE_UNAVAILABLE + " as assignee_unavailable "
-            + "from issue i join company c on c.id = i.company_id join account r on r.id = i.reporter_id "
+            + "asgp.updated_at as assignee_photo_updated_at, " + ASSIGNEE_UNAVAILABLE + " as assignee_unavailable";
+
+    private static final String FROM = " from issue i join company c on c.id = i.company_id "
+            + "join account r on r.id = i.reporter_id "
             + "left join account_photo rp on rp.account_id = i.reporter_id "
             + "left join account cb on cb.id = i.created_by "
             + "left join account_photo cbp on cbp.account_id = i.created_by "
             + "left join account asg on asg.id = i.assignee_id "
             + "left join account_photo asgp on asgp.account_id = i.assignee_id ";
 
+    private static final String SELECT = "select " + COLUMNS + FROM;
+
     private static final String NEWEST_FIRST = " order by i.created_at desc, i.number desc, i.id";
+
+    /** One page of a search and how many issues the search found in all. */
+    public record Found(List<IssueRow> rows, long total) {}
 
     /** A WHERE condition with its parameters. */
     private record Condition(String sql, Object[] params) {}
@@ -121,7 +129,10 @@ public class IssueRepository {
                 .query(Long.class).single() > 0;
     }
 
-    /** One page of the issues the viewer may see that match the filter, newest first. */
+    /**
+     * One page of the issues the viewer may see that match the filter, newest first. For a filter
+     * without a search text; with one, see {@link #search}.
+     */
     public List<IssueRow> list(Viewer viewer, IssueFilter filter, long offset, int limit) {
         Condition where = condition(viewer, filter);
         return jdbc.sql(SELECT + "where " + where.sql() + NEWEST_FIRST + " offset ? limit ?")
@@ -137,11 +148,37 @@ public class IssueRepository {
     }
 
     /**
+     * One page of a search, newest first, and its total, in one statement (S3-AC-11). The search first
+     * narrows the issues by the whole condition, kept apart ({@code MATERIALIZED}), and only then sorts
+     * what it found. Written as one SELECT with {@code ORDER BY created_at DESC LIMIT}, the planner reads
+     * the newest issues backward and tries the search text on each, which on 100,000 issues took 2
+     * seconds for a text few issues hold (slice 3 design section 3). The total counts the same rows, so
+     * a text many issues hold is searched once for the page and its count.
+     */
+    public Found search(Viewer viewer, IssueFilter filter, long offset, int limit) {
+        Condition where = condition(viewer, filter);
+        long[] total = {0};
+        List<IssueRow> rows = jdbc.sql("with found as materialized (select i.id, i.created_at, i.number from issue i "
+                        + "join company c on c.id = i.company_id where " + where.sql() + "), "
+                        + "page as (select id from found order by created_at desc, number desc, id offset ? limit ?) "
+                        + "select " + COLUMNS + ", (select count(*) from found) as total" + FROM
+                        + "where i.id in (select id from page)" + NEWEST_FIRST)
+                .params(concat(where.params(), offset, limit))
+                .query((rs, n) -> {
+                    total[0] = rs.getLong("total");
+                    return issue(rs, n);
+                }).list();
+        // A page past the last one has no row to carry the total.
+        return new Found(rows, rows.isEmpty() && offset > 0 ? count(viewer, filter) : total[0]);
+    }
+
+    /**
      * The condition of a list and of its count, on {@code i} and its company {@code c}: the viewer's
      * scope, and after it each part of the filter with {@code and}. No part stands in for the scope or
      * joins it with {@code or}, so a filter only narrows what the viewer sees (S3-AC-06, S3-AC-10). A
      * company code or an account the viewer cannot see matches nothing, like one that does not exist
-     * (S3-AC-02, S3-AC-05).
+     * (S3-AC-02, S3-AC-05). The search text is a LIKE pattern in which {@code %}, {@code _}, and the
+     * backslash find only themselves (S3-AC-13).
      */
     private static Condition condition(Viewer viewer, IssueFilter filter) {
         StringBuilder sql = new StringBuilder(IssueScope.SQL);
@@ -167,6 +204,10 @@ public class IssueRepository {
         if (filter.reporterId() != null) {
             sql.append(" and i.reporter_id = ?");
             params.add(filter.reporterId());
+        }
+        if (filter.q() != null) {
+            sql.append(" and i.search_text ilike ? escape '\\'");
+            params.add(AccountRepository.containing(filter.q()));
         }
         return new Condition(sql.toString(), params.toArray());
     }
