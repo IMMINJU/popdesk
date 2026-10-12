@@ -6,12 +6,7 @@
 server io/popdesk/project/NoStoreTest.java
 server io/popdesk/manager/MembershipRequestMailTest.java
 server io/popdesk/issue/MentionTest.java
-web src/components/PeoplePicker.test.tsx
-web src/components/ConfirmDialog.error.test.tsx
 web src/app/layout.inbox.test.tsx
-web src/screens/C7Inbox.test.tsx
-web src/screens/C4IssueDetail.comments4.test.tsx
-web src/screens/C4IssueDetail.mentions.test.tsx
 server io/popdesk/inbox/InboxRecipientsTest.java
 server io/popdesk/inbox/InboxRulesTest.java
 server io/popdesk/inbox/InboxReadTest.java
