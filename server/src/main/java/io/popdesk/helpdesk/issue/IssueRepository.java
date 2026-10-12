@@ -80,7 +80,8 @@ public class IssueRepository {
             + "i.assignee_id, asg.name as assignee_name, asg.role as assignee_role, "
             + "asgp.updated_at as assignee_photo_updated_at, " + ASSIGNEE_UNAVAILABLE + " as assignee_unavailable";
 
-    private static final String FROM = " from issue i join company c on c.id = i.company_id "
+    /** The joins of {@link #COLUMNS} to the issue {@code i}. */
+    private static final String JOINS = "join company c on c.id = i.company_id "
             + "join account r on r.id = i.reporter_id "
             + "left join account_photo rp on rp.account_id = i.reporter_id "
             + "left join account cb on cb.id = i.created_by "
@@ -88,7 +89,7 @@ public class IssueRepository {
             + "left join account asg on asg.id = i.assignee_id "
             + "left join account_photo asgp on asgp.account_id = i.assignee_id ";
 
-    private static final String SELECT = "select " + COLUMNS + FROM;
+    private static final String SELECT = "select " + COLUMNS + " from issue i " + JOINS;
 
     private static final String NEWEST_FIRST = " order by i.created_at desc, i.number desc, i.id";
 
@@ -161,6 +162,10 @@ public class IssueRepository {
      * the newest issues backward and tries the search text on each, which on 100,000 issues took 2
      * seconds for a text few issues hold (slice 3 design section 3). The total counts the same rows, so
      * a text many issues hold is searched once for the page and its count.
+     *
+     * <p>The page stands first in the FROM list on purpose. With nine relations the planner keeps the
+     * written join order, and with the issue first it joined every issue to its company and people
+     * before it looked at the page (200 ms on 100,000 issues for a page of 10).
      */
     public Found search(Viewer viewer, IssueFilter filter, long offset, int limit) {
         Condition where = condition(viewer, filter);
@@ -168,8 +173,8 @@ public class IssueRepository {
         List<IssueRow> rows = jdbc.sql("with found as materialized (select i.id, i.created_at, i.number from issue i "
                         + "join company c on c.id = i.company_id where " + where.sql() + "), "
                         + "page as (select id from found order by created_at desc, number desc, id offset ? limit ?) "
-                        + "select " + COLUMNS + ", (select count(*) from found) as total" + FROM
-                        + "where i.id in (select id from page)" + NEWEST_FIRST)
+                        + "select " + COLUMNS + ", (select count(*) from found) as total "
+                        + "from page p join issue i on i.id = p.id " + JOINS + NEWEST_FIRST)
                 .params(concat(where.params(), offset, limit))
                 .query((rs, n) -> {
                     total[0] = rs.getLong("total");
