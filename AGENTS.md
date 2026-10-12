@@ -28,7 +28,9 @@ Order of authority when documents disagree: roadmap → ADR → canonical docs (
 
 - Run only the tests for what you changed, one runner at a time (the dev machine has 16 GB). CI also runs only the jobs for the parts a change touches; release tags run everything (ADR D-48). When you add a CI job, give it a path filter.
 - After a push, watch the CI run to the end (`gh run watch`). After a scripted edit, check the result with `grep` before reporting it as changed.
-- Commands will be listed here once the first slice lands.
+- Server, in `server/`: `./mvnw -B test -Dtest=ClassA,ClassB`. Web, in `web/`: `pnpm --filter @popdesk/console test` (or `portal`, `ui`), `pnpm typecheck`, `pnpm lint`, `pnpm dup`. Gates, from the root: `python scripts/ci/tests-lock.py check`, `python scripts/ci/check-test-style.py`.
+- Structure is kept by checks, not by wording (ADR D-57): no new cycle between server packages, no import between the two web apps, a limit on duplicated web code. When one fails, move the code or turn the dependency around; do not edit a baseline or a limit.
+- Code both web apps need goes into `web/packages/app` (`@popdesk/app`) and takes what differs between the apps as arguments.
 
 ## Writing
 

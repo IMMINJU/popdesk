@@ -127,7 +127,7 @@ export const en: Record<keyof typeof ko, string> = {
   'portalIssue.tooLateToReopen': 'Closed more than 14 days ago; it cannot be reopened. Please file a new issue.',
   'portalIssueCreate.keyReused': 'The filing could not be confirmed. Press "Submit" again.',
 
-  // Slice 4 (design/slices/4-talk/screens.md 1절).
+  // Slice 4 (design/archive/4-talk/screens.md 1절).
   'inbox.title': 'Inbox',
   'inbox.link': 'Notifications',
   'inbox.count': '{count} unread',

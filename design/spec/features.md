@@ -42,7 +42,7 @@
 
 ## 5. 댓글과 멘션 (CMT, MNT)
 
-→ `../slices/4-talk/rules.md`로 옮김(4번 묶음).
+→ `../archive/4-talk/rules.md`로 옮김(4번 묶음).
 
 ## 6. 첨부 (ATT)
 
@@ -108,7 +108,7 @@
 
 ## 10. 알림 (INBOX, MAIL, HOOK)
 
-→ 알림 표, INBOX-1~4, MAIL-1~5, HOOK-1은 `../slices/4-talk/rules.md`로 옮김(4번 묶음). 아래는 뒤 묶음의 것이다: 표의 줄은 6번(작업 담당자, 연결)과 8번(SLA), MAIL-7은 12번이다(MAIL-6은 `../slices/4b-delivery/rules.md`로 옮김). MAIL-1의 `Reply-To`와 MAIL-4의 휴지통 확인도 12번과 7번에서 채운다.
+→ 알림 표, INBOX-1~4, MAIL-1~5, HOOK-1은 `../archive/4-talk/rules.md`로 옮김(4번 묶음). 아래는 뒤 묶음의 것이다: 표의 줄은 6번(작업 담당자, 연결)과 8번(SLA), MAIL-7은 12번이다(MAIL-6은 `../archive/4b-delivery/rules.md`로 옮김). MAIL-1의 `Reply-To`와 MAIL-4의 휴지통 확인도 12번과 7번에서 채운다.
 
 | 일 | 고객(올린 사람) | 상담 쪽 | 팀 웹훅 |
 |---|---|---|---|
@@ -216,4 +216,4 @@
 | OPS-1 | 운영 경보: 다음 일이 생기면 관리자 전부의 알림함에 항목을 남긴다. 보내기 대기에 `failed` 행이 생김(MAIL-6 포함), 한 채널의 보내기 실패가 한 시간 넘게 이어짐, 정리 작업(OPS-2) 하나가 하루 넘게 돌지 않음, 첨부 총량이 한도의 80%를 넘음(ATT-3), 문의 자동 정리가 처음 켜짐(PII-6), 내보내기 실패(PII-8). 같은 종류의 경보는 풀리기 전까지 하루에 한 건만 남긴다 |
 | OPS-2 | 정리 작업(보내기 대기의 `failed` 행, 임시 이미지, 첨부 파일, 세션, 받은·보낸 메일의 `Message-ID`, 비밀번호 재설정 토큰, `Idempotency-Key`, 감사 로그 보관, 문의 자동 정리, 휴지통 영구 삭제)마다 마지막으로 돈 시각과 지운 수를 DB에 남기고 지표로도 낸다 |
 
-→ OPS-3은 `../slices/4b-delivery/rules.md`로 옮김(4b 묶음). 메일 받기와 OIDC의 줄은 12번과 11번에서 채운다.
+→ OPS-3은 `../archive/4b-delivery/rules.md`로 옮김(4b 묶음). 메일 받기와 OIDC의 줄은 12번과 11번에서 채운다.
