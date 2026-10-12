@@ -25,6 +25,7 @@ import io.popdesk.support.WebhookReceiver.Reply;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.IntSupplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,6 +71,17 @@ class ResendTest extends Delivery.PlainApp {
                 () -> fixtures.comment(agent, key, Unique.text("Answer")));
     }
 
+    /** {@code kind} of the queue row with this ID (the ID the failed list gives), read from the table. */
+    private String queuedKind(long id) {
+        for (Map<String, Object> row : db.rows("select id, kind from outbox")) {
+            if (row.get("id") instanceof Number n && n.longValue() == id) {
+                assertThat(row.get("kind")).as("kind of the queue row %d", id).isNotNull();
+                return String.valueOf(row.get("kind"));
+            }
+        }
+        throw new AssertionError("No queue row " + id);
+    }
+
     private void awaitGoneFromTheFailedList(Session admin, long id) {
         Wait.untilAsserted("row " + id + " gone from the failed list",
                 () -> assertThat(Delivery.isFailed(admin, id)).as("row %d is in the failed list", id).isFalse());
@@ -79,8 +91,9 @@ class ResendTest extends Delivery.PlainApp {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"MAIL", "WEBHOOK", "AUDIT_FORWARD"})
-    @DisplayName("S4B-AC-14 an admin sends a failed row of each channel again: 204, it goes out at once without "
-            + "the clock moving, and it leaves the failed list")
+    @DisplayName("S4B-AC-14 S4B-AC-18 an admin sends a failed row of each channel again: 204, it goes out at once "
+            + "without the clock moving, and it leaves the failed list; sending it once more is 404, as for a row "
+            + "that never was")
     void failedRowGoesOutWhenSentAgain(String channel) {
         Cast c = cast();
         JsonNode row;
@@ -116,6 +129,10 @@ class ResendTest extends Delivery.PlainApp {
         Wait.until("the " + channel + " row sent again, without the clock moving",
                 () -> arrived.getAsInt() > before ? row : null);
         awaitGoneFromTheFailedList(admin, id(row));
+        Wait.untilAsserted("the row deleted after it went out",
+                () -> assertRefused(Delivery.resendRequest(admin, id(row)).send(), 404, "NOT_FOUND"));
+        assertThat(Delivery.resendRequest(admin, id(row)).send().text()).as("body for a row that went out")
+                .isEqualTo(Delivery.resendRequest(admin, NO_ROW).send().text());
     }
 
     // S4B-AC-15
@@ -159,13 +176,16 @@ class ResendTest extends Delivery.PlainApp {
         Wait.untilAsserted("the row deleted: sending it again finds nothing",
                 () -> assertRefused(Delivery.resendRequest(admin, id(row)).send(), 404, "NOT_FOUND"));
         assertThat(Delivery.isFailed(admin, id(row))).as("the row is in the failed list").isFalse();
+        assertThat(notifications(mail(), recipient.email())).as("mails to %s after the row was deleted",
+                recipient.email()).isEmpty();
     }
 
     // S4B-AC-16
 
     @Test
     @DisplayName("S4B-AC-16 a row sent again while its receiver still refuses is tried at once, waits in the queue "
-            + "and is tried again an hour later, and is failed again 24 hours after it was sent again")
+            + "and is tried again a second later as a row that never failed, again an hour later, and is failed "
+            + "again 24 hours after it was sent again")
     void resentRowThatFailsAgainIsRetriedAndThenFailed() {
         Cast c = cast();
         FailedWebhook failed = DeliverySteps.failedWebhook(this, fixtures, c.customer(), c.code());
@@ -181,9 +201,12 @@ class ResendTest extends Delivery.PlainApp {
                 .isFalse();
         assertThat(Delivery.status(admin).path("webhook").path("queued").asLong(-1)).as("webhook.queued")
                 .isGreaterThanOrEqualTo(1);
+        clock.advance(Duration.ofSeconds(1));
+        Wait.until("a second attempt a second later: the count of attempts started over",
+                () -> Delivery.webhooks(webhook(), failed.issueKey()).size() == before + 2 ? failed : null);
         clock.advance(Duration.ofHours(1));
         Wait.until("another attempt an hour later",
-                () -> Delivery.webhooks(webhook(), failed.issueKey()).size() == before + 2 ? failed : null);
+                () -> Delivery.webhooks(webhook(), failed.issueKey()).size() == before + 3 ? failed : null);
         assertThat(Delivery.isFailed(admin(), failed.id())).as("the row is failed an hour after it was sent again")
                 .isFalse();
 
@@ -207,25 +230,6 @@ class ResendTest extends Delivery.PlainApp {
         assertRefused(missing, 404, "NOT_FOUND");
         assertRefused(notANumber, 404, "NOT_FOUND");
         assertThat(notANumber.text()).as("body for an ID that is no number").isEqualTo(missing.text());
-    }
-
-    @Test
-    @DisplayName("S4B-AC-18 a row that went out after it was sent again is gone: sending it once more is 404, as "
-            + "for a row that never was")
-    void rowThatWentOutIsNotFound() {
-        Cast c = cast();
-        FailedWebhook failed = DeliverySteps.failedWebhook(this, fixtures, c.customer(), c.code());
-        Session admin = admin();
-        int before = Delivery.webhooks(webhook(), failed.issueKey()).size();
-        Delivery.resend(admin, failed.id());
-        Wait.until("the webhook sent again", () -> Delivery.webhooks(webhook(), failed.issueKey()).size() > before
-                ? failed : null);
-        awaitGoneFromTheFailedList(admin, failed.id());
-
-        Wait.untilAsserted("the row deleted after it went out",
-                () -> assertRefused(Delivery.resendRequest(admin, failed.id()).send(), 404, "NOT_FOUND"));
-        assertThat(Delivery.resendRequest(admin, failed.id()).send().text()).as("body for a row that went out")
-                .isEqualTo(Delivery.resendRequest(admin, NO_ROW).send().text());
     }
 
     @Test
@@ -257,7 +261,7 @@ class ResendTest extends Delivery.PlainApp {
 
     @Test
     @DisplayName("S4B-AC-20 sending a mail row and a webhook row again leaves one DELIVERY_RESENT entry each: the "
-            + "admin who did it, channel and kind in the changes, and nowhere the recipient's address, the "
+            + "admin who did it, the row's channel and kind in the changes, and nowhere the recipient's address, the "
             + "issue's title, or the webhook URL; a 404 leaves none, and the integrity check still passes")
     void resendingIsAuditedWithoutAddressesOrTitles() {
         Cast c = cast();
@@ -270,6 +274,8 @@ class ResendTest extends Delivery.PlainApp {
         });
         JsonNode mailRow = failedAnswerMail(fixtures.signInAgain(c.agent()), c.customer(), key[0]);
         Session admin = fixtures.signInAgain(resender);
+        String hookKind = queuedKind(id(hook));
+        String mailKind = queuedKind(id(mailRow));
 
         Delivery.resend(admin, id(hook));
         Delivery.resend(admin, id(mailRow));
@@ -291,8 +297,9 @@ class ResendTest extends Delivery.PlainApp {
             }
         }
         assertThat(entries.stream().map(e -> e.path("changes").path("channel").asString("")
-                .toUpperCase(Locale.ROOT)).toList()).as("channels of the two entries")
-                .containsExactlyInAnyOrder("MAIL", "WEBHOOK");
+                .toUpperCase(Locale.ROOT) + " " + e.path("changes").path("kind").asString("")).toList())
+                .as("channel and kind of the two entries, the kind as the queue row has it")
+                .containsExactlyInAnyOrder("MAIL " + mailKind, "WEBHOOK " + hookKind);
 
         assertRefused(Delivery.resendRequest(admin, NO_ROW).send(), 404, "NOT_FOUND");
 

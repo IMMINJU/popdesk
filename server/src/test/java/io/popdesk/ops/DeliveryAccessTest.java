@@ -9,6 +9,7 @@ import io.popdesk.notify.DeliverySteps.FailedWebhook;
 import io.popdesk.support.ApiClient;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Wait;
+import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,12 +18,12 @@ import org.junit.jupiter.api.Test;
 /**
  * Who may send a failed row again and send a test mail (COM-2, D-43): admins only, on the console
  * host only. A refused request changes nothing: the row stays failed and no mail goes out.
+ *
+ * <p>A customer has no session the console counts ({@code audit.AuditLogAccessTest}): on the portal
+ * host both paths are 404, and the customer's session cookies carried to the console host are no
+ * session there, so the answer is 401.
  */
 class DeliveryAccessTest extends Delivery.PlainApp {
-
-    private static String resend(Object id) {
-        return Delivery.FAILED + "/" + id + "/resend";
-    }
 
     @BeforeEach
     void cleanStart() {
@@ -37,8 +38,9 @@ class DeliveryAccessTest extends Delivery.PlainApp {
     }
 
     @Test
-    @DisplayName("S4B-AC-19 an agent gets 403 for sending a failed row again and for a test mail, and nothing "
-            + "happens: the row stays failed and unsent and no mail goes out; the admin then does both")
+    @DisplayName("S4B-AC-19 an agent gets 403 for sending a failed row again and for a test mail, a customer whose "
+            + "session cookies are carried to the console host gets 401, and nothing happens: the row stays "
+            + "failed and unsent and no mail goes out; the admin then does both")
     void agentIsForbiddenAndNothingHappens() {
         Cast c = cast();
         FailedWebhook failed = DeliverySteps.failedWebhook(this, fixtures, c.customer(), c.code());
@@ -48,11 +50,19 @@ class DeliveryAccessTest extends Delivery.PlainApp {
 
         assertError(Delivery.resendRequest(agent, failed.id()).send(), 403, "FORBIDDEN");
         assertError(Delivery.testMailRequest(agent).send(), 403, "FORBIDDEN");
+        Session customer = fixtures.signInAgain(c.customer());
+        ApiClient carried = console();
+        customer.client().cookies().forEach(carried::setCookie);
+        assertError(carried.post(Delivery.resendPath(failed.id())).send(), 401, "UNAUTHENTICATED");
+        assertError(carried.post(Delivery.TEST_MAIL).send(), 401, "UNAUTHENTICATED");
 
         awaitALaterMail(admin);
         assertThat(DeliverySteps.mailsTo(mail(), agent.email())).as("mails to the agent").isEmpty();
+        assertThat(DeliverySteps.mailsTo(mail(), customer.email())).as("mails to the customer").isEmpty();
         assertThat(Delivery.isFailed(admin, failed.id())).as("the row is still in the failed list").isTrue();
-        assertThat(Delivery.webhooks(webhook(), failed.issueKey())).as("attempts of the row").hasSize(attempts);
+        Wait.holds("no new attempt of the row", Duration.ofSeconds(2),
+                () -> Delivery.webhooks(webhook(), failed.issueKey()).size() == attempts);
+        assertThat(Delivery.isFailed(admin, failed.id())).as("the row is still in the failed list").isTrue();
         // What the agent may not do, the admin does.
         Delivery.resend(admin, failed.id());
         Wait.until("the webhook sent again for the admin",
@@ -66,7 +76,7 @@ class DeliveryAccessTest extends Delivery.PlainApp {
     void signedOutIsUnauthenticated() {
         ApiClient anonymous = console();
 
-        assertError(anonymous.post(resend(DeliverySteps.NO_ROW)).send(), 401, "UNAUTHENTICATED");
+        assertError(anonymous.post(Delivery.resendPath(DeliverySteps.NO_ROW)).send(), 401, "UNAUTHENTICATED");
         assertError(anonymous.post(Delivery.TEST_MAIL).send(), 401, "UNAUTHENTICATED");
     }
 
@@ -76,7 +86,7 @@ class DeliveryAccessTest extends Delivery.PlainApp {
     void withoutCsrfTokenIsForbidden() {
         Session admin = admin();
 
-        assertError(admin.client().post(resend(DeliverySteps.NO_ROW)).withoutCsrf().send(), 403,
+        assertError(admin.client().post(Delivery.resendPath(DeliverySteps.NO_ROW)).withoutCsrf().send(), 403,
                 "CSRF_TOKEN_INVALID");
         assertError(admin.client().post(Delivery.TEST_MAIL).withoutCsrf().send(), 403, "CSRF_TOKEN_INVALID");
 
@@ -90,9 +100,9 @@ class DeliveryAccessTest extends Delivery.PlainApp {
         Cast c = cast();
         ApiClient anonymous = portal();
 
-        assertError(c.customer().client().post(resend(DeliverySteps.NO_ROW)).send(), 404, "NOT_FOUND");
+        assertError(c.customer().client().post(Delivery.resendPath(DeliverySteps.NO_ROW)).send(), 404, "NOT_FOUND");
         assertError(c.customer().client().post(Delivery.TEST_MAIL).send(), 404, "NOT_FOUND");
-        assertError(anonymous.post(resend(DeliverySteps.NO_ROW)).send(), 404, "NOT_FOUND");
+        assertError(anonymous.post(Delivery.resendPath(DeliverySteps.NO_ROW)).send(), 404, "NOT_FOUND");
         assertError(anonymous.post(Delivery.TEST_MAIL).send(), 404, "NOT_FOUND");
 
         awaitALaterMail(c.admin());

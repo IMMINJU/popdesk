@@ -203,6 +203,19 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
         for (String address : addresses) {
             assertThat(mail().messagesTo(address)).as("mail to %s", address).isEmpty();
         }
+        Map<Long, String> addressOf = new LinkedHashMap<>();
+        people.forEach(person -> addressOf.put(person.accountId(), person.email()));
+        addressOf.put(invited, invitedEmail);
+        addressOf.put(c.admin().accountId(), AppTest.ADMIN_EMAIL);
+        addressOf.forEach((account, address) -> {
+            for (ReceivedMail m : Delivery.redirected(mail(), account)) {
+                assertThat(Delivery.foundIn(everything(m), address)).as("the address of account %s in the mail "
+                        + "redirected from it: %s", account, m.subject()).isEmpty();
+            }
+        });
+        // Mail was refused and then let through above; neither way may log the address.
+        assertThat(log.lines()).as("log lines read").isNotEmpty();
+        assertThat(Delivery.foundIn(log.all(), SANDBOX_TO)).as("the sandbox address in the whole log").isEmpty();
     }
 
     @Test
@@ -287,5 +300,7 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
         Wait.untilAsserted("the mail row of the customer dropped", () -> assertThat(db.count(
                 "select count(*) from outbox where channel = 'MAIL' and recipient_account_id = ?",
                 c.customer().accountId())).isZero());
+        assertThat(mail().messages()).as("mail about %s at any address, after its row was dropped", key)
+                .noneMatch(m -> (m.subject() + "\n" + m.text()).contains(key));
     }
 }

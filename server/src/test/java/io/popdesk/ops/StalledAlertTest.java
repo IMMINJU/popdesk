@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.issue.TalkFlow;
 import io.popdesk.notify.Delivery;
+import io.popdesk.notify.DeliverySteps;
+import io.popdesk.notify.DeliverySteps.FailedWebhook;
 import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
@@ -16,6 +18,7 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.JsonNode;
@@ -143,5 +146,34 @@ class StalledAlertTest extends Delivery.PlainApp {
         clock.advance(Duration.ofMinutes(61));
 
         awaitItems(fixtures.signInAgain(watcher), kind, 2, "an hour after the channel stopped again");
+    }
+
+    @Test
+    @DisplayName("S4B-AC-29 a channel with nothing but a row that was given up is not stalled: 61 minutes after "
+            + "the webhook last sent, with one failed row and nothing queued, there is no new WEBHOOK_STALLED "
+            + "item; a new webhook that then fails for over an hour gives one")
+    void failedRowAloneDoesNotStallTheChannel() {
+        String kind = "WEBHOOK_STALLED";
+        Cast c = cast();
+        Session watcher = person(c.admin(), Role.ADMIN, "Watcher");
+        FailedWebhook failed = DeliverySteps.failedWebhook(this, fixtures, c.customer(), c.code());
+        // The receiver works again. One webhook goes out, which resolves an alert raised while the row failed.
+        String sent = queueOne("WEBHOOK", c);
+        awaitAttempts("WEBHOOK", sent, 1);
+        awaitNothingQueued("WEBHOOK");
+        assertThat(Delivery.isFailed(admin(), failed.id())).as("the row is in the failed list").isTrue();
+        int before = items(fixtures.signInAgain(watcher), kind).size();
+
+        clock.advance(Duration.ofMinutes(61));
+        Session at61 = fixtures.signInAgain(watcher);
+        Wait.holds("no new " + kind + " item 61 minutes on, with only a failed row", Duration.ofSeconds(3),
+                () -> items(at61, kind).size() == before);
+        assertThat(Delivery.isFailed(admin(), failed.id())).as("the row is still in the failed list").isTrue();
+
+        stop("WEBHOOK");
+        String refused = queueOne("WEBHOOK", c);
+        awaitAttempts("WEBHOOK", refused, 1);
+        clock.advance(Duration.ofMinutes(61));
+        awaitItems(fixtures.signInAgain(watcher), kind, before + 1, "an hour after a new webhook began to fail");
     }
 }

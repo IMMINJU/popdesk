@@ -41,7 +41,7 @@ class SandboxChannelsOffTest extends Delivery.SandboxNoAddress {
 
     @Test
     @DisplayName("S4B-AC-29 the channels a sandbox turned off raise no alert: with every receiving side refusing "
-            + "for over an hour, the status shows the three channels off and no admin gets a stalled item")
+            + "for over an hour in a sandbox without an address, no admin gets a stalled item")
     void channelsThatAreOffRaiseNoAlert() {
         Session admin = admin();
         Session watcher = person(admin, Role.ADMIN, "Watcher");
@@ -58,11 +58,9 @@ class SandboxChannelsOffTest extends Delivery.SandboxNoAddress {
         clock.advance(Duration.ofMinutes(61));
         Session later = fixtures.signInAgain(watcher);
 
-        for (String channel : Delivery.CHANNELS.values()) {
-            assertThat(status.path(channel).path("enabled").isBoolean()
-                    && !status.path(channel).path("enabled").booleanValue()).as("%s is off in %s", channel, status)
-                    .isTrue();
-        }
+        // That the three channels are off is SandboxNoAddressTest.status; here only that this is the sandbox.
+        assertThat(status.path("sandbox").isBoolean() && status.path("sandbox").booleanValue())
+                .as("sandbox is true in %s", status).isTrue();
         Wait.holds("no stalled item for the admin", Duration.ofSeconds(3),
                 () -> STALLED.stream().allMatch(kind -> DeliverySteps.items(later, kind).isEmpty()));
     }

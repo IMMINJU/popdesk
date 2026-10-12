@@ -255,12 +255,7 @@ public final class Delivery {
         protected Session startClean() {
             clock.advance(PAST_CLEANUP);
             Session admin = admin();
-            Wait.untilAsserted("no failed row left from earlier tests", () -> {
-                JsonNode status = status(admin);
-                for (String channel : CHANNELS.values()) {
-                    assertThat(status.path(channel).path("failed").asLong(-1)).as("%s.failed", channel).isZero();
-                }
-            });
+            DeliverySteps.awaitNoFailedRow(admin);
             return admin;
         }
 
@@ -373,9 +368,14 @@ public final class Delivery {
 
     // The two new endpoints
 
+    /** The path of {@code POST .../failed-deliveries/{id}/resend}. {@code id} may be any text. */
+    public static String resendPath(Object id) {
+        return FAILED + "/" + id + "/resend";
+    }
+
     /** {@code POST .../failed-deliveries/{id}/resend}, not sent yet. {@code id} may be any text. */
     public static ApiRequest resendRequest(Session admin, Object id) {
-        return admin.client().post(FAILED + "/" + id + "/resend");
+        return admin.client().post(resendPath(id));
     }
 
     /** Sends a failed row again; expects 204. */

@@ -16,7 +16,9 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * The mail limit in a sandbox counts the address the mail really goes to: all of it goes to one
- * address, so mail for different people adds up to 50 an hour. The clock moved 61 minutes on before
+ * address, so mail for different people adds up to 50 an hour, a test mail among them (MAIL-6). The
+ * test mail is the first admin's: this setup keeps no second active admin, who would get a mail of
+ * their own for every membership request of {@link SandboxMailTest}. The clock moved 61 minutes on before
  * the test ({@link Delivery.SandboxWithAddress}), so the mails counted are those at the sandbox address
  * since the test began, invitations included.
  */
@@ -32,8 +34,9 @@ class SandboxMailLimitTest extends Delivery.SandboxWithAddress {
     }
 
     @Test
-    @DisplayName("S4B-AC-13, S4B-AC-38 in a sandbox mail for two people adds up: after 50 at the sandbox address "
-            + "the next mail for either is failed with RATE_LIMITED, and the log never holds the address")
+    @DisplayName("S4B-AC-13, S4B-AC-38 in a sandbox mail for two people and a test mail add up: after 49 mails and "
+            + "a test mail at the sandbox address the next mail for either person is failed with RATE_LIMITED, and "
+            + "the log never holds the address")
     void mailForTwoPeopleAddsUp() {
         Cast c = cast();
         Session second = person(c.admin(), Role.CUSTOMER, "Second", c.code());
@@ -45,11 +48,16 @@ class SandboxMailLimitTest extends Delivery.SandboxWithAddress {
         answer(c.agent(), other, 1);
         Delivery.awaitRedirected(mail(), second.accountId(), m -> m.text().contains(other));
         int left = MAIL_LIMIT - atSandboxAddress();
-        assertThat(left).as("mails left of the %s this hour", MAIL_LIMIT).isPositive();
+        assertThat(left).as("mails left of the %s this hour", MAIL_LIMIT).isGreaterThan(1);
 
-        answer(c.agent(), first, left / 2);
-        answer(secondAgent, other, left - left / 2);
-        Wait.untilAsserted(MAIL_LIMIT + " mails at the sandbox address", Duration.ofSeconds(60),
+        answer(c.agent(), first, (left - 1) / 2);
+        answer(secondAgent, other, left - 1 - (left - 1) / 2);
+        Wait.untilAsserted((MAIL_LIMIT - 1) + " mails at the sandbox address", Duration.ofSeconds(60),
+                () -> assertThat(atSandboxAddress()).isEqualTo(MAIL_LIMIT - 1));
+        JsonNode testMail = Delivery.testMail(c.admin());
+        assertThat(testMail.path("ok").isBoolean() && testMail.path("ok").booleanValue()).as("ok of the test mail, "
+                + "the 50th of the hour: %s", testMail).isTrue();
+        Wait.untilAsserted(MAIL_LIMIT + " mails at the sandbox address, the test mail among them",
                 () -> assertThat(atSandboxAddress()).isEqualTo(MAIL_LIMIT));
         answer(c.agent(), first, 1);
         answer(secondAgent, other, 1);

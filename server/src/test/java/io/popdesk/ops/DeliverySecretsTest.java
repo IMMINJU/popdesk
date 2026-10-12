@@ -35,13 +35,16 @@ class DeliverySecretsTest extends Delivery.PlainApp {
     }
 
     @Test
-    @DisplayName("S4B-AC-31 the system status, the failed list with a failed row in it, and the answers of a test "
+    @DisplayName("S4B-AC-31 the system status, the failed list with a webhook row and an outside copy row in it, "
+            + "and the answers of a test "
             + "mail that went out, was refused, and found no server hold no SMTP password, webhook URL, or "
             + "address and token of the outside copy")
     void answersHoldNoSecret() {
         Cast c = cast();
         Session tester = person(c.admin(), Role.ADMIN, "Tester");
         DeliverySteps.failedWebhook(this, fixtures, c.customer(), c.code());
+        assertThat(failAuditCopies(() -> fixtures.createCompany(admin()))).as("failed rows of the outside copy")
+                .isNotEmpty();
         Session admin = fixtures.signInAgain(tester);
         Map<String, String> answers = new LinkedHashMap<>();
 
@@ -53,7 +56,8 @@ class DeliverySecretsTest extends Delivery.PlainApp {
         smtp().drop();
         answers.put("test mail without a server", Delivery.testMailRequest(admin).expect(200).text());
 
-        assertThat(Delivery.failedRows(admin)).as("rows of the failed list").isNotEmpty();
+        assertThat(Delivery.failedRows(admin).stream().map(n -> n.path("channel").asString("")).distinct().toList())
+                .as("channels of the rows of the failed list").contains("WEBHOOK", "AUDIT_FORWARD");
         String receiver = "127.0.0.1:" + webhook().port();
         List<String> secrets = List.of(MailServer.PASSWORD, webhook().url(), receiver, "/hook",
                 "http://" + receiver + Delivery.AUDIT_COPY_PATH, Delivery.AUDIT_COPY_PATH, Delivery.AUDIT_COPY_TOKEN);

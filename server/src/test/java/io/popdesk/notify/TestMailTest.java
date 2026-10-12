@@ -180,11 +180,11 @@ class TestMailTest extends Delivery.PlainApp {
     }
 
     @Test
-    @DisplayName("S4B-AC-24 a reply of more than 600 characters comes back cut at 500")
+    @DisplayName("S4B-AC-24 a reply a little over 500 characters comes back cut at 500")
     void longReplyIsCut() {
         Session tester = tester();
         String word = IssueFlow.word();
-        smtp().refuseMessage("554 5.6.0 " + word + " " + "x".repeat(600));
+        smtp().refuseMessage("554 5.6.0 " + word + " " + "x".repeat(510));
 
         String reply = replyOfAFailure(Delivery.testMail(tester));
 

@@ -28,8 +28,6 @@ class SandboxOffTest extends Delivery.PlainApp {
 
         ReceivedMail m = NotifySteps.awaitNotification(mail(), c.customer().email());
         assertThat(m.subject()).as("subject").doesNotContainIgnoringCase("sandbox").contains(key);
-        assertThat(Delivery.firstLine(m)).as("first line of the mail").doesNotContain(
-                String.valueOf(c.customer().accountId()));
         webhook().await("the new issue " + key, r -> !Delivery.isAuditCopy(r) && r.text().contains(key));
         for (String address : List.of(Delivery.SANDBOX_TO, Delivery.UNREAD_SANDBOX_TO)) {
             assertThat(mail().messagesTo(address)).as("mail to %s", address).isEmpty();

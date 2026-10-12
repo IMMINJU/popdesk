@@ -64,7 +64,8 @@ class SandboxNoAddressTest extends Delivery.SandboxNoAddress {
 
     @Test
     @DisplayName("S4B-AC-03 in a sandbox without an address an invitation is not mailed: the response carries "
-            + "the link, and the log has one line with the address masked and no link or token")
+            + "the link, and the log has one line with the address masked and no link or token; a password "
+            + "reset is logged the same way, and neither opens an SMTP connection")
     void invitationIsLoggedNotSent() {
         Session admin = admin();
         String email = Unique.email("quentin");
@@ -80,6 +81,22 @@ class SandboxNoAddressTest extends Delivery.SandboxNoAddress {
                 .doesNotContain(link);
         assertThat(Delivery.foundIn(log.since(mark), email)).as("the invited address in the log").isEmpty();
         assertThat(mail().messagesTo(email)).as("mail to the invited address").isEmpty();
+
+        Company company = fixtures.createCompany(admin);
+        Session forgetful = fixtures.accept(invite(admin, Role.CUSTOMER, Unique.email("quincy"),
+                Unique.text("Quincy"), List.of(company.code())));
+        Wait.untilAsserted("the mail row of that invitation gone", () -> assertThat(mailRows(forgetful)).isZero());
+        AppLog.Mark reset = log.mark();
+
+        portal().post("/api/public/password-reset/request").json(Map.of("email", forgetful.email())).expect(202);
+
+        Wait.until("a log line with the masked address q*** for the password reset",
+                () -> maskedLines(reset).isEmpty() ? null : reset);
+        Wait.untilAsserted("the mail row of the password reset deleted",
+                () -> assertThat(mailRows(forgetful)).isZero());
+        assertThat(Delivery.foundIn(log.since(reset), forgetful.email())).as("the address in the log").isEmpty();
+        assertThat(mail().messagesTo(forgetful.email())).as("mail to the address of the password reset").isEmpty();
+        assertThat(smtp().connections()).as("connections to the SMTP server").isZero();
     }
 
     @Test
