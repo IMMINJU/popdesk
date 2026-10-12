@@ -39,6 +39,20 @@ This version adds customer managers (migration 8): a manager mark and a row ID o
 - **There is no way back to the old image.** After this migration the 0.2.0 image does not start on the database (see [below](#the-database-is-newer-than-the-app)). To go back, restore the backup you took before the upgrade; what was written after it is lost.
 - Nothing has to be set. An admin marks managers on the console afterwards.
 
+The same version adds the search of issues, their assignee and history, and the keys that keep an issue from being filed twice (migrations 9 to 11). Migration 9 creates the `pg_trgm` extension, new columns and tables, and one history entry ("created") for every issue that is there. Migration 10 reads every issue and stores the text the search looks in: the title and the content without its Markdown marks. Migration 11 builds the search index.
+
+- **The database needs the `pg_trgm` extension.** With the Compose file's database nothing has to be done. With your own or a managed PostgreSQL, the app's database user must be allowed to create the extension, or an administrator creates it before the upgrade (`CREATE EXTENSION pg_trgm;` in popdesk's database); see [configuration.md](configuration.md#a-database-you-run-yourself). When the extension is missing and cannot be created, popdesk does not start and logs this line; nothing of migration 9 is kept, so create the extension and start again:
+
+  ```
+  Database migration 9 failed, so popdesk did not start: the database popdesk has no pg_trgm extension, which the issue search needs, and the database user popdesk could not create it. Have a database administrator run CREATE EXTENSION pg_trgm; in the database popdesk, then start popdesk again. Nothing of this migration was kept.
+  ```
+
+- **How long it takes.** Measured on a development machine with 100,000 issues of about 2,000 characters each: migration 9 took 1.5 seconds, migration 10 took 13 seconds, and migration 11 took 51 seconds, 78 seconds from start to healthy. It grows with the number of issues and the length of their content; count them with `SELECT count(*) FROM issue;`. The ports stay closed meanwhile, as in the 0.2.0 upgrade above: with some hundreds of thousands of issues, or a slow disk, raise the health check's `start_period` before you upgrade. Each of the three migrations runs in its own transaction. If the app is stopped in between, the next start goes on with the first one that is not done.
+- **The database grows.** The search text is a second copy of every issue's text, and the index comes on top. In the measurement above the issue table with its indexes went from 279 MB to 722 MB (191 MB of it the search index), and the whole database from 289 MB to 748 MB. Make sure the database's disk has room for about twice the size of the issue table more before you upgrade. Check it with `SELECT pg_size_pretty(pg_total_relation_size('issue'));`.
+- **There is no way back to the old image**, as above.
+- **Searching.** A search text of three or more characters uses the index: in the measurement, a text that 10 of the 100,000 issues hold took 1 millisecond in the database, and one that 20,000 hold took 0.55 seconds. A text of one or two characters cannot use the index and reads every issue, about 2 seconds there. An account can send 60 searches a minute.
+- A dump taken with `popdesk backup` from this version on names the extension. `popdesk restore` restores it into an empty database when the app's database user may create the extension, or when the extension is there already.
+
 ## A migration failed
 
 popdesk stops and logs a line like this:

@@ -102,7 +102,11 @@ Everything a manager does goes to the audit log.
 | See a private issue | Yes | No (404) | Yes | Yes |
 | File an issue | Yes, in an active company they belong to | – | On behalf of a customer only | On behalf of a customer only |
 | Edit title, description, priority | Yes | No (403) | Yes | Yes |
-| Set or clear assignee | – | – | Yes | Yes |
+| Set or clear assignee, list who can be assigned | – | – | Yes | Yes |
+| List the customers of a company to file for | – | – | Yes | Yes |
+| Filter the list by status, company, search text | Yes | Yes | Yes | Yes |
+| Filter the list by reporter | Own issues only | Own issues only | Yes | Yes |
+| Filter the list by assignee | – | – | Yes | Yes |
 | Change status (staff transitions) | – | – | Yes | Yes |
 | Close from any open status, confirm a resolution | Yes | No (403) | Through status changes (not from `IN_PROGRESS`) | Through status changes (not from `IN_PROGRESS`) |
 | Reopen a `RESOLVED` issue, or a `CLOSED` one within 14 days | Yes | No (403) | Yes | Yes |
@@ -111,11 +115,17 @@ Everything a manager does goes to the audit log.
 | See SLA state and remaining time | – | – | Yes | Yes |
 | See the trash, delete, restore, purge | – | – | – | Yes |
 
-On a `CLOSED` issue nothing can be edited, commented on, attached, labelled, or given a due date (400); tasks and notes are read-only.
+On a `CLOSED` issue nothing can be edited, commented on, attached, labelled, or given a due date (400); tasks and notes are read-only. Its assignee can still be set and cleared.
 
-Assignee: an active admin, or an active agent assigned to that company (`ISSUE-7`).
+A filter or a search text only narrows what the caller sees. The code of a company the caller cannot see, or an account that does not exist, gives an empty list, not an error.
 
-Filing on behalf (`ISSUE-9`): the customer must be an active customer account that belongs to that company, and the company must be active (otherwise 400). The issue records the customer as reporter and the staff member as creator.
+Assignee: an active admin, or an active agent assigned to that company (`ISSUE-7`). An assignment to another company does not count. The list of who can be assigned gives the account ID, name, and role of those accounts, to staff who see the company.
+
+When an agent is taken off a company, or an account is suspended, the issues they are assigned to keep them as assignee (`PROJ-4`). Such an issue is marked "assignee unavailable" for staff, and the assignee filter finds these issues. Before either action the admin is shown how many open issues the person is assigned to (for taking an agent off a company, those of that company only) and can choose to clear them in the same request (`ACCT-7`). Clearing leaves `CLOSED` issues as they are, writes an entry by the admin into the history of each cleared issue, sends no webhook message, and puts the number of cleared issues into the audit entry of the action.
+
+Filing on behalf (`ISSUE-9`): the customer must be an active customer account that belongs to that company, and the company must be active (otherwise 400). The issue records the customer as reporter and the staff member as creator. To pick the customer, staff read a list of the company's active customers with account ID, name, and email, and can search it by name or email. An agent reads it for assigned companies only (404 for others). Customers who have not accepted their invitation and suspended ones are not in it. The member list of a company, with statuses and manager marks, stays with admins and the company's manager.
+
+Customers never see the assignee, the staff member who filed an issue for them, how the request came in, or the history. An issue filed for them only says that the support team filed it.
 
 ## Comments and mentions
 

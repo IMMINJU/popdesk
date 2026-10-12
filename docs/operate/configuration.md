@@ -82,6 +82,15 @@ If the database schema is newer than the app (for example after going back to an
 
 The database user must be allowed to create tables in the `public` schema of its database (`GRANT CREATE ON SCHEMA public TO <user>`; on PostgreSQL 15 and later only the database owner has it by default). Without it popdesk logs the missing privilege and does not start.
 
+### A database you run yourself
+
+The Compose file's `db` service needs none of this. With your own PostgreSQL, or a managed one:
+
+- **The `pg_trgm` extension.** The search of issues and accounts uses it. popdesk creates it on its first start (`CREATE EXTENSION IF NOT EXISTS pg_trgm`), which works when its database user owns the database or has the `CREATE` privilege on it. Where the user may not, popdesk does not start and logs the statement and the database name; have a database administrator run `CREATE EXTENSION pg_trgm;` in that database once, then start popdesk again. The extension ships with PostgreSQL's contrib package; a PostgreSQL without it needs that package first.
+- **Restore.** `popdesk restore` also works when an administrator created the extension, so that the app's user does not own it. It does not restore comments on database objects. The user still has to be able to create the extension, or the extension has to be there before the restore: in an empty database, create it first.
+- **The locale of the database.** Create the database with a UTF-8 locale such as `en_US.UTF-8` (the `LC_CTYPE` setting). In a database whose `LC_CTYPE` is `C`, PostgreSQL makes no trigrams of Korean and other non-ASCII text, so a search for such text reads every issue instead of the index. The results are the same; it only gets slow as issues add up. `SELECT datctype FROM pg_database WHERE datname = current_database();` shows the setting, and it cannot be changed without making the database again.
+- **Size.** The text the search looks in and its index take more space than the issues themselves: with 100,000 issues of about 2,000 characters the issue table went from 279 MB to 722 MB ([upgrade.md](upgrade.md#upgrading-to-the-version-after-020)).
+
 ### Health checks while starting
 
 popdesk starts in this order: it takes the single-instance database lock, runs database migrations, creates the first admin if needed, and only then opens its ports. While migrations run, health checks cannot connect at all; this can take a long time on an upgrade.
@@ -126,6 +135,7 @@ popdesk serves plain HTTP only. Terminate TLS at a reverse proxy in front of it 
 - The default trusts every private range. Without a proxy, a client on your office network, or any client when Docker Desktop or rootless Docker shows outside traffic as coming from a private gateway address, can set `X-Forwarded-For` and get around the sign-in rate limit per address. Without a proxy, set `POPDESK_TRUSTED_PROXIES` to an address nothing connects from (for example `127.0.0.1`); with a proxy, set it to the proxy's address only.
 - Use TLS 1.2 or later at the proxy and let it send `Strict-Transport-Security`. popdesk receives plain HTTP from the proxy, so it does not add that header itself.
 - Set `POPDESK_PUBLIC_SCHEME=https` and `POPDESK_PUBLIC_PORT=443`. With `https`, cookies get the `Secure` attribute and email links use `https`.
+- Search text travels in the address (`/api/portal/issues?q=...`), so the access log of your proxy records what people search for, which can be personal data such as a name or a phone number. popdesk itself logs no search text. Leave the query string out of the proxy's access log, or keep that log as carefully and as briefly as other personal data.
 - The proxy must pass the original host (`Host` or `X-Forwarded-Host`). A request for any other host gets a plain text 404 that names the two configured hosts and the host it came for.
 - When a trusted proxy forwards a scheme or port (`X-Forwarded-Proto`, `X-Forwarded-Port`, or a port in `X-Forwarded-Host`) other than `POPDESK_PUBLIC_SCHEME` and `POPDESK_PUBLIC_PORT`, popdesk logs one warning for each such pair. Links in emails always use the configured values, so fix the setting the warning names.
 - Traffic between `app` and `db` stays on the Compose internal network and is not encrypted. If you run the database elsewhere, add `sslmode` to `POPDESK_DB_URL` (for example `?sslmode=verify-full`).
@@ -205,6 +215,7 @@ Emails, webhook messages, and the copies of audit entries (`AUDIT_FORWARD_URL`) 
 - At most 16 uploads and, apart from them, 16 downloads run at once. The next one gets 503 `SERVER_BUSY` with `Retry-After`; clients try again.
 - A deleted attachment keeps its row as a trace without the file name. Its file is removed at once; if that fails, the delete still succeeds and the daily attachment cleanup removes the file.
 - The daily cleanup (`attachment-cleanup`) also ends uploads that never finished: a file still pending after an hour is removed. It works from the database rows only and never lists the storage.
+- The portal and the console send an `Idempotency-Key` with each new issue, so a filing sent twice makes one issue. popdesk keeps each key for 24 hours (table `issue_idempotency`: the account, the key, a hash of the fields, the issue); the hourly job `idempotency-key-cleanup` deletes older ones and shows in the cleanup metrics (`popdesk_cleanup_last_run_seconds`, `popdesk_cleanup_deleted`, label `job`). There is no setting for it.
 - The metric `popdesk_attachments_bytes` is the total that `POPDESK_ATTACHMENT_QUOTA` limits.
 - A new issue carries at most 20 files; with more the request gets 413. Each file of a new issue counts toward the account's 30 uploads in 60 seconds.
 

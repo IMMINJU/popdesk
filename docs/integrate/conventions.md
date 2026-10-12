@@ -190,6 +190,9 @@ The two requests that file an issue (`POST /api/portal/issues`, `POST /api/conso
 - The same key with other content is 409 `IDEMPOTENCY_KEY_REUSED`. The content compared is the company, title, content, priority, and whether the issue is private; for a filing on behalf also the customer and the channel. Files are not compared.
 - Two requests with the same key at the same time file one issue and use one issue number.
 - A key is kept only for a filing that succeeded. After a 400, 404, or 429 the same key can be sent again with the input put right.
+- The checks keep their order: the company (404) and the fields (400) come before the key is looked at, so a request with a used key and a field that is invalid is 400, not 409. A filing sent again is answered even if the company has stopped being `ACTIVE` since.
+- A request sent again counts toward the limit on creating issues like any other, and can be 429.
+- The issue in the answer is read like any issue: if the account can no longer see it (an agent taken off the company), the answer is 404.
 - Without the header every request files a new issue.
 
 ## Retrying on lock conflicts
@@ -221,9 +224,9 @@ A `page` past the last page returns an empty `items`. A `page` below 1 or a `siz
 
 ## Search (COM-5)
 
-- The search parameter `q` is 1 to 100 characters.
+- The search parameter `q` is 1 to 100 characters. On the issue lists and the list of customers staff can file for it is a one-line value ("Text input"): the whitespace around it is removed before it is counted and searched, so a `q` of spaces only is empty. An empty `q` is 400 with `q` `TOO_SHORT`; one over 100 characters is `TOO_LONG`.
 - Matching ignores case and finds the text anywhere in the field, not by word.
-- `%` and `_` are ordinary characters, not wildcards.
+- `%`, `_`, and `\` are ordinary characters, not wildcards.
 - Search uses a trigram index (D-13).
 - The issue lists search the title and the content as it is shown: the text of a link, the description of an image, and the text of code are searched; Markdown marks (`**`, `#`, list marks, code fences) and the addresses of links and images are not. Raw HTML in the content is searched as written.
 
@@ -252,7 +255,7 @@ Limits are per account over a 60-second window:
 | Add a comment | 30 |
 | Upload an attachment | 30 (each file of a new issue counts as one; a new issue whose files do not all fit is refused whole) |
 | Upload a profile photo | 10 |
-| List with a search term | 60 (the issue list and the account list count together) |
+| List with a search term | 60 (the issue lists, the account list, and the list of customers staff can file for count together). A list without `q` is not counted, whatever other filters it has |
 | Customer manager sends an invitation, or sends one again | 20 (both count together) |
 | Sign-in attempts | 20 per IP address |
 | Password reset requests | 20 per IP address; at most one reset email per account every 15 minutes |
