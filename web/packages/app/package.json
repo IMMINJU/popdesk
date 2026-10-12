@@ -19,6 +19,10 @@
     "./toastContext": "./src/toastContext.ts",
     "./unread": "./src/unread.ts"
   },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint ."
+  },
   "dependencies": {
     "@popdesk/i18n": "workspace:*",
     "@popdesk/ui": "workspace:*"
@@ -33,6 +37,7 @@
     "@types/react-dom": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-router": "catalog:"
+    "react-router": "catalog:",
+    "typescript": "catalog:"
   }
 }

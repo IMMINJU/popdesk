@@ -162,6 +162,11 @@ jobs:
       - run: pnpm -r ${{ steps.scope.outputs.filter }} run lint
       - run: pnpm -r --workspace-concurrency=1 ${{ steps.scope.outputs.filter }} run test $(python3 ../scripts/ci/pending.py web)
       - run: pnpm -r ${{ steps.scope.outputs.filter }} run build
+      - name: Duplicated code stays under the limit in web/.jscpd.json
+        run: pnpm dup
+      - name: The portal bundle holds no console API path (D-43)
+        if: hashFiles('web/portal/dist/**') != ''
+        run: python3 ../scripts/ci/check-portal-bundle.py portal/dist
 
   # The app image and the tests that run it (@Tag("deploy"): compose files, popdesk command,
   # upgrade harness, load test, and the empty-install E2E in io.popdesk.e2e). The server job

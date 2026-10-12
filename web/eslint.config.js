@@ -21,18 +21,29 @@ export default tseslint.config(
     },
   },
   {
-    files: ['portal/**/*.{ts,tsx}', 'console/**/*.{ts,tsx}', 'packages/ui/**/*.{ts,tsx}'],
+    files: ['portal/**/*.{ts,tsx}', 'console/**/*.{ts,tsx}', 'packages/ui/**/*.{ts,tsx}', 'packages/app/**/*.{ts,tsx}'],
     extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
     languageOptions: { globals: globals.browser },
   },
-  // Each app imports only its own client (ADR D-43).
+  // Each app imports only its own client (ADR D-43), and nothing from the other app.
   {
     files: ['portal/**/*.{ts,tsx}'],
-    rules: { 'no-restricted-imports': ['error', { patterns: ['@popdesk/api/console', '@popdesk/api/console/*'] }] },
+    rules: {
+      'no-restricted-imports': ['error', { patterns: ['@popdesk/api/console', '@popdesk/api/console/*', '**/console/src/**', '@popdesk/console', '@popdesk/console/*'] }],
+    },
   },
   {
     files: ['console/**/*.{ts,tsx}'],
-    rules: { 'no-restricted-imports': ['error', { patterns: ['@popdesk/api/portal', '@popdesk/api/portal/*'] }] },
+    rules: {
+      'no-restricted-imports': ['error', { patterns: ['@popdesk/api/portal', '@popdesk/api/portal/*', '**/portal/src/**', '@popdesk/portal', '@popdesk/portal/*'] }],
+    },
+  },
+  // Code both apps share takes what differs between them as arguments: no client, no app code.
+  {
+    files: ['packages/app/**/*.{ts,tsx}', 'packages/ui/**/*.{ts,tsx}', 'packages/i18n/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: ['@popdesk/api', '@popdesk/api/*', '**/console/src/**', '**/portal/src/**'] }],
+    },
   },
   {
     files: ['**/*.{js,mjs}'],

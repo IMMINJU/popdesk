@@ -17,12 +17,10 @@ const SessionContext = createContext<SessionValue<unknown> | null>(null);
  * The one session context, typed with the app's `Me`. A bundle holds one app,
  * so the context only ever carries that app's `Me`.
  */
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- the caller names its app's `Me`
 export function sessionContext<M>(): Context<SessionValue<M> | null> {
   return SessionContext as unknown as Context<SessionValue<M> | null>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- the caller names its app's `Me`
 export function useSession<M>(): SessionValue<M> {
   const value = useContext(sessionContext<M>());
   if (!value) throw new Error('useSession outside SessionProvider');

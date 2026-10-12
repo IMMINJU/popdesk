@@ -8,7 +8,8 @@
 //   screens  src/screens/** without StringLiteral (the tests already pin the
 //            screens.md wording)
 //   (unset)  everything with every mutator
-const CORE = ['sessionContext.ts', 'result.ts', 'messages.ts', 'attachments.ts', 'paging.ts', 'navigate.ts'];
+// sessionContext, result, paging, and navigate moved to @popdesk/app; the app files re-export them.
+const CORE = ['messages.ts', 'attachments.ts'];
 const SCOPES = {
   core: { mutate: CORE.map((f) => `src/app/${f}`), excluded: [] },
   app: { mutate: ['src/app/**/*.{ts,tsx}', 'src/App.tsx', 'src/api.ts'], excluded: [] },

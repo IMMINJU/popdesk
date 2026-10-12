@@ -15,7 +15,8 @@
     "changed:build": "pnpm --filter \"...[origin/main]\" run build",
     "changed:test": "pnpm --filter \"...[origin/main]\" --workspace-concurrency=1 run test",
     "changed:typecheck": "pnpm --filter \"...[origin/main]\" run typecheck",
-    "changed:lint": "pnpm --filter \"...[origin/main]\" run lint"
+    "changed:lint": "pnpm --filter \"...[origin/main]\" run lint",
+    "dup": "jscpd --config .jscpd.json console/src portal/src packages/app/src packages/ui/src packages/i18n/src"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",
@@ -23,6 +24,7 @@
     "eslint-plugin-react-hooks": "catalog:",
     "eslint-plugin-react-refresh": "catalog:",
     "globals": "catalog:",
+    "jscpd": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:"
   }

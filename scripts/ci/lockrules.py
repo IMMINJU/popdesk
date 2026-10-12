@@ -40,6 +40,7 @@ TEST_CONFIG_GLOBS = [
     "**/stryker.conf*",
     "**/stryker.config.*",
     "**/eslint.config.*",
+    "**/.jscpd.json",
     "**/.eslintrc*",
     "**/tsconfig*.json",
     "server/src/main/resources/application-test*",
