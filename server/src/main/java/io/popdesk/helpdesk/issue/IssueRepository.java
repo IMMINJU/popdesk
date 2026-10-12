@@ -144,14 +144,17 @@ public class IssueRepository {
 
     // Writes
 
-    /** A new issue with the number the company counter gave it (ISSUE-3), and the text the search looks in. */
+    /**
+     * A new issue with the number the company counter gave it (ISSUE-3), and the text the search looks in.
+     * {@code createdBy} is the staff member who files it for the reporter, or null (ISSUE-9).
+     */
     void insert(UUID id, long companyId, int number, String title, String content, Priority priority,
-            boolean privateIssue, long reporterId, String channel, Instant now) {
+            boolean privateIssue, long reporterId, Long createdBy, String channel, Instant now) {
         jdbc.sql("insert into issue (id, tenant_id, company_id, number, title, content, status, priority, is_private, "
-                        + "reporter_id, channel, version, created_at, updated_at, search_text) "
-                        + "values (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)")
+                        + "reporter_id, created_by, channel, version, created_at, updated_at, search_text) "
+                        + "values (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)")
                 .params(id, companyId, number, title, content, IssueStatus.RECEIVED.name(), priority.name(),
-                        privateIssue, reporterId, channel, Timestamp.from(now), Timestamp.from(now),
+                        privateIssue, reporterId, createdBy, channel, Timestamp.from(now), Timestamp.from(now),
                         SearchText.of(title, content))
                 .update();
     }

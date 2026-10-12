@@ -1,10 +1,10 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.IssueStatus;
 import io.popdesk.helpdesk.Role;
+import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.account.CurrentAccount;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository.HistoryRow;
@@ -155,7 +155,12 @@ class ConsoleIssueController {
             @Parameter(description = IDEMPOTENCY_KEY)
                     @RequestHeader(name = "Idempotency-Key", required = false) @Nullable String idempotencyKey,
             @RequestBody CreateIssueRequest request) {
-        throw new NotImplementedException();
+        Viewer viewer = CurrentAccount.get().viewer();
+        IssueService.Draft draft = issues.prepareOnBehalf(viewer, new IssueService.NewIssueOnBehalf(
+                new IssueService.NewIssue(request.companyCode(), request.title(), request.content(),
+                        request.priority(), request.privateIssue()),
+                request.reporterId(), request.channel()));
+        return issue(issues.file(viewer, draft));
     }
 
     @Operation(operationId = "getIssue", summary = "One issue")

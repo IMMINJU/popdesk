@@ -66,6 +66,9 @@ public class CompanyRepository {
     private static final String ASSIGNABLE = "a.status = 'ACTIVE' and (a.role = 'ADMIN' or (a.role = 'AGENT' and "
             + "exists (select 1 from company_agent aa where aa.company_id = c.id and aa.account_id = a.id)))";
 
+    /** Who staff can file an issue for (ISSUE-9), as SQL on the member's account {@code a}. */
+    private static final String REPORTER = "a.role = 'CUSTOMER' and a.status = 'ACTIVE'";
+
     private final JdbcClient jdbc;
 
     CompanyRepository(JdbcClient jdbc) {
@@ -177,6 +180,18 @@ public class CompanyRepository {
                         + "where a.id = ? and " + ASSIGNABLE + " and " + SCOPE)
                 .params(with(new Object[] {companyId, accountId}, scope(viewer)))
                 .query(CompanyRepository::staff).optional();
+    }
+
+    /**
+     * Whether the account is an {@code ACTIVE} customer who belongs to this company, which the viewer may
+     * see: who staff can file an issue for (ISSUE-9, S3-AC-33).
+     */
+    public boolean isReporter(Viewer viewer, long companyId, long accountId) {
+        return jdbc.sql("select count(*) from company_member m join account a on a.id = m.account_id "
+                        + "join company c on c.id = m.company_id where m.company_id = ? and a.id = ? and " + REPORTER
+                        + " and " + SCOPE)
+                .params(with(new Object[] {companyId, accountId}, scope(viewer)))
+                .query(Long.class).single() > 0;
     }
 
     /** The companies that these customers belong to, among those the viewer may see. */

@@ -17,6 +17,8 @@ import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository.Field;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository.HistoryRow;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
+import io.popdesk.notification.MailKind;
+import io.popdesk.notification.MailQueue;
 import io.popdesk.notification.WebhookKind;
 import io.popdesk.notification.WebhookQueue;
 import java.time.Clock;
@@ -34,7 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Filing, listing, reading, and changing issues (ISSUE-1 to ISSUE-6, STATUS-1 to STATUS-7). Checks
+ * Filing, listing, reading, and changing issues (ISSUE-1 to ISSUE-9, STATUS-1 to STATUS-7). Checks
  * follow conventions "Order of checks": the rate limit and sign-in first, then the target in the
  * caller's scope (404), then permission (403), then the input (400), then the state (400 or 409).
  *
@@ -49,6 +51,9 @@ public class IssueService {
     static final int CONTENT_MAX = 10_000;
     static final String CHANNEL_PORTAL = "PORTAL";
 
+    /** How a request staff file for a customer can have come in (ISSUE-9); the names are stored. */
+    static final Set<String> CHANNELS_ON_BEHALF = Set.of("PHONE", "OTHER");
+
     /**
      * How often a status change that lost against another one reads the issue again and tries once
      * more before it takes the row lock, under which the next try cannot lose.
@@ -58,9 +63,18 @@ public class IssueService {
     /** What a customer sent to file an issue, as received. {@code priority} is the name sent, or null. */
     public record NewIssue(String companyCode, String title, String content, String priority, Boolean privateIssue) {}
 
-    /** A checked filing, not written yet. The ID is chosen now, so attachments can point at it first. */
-    public record Draft(UUID id, long reporterId, CompanyRow company, String title, String content, Priority priority,
-            boolean privateIssue) {}
+    /**
+     * What staff sent to file an issue for a customer, as received (ISSUE-9): the fields of
+     * {@link NewIssue}, the customer, and how the request came in.
+     */
+    public record NewIssueOnBehalf(NewIssue issue, Long reporterId, String channel) {}
+
+    /**
+     * A checked filing, not written yet. The ID is chosen now, so attachments can point at it first.
+     * {@code createdBy} is the staff member who files it for the reporter; null when the reporter files it.
+     */
+    public record Draft(UUID id, long reporterId, Long createdBy, String channel, CompanyRow company, String title,
+            String content, Priority priority, boolean privateIssue) {}
 
     /**
      * What an edit sent (S3-AC-18). A field that was not sent keeps its value; {@code version} is the
@@ -73,18 +87,20 @@ public class IssueService {
     private final ReporterAccess reporters;
     private final CompanyRepository companies;
     private final WebhookQueue webhooks;
+    private final MailQueue mail;
     private final AccountRateLimit rateLimit;
     private final Transactions transactions;
     private final Clock clock;
 
     IssueService(IssueRepository issues, IssueHistoryRepository history, ReporterAccess reporters,
-            CompanyRepository companies, WebhookQueue webhooks, AccountRateLimit rateLimit, Transactions transactions,
-            Clock clock) {
+            CompanyRepository companies, WebhookQueue webhooks, MailQueue mail, AccountRateLimit rateLimit,
+            Transactions transactions, Clock clock) {
         this.issues = issues;
         this.history = history;
         this.reporters = reporters;
         this.companies = companies;
         this.webhooks = webhooks;
+        this.mail = mail;
         this.rateLimit = rateLimit;
         this.transactions = transactions;
         this.clock = clock;
@@ -113,8 +129,49 @@ public class IssueService {
         if (company.status() != CompanyStatus.ACTIVE) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "COMPANY_NOT_ACTIVE", "The company is not active.");
         }
-        return new Draft(UUID.randomUUID(), viewer.accountId(), company, title, content, priority,
-                Boolean.TRUE.equals(input.privateIssue()));
+        return new Draft(UUID.randomUUID(), viewer.accountId(), null, CHANNEL_PORTAL, company, title, content,
+                priority, Boolean.TRUE.equals(input.privateIssue()));
+    }
+
+    /**
+     * Checks a filing by staff for a customer (ISSUE-9), by the rules of {@link #prepare} and in the
+     * same rate limit, counted before the company is looked up (S3-AC-39). The company must be one the
+     * staff member sees (S3-AC-34, 404 whatever else is wrong). Every invalid field is listed, with them
+     * a channel that is not one of {@link #CHANNELS_ON_BEHALF} (S3-AC-35) and a reporter who is not an
+     * {@code ACTIVE} customer of the company, one answer whatever the reason (S3-AC-33). Then the
+     * company must be active. Nothing is written; {@link #file} looks at the reporter again.
+     */
+    public Draft prepareOnBehalf(Viewer staff, NewIssueOnBehalf input) {
+        rateLimit.count(AccountRateLimit.Action.ISSUE, staff.accountId());
+        NewIssue issue = input.issue();
+        List<ApiError.FieldError> errors = new ArrayList<>();
+        CompanyRow company = null;
+        if (issue.companyCode() == null || issue.companyCode().isEmpty()) {
+            errors.add(new ApiError.FieldError("companyCode", "REQUIRED"));
+        } else {
+            company = companies.findByCode(staff, issue.companyCode()).orElseThrow(ApiException::notFound);
+        }
+        if (input.reporterId() == null) {
+            errors.add(new ApiError.FieldError("reporterId", "REQUIRED"));
+        } else if (company != null && !companies.isReporter(staff, company.id(), input.reporterId())) {
+            errors.add(unknownReporter());
+        }
+        if (input.channel() == null || input.channel().isEmpty()) {
+            errors.add(new ApiError.FieldError("channel", "REQUIRED"));
+        } else if (!CHANNELS_ON_BEHALF.contains(input.channel())) {
+            errors.add(new ApiError.FieldError("channel", "UNKNOWN_VALUE"));
+        }
+        String title = TextInput.required("title", issue.title(), TITLE_MAX, errors);
+        String content = TextInput.multiLine("content", issue.content(), false, CONTENT_MAX, errors);
+        Priority priority = issue.priority() == null ? Priority.NORMAL : priority(issue.priority(), errors);
+        if (!errors.isEmpty()) {
+            throw ApiException.invalid(errors);
+        }
+        if (company.status() != CompanyStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "COMPANY_NOT_ACTIVE", "The company is not active.");
+        }
+        return new Draft(UUID.randomUUID(), input.reporterId(), staff.accountId(), input.channel(), company, title,
+                content, priority, Boolean.TRUE.equals(issue.privateIssue()));
     }
 
     /** Writes a prepared filing without attachments; see {@link #file(Viewer, Draft, Runnable)}. */
@@ -128,15 +185,28 @@ public class IssueService {
      * stored (step 2), then the webhook row, then the company counter, then the issue row with the number
      * it got (S0-AC-44), then the first entry of its history, by the person who filed (S3-AC-61). A failed
      * filing uses no number, and its attachments stay pending (S0-AC-63).
+     *
+     * <p>A filing by staff for a customer goes the same way (ISSUE-9). Before anything is written the
+     * reporter is looked at again, in this transaction: a customer who was suspended or taken out of the
+     * company since {@link #prepareOnBehalf} gets nothing filed in their name (S3-AC-33). It posts the
+     * same webhook message (S3-AC-75), and the reporter's email is queued with the other new rows
+     * (S3-AC-37). The staff member is the one the history names.
      */
     public IssueRow file(Viewer viewer, Draft draft, Runnable storeAttachments) {
         return transactions.run(() -> {
             Instant now = now();
+            boolean onBehalf = draft.createdBy() != null;
+            if (onBehalf && !companies.isReporter(viewer, draft.company().id(), draft.reporterId())) {
+                throw ApiException.invalid(List.of(unknownReporter()));
+            }
             storeAttachments.run();
             webhooks.queue(WebhookKind.ISSUE_CREATED, draft.id(), null);
+            if (onBehalf) {
+                mail.queue(MailKind.ISSUE_FILED_ON_BEHALF, draft.reporterId(), draft.id(), null);
+            }
             int number = companies.updateNextIssueNumber(draft.company().id());
             issues.insert(draft.id(), draft.company().id(), number, draft.title(), draft.content(), draft.priority(),
-                    draft.privateIssue(), draft.reporterId(), CHANNEL_PORTAL, now);
+                    draft.privateIssue(), draft.reporterId(), draft.createdBy(), draft.channel(), now);
             history.insertCreated(draft.id(), viewer.accountId(), now);
             return issues.findByKey(viewer, new IssueKey(draft.company().code(), number)).orElseThrow();
         });
@@ -386,6 +456,11 @@ public class IssueService {
             errors.add(new ApiError.FieldError("priority", "UNKNOWN_VALUE"));
             return Priority.NORMAL;
         }
+    }
+
+    /** One answer for every account that cannot be the reporter of a filing by staff (S3-AC-33). */
+    private static ApiError.FieldError unknownReporter() {
+        return new ApiError.FieldError("reporterId", "UNKNOWN_VALUE");
     }
 
     private static ApiException closed() {

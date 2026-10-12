@@ -54,18 +54,22 @@ class PortalIssueController {
         this.attachments = attachments;
     }
 
-    /** The issue with whether its status and closed time allow reopening now, whoever asks (S3-AC-59). */
+    /**
+     * The issue with whether its status and closed time allow reopening now, whoever asks (S3-AC-59). Of
+     * the staff member who filed it for the reporter a customer learns only that the support team did
+     * (S3-AC-36); of the assignee, nothing (S3-AC-29).
+     */
     private Issue issue(IssueRow row) {
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
-                false, utc(row.resolvedAt()), utc(row.closedAt()), issues.reopenable(row), row.version(),
+                row.createdBy() != null, utc(row.resolvedAt()), utc(row.closedAt()), issues.reopenable(row), row.version(),
                 utc(row.createdAt()), utc(row.updatedAt()));
     }
 
     static IssueSummary summary(IssueRow row) {
         return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
-                false, utc(row.resolvedAt()), utc(row.closedAt()), utc(row.createdAt()));
+                row.createdBy() != null, utc(row.resolvedAt()), utc(row.closedAt()), utc(row.createdAt()));
     }
 
     /**
