@@ -34,7 +34,7 @@ describe('DataTable 열 고정', () => {
     { what: 'width를 주지 않은 고정 칸', width: undefined, min: '8rem' },
   ])('DataTable 열 고정($what): 첫 고정 칸의 머리 칸과 본문 칸의 min-width가 $min, 둘째 고정 칸의 left가 그 너비다', async ({ width, min }) => {
     const columns: DataTableColumn<Row>[] = [
-      { key: 'key', header: '키', cell: cells.key, sticky: true, width },
+      { key: 'key', header: '키', cell: cells.key, sticky: true, ...(width === undefined ? {} : { width }) },
       { key: 'title', header: '제목', cell: cells.title, sticky: true },
       { key: 'company', header: '고객사', cell: cells.company },
     ];

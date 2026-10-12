@@ -490,7 +490,7 @@ b1196a3b29e25a385a32e1cb54b7aedcb8ed843cc2c27b98bf062ac171b45b54  web/packages/u
 2fcb4b569a338fc3b393f3968989b44f768a6c0257016917ed396dd62c95838c  web/packages/ui/src/components/ConfirmDialog.test.tsx
 b9e640c6a035b4171e631e14329f69df795bc6effb03c74719b87bed07900b6d  web/packages/ui/src/components/CopyField.test.tsx
 926b858ef7725eab080309e57eac374160c95ce8d0623bacff96c9f32aacfd8b  web/packages/ui/src/components/DataTable.expand.test.tsx
-3fa6e595eaeb7c353d49c6e97be55f4ae88f07a726a95cca12aabf93d90ee275  web/packages/ui/src/components/DataTable.sticky.test.tsx
+8fcf32fac103fdb1f2bc28526c3345232c27829a2fb5ad39c6483634be1cdd11  web/packages/ui/src/components/DataTable.sticky.test.tsx
 1aee6ba5579bac7fd3050a90f4bde48af1705b1977694479fb402d1e3b296b06  web/packages/ui/src/components/DataTable.test.tsx
 53147ab173d26acf99458ba2bd79c991c309cbf75013033f1bb4996d34ba95ec  web/packages/ui/src/components/Dialog.behavior.test.tsx
 13a3fb6aa7f677940eae3475d768a4461d7cb9238af4d402f6a727753894a28b  web/packages/ui/src/components/Dialog.test.tsx
