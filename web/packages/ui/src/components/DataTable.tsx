@@ -71,7 +71,8 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
   const cellProps = (c: DataTableColumn<Row>, i: number) => ({
     'data-align': c.align ?? 'start',
     'data-sticky': c.sticky ? 'true' : undefined,
-    style: { width: c.width, left: offsets[i] },
+    // A sticky column keeps the width the offsets count on, also when the table is squeezed.
+    style: { width: c.width, minWidth: c.sticky ? (c.width ?? '8rem') : undefined, left: offsets[i] },
   });
   return (
     <div className="pd-table-wrap" data-pd="DataTable" data-density={props.density}>
