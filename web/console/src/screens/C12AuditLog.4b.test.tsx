@@ -8,7 +8,7 @@ const URL_LOG = '/audit-log';
 const GROUP = '보내기';
 
 /** What the server records (design.md 0절 3): the channel and the kind of the row; whether the test email went, and the error kind when it did not. */
-const RESENT = entry({ id: 7902, action: 'DELIVERY_RESENT', target: null, changes: { channel: 'MAIL', kind: 'COMMENT_ADDED' } });
+const RESENT = entry({ id: 7902, action: 'DELIVERY_RESENT', target: null, changes: { channel: 'MAIL', kind: 'STAFF_COMMENT' } });
 const TEST_MAIL_OK = entry({ id: 7901, action: 'TEST_MAIL_SENT', target: null, changes: { ok: true } });
 const TEST_MAIL_FAILED = entry({ id: 7900, action: 'TEST_MAIL_SENT', target: null, changes: { ok: false, errorKind: 'SMTP_REFUSED' } });
 
@@ -28,7 +28,7 @@ describe('C-12 감사 로그 (4b)', () => {
     expect(column('일')).toEqual(['다시 보내기', '시험 메일', '시험 메일']);
     const shown = column('바뀐 값');
     expect(shown[0]).toContain('채널: 메일');
-    expect(shown[0]).toContain('종류: COMMENT_ADDED');
+    expect(shown[0]).toContain('종류: STAFF_COMMENT');
     expect(shown[1]).toBe('보냄: 예');
     expect(shown[2]).toContain('보냄: 아니오');
     expect(shown[2]).toContain('오류 종류: SMTP_REFUSED');

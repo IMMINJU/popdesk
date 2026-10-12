@@ -47,9 +47,12 @@ export function cleanupJob(over: Partial<CleanupJobStatus> = {}): CleanupJobStat
   return { name: 'session-cleanup', lastRunAt: T0, deleted: 0, ...over };
 }
 
-/** A test email the SMTP server took, with no answer text. A failure has `ok` false and an `errorKind`. */
+/**
+ * A test email the SMTP server took, with what it answered. A failure has `ok` false and an
+ * `errorKind`. `serverReply` is null only when the server did not answer; a test of that says so.
+ */
 export function mailResult(over: Partial<TestMailResult> = {}): TestMailResult {
-  return { ok: true, errorKind: null, serverReply: null, ...over };
+  return { ok: true, errorKind: null, serverReply: '250 2.0.0 Ok: queued as 4B7XQ1', ...over };
 }
 
 // ---------------------------------------------------------------------------

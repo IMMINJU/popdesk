@@ -81,11 +81,22 @@ const NEVER = '아직 없음';
 /** Two `failed` rows on channels that are on. A row is found by its error kind. */
 const MAIL_ROW = failedDelivery({ id: 1, channel: 'MAIL', lastErrorKind: 'CONNECTION_REFUSED', recipientAccountId: 11 });
 const HOOK_ROW = failedDelivery({ id: 2, channel: 'WEBHOOK', lastErrorKind: 'HTTP_500', recipientAccountId: null });
+const COPY_ROW = failedDelivery({ id: 4, channel: 'AUDIT_FORWARD', lastErrorKind: 'TIMEOUT', recipientAccountId: null, auditEntryId: 7001 });
 
 function twoFailed() {
   state.status = status({ mail: channel({ failed: 1 }), webhook: channel({ failed: 1 }) });
   state.failed = [MAIL_ROW, HOOK_ROW];
 }
+
+/** A row on each of the three channels; the channels named in `off` are off, the others on. */
+function threeFailed(off: (keyof typeof CHANNEL_KEY)[] = []) {
+  const one = (key: keyof typeof CHANNEL_KEY) => (off.includes(key) ? channel({ enabled: false, lastSuccessAt: null, failed: 1 }) : channel({ failed: 1 }));
+  state.status = status({ mail: one('MAIL'), webhook: one('WEBHOOK'), auditForward: one('AUDIT_FORWARD') });
+  state.failed = [MAIL_ROW, HOOK_ROW, COPY_ROW];
+}
+
+/** The error kind each channel's row is found by. */
+const CHANNEL_KEY = { MAIL: 'CONNECTION_REFUSED', WEBHOOK: 'HTTP_500', AUDIT_FORWARD: 'TIMEOUT' } as const;
 
 /** The innermost element of `main` that holds `words`, or undefined. */
 function holding(words: string): Element | undefined {
@@ -127,9 +138,9 @@ function mailResultLine(role: 'status' | 'alert', wanted: string): Promise<HTMLE
   }, `시험 메일 결과 줄(role="${role}"): ${wanted}`);
 }
 
-/** The place that shows what the server answered: an element of the 시험 메일 part whose text is `reply`, character for character. */
+/** The place that shows what the server answered: a `pre` of the 시험 메일 part whose text is `reply`, character for character (screens.md 6절 10, 12). */
 function replyPlace(reply: string): Promise<Element> {
-  return found(() => Array.from(mailSection()?.querySelectorAll('*') ?? []).find((el) => el.textContent === reply), `서버가 한 답의 글 자리: ${reply}`);
+  return found(() => Array.from(mailSection()?.querySelectorAll('pre') ?? []).find((el) => el.textContent === reply), `서버가 한 답의 글 자리(pre): ${JSON.stringify(reply)}`);
 }
 
 describe('C-18 시스템 상태 (4b): 샌드박스 띠', () => {
@@ -201,7 +212,7 @@ describe('C-18 시스템 상태 (4b): 샌드박스 띠', () => {
 
 describe('C-18 시스템 상태 (4b): 다시 보내기', () => {
   test('S4B-AC-33 C-18 `failed` 표의 마지막 열: 열 머리 "동작", 줄마다 버튼 "다시 보내기"가 aria-describedby로 그 줄의 채널과 만든 시각에 이어진다', async () => {
-    twoFailed();
+    threeFailed();
     renderAt(URL_SYSTEM);
 
     const table = await failedTable();
@@ -211,6 +222,8 @@ describe('C-18 시스템 상태 (4b): 다시 보내기', () => {
     for (const [part, word] of [
       ['CONNECTION_REFUSED', '메일'],
       ['HTTP_500', '웹훅'],
+      // The outside copy of the audit log is on here: its row has the button too.
+      ['TIMEOUT', '감사 바깥 사본'],
     ] as const) {
       const row = await failedRow(part);
       const buttons = within(row).queryAllByRole('button');
@@ -220,12 +233,13 @@ describe('C-18 시스템 상태 (4b): 다시 보내기', () => {
       const described = describers(button);
       expect(described.length, 'aria-describedby').toBeGreaterThan(0);
       expect(described.every((el) => el !== null && row.contains(el)), '그 줄 안의 글에 이어진다').toBe(true);
+      expect(described.some((el) => el?.contains(button)), '설명이 버튼 자신을 담지 않는다').toBe(false);
       expect(described.map((el) => text(el)).join(' '), '그 줄의 채널').toContain(word);
       const time = row.querySelector('time');
       expect(time !== null && described.some((el) => el?.contains(time)), '그 줄의 만든 시각').toBe(true);
       ids.push(button.getAttribute('aria-describedby') ?? '');
     }
-    expect(ids[0], '줄마다 다른 글에 이어진다').not.toBe(ids[1]);
+    expect(new Set(ids).size, '줄마다 다른 글에 이어진다').toBe(ids.length);
   });
 
   test('S4B-AC-33 C-18 다시 보내기 성공(204): 본문 없이 그 줄의 ID로 보내고, 목록과 시스템 상태를 다시 받으며 토스트로 알린다', async () => {
@@ -276,9 +290,19 @@ describe('C-18 시스템 상태 (4b): 다시 보내기', () => {
     });
     const other = await resendButton('HTTP_500');
     expect(isBlocked(other), '다른 줄의 버튼').toBe(false);
+    const listed = callsTo('GET', FAILED).length;
     await user.click(other);
 
     await sent('POST', resendOf(HOOK_ROW.id));
+    // The other row's answer came and the list was read again: the first row is still being sent.
+    await eventually(() => {
+      expect(callsTo('GET', FAILED).length, '다른 줄의 204 뒤 목록을 다시 받음').toBeGreaterThan(listed);
+    });
+    await settle();
+    const still = within(await failedRow('CONNECTION_REFUSED')).queryAllByRole('button');
+    expect(still).toHaveLength(1);
+    expect(still[0] !== undefined && isBlocked(still[0]), '다른 줄을 누른 뒤에도 첫 줄의 버튼 막힘').toBe(true);
+    expect(text(still[0])).toBe(SENDING);
     expect(callsTo('POST', resendOf(MAIL_ROW.id)), '막힌 버튼은 다시 보내지 않는다').toHaveLength(1);
     release.open();
     await resendButton('CONNECTION_REFUSED');
@@ -354,16 +378,23 @@ describe('C-18 시스템 상태 (4b): 다시 보내기', () => {
     await sent('POST', resendOf(MAIL_ROW.id), 2);
   });
 
-  test('S4B-AC-33 C-18 꺼진 채널의 줄: 버튼 대신 "채널이 꺼져 있습니다". 켜진 채널의 줄에는 버튼이 있다', async () => {
-    state.status = status({ mail: channel({ failed: 1 }), webhook: channel({ enabled: false, lastSuccessAt: null, failed: 1 }) });
-    state.failed = [MAIL_ROW, HOOK_ROW];
+  test.each([
+    { what: '메일', off: 'MAIL' },
+    { what: '웹훅', off: 'WEBHOOK' },
+    { what: '감사 바깥 사본', off: 'AUDIT_FORWARD' },
+  ] as const)('S4B-AC-33 C-18 꺼진 채널의 줄($what): 버튼 대신 "채널이 꺼져 있습니다". 켜진 두 채널의 줄에는 버튼이 있다', async ({ off }) => {
+    threeFailed([off]);
     renderAt(URL_SYSTEM);
 
-    await resendButton('CONNECTION_REFUSED');
-    const off = await failedRow('HTTP_500');
-    expect(text(off)).toContain(CHANNEL_OFF_ROW);
-    expect(within(off).queryAllByRole('button'), '꺼진 채널 줄의 버튼').toHaveLength(0);
-    expect(text(await failedRow('CONNECTION_REFUSED'))).not.toContain(CHANNEL_OFF_ROW);
+    for (const key of Object.keys(CHANNEL_KEY) as (keyof typeof CHANNEL_KEY)[]) {
+      if (key !== off) await resendButton(CHANNEL_KEY[key]);
+    }
+    const row = await failedRow(CHANNEL_KEY[off]);
+    expect(text(row)).toContain(CHANNEL_OFF_ROW);
+    expect(within(row).queryAllByRole('button'), '꺼진 채널 줄의 버튼').toHaveLength(0);
+    for (const key of Object.keys(CHANNEL_KEY) as (keyof typeof CHANNEL_KEY)[]) {
+      if (key !== off) expect(text(await failedRow(CHANNEL_KEY[key])), `켜진 채널 ${key}의 줄`).not.toContain(CHANNEL_OFF_ROW);
+    }
   });
 
   test('S4B-AC-33 C-18 RATE_LIMITED 줄: 오류 종류는 code 그대로이고 그 아래 "한 주소에 한 시간 50통을 넘겼습니다."', async () => {
@@ -378,6 +409,10 @@ describe('C-18 시스템 상태 (4b): 다시 보내기', () => {
     const kind = limited.querySelector('code');
     expect(text(kind)).toBe('RATE_LIMITED');
     expect(kind?.closest('td')?.textContent ?? '', '오류 종류 칸 안에 덧붙인 줄').toContain(OVER_LIMIT);
+    const added = Array.from(limited.querySelectorAll('*'))
+      .filter((el) => text(el).includes(OVER_LIMIT))
+      .at(-1);
+    expect(kind !== null && added !== undefined && before(kind, added), '덧붙인 줄은 code 아래').toBe(true);
     expect(text(await failedRow('CONNECTION_REFUSED'))).not.toContain(OVER_LIMIT);
   });
 });
@@ -398,6 +433,7 @@ describe('C-18 시스템 상태 (4b): 시험 메일', () => {
     expect(isBlocked(await mailButton())).toBe(false);
     expect(within(part).queryAllByRole('button'), '구역의 버튼은 하나').toHaveLength(1);
     expect(within(part).queryAllByRole('status').concat(within(part).queryAllByRole('alert')).filter((el) => text(el) !== ''), '처음에는 결과가 없다').toHaveLength(0);
+    expect(text(part), '30초 안내는 보내는 동안에만(6절 12)').not.toMatch(/30초/);
   });
 
   test('S4B-AC-34 C-18 시험 메일 보내는 중: 본문 없이 보내고, 버튼이 막히며 "보내는 중…"과 30초까지 걸릴 수 있다는 안내가 보인다', async () => {
@@ -423,6 +459,7 @@ describe('C-18 시스템 상태 (4b): 시험 메일', () => {
 
     await mailResultLine('status', MAIL_SENT);
     await mailButton();
+    expect(text(mailSection()), '끝난 뒤에는 30초 안내가 없다(6절 12)').not.toMatch(/30초/);
     expect(callsTo('POST', TEST_MAIL)).toHaveLength(1);
   });
 
@@ -438,6 +475,7 @@ describe('C-18 시스템 상태 (4b): 시험 메일', () => {
   });
 
   test('S4B-AC-34 C-18 시험 메일 됐다(serverReply가 null): 결과 줄은 그 문장뿐이고 답의 글 자리를 그리지 않는다', async () => {
+    s4b.testMail = mailResult({ serverReply: null });
     const { user } = renderAt(URL_SYSTEM);
 
     await user.click(await mailButton());
@@ -470,8 +508,9 @@ describe('C-18 시스템 상태 (4b): 시험 메일', () => {
     expect(isBlocked(await mailButton())).toBe(false);
   });
 
-  test('S4B-AC-34 C-18 서버가 한 답은 글자 그대로: <b>와 http://… 가 든 여러 줄의 답이 굵은 글씨나 링크가 되지 않는다', async () => {
-    const reply = '550-5.7.1 <b>relay denied</b>\n550 5.7.1 see http://help.invalid/5.7.1 [link](http://help.invalid)';
+  test('S4B-AC-34 C-18 서버가 한 답은 글자 그대로: <b>와 http://… 가 든 여러 줄의 답이 굵은 글씨나 링크가 되지 않고, 끝의 줄바꿈도 다듬지 않는다', async () => {
+    // A real answer ends with a line break; the screen does not trim it (screens.md 6절 12).
+    const reply = '550-5.7.1 <b>relay denied</b>\n550 5.7.1 see http://help.invalid/5.7.1 [link](http://help.invalid)\n';
     s4b.testMail = mailResult({ ok: false, errorKind: 'SMTP_REFUSED', serverReply: reply });
     const { user } = renderAt(URL_SYSTEM);
 
@@ -567,8 +606,9 @@ describe('C-18 시스템 상태 (4b): 시험 메일', () => {
       expect(text(mailSection())).not.toContain('SMTP_REFUSED');
     });
     release.open();
-    const line = await mailResultLine('status', MAIL_SENT);
-    expect(text(line)).toBe(MAIL_SENT);
+    await mailResultLine('status', MAIL_SENT);
+    expect(text(mailSection())).not.toContain(MAIL_NOT_SENT);
+    expect(text(mailSection())).not.toContain('SMTP_REFUSED');
     expect(text(mailSection())).not.toContain(refused);
   });
 });
@@ -579,7 +619,7 @@ describe('C-18 시스템 상태 (4b): 정리 작업', () => {
       mail: channel({ failed: 1 }),
       cleanupJobs: [
         cleanupJob({ name: 'attachment-cleanup', lastRunAt: '2026-10-08T01:00:00Z', deleted: 37 }),
-        cleanupJob({ name: 'notification-cleanup', lastRunAt: '2026-10-07T18:30:00Z', deleted: 0 }),
+        cleanupJob({ name: 'idempotency-key-cleanup', lastRunAt: '2026-10-07T18:30:00Z', deleted: 0 }),
         cleanupJob({ name: 'session-cleanup', lastRunAt: '2026-10-08T03:00:00Z', deleted: 5 }),
       ],
     });
@@ -591,8 +631,8 @@ describe('C-18 시스템 상태 (4b): 정리 작업', () => {
     expect(before(await failedTable(), part), '`failed` 표 아래').toBe(true);
     expect(within(table).getAllByRole('columnheader').map((h) => text(h))).toEqual(['작업', '마지막으로 돈 시각', '지운 수']);
     const rows = within(table).queryAllByRole('row').filter((r) => within(r).queryAllByRole('cell').length > 0);
-    expect(rows.map((r) => under(r, '작업'))).toEqual(['attachment-cleanup', 'notification-cleanup', 'session-cleanup']);
-    expect(rows.map((r) => text(r.querySelector('code'))), '작업 이름은 code').toEqual(['attachment-cleanup', 'notification-cleanup', 'session-cleanup']);
+    expect(rows.map((r) => under(r, '작업'))).toEqual(['attachment-cleanup', 'idempotency-key-cleanup', 'session-cleanup']);
+    expect(rows.map((r) => text(r.querySelector('code'))), '작업 이름은 code').toEqual(['attachment-cleanup', 'idempotency-key-cleanup', 'session-cleanup']);
     expect(rows.map((r) => new Date(r.querySelector('time')?.getAttribute('datetime') ?? '').getTime())).toEqual(
       state.status.cleanupJobs.map((j) => new Date(j.lastRunAt ?? '').getTime()),
     );
@@ -602,7 +642,7 @@ describe('C-18 시스템 상태 (4b): 정리 작업', () => {
 
   test('S4B-AC-35 C-18 한 번도 돌지 않은 정리 작업: 시각 칸과 지운 수 칸이 "아직 없음"', async () => {
     state.status = status({
-      cleanupJobs: [cleanupJob({ name: 'outbox-cleanup', lastRunAt: '2026-10-08T01:00:00Z', deleted: 0 }), cleanupJob({ name: 'session-cleanup', lastRunAt: null, deleted: null })],
+      cleanupJobs: [cleanupJob({ name: 'attachment-cleanup', lastRunAt: '2026-10-08T01:00:00Z', deleted: 0 }), cleanupJob({ name: 'session-cleanup', lastRunAt: null, deleted: null })],
     });
     renderAt(URL_SYSTEM);
 
@@ -611,7 +651,7 @@ describe('C-18 시스템 상태 (4b): 정리 작업', () => {
     expect(under(never, '마지막으로 돈 시각')).toBe(NEVER);
     expect(under(never, '지운 수')).toBe(NEVER);
     expect(never.querySelector('time'), '돌지 않은 작업의 시각').toBeNull();
-    const ran = within(part).getAllByRole('row').find((r) => text(r).includes('outbox-cleanup')) as HTMLElement;
+    const ran = within(part).getAllByRole('row').find((r) => text(r).includes('attachment-cleanup')) as HTMLElement;
     expect(under(ran, '지운 수'), '돌았고 지운 것이 없는 작업').toBe('0');
     expect(text(ran)).not.toContain(NEVER);
   });
@@ -631,15 +671,9 @@ describe('C-18 시스템 상태 (4b): 정리 작업', () => {
 describe('C-18 시스템 상태 (4b): 떠난 뒤 온 답과 접근성', () => {
   test.each([
     { what: '다시 보내기의 204', path: RESEND, press: () => resendButton('CONNECTION_REFUSED'), answer: () => noContent() },
-    { what: '다시 보내기의 5xx', path: RESEND, press: () => resendButton('CONNECTION_REFUSED'), answer: () => errors.internal() },
-    {
-      what: '시험 메일의 실패 결과',
-      path: TEST_MAIL,
-      press: mailButton,
-      answer: () => HttpResponse.json(mailResult({ ok: false, errorKind: 'SMTP_REFUSED', serverReply: '554 5.7.1 Message rejected by policy' })),
-    },
-    { what: '시험 메일의 5xx', path: TEST_MAIL, press: mailButton, answer: () => errors.internal() },
-  ])('S4B-AC-36 C-18 떠난 뒤 온 답($what): 다른 화면으로 간 뒤에 온 답은 토스트도 오류 띠도 띄우지 않는다', async ({ path, press, answer }) => {
+    { what: '다시 보내기의 400 CHANNEL_DISABLED', path: RESEND, press: () => resendButton('CONNECTION_REFUSED'), answer: () => rejected('CHANNEL_DISABLED') },
+    { what: '시험 메일의 400 CHANNEL_DISABLED', path: TEST_MAIL, press: mailButton, answer: () => rejected('CHANNEL_DISABLED') },
+  ])('S4B-AC-36 C-18 떠난 뒤 온 답($what): 다른 화면으로 간 뒤에 온 답은 토스트도 오류 띠도 띄우지 않고, 목록과 시스템 상태를 다시 받지 않는다', async ({ path, press, answer }) => {
     twoFailed();
     const release = gate();
     let answered = false;
@@ -661,20 +695,26 @@ describe('C-18 시스템 상태 (4b): 떠난 뒤 온 답과 접근성', () => {
     });
     await settle();
     const quiet = liveText();
+    const listed = callsTo('GET', FAILED).length;
+    const asked = callsTo('GET', STATUS).length;
 
     release.open();
     await eventually(() => {
       expect(answered).toBe(true);
     });
     await settle();
+    await settle();
     expect(screen.queryAllByRole('alert')).toHaveLength(0);
     expect(liveText(), '토스트(status)로도 알리지 않는다').toEqual(quiet);
+    expect(callsTo('GET', FAILED).length, '떠난 뒤 목록을 다시 받지 않는다').toBe(listed);
+    expect(callsTo('GET', STATUS).length, '떠난 뒤 시스템 상태를 다시 받지 않는다').toBe(asked);
     expect(window.location.pathname).toBe('/issues');
   });
 
   test('C-18 axe (4b): 샌드박스 띠, 버튼이 있는 `failed` 표, 시험 메일 결과, 정리 작업 표가 다 있는 화면에 접근성 위반이 없다', async () => {
     state.status = sandboxed(true, {
       mail: channel({ failed: 2 }),
+      webhook: channel({ enabled: false, lastSuccessAt: null, failed: 1 }),
       cleanupJobs: [cleanupJob({ name: 'attachment-cleanup', deleted: 37 }), cleanupJob({ name: 'session-cleanup', lastRunAt: null, deleted: null })],
     });
     state.failed = [failedDelivery({ id: 3, lastErrorKind: 'RATE_LIMITED', recipientAccountId: 12 }), MAIL_ROW, HOOK_ROW];
