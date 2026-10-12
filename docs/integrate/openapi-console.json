@@ -331,12 +331,32 @@
             "$ref" : "#/components/schemas/Person"
           },
           "content" : {
-            "description" : "Markdown, as written (COM-6).",
+            "description" : "Markdown, as written (COM-6). An empty string once the comment is deleted (COM-7).",
             "type" : "string"
           },
           "createdAt" : {
             "format" : "date-time",
             "type" : "string"
+          },
+          "deleted" : {
+            "type" : "boolean"
+          },
+          "deletedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "deletedBy" : {
+            "description" : "The author, or an admin (CMT-3).",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/Person"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "editedAt" : {
+            "description" : "When the author last changed the content; null when it never changed (S4-AC-07).",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
           },
           "id" : {
             "format" : "int64",
@@ -345,9 +365,16 @@
           "internal" : {
             "description" : "Internal comments do not exist for customers (CMT-2).",
             "type" : "boolean"
+          },
+          "mentions" : {
+            "description" : "The accounts the comment mentions, as they were chosen: someone who can no longer see the issue stays in the list (S4-AC-19, S4-AC-26).",
+            "items" : {
+              "$ref" : "#/components/schemas/Person"
+            },
+            "type" : "array"
           }
         },
-        "required" : [ "author", "content", "createdAt", "id", "internal" ],
+        "required" : [ "author", "content", "createdAt", "deleted", "deletedAt", "deletedBy", "editedAt", "id", "internal", "mentions" ],
         "type" : "object"
       },
       "Company" : {
@@ -451,6 +478,14 @@
           "internal" : {
             "description" : "An internal comment, hidden from customers. Public when left out.",
             "type" : "boolean"
+          },
+          "mentions" : {
+            "description" : "Account IDs to mention, up to 10, each one of `listMentionCandidates` for this kind of comment (MNT-1). An ID given twice counts once. Left out is the same as an empty list.",
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "array"
           }
         },
         "required" : [ "content" ],
@@ -914,10 +949,35 @@
         "required" : [ "accountId", "email", "name" ],
         "type" : "object"
       },
+      "MentionCandidates" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Person"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "items" ],
+        "type" : "object"
+      },
       "Notification" : {
         "properties" : {
+          "actor" : {
+            "description" : "Who did it; null for an item about no issue.",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/NotificationActor"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "commentId" : {
+            "description" : "The comment the item is about; null when it is about no comment.",
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
           "companyCode" : {
-            "description" : "The company a `MEMBERSHIP_REQUESTED` item is about; null for the other kinds.",
+            "description" : "The company of the issue, or the company a `MEMBERSHIP_REQUESTED` item is about; null for the other kinds.",
             "type" : [ "string", "null" ]
           },
           "createdAt" : {
@@ -928,8 +988,16 @@
             "format" : "int64",
             "type" : "integer"
           },
+          "issue" : {
+            "description" : "The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, and `MEMBERSHIP_REQUESTED` (S4-AC-40).",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/NotificationIssue"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "kind" : {
-            "enum" : [ "DELIVERY_FAILED", "ATTACHMENT_QUOTA_WARNING", "MEMBERSHIP_REQUESTED" ],
+            "enum" : [ "DELIVERY_FAILED", "ATTACHMENT_QUOTA_WARNING", "MEMBERSHIP_REQUESTED", "STAFF_COMMENT", "CUSTOMER_COMMENT", "ISSUE_RESOLVED", "ISSUE_CLOSED", "ISSUE_REOPENED", "ISSUE_FILED_ON_BEHALF", "MENTIONED", "ASSIGNED" ],
             "type" : "string"
           },
           "readAt" : {
@@ -938,7 +1006,42 @@
             "type" : [ "string", "null" ]
           }
         },
-        "required" : [ "companyCode", "createdAt", "id", "kind", "readAt" ],
+        "required" : [ "actor", "commentId", "companyCode", "createdAt", "id", "issue", "kind", "readAt" ],
+        "type" : "object"
+      },
+      "NotificationActor" : {
+        "properties" : {
+          "accountId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "photoUpdatedAt" : {
+            "description" : "When the profile photo last changed; null without a photo (`getPhoto`).",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "role" : {
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "accountId", "name", "photoUpdatedAt", "role" ],
+        "type" : "object"
+      },
+      "NotificationIssue" : {
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "title" : {
+            "description" : "The title as it is now, not as it was when the item was made (INBOX-1).",
+            "type" : "string"
+          }
+        },
+        "required" : [ "key", "title" ],
         "type" : "object"
       },
       "OpenAssignments" : {
@@ -1563,6 +1666,23 @@
           "name" : {
             "description" : "1 to 50 characters.",
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "UpdateCommentRequest" : {
+        "properties" : {
+          "content" : {
+            "description" : "Markdown, 1 to 4,000 characters. `null` is refused.",
+            "type" : "string"
+          },
+          "mentions" : {
+            "description" : "The whole list of account IDs the comment mentions from now on, up to 10, by the rules of `createComment`. `null` is the same as an empty list. Left out, the mentions stay (S4-AC-24).",
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -5016,7 +5136,7 @@
     },
     "/api/console/issues/{key}/comments" : {
       "get" : {
-        "description" : "Public and internal comments, oldest first, with author names (S0-AC-54).",
+        "description" : "Public and internal comments, oldest first, with author names (S0-AC-54). A deleted comment stays in its place as a trace and is counted (`deleted`, S4-AC-10).",
         "operationId" : "listComments",
         "parameters" : [ {
           "in" : "path",
@@ -5092,7 +5212,7 @@
         "tags" : [ "Comments" ]
       },
       "post" : {
-        "description" : "A public comment emails the reporter and sets the first response time once (S0-AC-46, S0-AC-70). An internal comment is hidden from customers (S0-AC-53).",
+        "description" : "A public comment emails the reporter and sets the first response time once (S0-AC-46, S0-AC-70). An internal comment is hidden from customers (S0-AC-53). `mentions` names accounts to tell about the comment (S4-AC-19).",
         "operationId" : "createComment",
         "parameters" : [ {
           "in" : "path",
@@ -5131,7 +5251,7 @@
                 }
               }
             },
-            "description" : "`INVALID_INPUT`: `content` empty or over 4,000. `ISSUE_CLOSED`: the issue is closed."
+            "description" : "`INVALID_INPUT`: `content` empty or over 4,000; `mentions` over 10 (`TOO_MANY`, S4-AC-21) or with an account that cannot be mentioned here (`UNKNOWN_VALUE`, one answer whatever the reason, S4-AC-20). `ISSUE_CLOSED`: the issue is closed."
           },
           "401" : {
             "content" : {
@@ -5171,10 +5291,163 @@
                 }
               }
             },
-            "description" : "`RATE_LIMITED`: more than 30 comments in 60 seconds (S0-AC-55)."
+            "description" : "`RATE_LIMITED`: more than 30 comments added or edited in 60 seconds (S0-AC-55, S4-AC-09)."
           }
         },
         "summary" : "Add a public or internal comment",
+        "tags" : [ "Comments" ]
+      }
+    },
+    "/api/console/issues/{key}/comments/{id}" : {
+      "delete" : {
+        "description" : "The author or an admin may delete, on a `CLOSED` issue too (S4-AC-13). The list keeps a trace: `content` is emptied and `deleted`, `deletedAt`, and `deletedBy` are set (S4-AC-10, COM-7). The comment's attachments are deleted with it (S4-AC-14). Deleting a deleted comment again is 204 too and changes nothing (S4-AC-12).",
+        "operationId" : "deleteComment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Deleted."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: an agent who did not write it. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue or comment, the caller cannot see the issue, or the comment belongs to another issue (S4-AC-03)."
+          }
+        },
+        "summary" : "Delete a comment",
+        "tags" : [ "Comments" ]
+      },
+      "patch" : {
+        "description" : "Only the author edits, an admin neither (S4-AC-02). A field left out keeps its value; a body with neither field changes nothing and is 200 too. A new `content` sets `editedAt`; the content the comment already has does not (S4-AC-06). `mentions` replaces the list, and only accounts new to it are told (S4-AC-24).",
+        "operationId" : "updateComment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateCommentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Comment"
+                }
+              }
+            },
+            "description" : "The comment as it is now."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `content` empty, over 4,000, or `null`; `mentions` over 10 (`TOO_MANY`) or with an account that cannot be mentioned here (`UNKNOWN_VALUE`); `fields` lists all. `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` (S4-AC-04)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: the caller did not write the comment. `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue or comment, the caller cannot see the issue, or the comment belongs to another issue (S4-AC-03)."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 30 comments added or edited in 60 seconds (S0-AC-55, S4-AC-09)."
+          }
+        },
+        "summary" : "Edit the caller's own comment",
         "tags" : [ "Comments" ]
       }
     },
@@ -5253,6 +5526,73 @@
           }
         },
         "summary" : "History of an issue",
+        "tags" : [ "Issues" ]
+      }
+    },
+    "/api/console/issues/{key}/mention-candidates" : {
+      "get" : {
+        "description" : "Every `ACTIVE` admin, every `ACTIVE` agent assigned to the issue's company, and, for a public comment, the reporter if `ACTIVE` and still able to see the issue; never the caller (S4-AC-22, MNT-1). In name order, all at once, without pages: the list fills a picker. No email addresses.",
+        "operationId" : "listMentionCandidates",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "`true`: for an internal comment, so without the reporter. Left out or `false`: for a public comment.",
+          "in" : "query",
+          "name" : "internal",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MentionCandidates"
+                }
+              }
+            },
+            "description" : "The candidates."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `internal` neither `true` nor `false` (`INVALID_FORMAT`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4)."
+          }
+        },
+        "summary" : "Who can be mentioned in a comment on the issue",
         "tags" : [ "Issues" ]
       }
     },
@@ -5895,7 +6235,7 @@
     },
     "/api/console/notifications" : {
       "get" : {
-        "description" : "Own items only, newest first (S0-AC-80, INBOX-3).",
+        "description" : "Own items only, newest first (S0-AC-80, INBOX-3). An item about an issue the caller cannot see now is left out, and is back when the caller can see the issue again (S4-AC-42).",
         "operationId" : "listNotifications",
         "parameters" : [ {
           "description" : "Page number, from 1.",
@@ -5954,8 +6294,42 @@
         "tags" : [ "Notifications" ]
       }
     },
+    "/api/console/notifications/read-all" : {
+      "post" : {
+        "description" : "Every unread item of the caller, those of issues the caller cannot see now included; nobody else's (S4-AC-45). 204 too when nothing was unread.",
+        "operationId" : "markAllNotificationsRead",
+        "responses" : {
+          "204" : {
+            "description" : "Read."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          }
+        },
+        "summary" : "Mark every item read",
+        "tags" : [ "Notifications" ]
+      }
+    },
     "/api/console/notifications/unread-count" : {
       "get" : {
+        "description" : "Counts what `listNotifications` would list and the caller has not read (S4-AC-43).",
         "operationId" : "countUnreadNotifications",
         "responses" : {
           "200" : {

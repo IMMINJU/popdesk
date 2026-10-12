@@ -211,7 +211,7 @@ export interface paths {
         };
         /**
          * Public comments of an issue
-         * @description Oldest first (S0-AC-54). Internal comments are left out (S0-AC-53). Comments by staff have author `SUPPORT_TEAM` without name or ID (ADR D-49).
+         * @description Oldest first (S0-AC-54). Internal comments are left out (S0-AC-53). Comments by staff have author `SUPPORT_TEAM` without name or ID (ADR D-49). A deleted comment stays in its place as a trace and is counted (`deleted`, S4-AC-10).
          */
         get: operations["listComments"];
         put?: never;
@@ -224,6 +224,30 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/portal/issues/{key}/comments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete the caller's own comment
+         * @description Only the author deletes, on a `CLOSED` issue too (S4-AC-13). The list keeps a trace: `content` is emptied and `deleted` and `deletedAt` are set (S4-AC-10, COM-7). The comment's attachments are deleted with it (S4-AC-14). Deleting a deleted comment again is 204 too and changes nothing (S4-AC-12).
+         */
+        delete: operations["deleteComment"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit the caller's own comment
+         * @description Only the author edits (S4-AC-02). A body without `content` changes nothing and is 200 too. A new `content` sets `editedAt`; the content the comment already has does not (S4-AC-06).
+         */
+        patch: operations["updateComment"];
         trace?: never;
     };
     "/api/portal/issues/{key}/reopen": {
@@ -309,6 +333,86 @@ export interface paths {
          * @description Succeeds also when there is no photo (S1A-AC-24).
          */
         delete: operations["deleteMyPhoto"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portal/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's inbox
+         * @description Own items only, newest first (S4-AC-39, INBOX-3). An item about an issue the caller cannot see now is left out, and is back when the caller can see the issue again (S4-AC-42). What staff did has actor `SUPPORT_TEAM` without name or ID (ADR D-49, S4-AC-41).
+         */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portal/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark every item read
+         * @description Every unread item of the caller, those of issues the caller cannot see now included; nobody else's (S4-AC-45). 204 too when nothing was unread.
+         */
+        post: operations["markAllNotificationsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portal/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unread items in the caller's inbox
+         * @description Counts what `listNotifications` would list and the caller has not read (S4-AC-43).
+         */
+        get: operations["countUnreadNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portal/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark an item read
+         * @description Marking a read item again is 204 too and keeps the first time (S4-AC-44).
+         */
+        post: operations["markNotificationRead"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -506,10 +610,18 @@ export interface components {
         };
         Comment: {
             author: components["schemas"]["Person"];
-            /** @description Markdown, as written (COM-6). */
+            /** @description Markdown, as written (COM-6). An empty string once the comment is deleted (COM-7). */
             content: string;
             /** Format: date-time */
             createdAt: string;
+            deleted: boolean;
+            /** Format: date-time */
+            deletedAt: string | null;
+            /**
+             * Format: date-time
+             * @description When the author last changed the content; null when it never changed (S4-AC-07).
+             */
+            editedAt: string | null;
             /** Format: int64 */
             id: number;
         };
@@ -659,6 +771,46 @@ export interface components {
              */
             status: "INVITED" | "ACTIVE" | "SUSPENDED";
         };
+        Notification: {
+            actor: components["schemas"]["NotificationActor"];
+            /**
+             * Format: int64
+             * @description The comment the item is about; null when it is about no comment.
+             */
+            commentId: number | null;
+            /** @description The company of the issue. */
+            companyCode: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            id: number;
+            issue: components["schemas"]["NotificationIssue"];
+            /** @enum {string} */
+            kind: "STAFF_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED";
+            /**
+             * Format: date-time
+             * @description When the caller marked it read.
+             */
+            readAt: string | null;
+        };
+        /** @description A customer, or the support team. For `SUPPORT_TEAM` `accountId`, `name`, and `photoUpdatedAt` are all null. */
+        NotificationActor: {
+            /** Format: int64 */
+            accountId: number | null;
+            /** @enum {string} */
+            kind: "CUSTOMER" | "SUPPORT_TEAM";
+            name: string | null;
+            /**
+             * Format: date-time
+             * @description When the customer's profile photo last changed; null without a photo (`getPhoto`). Always null for `SUPPORT_TEAM`.
+             */
+            photoUpdatedAt: string | null;
+        };
+        NotificationIssue: {
+            key: string;
+            /** @description The title as it is now, not as it was when the item was made (INBOX-1). */
+            title: string;
+        };
         PagedAttachment: {
             items: components["schemas"]["Attachment"][];
             /**
@@ -744,6 +896,23 @@ export interface components {
             /** Format: int32 */
             totalPages: number;
         };
+        PagedNotification: {
+            items: components["schemas"]["Notification"][];
+            /**
+             * Format: int32
+             * @description Page number, starting at 1.
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Items per page, 1 to 100.
+             */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
+        };
         /** @description A customer, or the support team. For `SUPPORT_TEAM` `accountId`, `name`, and `photoUpdatedAt` are all null. */
         Person: {
             /** Format: int64 */
@@ -771,6 +940,14 @@ export interface components {
             /** @description Leading and trailing whitespace and case are ignored. */
             email: string;
             password: string;
+        };
+        UnreadCount: {
+            /** Format: int64 */
+            count: number;
+        };
+        UpdateCommentRequest: {
+            /** @description Markdown, 1 to 4,000 characters. `null` is refused. */
+            content?: string;
         };
         UpdateIssueRequest: {
             /** @description Markdown, up to 10,000 characters. `null` clears it. */
@@ -1860,7 +2037,127 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
-            /** @description `RATE_LIMITED`: more than 30 comments in 60 seconds (S0-AC-55). */
+            /** @description `RATE_LIMITED`: more than 30 comments added or edited in 60 seconds (S0-AC-55, S4-AC-09). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: the caller did not write the comment, or left the company (S4-AC-05, S4-AC-11). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue or comment, the caller cannot see the issue, the comment belongs to another issue, or it is an internal comment (S4-AC-03). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description The comment as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `content` empty, over 4,000, or `null`. `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` (S4-AC-04). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: the caller did not write the comment, or left the company (S4-AC-05). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue or comment, the caller cannot see the issue, the comment belongs to another issue, or it is an internal comment (S4-AC-03). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 30 comments added or edited in 60 seconds (S0-AC-55, S4-AC-09). */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -2175,6 +2472,161 @@ export interface operations {
             };
             /** @description `CSRF_TOKEN_INVALID`. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: {
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description 1 to 100. */
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedNotification"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    markAllNotificationsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    countUnreadNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The count. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCount"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    markNotificationRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such item in the caller's inbox. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

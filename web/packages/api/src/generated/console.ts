@@ -656,19 +656,43 @@ export interface paths {
         };
         /**
          * Comments of an issue
-         * @description Public and internal comments, oldest first, with author names (S0-AC-54).
+         * @description Public and internal comments, oldest first, with author names (S0-AC-54). A deleted comment stays in its place as a trace and is counted (`deleted`, S4-AC-10).
          */
         get: operations["listComments"];
         put?: never;
         /**
          * Add a public or internal comment
-         * @description A public comment emails the reporter and sets the first response time once (S0-AC-46, S0-AC-70). An internal comment is hidden from customers (S0-AC-53).
+         * @description A public comment emails the reporter and sets the first response time once (S0-AC-46, S0-AC-70). An internal comment is hidden from customers (S0-AC-53). `mentions` names accounts to tell about the comment (S4-AC-19).
          */
         post: operations["createComment"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/console/issues/{key}/comments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a comment
+         * @description The author or an admin may delete, on a `CLOSED` issue too (S4-AC-13). The list keeps a trace: `content` is emptied and `deleted`, `deletedAt`, and `deletedBy` are set (S4-AC-10, COM-7). The comment's attachments are deleted with it (S4-AC-14). Deleting a deleted comment again is 204 too and changes nothing (S4-AC-12).
+         */
+        delete: operations["deleteComment"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit the caller's own comment
+         * @description Only the author edits, an admin neither (S4-AC-02). A field left out keeps its value; a body with neither field changes nothing and is 200 too. A new `content` sets `editedAt`; the content the comment already has does not (S4-AC-06). `mentions` replaces the list, and only accounts new to it are told (S4-AC-24).
+         */
+        patch: operations["updateComment"];
         trace?: never;
     };
     "/api/console/issues/{key}/history": {
@@ -683,6 +707,26 @@ export interface paths {
          * @description One `CREATED` entry, then one `CHANGED` entry for each field that changed, oldest first (S3-AC-61, S3-AC-62, S3-AC-64). The portal has no such path (S3-AC-65).
          */
         get: operations["listIssueHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/issues/{key}/mention-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who can be mentioned in a comment on the issue
+         * @description Every `ACTIVE` admin, every `ACTIVE` agent assigned to the issue's company, and, for a public comment, the reporter if `ACTIVE` and still able to see the issue; never the caller (S4-AC-22, MNT-1). In name order, all at once, without pages: the list fills a picker. No email addresses.
+         */
+        get: operations["listMentionCandidates"];
         put?: never;
         post?: never;
         delete?: never;
@@ -868,11 +912,31 @@ export interface paths {
         };
         /**
          * The caller's inbox
-         * @description Own items only, newest first (S0-AC-80, INBOX-3).
+         * @description Own items only, newest first (S0-AC-80, INBOX-3). An item about an issue the caller cannot see now is left out, and is back when the caller can see the issue again (S4-AC-42).
          */
         get: operations["listNotifications"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark every item read
+         * @description Every unread item of the caller, those of issues the caller cannot see now included; nobody else's (S4-AC-45). 204 too when nothing was unread.
+         */
+        post: operations["markAllNotificationsRead"];
         delete?: never;
         options?: never;
         head?: never;
@@ -886,7 +950,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Unread items in the caller's inbox */
+        /**
+         * Unread items in the caller's inbox
+         * @description Counts what `listNotifications` would list and the caller has not read (S4-AC-43).
+         */
         get: operations["countUnreadNotifications"];
         put?: never;
         post?: never;
@@ -1272,14 +1339,26 @@ export interface components {
         };
         Comment: {
             author: components["schemas"]["Person"];
-            /** @description Markdown, as written (COM-6). */
+            /** @description Markdown, as written (COM-6). An empty string once the comment is deleted (COM-7). */
             content: string;
             /** Format: date-time */
             createdAt: string;
+            deleted: boolean;
+            /** Format: date-time */
+            deletedAt: string | null;
+            /** @description The author, or an admin (CMT-3). */
+            deletedBy: components["schemas"]["Person"] | null;
+            /**
+             * Format: date-time
+             * @description When the author last changed the content; null when it never changed (S4-AC-07).
+             */
+            editedAt: string | null;
             /** Format: int64 */
             id: number;
             /** @description Internal comments do not exist for customers (CMT-2). */
             internal: boolean;
+            /** @description The accounts the comment mentions, as they were chosen: someone who can no longer see the issue stays in the list (S4-AC-19, S4-AC-26). */
+            mentions: components["schemas"]["Person"][];
         };
         Company: {
             /** @description 2 to 10 capital letters and digits. Unique, never changes. */
@@ -1332,6 +1411,8 @@ export interface components {
             content: string;
             /** @description An internal comment, hidden from customers. Public when left out. */
             internal?: boolean;
+            /** @description Account IDs to mention, up to 10, each one of `listMentionCandidates` for this kind of comment (MNT-1). An ID given twice counts once. Left out is the same as an empty list. */
+            mentions?: number[];
         };
         CreateCompanyRequest: {
             /** @description 2 to 10 capital letters and digits, unique. Cannot be changed later. */
@@ -1565,20 +1646,49 @@ export interface components {
             email: string;
             name: string;
         };
+        MentionCandidates: {
+            items: components["schemas"]["Person"][];
+        };
         Notification: {
-            /** @description The company a `MEMBERSHIP_REQUESTED` item is about; null for the other kinds. */
+            /** @description Who did it; null for an item about no issue. */
+            actor: components["schemas"]["NotificationActor"] | null;
+            /**
+             * Format: int64
+             * @description The comment the item is about; null when it is about no comment.
+             */
+            commentId: number | null;
+            /** @description The company of the issue, or the company a `MEMBERSHIP_REQUESTED` item is about; null for the other kinds. */
             companyCode: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: int64 */
             id: number;
+            /** @description The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, and `MEMBERSHIP_REQUESTED` (S4-AC-40). */
+            issue: components["schemas"]["NotificationIssue"] | null;
             /** @enum {string} */
-            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MEMBERSHIP_REQUESTED";
+            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED";
             /**
              * Format: date-time
              * @description When the caller marked it read.
              */
             readAt: string | null;
+        };
+        NotificationActor: {
+            /** Format: int64 */
+            accountId: number;
+            name: string;
+            /**
+             * Format: date-time
+             * @description When the profile photo last changed; null without a photo (`getPhoto`).
+             */
+            photoUpdatedAt: string | null;
+            /** @enum {string} */
+            role: "CUSTOMER" | "AGENT" | "ADMIN";
+        };
+        NotificationIssue: {
+            key: string;
+            /** @description The title as it is now, not as it was when the item was made (INBOX-1). */
+            title: string;
         };
         OpenAssignments: {
             /**
@@ -1908,6 +2018,12 @@ export interface components {
         UpdateAccountRequest: {
             /** @description 1 to 50 characters. */
             name?: string;
+        };
+        UpdateCommentRequest: {
+            /** @description Markdown, 1 to 4,000 characters. `null` is refused. */
+            content?: string;
+            /** @description The whole list of account IDs the comment mentions from now on, up to 10, by the rules of `createComment`. `null` is the same as an empty list. Left out, the mentions stay (S4-AC-24). */
+            mentions?: number[];
         };
         UpdateCompanyRequest: {
             /** @description 1 to 100 characters. */
@@ -4538,7 +4654,7 @@ export interface operations {
                     "application/json": components["schemas"]["Comment"];
                 };
             };
-            /** @description `INVALID_INPUT`: `content` empty or over 4,000. `ISSUE_CLOSED`: the issue is closed. */
+            /** @description `INVALID_INPUT`: `content` empty or over 4,000; `mentions` over 10 (`TOO_MANY`, S4-AC-21) or with an account that cannot be mentioned here (`UNKNOWN_VALUE`, one answer whatever the reason, S4-AC-20). `ISSUE_CLOSED`: the issue is closed. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -4574,7 +4690,127 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
-            /** @description `RATE_LIMITED`: more than 30 comments in 60 seconds (S0-AC-55). */
+            /** @description `RATE_LIMITED`: more than 30 comments added or edited in 60 seconds (S0-AC-55, S4-AC-09). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: an agent who did not write it. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue or comment, the caller cannot see the issue, or the comment belongs to another issue (S4-AC-03). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description The comment as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `content` empty, over 4,000, or `null`; `mentions` over 10 (`TOO_MANY`) or with an account that cannot be mentioned here (`UNKNOWN_VALUE`); `fields` lists all. `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` (S4-AC-04). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: the caller did not write the comment. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue or comment, the caller cannot see the issue, or the comment belongs to another issue (S4-AC-03). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 30 comments added or edited in 60 seconds (S0-AC-55, S4-AC-09). */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -4611,6 +4847,58 @@ export interface operations {
                 };
             };
             /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listMentionCandidates: {
+        parameters: {
+            query?: {
+                /** @description `true`: for an internal comment, so without the reporter. Left out or `false`: for a public comment. */
+                internal?: boolean;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The candidates. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MentionCandidates"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `internal` neither `true` nor `false` (`INVALID_FORMAT`). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -5223,6 +5511,42 @@ export interface operations {
             };
             /** @description `UNAUTHENTICATED`. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    markAllNotificationsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
