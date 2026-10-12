@@ -30,6 +30,7 @@ export {
 } from './components/FileUpload';
 export { FormErrorSummary, type FieldError, type FormErrorSummaryProps } from './components/FormErrorSummary';
 export { IconButton, type IconButtonProps } from './components/IconButton';
+export { InboxList, type InboxListItem, type InboxListLink, type InboxListProps } from './components/InboxList';
 export { IssueList, type IssueListItem, type IssueListProps } from './components/IssueList';
 export { MarkdownEditor, type MarkdownEditorProps, type MarkdownTool } from './components/MarkdownEditor';
 export { MarkdownView, type MarkdownViewProps } from './components/MarkdownView';
