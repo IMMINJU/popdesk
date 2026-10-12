@@ -1,0 +1,38 @@
+{
+  "name": "@popdesk/app",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./bands": "./src/bands.tsx",
+    "./busy": "./src/busy.ts",
+    "./csrf": "./src/csrf.ts",
+    "./hooks": "./src/hooks.ts",
+    "./locale": "./src/locale.ts",
+    "./navigate": "./src/navigate.ts",
+    "./PageNav": "./src/PageNav.tsx",
+    "./paging": "./src/paging.ts",
+    "./photos": "./src/photos.ts",
+    "./result": "./src/result.ts",
+    "./session": "./src/session.tsx",
+    "./sessionContext": "./src/sessionContext.ts",
+    "./toast": "./src/toast.tsx",
+    "./toastContext": "./src/toastContext.ts",
+    "./unread": "./src/unread.ts"
+  },
+  "dependencies": {
+    "@popdesk/i18n": "workspace:*",
+    "@popdesk/ui": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-router": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-router": "catalog:"
+  }
+}

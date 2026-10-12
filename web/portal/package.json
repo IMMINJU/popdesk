@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@popdesk/api": "workspace:*",
+    "@popdesk/app": "workspace:*",
     "@popdesk/i18n": "workspace:*",
     "@popdesk/ui": "workspace:*",
     "react": "catalog:",
