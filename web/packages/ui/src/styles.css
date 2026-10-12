@@ -1762,8 +1762,46 @@ textarea {
   font-style: italic;
 }
 
-.pd-comment-body {
+.pd-comment-body,
+.pd-comment-editing,
+.pd-comment-mentions {
   padding-left: calc(24px + var(--space-2));
+}
+
+/* "고침 3분 전" after the written time. */
+.pd-comment-edited {
+  color: var(--text-muted);
+}
+
+/* 댓글 고치기, 댓글 지우기: text buttons at the end of the head line. */
+.pd-comment-actions {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.pd-comment-actions .pd-button {
+  padding: 0 var(--space-2);
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.pd-comment-actions .pd-button:hover:not(:disabled, [aria-disabled='true']) {
+  color: var(--text);
+}
+
+/* "알림: 김상담, 이관리" under the body. */
+.pd-comment-mentions {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+}
+
+/* The form that takes the place of the body while the comment is edited. */
+.pd-comment-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .pd-comment-attachments {
@@ -2000,6 +2038,79 @@ textarea {
   height: 12px;
 }
 
+/* Inbox list (P-7, C-7): one link a line, split by space and one thin line ---- */
+
+.pd-inbox {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pd-inbox-item + .pd-inbox-item {
+  border-top: 1px solid var(--border);
+}
+
+.pd-inbox-row {
+  display: grid;
+  grid-template-columns: var(--status-dot-size) minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+
+a.pd-inbox-row:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+a.pd-inbox-row:hover .pd-inbox-text {
+  color: var(--accent);
+}
+
+/* Unread: a filled dot and bold text. The dot keeps its place on a read line, so the lines stay in step. */
+.pd-inbox-dot {
+  width: var(--status-dot-size);
+  height: var(--status-dot-size);
+  margin-top: calc((var(--body-line) - var(--status-dot-size)) / 2);
+  border-radius: var(--radius-full);
+}
+
+.pd-inbox-item[data-unread='true'] .pd-inbox-dot {
+  background: var(--text);
+}
+
+.pd-inbox-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.pd-inbox-item[data-unread='true'] .pd-inbox-text {
+  font-weight: 600;
+}
+
+.pd-inbox-issue {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+}
+
+.pd-inbox-key {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pd-inbox-row .pd-time {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--body-line);
+}
+
 /* Row menu: fixed list, so a table's sideways scroll does not cut it off --- */
 
 .pd-row-menu {
@@ -2130,6 +2241,45 @@ textarea {
   background: var(--surface);
 }
 
+/* The inbox link: a bell, "알림", and the unread number. Drawn like a menu link, outside the menu. */
+.pd-shell-inbox a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pd-shell-inbox a:hover {
+  background: var(--sunken);
+  color: var(--text);
+}
+
+.pd-shell-inbox a[aria-current='page'] {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.pd-shell-inbox-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.pd-shell-inbox a[aria-current='page'] .pd-shell-inbox-count {
+  background: var(--surface);
+}
+
 .pd-shell-user {
   display: flex;
   align-items: center;
@@ -2208,6 +2358,16 @@ textarea {
   font-size: var(--text-sm);
 }
 
+.pd-shell[data-app='console'] .pd-shell-inbox a {
+  height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.pd-shell[data-app='console'] .pd-shell-inbox-count {
+  margin-left: auto;
+}
+
 .pd-shell[data-app='console'] .pd-shell-user {
   padding: var(--space-3) var(--space-2) 0;
   border-top: 1px solid var(--border);
@@ -2232,6 +2392,29 @@ textarea {
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-top {
   flex-direction: column;
   padding-left: 0;
+}
+
+/* Folded: the bell with the number under it. "알림" is hidden from the eye only; the link keeps its name. */
+.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-inbox-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-inbox a {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  height: auto;
+  min-height: 32px;
+  padding: var(--space-1) 0;
+}
+
+.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-inbox-count {
+  margin-left: 0;
 }
 
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-user {
@@ -2283,6 +2466,20 @@ textarea {
   margin-left: auto;
 }
 
+/* With the inbox link the two go to the far end together, the link first. */
+.pd-shell[data-app='portal'] .pd-shell-inbox {
+  margin-left: auto;
+}
+
+.pd-shell[data-app='portal'] .pd-shell-inbox + .pd-shell-user {
+  margin-left: 0;
+}
+
+.pd-shell[data-app='portal'] .pd-shell-inbox a {
+  height: 36px;
+  padding: 0 var(--space-3);
+}
+
 .pd-shell[data-app='portal'] .pd-shell-nav ul {
   gap: var(--space-1);
 }
@@ -2328,5 +2525,19 @@ textarea {
 
   .pd-shell[data-app='portal'] .pd-shell-user-name {
     display: none;
+  }
+
+  /* The bell and the number stay; "알림" is hidden from the eye only, so the bar keeps to one row. */
+  .pd-shell[data-app='portal'] .pd-shell-inbox-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .pd-shell[data-app='portal'] .pd-shell-inbox a {
+    padding: 0 var(--space-2);
   }
 }

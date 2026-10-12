@@ -1,19 +1,20 @@
 // The signed-in frame: checks the session, draws the side menu (AppShell), and
 // lets screens mark `main` busy while they load (screens.md 2절, 4절 공통 머리).
-import { Alert, AppShell, Button, EmptyState, LockIcon, NavItemLabel, SearchOffIcon, type NavItem } from '@popdesk/ui';
+import { Alert, AppShell, Button, EmptyState, InboxLinkLabel, LockIcon, NavItemLabel, SearchOffIcon, type InboxLink, type NavItem } from '@popdesk/ui';
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { api } from '../api';
 import { BusyContext } from './busy';
 import { useDocumentTitle, useFocusWhenReady } from './hooks';
 import { MY_ISSUES_HREF } from './issueFilters';
-import { t } from './locale';
+import { t, tf } from './locale';
 import { TEXT } from './messages';
 import { NavCountContext } from './navCount';
 import { useLiveNavigate } from './navigate';
 import { photoUrl } from './photos';
 import { call } from './result';
 import { useSession, useToLogin, type Me } from './sessionContext';
+import { UnreadContext, useUnreadCount } from './unread';
 
 /** `requests`: the open membership requests of all companies, shown on 고객사 (S2-AC-48). */
 function menu(me: Me, requests: number): Omit<NavItem, 'current'>[] {
@@ -29,6 +30,8 @@ function menu(me: Me, requests: number): Omit<NavItem, 'current'>[] {
   }
   return items;
 }
+
+const INBOX_HREF = '/inbox';
 
 function isCurrent(pathname: string, href: string): boolean {
   const path = href.split('?')[0] ?? href;
@@ -64,6 +67,8 @@ export function ConsoleLayout() {
   const recount = useCallback(() => {
     setCounted((n) => n + 1);
   }, []);
+  // The inbox link's number: asked by the frame alone, on its own clock, never when a screen changes.
+  const unread = useUnreadCount(me !== null);
 
   useEffect(() => {
     let live = true;
@@ -118,6 +123,13 @@ export function ConsoleLayout() {
   if (!me) return null;
 
   const nav: NavItem[] = menu(me, admin ? requests : 0).map((item) => ({ ...item, current: isCurrent(location.pathname, item.href) }));
+  const inbox: InboxLink = {
+    href: INBOX_HREF,
+    label: t('inbox.link'),
+    current: isCurrent(location.pathname, INBOX_HREF),
+    count: unread.count,
+    countLabel: tf('inbox.count', { count: unread.count }),
+  };
   return (
     <BusyContext value={setBusy}>
       <AppShell
@@ -152,9 +164,17 @@ export function ConsoleLayout() {
             <NavItemLabel item={item} />
           </Link>
         )}
+        inbox={inbox}
+        renderInboxLink={(item) => (
+          <Link to={item.href} aria-current={item.current ? 'page' : undefined}>
+            <InboxLinkLabel inbox={item} />
+          </Link>
+        )}
       >
         <NavCountContext value={recount}>
-          <Outlet />
+          <UnreadContext value={unread}>
+            <Outlet />
+          </UnreadContext>
         </NavCountContext>
       </AppShell>
     </BusyContext>
