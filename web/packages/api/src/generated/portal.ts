@@ -1146,7 +1146,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedIssueSummary"];
                 };
             };
-            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `status` (`UNKNOWN_VALUE`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14), or a parameter customers may not use, such as `assignee`, `reporter`, `label`, `sla`, `sort` (`UNKNOWN_PARAMETER`, S0-AC-48, S3-AC-09). */
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `status` (`UNKNOWN_VALUE`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14) or with a character that cannot be stored (`INVALID_FORMAT`), or a parameter customers may not use, such as `assignee`, `reporter`, `label`, `sla`, `sort` (`UNKNOWN_PARAMETER`, S0-AC-48, S3-AC-09). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1164,7 +1164,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
-            /** @description `RATE_LIMITED`: more than 60 lists with `q` in 60 seconds (S3-AC-15). */
+            /** @description `RATE_LIMITED`: more than 60 lists with `q` in 60 seconds (S3-AC-15). This is the only list of the portal that counts toward the limit (COM-8). */
             429: {
                 headers: {
                     [name: string]: unknown;

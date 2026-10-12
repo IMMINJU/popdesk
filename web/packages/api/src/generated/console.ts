@@ -2005,6 +2005,15 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            /** @description `RATE_LIMITED`: more than 60 lists with `q` in 60 seconds, counted together with the other lists that search (S3-AC-15, COM-8). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     updateAccount: {
@@ -3811,7 +3820,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedIssueSummary"];
                 };
             };
-            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `status` or `assignee` (`UNKNOWN_VALUE`), `reporter` not a number (`INVALID_FORMAT`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14), or a parameter this list does not take (`UNKNOWN_PARAMETER`, S3-AC-07). */
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `status` or `assignee` (`UNKNOWN_VALUE`), `reporter` not a number (`INVALID_FORMAT`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14) or with a character that cannot be stored (`INVALID_FORMAT`), or a parameter this list does not take (`UNKNOWN_PARAMETER`, S3-AC-07). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3829,7 +3838,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
-            /** @description `RATE_LIMITED`: more than 60 lists with `q` in 60 seconds, counted together with the account list (S3-AC-15). */
+            /** @description `RATE_LIMITED`: more than 60 lists with `q` in 60 seconds, counted together with the other lists that search: the account list and the list of customers an issue can be filed for (S3-AC-15, COM-8). */
             429: {
                 headers: {
                     [name: string]: unknown;
