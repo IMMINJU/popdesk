@@ -46,8 +46,9 @@ function lineOf(entry: Entry, onBehalf: boolean): { text: string; detail?: React
     case 'PRIORITY':
       return { text: `${who} 우선순위를 ${priorityWord(entry.oldValue)}에서 ${toward(priorityWord(entry.newValue))} 바꿨습니다` };
     case 'ASSIGNEE':
-      if (entry.newValue === null) return { text: `${who} 담당자를 비웠습니다` };
-      if (entry.oldValue === null) return { text: `${who} 담당자를 ${called(entry.newPerson)}으로 정했습니다` };
+      // The contract leaves both values null for this field: the people say what changed.
+      if (entry.newPerson === null) return { text: `${who} 담당자를 비웠습니다` };
+      if (entry.oldPerson === null) return { text: `${who} 담당자를 ${called(entry.newPerson)}으로 정했습니다` };
       return { text: `${who} 담당자를 ${called(entry.oldPerson)}에서 ${called(entry.newPerson)}으로 바꿨습니다` };
     case 'TITLE':
       return {
