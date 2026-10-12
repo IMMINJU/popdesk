@@ -1,5 +1,8 @@
 // P-5 문의 상세 (screens.md 3절). Issue, public comments in time order,
 // attachments, and the comment form. The support side shows as "지원팀" (D-49).
+// Slice 3 (3-issues screens.md 2절) adds the times and the mark of a filing by the
+// support team to the head, the band of a resolved issue, what its reporter can do
+// (문의 종료, 해결 확인, 다시 열기), and 고치기.
 import {
   Alert,
   AttachmentList,
@@ -19,7 +22,7 @@ import {
   type FileRejectReason,
   type UploadItem,
 } from '@popdesk/ui';
-import { useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode, type SubmitEvent } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode, type SubmitEvent } from 'react';
 import { useLocation, useParams } from 'react-router';
 import { api, type Schemas } from '../api';
 import {
@@ -35,9 +38,11 @@ import {
 } from '../app/attachments';
 import { RateLimitBand, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
-import { useCooldown, useFieldErrors, useLeaveGuard, useLoad } from '../app/hooks';
+import { useCooldown, useFieldErrors, useLeaveGuard, useLive, useLoad } from '../app/hooks';
+import { IssueEdit } from '../app/IssueEdit';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
-import { failureText, personLabel, TEXT } from '../app/messages';
+import { t } from '../app/locale';
+import { failureText, personLabel, rateLimitedText, TEXT } from '../app/messages';
 import { photoUrl } from '../app/photos';
 import { call, type Failure, type Result } from '../app/result';
 import { useSession, useToLogin } from '../app/sessionContext';
@@ -48,6 +53,10 @@ type Comment = Schemas['Comment'];
 
 const LIST_SIZE = 100;
 const ISSUE_CLOSED_TEXT = '문의가 종료되어 댓글을 달 수 없습니다.';
+/** The server says so when the status changed before the request came (S3-AC-82). */
+const ALREADY_CHANGED = ['ISSUE_CLOSED', 'NOT_REOPENABLE', 'INVALID_TRANSITION'];
+/** 문의 종료 asks first; 해결 확인 is the same request without the question. */
+type Action = 'close' | 'confirm' | 'reopen';
 
 interface Detail {
   issue: Issue;
@@ -83,8 +92,18 @@ function UploadFailures(props: { failures: readonly UploadFailure[] }) {
   );
 }
 
+/**
+ * One screen for each issue: a move to another issue starts anew, so its dialogs
+ * close and an answer for the issue left behind finds nothing to change (S3-AC-87).
+ */
 export function P5IssueDetail() {
   const key = useParams().issueKey ?? '';
+  return <IssueDetail key={key} issueKey={key} />;
+}
+
+function IssueDetail(props: { issueKey: string }) {
+  const key = props.issueKey;
+  const live = useLive();
   const location = useLocation();
   const meId = useSession().me?.id;
   const toLogin = useToLogin();
@@ -130,7 +149,14 @@ export function P5IssueDetail() {
   const focusComment = useRef<number | null>(null);
   const focusEditor = useRef(false);
   const fields = useFieldErrors({ content: { id: 'comment-content', limits: { min: 1, max: 4000 } } });
-  const blocker = useLeaveGuard(draft.trim() !== '');
+
+  // Slice 3: what the reporter does to the issue, and 고치기.
+  const [acting, setActing] = useState<Action | null>(null);
+  const [asking, setAsking] = useState<'close' | 'reopen' | null>(null);
+  const [actionFailure, setActionFailure] = useState<Failure | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editDirty, setEditDirty] = useState(false);
+  const blocker = useLeaveGuard(draft.trim() !== '' || (editing && editDirty));
 
   // Attachments
   const [uploads, setUploads] = useState<Upload[]>([]);
@@ -140,6 +166,11 @@ export function P5IssueDetail() {
   const [fileBand, setFileBand] = useState<string | null>(null);
 
   const detail = load.data;
+  const reload = load.reload;
+  const reloadIssue = useCallback(async () => {
+    const result = await reload();
+    return result?.ok ? result.data.issue : undefined;
+  }, [reload]);
 
   useLayoutEffect(() => {
     if (focusComment.current !== null) {
@@ -185,6 +216,39 @@ export function P5IssueDetail() {
   const mine = issue.reporter.kind === 'CUSTOMER' && issue.reporter.accountId === meId;
   // Comments and files on my own issue only (RULE-09, CMT-1), and only while I am in its company (PROJ-4).
   const canWrite = mine && detail.member;
+  const resolved = issue.status === 'RESOLVED';
+  // The reporter alone acts on an issue; a colleague reads (S3-AC-82). The server says whether it can be reopened.
+  const canEdit = canWrite && !closed;
+  const askResolved = canWrite && resolved;
+  // After leaving the company the reporter can still close it, and nothing else.
+  const canClose = mine && !closed && !askResolved;
+  const canReopen = canWrite && closed && issue.reopenable;
+
+  const act = async (what: Action) => {
+    if (acting !== null) return;
+    setActing(what);
+    setActionFailure(null);
+    const path = { params: { path: { key } } };
+    const result =
+      what === 'reopen' ? await call(api.POST('/api/portal/issues/{key}/reopen', path)) : await call(api.POST('/api/portal/issues/{key}/close', path));
+    // The screen has gone, or moved to another issue: no toast, nothing read again.
+    if (!live()) return;
+    const changedFirst = !result.ok && result.failure.kind === 'rejected' && ALREADY_CHANGED.includes(result.failure.code);
+    if (result.ok) {
+      toast(t(what === 'reopen' ? 'portalIssue.reopenedToast' : what === 'confirm' ? 'portalIssue.confirmedToast' : 'portalIssue.closedToast'));
+    } else if (changedFirst) {
+      toast(t('portalIssue.changedAlready'), 'info');
+    } else {
+      setActionFailure(result.failure);
+    }
+    // 403: left the company while reading. Reading again (the companies too) takes the actions away.
+    if (result.ok || changedFirst || result.failure.kind === 'forbidden') {
+      await load.reload();
+      if (!live()) return;
+    }
+    setActing(null);
+    setAsking(null);
+  };
 
   const send = async () => {
     if (sending || cooldown.active) return;
@@ -375,6 +439,85 @@ export function P5IssueDetail() {
           <span>{issue.companyName}</span>
         </p>
         <PageTitle>{issue.title}</PageTitle>
+        {askResolved && !editing && (
+          <Alert
+            tone="info"
+            action={
+              <>
+                <Button
+                  size="sm"
+                  pending={acting === 'confirm'}
+                  pendingLabel={TEXT.sending}
+                  blocked={acting !== null && acting !== 'confirm'}
+                  onClick={() => {
+                    void act('confirm');
+                  }}
+                >
+                  {t('portalIssue.confirmResolved')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  blocked={acting !== null}
+                  onClick={() => {
+                    setAsking('reopen');
+                  }}
+                >
+                  {t('portalIssue.reopen')}
+                </Button>
+              </>
+            }
+          >
+            {t('portalIssue.resolvedBand')}
+          </Alert>
+        )}
+        {!editing && (canEdit || canClose || canReopen) && (
+          <div className="pd-detail-actions">
+            {canEdit && (
+              <Button
+                variant="secondary"
+                size="sm"
+                blocked={acting !== null}
+                onClick={() => {
+                  setActionFailure(null);
+                  setEditing(true);
+                }}
+              >
+                {t('issueEdit.edit')}
+              </Button>
+            )}
+            {canClose && (
+              <Button
+                variant="secondary"
+                size="sm"
+                blocked={acting !== null}
+                onClick={() => {
+                  setAsking('close');
+                }}
+              >
+                {t('portalIssue.close')}
+              </Button>
+            )}
+            {canReopen && (
+              <Button
+                variant="secondary"
+                size="sm"
+                blocked={acting !== null}
+                onClick={() => {
+                  setAsking('reopen');
+                }}
+              >
+                {t('portalIssue.reopen')}
+              </Button>
+            )}
+          </div>
+        )}
+        {canWrite && closed && !issue.reopenable && <p className="pd-muted">{t('portalIssue.tooLateToReopen')}</p>}
+        {actionFailure?.kind === 'rateLimited' ? (
+          <Alert tone="error">{rateLimitedText(actionFailure.seconds)}</Alert>
+        ) : (
+          <SaveFailure failure={actionFailure} />
+        )}
         <dl className="pd-meta">
           <div>
             <dt>상태</dt>
@@ -394,7 +537,7 @@ export function P5IssueDetail() {
           </div>
           <div>
             <dt>올린 사람</dt>
-            <dd>{personLabel(issue.reporter, meId)}</dd>
+            <dd>{issue.filedBySupport ? `${personLabel(issue.reporter, meId)} ${t('portalIssues.filedBySupport')}` : personLabel(issue.reporter, meId)}</dd>
           </div>
           <div>
             <dt>올린 시각</dt>
@@ -402,6 +545,22 @@ export function P5IssueDetail() {
               <RelativeTime dateTime={issue.createdAt} />
             </dd>
           </div>
+          {issue.resolvedAt !== null && (
+            <div>
+              <dt>{t('portalIssue.resolvedAt')}</dt>
+              <dd>
+                <RelativeTime dateTime={issue.resolvedAt} />
+              </dd>
+            </div>
+          )}
+          {issue.closedAt !== null && (
+            <div>
+              <dt>{t('portalIssue.closedAt')}</dt>
+              <dd>
+                <RelativeTime dateTime={issue.closedAt} />
+              </dd>
+            </div>
+          )}
           {issue.private && (
             <div>
               <dt className="pd-sr-only">공개 범위</dt>
@@ -415,9 +574,26 @@ export function P5IssueDetail() {
         </dl>
       </header>
 
-      <article className="pd-detail-body" aria-label="문의 내용">
-        <MarkdownView source={issue.content} />
-      </article>
+      {editing ? (
+        <IssueEdit
+          issue={issue}
+          reload={reloadIssue}
+          onDirtyChange={setEditDirty}
+          onCancel={() => {
+            setEditing(false);
+            setEditDirty(false);
+          }}
+          onSaved={() => {
+            setEditing(false);
+            setEditDirty(false);
+            void load.reload();
+          }}
+        />
+      ) : (
+        <article className="pd-detail-body" aria-label="문의 내용">
+          <MarkdownView source={issue.content} />
+        </article>
+      )}
 
       <div className="pd-detail-attachments">
         {fileBand && (
@@ -513,6 +689,21 @@ export function P5IssueDetail() {
         }}
         onCancel={() => {
           setDeleteTarget(null);
+        }}
+      />
+      <ConfirmDialog
+        open={asking !== null}
+        title={t(asking === 'reopen' ? 'portalIssue.reopen' : 'portalIssue.close')}
+        message={t(asking === 'reopen' ? 'portalIssue.askReopen' : 'portalIssue.askClose')}
+        confirmLabel={t(asking === 'reopen' ? 'portalIssue.reopen' : 'portalIssue.closeConfirm')}
+        cancelLabel={TEXT.cancel}
+        pending={acting !== null}
+        pendingLabel={TEXT.sending}
+        onConfirm={() => {
+          void act(asking === 'reopen' ? 'reopen' : 'close');
+        }}
+        onCancel={() => {
+          setAsking(null);
         }}
       />
       <ConfirmDialog

@@ -233,12 +233,75 @@
   gap: var(--space-1);
 }
 
-.pd-kept-draft pre {
+.pd-kept-draft pre,
+.pd-plain-text {
   padding: var(--space-3);
   border-radius: var(--radius-md);
   background: var(--sunken);
   font-family: inherit;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Slice 3: the actions under the title, 고치기 and what the issue holds now after a 409 */
+.pd-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.pd-now-values {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--sunken);
+}
+
+.pd-now-values dd {
+  overflow-wrap: anywhere;
+}
+
+.pd-disclosure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.pd-disclosure-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pd-disclosure-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.pd-disclosure-button .pd-icon {
+  transform: rotate(-90deg);
+  transition: transform var(--duration-fast) var(--easing);
+}
+
+.pd-disclosure[data-open='true'] > .pd-disclosure-button .pd-icon {
+  transform: none;
+}
+
+.pd-disclosure-body {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .pd-detail-skeleton {
