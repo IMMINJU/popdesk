@@ -6,3 +6,9 @@
 server io/popdesk/project/NoStoreTest.java
 server io/popdesk/boundary/BoundaryListTest.java
 server io/popdesk/manager/MembershipRequestMailTest.java
+server io/popdesk/issue/CommentEditTest.java
+server io/popdesk/issue/CommentEditRateLimitTest.java
+server io/popdesk/issue/CommentNotFoundTest.java
+server io/popdesk/issue/CommentDeleteTest.java
+server io/popdesk/issue/MentionTest.java
+server io/popdesk/issue/MentionCandidatesTest.java
