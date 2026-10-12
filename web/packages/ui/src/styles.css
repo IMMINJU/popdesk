@@ -685,6 +685,9 @@ textarea {
   flex-direction: column;
   gap: var(--space-1);
   min-width: 0;
+  /* Korean breaks between words; a long run without a space still breaks. */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .pd-alert-title {
@@ -850,6 +853,12 @@ textarea {
   line-height: var(--text-sm-line);
 }
 
+.pd-dialog-description,
+.pd-dialog-body {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .pd-dialog-body {
   display: flex;
   flex-direction: column;
@@ -867,6 +876,11 @@ textarea {
 
 .pd-confirm-message {
   color: var(--text);
+}
+
+/* A message of several blocks (sentences, a checkbox, a band) keeps them apart. */
+.pd-confirm-message > * + * {
+  margin-top: var(--space-3);
 }
 
 @keyframes pd-fade {
