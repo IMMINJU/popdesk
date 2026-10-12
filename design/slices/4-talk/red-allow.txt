@@ -25,7 +25,7 @@ src/components/AppShell.inbox.test.tsx.AppShell 알림 링크 (4번 묶음) > Ap
 src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-61 CommentItem 고침: editedAt을 주면 쓴 시각 뒤에 "고침"과 고친 시각이 있고, 정확한 시각은 title에 있다. 주지 않거나 null이면 없다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
 src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-60 CommentItem 동작: actions의 버튼이 머리 줄에 있고, aria-describedby로 그 댓글의 쓴 사람과 쓴 시각에 이어진다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
 src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-63 CommentItem 멘션: mentions를 주면 본문 아래에 "알림: 김상담, 이관리" 한 줄이 있다. 비었으면 줄이 없다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
-src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-62 CommentItem 지운 댓글: "지워진 댓글" 옆에 지운 사람과 지운 시각이 있고 본문은 없다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
+src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-62 CommentItem 지운 댓글: "지워진 댓글" 옆에 지운 사람과 지운 시각이 있다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
 src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-62 CommentItem 지운 댓글: 동작, 편집기, 멘션 줄을 받아도 그리지 않는다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
 src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > S4-AC-61 CommentItem 고치는 중: editing을 주면 본문 대신 그것을 그린다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
 src/components/CommentItem.s4.test.tsx.CommentItem 4번 묶음 > CommentItem axe (고침·동작·멘션): 접근성 위반이 없다 | C-4 웹 껍데기가 CommentItem의 새 props를 이미 그린다. 화면이 넘기는 것은 comments4 테스트가 본다
