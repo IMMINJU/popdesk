@@ -194,7 +194,7 @@
 
 ### 지금은 태그와 견본만 남기고 이미지는 올리지 않는다 (2026-10-10 사람이 정함)
 
-다른 곳에서 설치할 사람이 없어 ghcr에 올리기를 미뤘다. 0.1.0을 이 범위로 했고, 0.2.0과 0.3.0도 같은 범위와 같은 순서로 했다(2026-10-12, 사람이 맡겨 메인이 정함. 0.3.0은 2번과 3번을 묶었다).
+다른 곳에서 설치할 사람이 없어 ghcr에 올리기를 미뤘다. 0.1.0을 이 범위로 했고, 0.2.0, 0.3.0, 0.4.0도 같은 범위와 같은 순서로 했다(사람이 맡겨 메인이 정함. 0.3.0은 2번과 3번을, 0.4.0은 4a와 4b를 묶었다).
 
 릴리스마다 하는 것:
 
@@ -206,7 +206,7 @@
 
 올리는 순서(Actions 시간을 아끼려는 것이다): 태그만 먼저 올려 전체 런 하나를 돌린다. 견본은 태그 커밋에 넣는다(`deploy/upgrade`는 이미지에 들어가지 않는다). 그 뒤 검증 기록 커밋은 `[skip ci]`를 붙여 `main`에 올린다. 브랜치 푸시와 태그 푸시는 따로 돌기 때문에 둘을 같이 올리면 런이 둘이다.
 
-버전을 올릴 때 고치는 곳: `server/pom.xml`, `OpenApiConfig.CONTRACT_VERSION`(계약 파일과 생성 클라이언트를 다시 만든다), `deploy/compose.yml`의 이미지 태그, README 둘의 상태 줄, `docs/operate/upgrade.md`의 "다음 판" 제목(판 번호로 바꾸고 그 앵커를 가리키는 링크도 고친다), `deploy/upgrade/README.md`와 `samples/README.md`의 견본 줄. 0.3.0의 기록은 `archive/3-issues/verify.md` 9절에 있다.
+버전을 올릴 때 고치는 곳: `server/pom.xml`, `OpenApiConfig.CONTRACT_VERSION`(계약 파일과 생성 클라이언트를 다시 만든다), `deploy/compose.yml`의 이미지 태그, README 둘의 상태 줄, `docs/operate/upgrade.md`의 "다음 판" 제목(판 번호로 바꾸고 그 앵커를 가리키는 링크도 고친다), `deploy/upgrade/README.md`와 `samples/README.md`의 견본 줄. 0.3.0의 기록은 `archive/3-issues/verify.md` 9절에, 0.4.0의 기록은 `archive/4b-delivery/verify.md` 10절에 있다.
 
 설치할 사람이 생기거나 레포를 공개할 때 하는 것:
 
