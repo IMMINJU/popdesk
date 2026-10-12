@@ -64,7 +64,7 @@ const columns: DataTableColumn<IssueSummary>[] = [
     key: 'title',
     header: '제목',
     sticky: true,
-    width: '22rem',
+    width: '14rem',
     cell: (i) => (
       <span className="pd-title-cell">
         <Link to={`/issues/${encodeURIComponent(i.key)}`}>{i.title}</Link>

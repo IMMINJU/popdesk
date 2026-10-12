@@ -166,6 +166,18 @@
   width: auto !important;
 }
 
+/* The title breaks between words, and inside one only when the word alone is wider than the column. */
+.pd-issues .pd-title-cell a {
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.pd-issues .pd-title-cell .pd-badge {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .pd-issues .pd-table :is(th, td):nth-child(n + 3) {
   width: 1%;
   white-space: nowrap;
