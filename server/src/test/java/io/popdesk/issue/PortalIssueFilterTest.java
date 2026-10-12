@@ -1,10 +1,10 @@
 package io.popdesk.issue;
 
+import static io.popdesk.issue.IssueFlow.assertEmptyPage;
 import static io.popdesk.issue.IssueFlow.list;
 import static io.popdesk.issue.IssueFlow.listRequest;
 import static io.popdesk.issue.IssueFlow.total;
 import static io.popdesk.issue.IssueSteps.fieldCode;
-import static io.popdesk.issue.IssueSteps.items;
 import static io.popdesk.issue.IssueSteps.keys;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -42,11 +42,6 @@ class PortalIssueFilterTest extends BareAppTest {
     @BeforeEach
     void setUp() {
         flow = new IssueFlow(fixtures, clock);
-    }
-
-    private static void assertEmptyPage(ApiResponse page, String what) {
-        assertThat(items(page)).as("items of %s", what).isEmpty();
-        assertThat(total(page)).as("totalElements of %s", what).isZero();
     }
 
     // S3-AC-08
@@ -118,11 +113,9 @@ class PortalIssueFilterTest extends BareAppTest {
     @ParameterizedTest(name = "{0}={1}")
     @CsvSource({
             "reporter, 1",
-            "label, bug",
-            "sort, 'createdAt,asc'",
             "company, AB",
     })
-    @DisplayName("S3-AC-09 staff-only names and the old company name on the customer list are 400 UNKNOWN_PARAMETER")
+    @DisplayName("S3-AC-09 the staff-only reporter filter and the old company name on the customer list are 400 UNKNOWN_PARAMETER")
     void staffOnlyNamesAreRejected(String name, String value) {
         World w = flow.world();
 

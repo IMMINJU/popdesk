@@ -1,5 +1,6 @@
 package io.popdesk.issue;
 
+import static io.popdesk.issue.IssueFlow.NO_ACCOUNT;
 import static io.popdesk.issue.IssueSteps.fieldCode;
 import static io.popdesk.issue.IssueSteps.fieldNames;
 import static io.popdesk.issue.IssueSteps.items;
@@ -36,9 +37,6 @@ import tools.jackson.databind.JsonNode;
  * support team filed it.
  */
 class OnBehalfFilingTest extends BareAppTest {
-
-    /** An account ID no account has. */
-    private static final long NO_ACCOUNT = 4_000_000_000_000L;
 
     private IssueFlow flow;
 
@@ -127,7 +125,7 @@ class OnBehalfFilingTest extends BareAppTest {
         accounts.put("a suspended customer of the company", suspended.accountId());
         accounts.put("a customer taken out of the company", removed.accountId());
         accounts.put("an agent of the company", w.agent().accountId());
-        accounts.put("an ID of nobody", NO_ACCOUNT + Unique.number());
+        accounts.put("an ID of nobody", NO_ACCOUNT);
         String title = Unique.text("For the wrong person");
 
         Map<String, ApiResponse> answers = new LinkedHashMap<>();
@@ -177,7 +175,7 @@ class OnBehalfFilingTest extends BareAppTest {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"SUSPENDED", "ARCHIVED"})
-    @DisplayName("S3-AC-34 filing for a customer of a company that is not ACTIVE is 400 COMPANY_NOT_ACTIVE, for an admin and an assigned agent")
+    @DisplayName("S3-AC-34 filing for a customer of a company that is not ACTIVE is 400 COMPANY_NOT_ACTIVE, for an admin and an assigned agent; an agent who is not assigned still gets the 404 of a code that does not exist")
     void inactiveCompanyIsRefused(String status) {
         World w = flow.world();
         flow.fileOnBehalf(w.agent(), OnBehalf.of(w.code(), w.reporter().accountId()));
@@ -189,6 +187,16 @@ class OnBehalfFilingTest extends BareAppTest {
 
             assertThat(refused.status()).as(refused.request() + " by " + staff.role()).isEqualTo(400);
             assertThat(refused.errorCode()).isEqualTo("COMPANY_NOT_ACTIVE");
+        }
+        for (Session outsider : List.of(w.unassignedAgent(), w.agentElsewhere())) {
+            ApiResponse missing = send(outsider, OnBehalf.of(Unique.companyCode(), w.reporter().accountId())
+                    .title(title));
+            ApiResponse hidden = send(outsider, OnBehalf.of(w.code(), w.reporter().accountId()).title(title));
+
+            assertThat(missing.status()).as(missing.request()).isEqualTo(404);
+            assertThat(hidden.status()).as("filing in the %s company by an agent who is not assigned to it: %s",
+                    status, hidden.snippet()).isEqualTo(404);
+            assertThat(hidden.body()).as("body, like a code that does not exist").isEqualTo(missing.body());
         }
         assertThat(newestTitles(w.admin())).as("titles of the newest issues").doesNotContain(title);
     }

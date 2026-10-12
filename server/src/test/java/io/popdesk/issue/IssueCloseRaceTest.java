@@ -10,6 +10,7 @@ import io.popdesk.issue.StatementLog.Window;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.AppLog;
 import io.popdesk.support.BareAppTest;
+import io.popdesk.support.Concurrently;
 import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.NewIssue;
 import io.popdesk.support.Fixtures.Session;
@@ -23,9 +24,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -71,22 +69,6 @@ class IssueCloseRaceTest extends BareAppTest {
         sql = new StatementLog(db, postgres);
     }
 
-    private static ApiResponse finish(CompletableFuture<ApiResponse> running, String what) {
-        try {
-            return running.get(30, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("Interrupted while " + what + " finished", e);
-        } catch (ExecutionException e) {
-            if (e.getCause() instanceof AssertionError failed) {
-                throw failed;
-            }
-            throw new AssertionError(what + " failed: " + e.getCause(), e.getCause());
-        } catch (TimeoutException e) {
-            throw new AssertionError(what + " did not finish within 30 seconds of the release", e);
-        }
-    }
-
     /** The agent's write, marked with {@code marker}: the comment's text, the file's name, or the new title. */
     private static ApiResponse send(Write write, Session agent, String key, String marker, long version) {
         String issue = "/api/console/issues/" + key;
@@ -94,7 +76,7 @@ class IssueCloseRaceTest extends BareAppTest {
             case COMMENT -> agent.client().post(issue + "/comments").json(Map.of("content", marker)).send();
             case ATTACHMENT -> agent.client().post(issue + "/attachments")
                     .file("file", marker, "text/plain", "raced".getBytes(StandardCharsets.UTF_8)).send();
-            case EDIT -> agent.client().patch(issue).json(Map.of("title", marker, "version", version)).send();
+            case EDIT -> IssueFlow.editRequest(agent, key, Map.of("title", marker, "version", version)).send();
         };
     }
 
@@ -123,7 +105,7 @@ class IssueCloseRaceTest extends BareAppTest {
 
         try (HeldWrite hold = new HeldWrite(db, postgres, issueTable, "update", title)) {
             CompletableFuture<ApiResponse> close = CompletableFuture.supplyAsync(
-                    () -> w.reporter().client().post("/api/portal/issues/" + issue.key() + "/close").send());
+                    () -> IssueFlow.closeRequest(w.reporter(), issue.key()).send());
             hold.awaitHeld("the UPDATE that closes the issue");
             flow.tick();
             CompletableFuture<ApiResponse> other = CompletableFuture.supplyAsync(
@@ -133,8 +115,8 @@ class IssueCloseRaceTest extends BareAppTest {
                     () -> other.isDone() || hold.waitingForALock() > 0 || System.nanoTime() > heldUntil
                             ? Boolean.TRUE : null);
             hold.release();
-            closing = finish(close, "the closing request");
-            writing = finish(other, "the other request");
+            closing = Concurrently.finish(close, "the closing request");
+            writing = Concurrently.finish(other, "the other request");
         }
         String serverLog = sql.end(window).toLowerCase(Locale.ROOT);
 
@@ -146,14 +128,10 @@ class IssueCloseRaceTest extends BareAppTest {
         assertThat(closedAt).as("closedAt after both requests").isNotNull();
         boolean stored = writing.status() == 200 || writing.status() == 201;
         if (!stored) {
-            // An edit that comes after the closing carries a version from before it, so it may also be told that.
-            List<String> codes = write == Write.EDIT ? List.of("ISSUE_CLOSED", "VERSION_CONFLICT")
-                    : List.of("ISSUE_CLOSED");
-            assertThat(writing.status()).as(write + " after the closing: " + writing.snippet())
-                    .isIn(write == Write.EDIT ? List.of(400, 409) : List.of(400));
-            assertThat(writing.errorCode()).as("code of the refused " + write).isIn(codes);
-            assertThat((writing.status() == 409) == writing.errorCode().equals("VERSION_CONFLICT"))
-                    .as("status %s goes with code %s", writing.status(), writing.errorCode()).isTrue();
+            // An edit that comes after the closing carries a version from before it. It is still told that
+            // the issue is closed: that comes before the version (design.md section 2).
+            assertThat(writing.status()).as(write + " after the closing: " + writing.snippet()).isEqualTo(400);
+            assertThat(writing.errorCode()).as("code of the refused " + write).isEqualTo("ISSUE_CLOSED");
         }
         switch (write) {
             case COMMENT -> {

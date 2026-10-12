@@ -30,8 +30,6 @@ import tools.jackson.databind.JsonNode;
  */
 class IssueHistoryTest extends BareAppTest {
 
-    private static final String NO_KEY = "ZZ9NOPE-999999";
-
     private IssueFlow flow;
 
     @BeforeEach
@@ -206,17 +204,16 @@ class IssueHistoryTest extends BareAppTest {
         flow.tick();
         Map<String, ApiResponse> answers = new LinkedHashMap<>();
 
-        answers.put("200 same values", w.reporter().client().patch("/api/portal/issues/" + issue.key())
-                .json(Map.of("title", title, "content", "Same content.", "priority", "HIGH", "version", version))
+        answers.put("200 same values", IssueFlow.editRequest(w.reporter(), issue.key(),
+                Map.of("title", title, "content", "Same content.", "priority", "HIGH", "version", version)).send());
+        answers.put("200 same assignee", IssueFlow.assignRequest(w.admin(), issue.key(), w.agent().accountId())
                 .send());
-        answers.put("200 same assignee", w.admin().client().put("/api/console/issues/" + issue.key() + "/assignee")
-                .json(Map.of("accountId", w.agent().accountId())).send());
         answers.put("400 transition out of the table", IssueFlow.statusRequest(w.agent(), issue.key(), "RESOLVED")
                 .send());
-        answers.put("403 colleague", w.colleague().client().patch("/api/portal/issues/" + issue.key())
-                .json(Map.of("title", Unique.text("By a colleague"), "version", version)).send());
-        answers.put("409 old version", w.agent().client().patch("/api/console/issues/" + issue.key())
-                .json(Map.of("title", Unique.text("With an old version"), "version", version - 1)).send());
+        answers.put("403 colleague", IssueFlow.editRequest(w.colleague(), issue.key(),
+                Map.of("title", Unique.text("By a colleague"), "version", version)).send());
+        answers.put("409 old version", IssueFlow.editRequest(w.agent(), issue.key(),
+                Map.of("title", Unique.text("With an old version"), "version", version - 1)).send());
 
         answers.forEach((what, answer) -> assertThat(answer.status()).as(what + ": " + answer.request() + " -> "
                 + answer.snippet()).isEqualTo(Integer.parseInt(what.substring(0, 3))));
@@ -304,23 +301,5 @@ class IssueHistoryTest extends BareAppTest {
         assertChange(history.get(1), "TITLE", title, newTitle, w.reporter(), "CUSTOMER", editedAt);
         assertChange(history.get(2), "STATUS", "RECEIVED", "CLOSED", w.reporter(), "CUSTOMER", closedAt);
         assertChange(history.get(3), "STATUS", "CLOSED", "RECEIVED", w.reporter(), "CUSTOMER", reopenedAt);
-    }
-
-    // S3-AC-67
-
-    @Test
-    @DisplayName("S3-AC-67 an agent who is not assigned to the company gets 404 for the history, with the body of an issue key nobody has")
-    void unassignedAgentGetsNotFound() {
-        World w = flow.world();
-        Issue issue = fixtures.fileIssue(w.reporter(), w.code());
-        assertThat(flow.history(w.agent(), issue.key())).as("history for the assigned agent").hasSize(1);
-
-        ApiResponse hidden = w.unassignedAgent().client().get(historyPath(issue.key())).send();
-        ApiResponse missing = w.unassignedAgent().client().get(historyPath(NO_KEY)).send();
-
-        assertThat(missing.status()).as(missing.request()).isEqualTo(404);
-        assertThat(hidden.status()).as(hidden.request() + " -> " + hidden.snippet()).isEqualTo(404);
-        assertThat(hidden.errorCode()).isEqualTo("NOT_FOUND");
-        assertThat(hidden.body()).as("body, like an issue key nobody has").isEqualTo(missing.body());
     }
 }

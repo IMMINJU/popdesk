@@ -22,9 +22,12 @@ import tools.jackson.databind.json.JsonMapper;
  */
 class PortalIssueContractTest {
 
-    /** Name parts of staff-only fields: assignee, labels, due date, history, first response, created by, internal. */
+    /**
+     * Name parts of staff-only fields: assignee, labels, due date, history, first response, created by, internal,
+     * and the channel an issue came in by (S3-AC-29).
+     */
     static final List<String> STAFF_ONLY = List.of("assignee", "label", "due", "history", "firstresponse",
-            "createdby", "creator", "internal");
+            "createdby", "creator", "internal", "channel");
 
     /**
      * The customer's issue and comment types and their fields, as fixed for this slice.

@@ -23,16 +23,25 @@ class TrigramExtensionTest extends OwnStartTest {
 
     @Test
     @DisplayName("S3-AC-91 a database user that may not create the pg_trgm extension, on a database without it, "
-            + "stops the start and the log has the CREATE EXTENSION statement for the database administrator")
+            + "stops the start and one line of the log has the CREATE EXTENSION statement and the name of the "
+            + "database for the administrator; once the administrator ran it there, the app starts")
     void userThatMayNotCreateTheExtension() {
         Database db = newDatabaseWithoutExtensionPrivilege();
 
         try (Boot app = Boot.start(Settings.firstInstall(db))) {
             app.assertDidNotStart("user " + db.user() + " may not create the extension pg_trgm, and it is not there");
 
-            assertThat(app.logLines()).as("a line with the statement that creates pg_trgm")
-                    .anyMatch(line -> CREATE_EXTENSION.matcher(line).find());
+            assertThat(app.logLines()).as("a line with the statement that creates pg_trgm and the database to run "
+                    + "it in, %s", db.name())
+                    .anyMatch(line -> CREATE_EXTENSION.matcher(line).find() && line.contains(db.name()));
             assertThat(extensionOwners(db)).as("owners of pg_trgm after the refused start").isEmpty();
+        }
+        // What the line asked for. The refused start must not have left anything in the way.
+        db.execute("create extension pg_trgm");
+
+        try (Boot app = Boot.start(Settings.firstInstall(db))) {
+            app.assertStarted();
+            assertReady(app);
         }
     }
 

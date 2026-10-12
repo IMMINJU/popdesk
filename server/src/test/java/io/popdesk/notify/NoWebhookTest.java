@@ -47,11 +47,11 @@ class NoWebhookTest extends BareAppTest {
         String title = Unique.text("Unhooked");
         String content = "Unhooked comment " + Unique.number();
         // The scene's two invitation mails were queued and handled; wait until the statistics show both
-        // rows deleted, so that they do not count as rows of the requests below. The table they went
-        // through is the send queue.
-        Set<String> queue = Wait.until("the scene's two mail rows counted as deleted", Duration.ofSeconds(25), () -> {
+        // rows inserted and deleted, so that they do not count as rows of the requests below. The table
+        // they went through is the send queue: one that only had rows deleted meanwhile is not it.
+        Set<String> queue = Wait.until("the scene's two mail rows counted as inserted and deleted", Duration.ofSeconds(25), () -> {
             Set<String> tables = TableActivity.insertedAndDeleted(beforeScene, activity.counts()).entrySet().stream()
-                    .filter(e -> e.getValue().deleted() >= 2)
+                    .filter(e -> e.getValue().inserted() >= 2 && e.getValue().deleted() >= 2)
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toSet());
             return tables.isEmpty() ? null : tables;

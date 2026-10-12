@@ -87,15 +87,18 @@ class CompanyReportersTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S3-AC-40 q narrows the reporter list by a part of the name or of the email, ignoring case")
+    @DisplayName("S3-AC-40 q narrows the reporter list by a part of the name or of the email, ignoring case, and finds no customer of another company, no suspended one, and no invited one")
     void searchByNameOrEmail() {
         World w = flow.world();
         String inName = IssueFlow.word();
         String inEmail = IssueFlow.word();
         Session byName = customer(w.admin(), w.code(), "Kim " + inName + " Lee", "customer");
         Session byEmail = customer(w.admin(), w.code(), Unique.text("customer"), "a." + inEmail + ".b");
-        Session inOtherCompany = customer(w.admin(), fixtures.createCompany(w.admin()).code(), "Park " + inName,
-                "customer");
+        Session inOtherCompany = customer(w.admin(), w.elsewhere().code(), "Park " + inName, "c." + inEmail);
+        Session suspended = customer(w.admin(), w.code(), "Choi " + inName, "d." + inEmail);
+        flow.suspend(w.admin(), suspended.accountId());
+        Invitation invited = fixtures.invite(w.admin(), Role.CUSTOMER, Unique.email("e." + inEmail), "Jung " + inName,
+                List.of(w.code()));
 
         ApiResponse foundByName = reporters(w.agent(), w.code()).query("q", inName.toUpperCase(Locale.ROOT))
                 .expect(200);
@@ -103,9 +106,13 @@ class CompanyReportersTest extends BareAppTest {
         ApiResponse foundByNothing = reporters(w.agent(), w.code()).query("q", IssueFlow.word()).expect(200);
 
         assertThat(ids(foundByName)).as("reporters found by a part of the name").containsExactly(byName.accountId())
-                .doesNotContain(inOtherCompany.accountId());
-        assertThat(foundByName.jsonLong("totalElements")).isEqualTo(1);
-        assertThat(ids(foundByEmail)).as("reporters found by a part of the email").containsExactly(byEmail.accountId());
+                .doesNotContain(inOtherCompany.accountId(), suspended.accountId(), invited.accountId());
+        assertThat(foundByName.jsonLong("totalElements")).as("totalElements by name").isEqualTo(1);
+        assertThat(ids(foundByEmail)).as("reporters found by a part of the email").containsExactly(byEmail.accountId())
+                .doesNotContain(inOtherCompany.accountId(), suspended.accountId(), invited.accountId());
+        assertThat(foundByEmail.jsonLong("totalElements")).as("totalElements by email").isEqualTo(1);
+        assertThat(foundByEmail.text()).as("the answer to the email search holds nobody of another company")
+                .doesNotContain(inOtherCompany.email()).doesNotContain(inOtherCompany.name());
         assertThat(ids(foundByNothing)).as("reporters found by a word nobody has").isEmpty();
     }
 

@@ -1,5 +1,7 @@
 package io.popdesk.issue;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.Fixtures;
@@ -23,7 +25,8 @@ import tools.jackson.databind.JsonNode;
  * {@link IssueSteps} already does is used from there.
  *
  * <p>Every step expects its one status (200 or 201) and fails with an {@link AssertionError}
- * otherwise, so before the slice is built a test fails at the step, on an assertion.
+ * otherwise, so before the slice is built a test fails at the step, on an assertion. A method named
+ * {@code ...Request} gives the same request without sending it, for a test that reads another status.
  *
  * <p>Public, with public methods, because tests of other packages use it (the log test in
  * {@code ops}).
@@ -44,6 +47,12 @@ public final class IssueFlow {
     /** The five statuses, in the order of the transition table. */
     public static final List<String> STATUSES = List.of("RECEIVED", "CONFIRMED", "IN_PROGRESS", "RESOLVED", "CLOSED");
 
+    /** An account ID far above any the app has given out. */
+    public static final long NO_ACCOUNT = 9_000_000_000_000_000L;
+
+    /** An issue key nobody has. */
+    public static final String NO_KEY = "ZZ9NOPE-999999";
+
     private static final String DIGITS_AS_HANGUL = "가나다라마바사아자차";
 
     private final Fixtures fixtures;
@@ -56,10 +65,11 @@ public final class IssueFlow {
 
     /**
      * One company and its people: the customer who files ({@code reporter}), a colleague of the same
-     * company, an agent assigned to it, an agent assigned to nothing, and the first admin.
+     * company, an agent assigned to it, an agent assigned to nothing, and the first admin. Next to it
+     * a second company without customers ({@code elsewhere}) and an agent assigned to that one alone.
      */
     public record World(Session admin, Company company, Session reporter, Session colleague, Session agent,
-            Session unassignedAgent) {
+            Session unassignedAgent, Company elsewhere, Session agentElsewhere) {
 
         public String code() {
             return company.code();
@@ -71,7 +81,10 @@ public final class IssueFlow {
         Session colleague = fixtures.customer(scene.admin(), scene.code());
         Session agent = fixtures.agent(scene.admin(), scene.code());
         Session unassignedAgent = fixtures.agent(scene.admin());
-        return new World(scene.admin(), scene.company(), scene.customer(), colleague, agent, unassignedAgent);
+        Company elsewhere = fixtures.createCompany(scene.admin());
+        Session agentElsewhere = fixtures.agent(scene.admin(), elsewhere.code());
+        return new World(scene.admin(), scene.company(), scene.customer(), colleague, agent, unassignedAgent,
+                elsewhere, agentElsewhere);
     }
 
     /** The first admin, signed in on the console, in a new sign-in window ({@link IssueSteps#admin()}). */
@@ -128,6 +141,12 @@ public final class IssueFlow {
         return page.jsonLong("totalElements");
     }
 
+    /** Fails unless the page has no item and counts none. */
+    public static void assertEmptyPage(ApiResponse page, String what) {
+        assertThat(IssueSteps.items(page)).as("items of %s", what).isEmpty();
+        assertThat(total(page)).as("totalElements of %s", what).isZero();
+    }
+
     /** The issue as {@code session} sees it. */
     public JsonNode detail(Session session, String key) {
         return session.client().get(session.api("/issues/" + key)).expect(200).json();
@@ -164,8 +183,7 @@ public final class IssueFlow {
 
     /** Staff sets one status ({@code PUT .../status}). */
     public JsonNode changeStatus(Session staff, String key, String status) {
-        return staff.client().put("/api/console/issues/" + key + "/status").json(Map.of("status", status))
-                .expect(200).json();
+        return statusRequest(staff, key, status).expect(200).json();
     }
 
     /** Staff takes an issue that is {@code RECEIVED} to {@code status}, by {@link #WAY_FROM_RECEIVED}. */
@@ -184,21 +202,32 @@ public final class IssueFlow {
         return filed;
     }
 
+    public static ApiRequest closeRequest(Session customer, String key) {
+        return customer.client().post("/api/portal/issues/" + key + "/close");
+    }
+
     /** The reporting customer closes the issue, or confirms that it is resolved. */
     public JsonNode close(Session customer, String key) {
-        return customer.client().post("/api/portal/issues/" + key + "/close").expect(200).json();
+        return closeRequest(customer, key).expect(200).json();
+    }
+
+    public static ApiRequest reopenRequest(Session session, String key) {
+        return session.client().post(session.api("/issues/" + key + "/reopen"));
     }
 
     /** The reporting customer or staff reopens the issue, each on their own app. */
     public JsonNode reopen(Session session, String key) {
-        return session.client().post(session.api("/issues/" + key + "/reopen")).expect(200).json();
+        return reopenRequest(session, key).expect(200).json();
     }
 
     // Assignee
 
+    public static ApiRequest assignRequest(Session staff, String key, long accountId) {
+        return staff.client().put("/api/console/issues/" + key + "/assignee").json(Map.of("accountId", accountId));
+    }
+
     public JsonNode assign(Session staff, String key, long accountId) {
-        return staff.client().put("/api/console/issues/" + key + "/assignee").json(Map.of("accountId", accountId))
-                .expect(200).json();
+        return assignRequest(staff, key, accountId).expect(200).json();
     }
 
     public JsonNode unassign(Session staff, String key) {
@@ -214,7 +243,12 @@ public final class IssueFlow {
     public JsonNode edit(Session session, String key, Map<String, Object> changes) {
         Map<String, Object> body = new LinkedHashMap<>(changes);
         body.put("version", version(session, key));
-        return session.client().patch(session.api("/issues/" + key)).json(body).expect(200).json();
+        return editRequest(session, key, body).expect(200).json();
+    }
+
+    /** {@code PATCH .../issues/{key}} on the caller's app with this body as it is, not sent yet. */
+    public static ApiRequest editRequest(Session session, String key, Map<String, Object> body) {
+        return session.client().patch(session.api("/issues/" + key)).json(body);
     }
 
     public long version(Session session, String key) {
@@ -306,17 +340,25 @@ public final class IssueFlow {
 
     // People (admin steps of slice 1a, whose own helpers are private to their package)
 
+    public static ApiRequest suspendRequest(Session admin, long accountId) {
+        return admin.client().post("/api/console/accounts/" + accountId + "/suspend");
+    }
+
     public void suspend(Session admin, long accountId) {
-        admin.client().post("/api/console/accounts/" + accountId + "/suspend").expect(200);
+        suspendRequest(admin, accountId).expect(200);
     }
 
     public void reactivate(Session admin, long accountId) {
         admin.client().post("/api/console/accounts/" + accountId + "/reactivate").expect(200);
     }
 
+    public static ApiRequest unassignAgentRequest(Session admin, String companyCode, long accountId) {
+        return admin.client().delete("/api/console/companies/" + companyCode + "/agents/" + accountId);
+    }
+
     /** Takes an agent off a company, leaving the issues assigned to them as they are. */
     public void unassignAgent(Session admin, String companyCode, long accountId) {
-        admin.client().delete("/api/console/companies/" + companyCode + "/agents/" + accountId).expect(200);
+        unassignAgentRequest(admin, companyCode, accountId).expect(200);
     }
 
     /** Moves a company to {@code SUSPENDED} or {@code ARCHIVED}, or back to {@code ACTIVE}. */

@@ -1,5 +1,7 @@
 package io.popdesk.issue;
 
+import static io.popdesk.issue.IssueFlow.suspendRequest;
+import static io.popdesk.issue.IssueFlow.unassignAgentRequest;
 import static io.popdesk.issue.IssueSteps.text;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -74,14 +76,6 @@ class ClearAssignmentsTest extends BareAppTest {
         return by.client().get("/api/console/accounts/" + accountId + "/open-assignments");
     }
 
-    private static ApiRequest unassignAgent(Session admin, String code, long accountId) {
-        return admin.client().delete("/api/console/companies/" + code + "/agents/" + accountId);
-    }
-
-    private static ApiRequest suspend(Session admin, long accountId) {
-        return admin.client().post("/api/console/accounts/" + accountId + "/suspend");
-    }
-
     /** The account ID of the assignee as an admin reads the issue; 0 when there is none. */
     private long assigneeOf(Session admin, Issue issue) {
         JsonNode assignee = flow.detail(admin, issue.key()).path("assignee");
@@ -95,15 +89,18 @@ class ClearAssignmentsTest extends BareAppTest {
     // S3-AC-68
 
     @Test
-    @DisplayName("S3-AC-68 the count for a company is the open issues the agent is the assignee of there; the count for the account, in every company; closed issues are left out")
+    @DisplayName("S3-AC-68 the count for a company is the open issues the agent is the assignee of there, 0 for an agent who is not assigned to it; the count for the account, in every company; closed issues are left out")
     void countsOpenAssignments() {
         Scene s = sceneOfAnAgent();
         long id = s.assignee().accountId();
+        Session agentOfB = fixtures.agent(s.admin(), s.b().code());
 
         assertThat(companyCount(s.admin(), s.a().code(), id).expect(200).jsonLong("issues"))
                 .as("open issues of the agent in A").isEqualTo(2);
         assertThat(companyCount(s.admin(), s.b().code(), id).expect(200).jsonLong("issues"))
                 .as("open issues of the agent in B").isEqualTo(1);
+        assertThat(companyCount(s.admin(), s.a().code(), agentOfB.accountId()).expect(200).jsonLong("issues"))
+                .as("open issues in A of an agent who is not assigned to A").isZero();
         assertThat(accountCount(s.admin(), id).expect(200).jsonLong("issues"))
                 .as("open issues of the agent's account").isEqualTo(3);
     }
@@ -143,7 +140,7 @@ class ClearAssignmentsTest extends BareAppTest {
         Scene s = sceneOfAnAgent();
         long id = s.assignee().accountId();
 
-        ApiResponse answer = unassignAgent(s.admin(), s.a().code(), id).query("clearAssignments", true).expect(200);
+        ApiResponse answer = unassignAgentRequest(s.admin(), s.a().code(), id).query("clearAssignments", true).expect(200);
 
         assertThat(answer.jsonLong("issues")).as("issues in the response").isEqualTo(2);
         assertThat(assignees(s)).as("assignees of open A, open A, closed A, open B").containsExactly(0L, 0L, id, id);
@@ -157,7 +154,7 @@ class ClearAssignmentsTest extends BareAppTest {
         Scene s = sceneOfAnAgent();
         long id = s.assignee().accountId();
 
-        ApiResponse answer = suspend(s.admin(), id).query("clearAssignments", true).expect(200);
+        ApiResponse answer = suspendRequest(s.admin(), id).query("clearAssignments", true).expect(200);
 
         assertThat(text(answer.json(), "status")).isEqualTo("SUSPENDED");
         assertThat(answer.json().path("cleared").path("issues").asLong(-1)).as("cleared.issues in %s",
@@ -171,8 +168,8 @@ class ClearAssignmentsTest extends BareAppTest {
     void withoutClearingAssigneesStay(String value) {
         Scene s = sceneOfAnAgent();
         long id = s.assignee().accountId();
-        ApiRequest unassign = unassignAgent(s.admin(), s.a().code(), id);
-        ApiRequest suspension = suspend(s.admin(), id);
+        ApiRequest unassign = unassignAgentRequest(s.admin(), s.a().code(), id);
+        ApiRequest suspension = suspendRequest(s.admin(), id);
         if (!value.equals("(left out)")) {
             unassign.query("clearAssignments", value);
             suspension.query("clearAssignments", value);
@@ -199,13 +196,14 @@ class ClearAssignmentsTest extends BareAppTest {
         Session first = flow.admin();
         Session admin = fixtures.admin(first);
         Company a = fixtures.createCompany(admin);
-        Scene s = scene(admin, a, fixtures.createCompany(admin), fixtures.agent(admin, a.code()));
+        Company b = fixtures.createCompany(admin);
+        Scene s = scene(admin, a, b, fixtures.agent(admin, a.code(), b.code()));
         long id = s.assignee().accountId();
         List<Long> versions = s.issues().stream().map(issue -> flow.version(admin, issue.key())).toList();
         List<Integer> entries = s.issues().stream().map(issue -> flow.history(admin, issue.key()).size()).toList();
         flow.tick();
 
-        suspend(admin, id).query("clearAssignments", true).expect(200);
+        suspendRequest(admin, id).query("clearAssignments", true).expect(200);
 
         for (int i = 0; i < s.issues().size(); i++) {
             Issue issue = s.issues().get(i);
@@ -239,7 +237,7 @@ class ClearAssignmentsTest extends BareAppTest {
         long id = admin.accountId();
         List<Long> versions = s.issues().stream().map(issue -> flow.version(first, issue.key())).toList();
 
-        ApiResponse refused = suspend(admin, id).query("clearAssignments", true).send();
+        ApiResponse refused = suspendRequest(admin, id).query("clearAssignments", true).send();
 
         assertThat(refused.status()).as(refused.request() + " -> " + refused.snippet()).isEqualTo(400);
         assertThat(refused.errorCode()).isEqualTo("OWN_ACCOUNT");

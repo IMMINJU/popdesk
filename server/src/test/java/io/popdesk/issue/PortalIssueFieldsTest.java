@@ -73,6 +73,9 @@ class PortalIssueFieldsTest extends BareAppTest {
         assertThat(detail.json().propertyNames()).containsExactlyInAnyOrder("closedAt", "companyCode", "companyName",
                 "content", "createdAt", "filedBySupport", "key", "priority", "private", "reopenable", "reporter",
                 "resolvedAt", "status", "title", "updatedAt", "version");
+        assertThat(items(list).getFirst().propertyNames()).as("fields of a list item").containsExactlyInAnyOrder(
+                "closedAt", "companyCode", "companyName", "createdAt", "filedBySupport", "key", "priority", "private",
+                "reporter", "resolvedAt", "status", "title");
         assertThat(items(comments).getFirst().propertyNames())
                 .containsExactlyInAnyOrder("author", "content", "createdAt", "id");
     }

@@ -1,6 +1,8 @@
 package io.popdesk.issue;
 
+import static io.popdesk.issue.IssueFlow.NO_ACCOUNT;
 import static io.popdesk.issue.IssueFlow.STATUSES;
+import static io.popdesk.issue.IssueFlow.assertEmptyPage;
 import static io.popdesk.issue.IssueFlow.list;
 import static io.popdesk.issue.IssueFlow.listRequest;
 import static io.popdesk.issue.IssueFlow.total;
@@ -38,9 +40,6 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class IssueFilterTest extends BareAppTest {
 
-    /** An account ID far above any the app has given out. */
-    private static final long NO_ACCOUNT = 9_000_000_000_000_000L;
-
     private IssueFlow flow;
 
     @BeforeEach
@@ -52,11 +51,6 @@ class IssueFilterTest extends BareAppTest {
         Issue issue = fixtures.fileIssue(customer, code);
         flow.tick();
         return issue;
-    }
-
-    private static void assertEmptyPage(ApiResponse page, String what) {
-        assertThat(items(page)).as("items of %s", what).isEmpty();
-        assertThat(total(page)).as("totalElements of %s", what).isZero();
     }
 
     // S3-AC-01
@@ -190,46 +184,36 @@ class IssueFilterTest extends BareAppTest {
     // S3-AC-04
 
     @Test
-    @DisplayName("S3-AC-04 assignee=unavailable gives the issues whose assignee was taken off the company or suspended, and no others")
+    @DisplayName("S3-AC-04 assignee=unavailable gives the issues whose assignee was taken off the company (and is still assigned to another) or suspended, agent or admin, and no others")
     void unavailableAssignee() {
         World w = flow.world();
-        Session unassigned = fixtures.agent(w.admin(), w.code());
+        Session unassigned = fixtures.agent(w.admin(), w.code(), w.elsewhere().code());
         Session suspended = fixtures.agent(w.admin(), w.code());
         Session otherAdmin = fixtures.admin(w.admin());
+        Session suspendedAdmin = fixtures.admin(w.admin());
         Issue ofUnassigned = file(w.reporter(), w.code());
         Issue ofSuspended = file(w.reporter(), w.code());
         Issue ofWorkingAgent = file(w.reporter(), w.code());
         Issue ofAdmin = file(w.reporter(), w.code());
+        Issue ofSuspendedAdmin = file(w.reporter(), w.code());
         Issue free = file(w.reporter(), w.code());
         flow.assign(w.admin(), ofUnassigned.key(), unassigned.accountId());
         flow.assign(w.admin(), ofSuspended.key(), suspended.accountId());
         flow.assign(w.admin(), ofWorkingAgent.key(), w.agent().accountId());
         flow.assign(w.admin(), ofAdmin.key(), otherAdmin.accountId());
+        flow.assign(w.admin(), ofSuspendedAdmin.key(), suspendedAdmin.accountId());
+        ApiResponse whileAllCanSee = list(w.admin(), "assignee", "unavailable", "companyCode", w.code());
         flow.unassignAgent(w.admin(), w.code(), unassigned.accountId());
         flow.suspend(w.admin(), suspended.accountId());
+        flow.suspend(w.admin(), suspendedAdmin.accountId());
 
         ApiResponse page = list(w.admin(), "assignee", "unavailable", "companyCode", w.code());
 
+        assertEmptyPage(whileAllCanSee, "assignee=unavailable while every assignee can see the issue");
         assertThat(keys(page)).as("issues whose assignee cannot see them")
-                .containsExactlyInAnyOrder(ofUnassigned.key(), ofSuspended.key())
+                .containsExactlyInAnyOrder(ofUnassigned.key(), ofSuspended.key(), ofSuspendedAdmin.key())
                 .doesNotContain(ofWorkingAgent.key(), ofAdmin.key(), free.key());
-        assertThat(total(page)).as("totalElements").isEqualTo(2);
-    }
-
-    @Test
-    @DisplayName("S3-AC-04 an issue assigned to an admin is unavailable only once that admin is suspended")
-    void suspendedAdminAssigneeIsUnavailable() {
-        World w = flow.world();
-        Session otherAdmin = fixtures.admin(w.admin());
-        Issue ofAdmin = file(w.reporter(), w.code());
-        flow.assign(w.admin(), ofAdmin.key(), otherAdmin.accountId());
-
-        ApiResponse before = list(w.admin(), "assignee", "unavailable", "companyCode", w.code());
-        flow.suspend(w.admin(), otherAdmin.accountId());
-        ApiResponse after = list(w.admin(), "assignee", "unavailable", "companyCode", w.code());
-
-        assertThat(keys(before)).as("unavailable while the admin is active").isEmpty();
-        assertThat(keys(after)).as("unavailable after the admin is suspended").containsExactly(ofAdmin.key());
+        assertThat(total(page)).as("totalElements").isEqualTo(3);
     }
 
     // S3-AC-05
@@ -288,6 +272,43 @@ class IssueFilterTest extends BareAppTest {
         assertThat(keys(page)).as("RECEIVED issues the agent sees").containsExactly(received.key())
                 .doesNotContain(ofOther.key());
         assertThat(total(page)).as("totalElements").isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("S3-AC-06 an agent's reporter and assignee filters leave out an unassigned company: a customer of both, an admin assigned in both, and issues without or with an unavailable assignee in both give only the agent's company, in items and in totalElements")
+    void reporterAndAssigneeFiltersKeepTheAgentScope() {
+        World w = flow.world();
+        String other = w.elsewhere().code();
+        Session ofBoth = fixtures.customer(w.admin(), w.code(), other);
+        Session takenOff = fixtures.agent(w.admin(), w.code(), other);
+        Issue ofAdmin = file(ofBoth, w.code());
+        Issue free = file(ofBoth, w.code());
+        Issue ofTakenOff = file(ofBoth, w.code());
+        Issue otherOfAdmin = file(ofBoth, other);
+        Issue otherFree = file(ofBoth, other);
+        Issue otherOfTakenOff = file(ofBoth, other);
+        flow.assign(w.admin(), ofAdmin.key(), w.admin().accountId());
+        flow.assign(w.admin(), otherOfAdmin.key(), w.admin().accountId());
+        flow.assign(w.admin(), ofTakenOff.key(), takenOff.accountId());
+        flow.assign(w.admin(), otherOfTakenOff.key(), w.agentElsewhere().accountId());
+        flow.unassignAgent(w.admin(), w.code(), takenOff.accountId());
+        flow.unassignAgent(w.admin(), other, w.agentElsewhere().accountId());
+        List<String> ofTheOther = List.of(otherOfAdmin.key(), otherFree.key(), otherOfTakenOff.key());
+        Map<String, List<String>> expected = new LinkedHashMap<>();
+        expected.put("reporter=" + ofBoth.accountId(), List.of(ofAdmin.key(), free.key(), ofTakenOff.key()));
+        expected.put("assignee=" + w.admin().accountId(), List.of(ofAdmin.key()));
+        expected.put("assignee=none", List.of(free.key()));
+        expected.put("assignee=unavailable", List.of(ofTakenOff.key()));
+
+        expected.forEach((filter, own) -> {
+            String[] nameAndValue = filter.split("=");
+
+            ApiResponse page = list(w.agent(), nameAndValue[0], nameAndValue[1]);
+
+            assertThat(keys(page)).as("issues an agent of %s alone sees with %s", w.code(), filter)
+                    .containsExactlyInAnyOrderElementsOf(own).doesNotContainAnyElementsOf(ofTheOther);
+            assertThat(total(page)).as("totalElements with %s", filter).isEqualTo(own.size());
+        });
     }
 
     @Test

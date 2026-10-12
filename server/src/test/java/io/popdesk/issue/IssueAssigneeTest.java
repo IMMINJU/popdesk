@@ -1,5 +1,7 @@
 package io.popdesk.issue;
 
+import static io.popdesk.issue.IssueFlow.NO_ACCOUNT;
+import static io.popdesk.issue.IssueFlow.assignRequest;
 import static io.popdesk.issue.IssueSteps.fieldCode;
 import static io.popdesk.issue.IssueSteps.items;
 import static io.popdesk.issue.IssueSteps.text;
@@ -29,19 +31,11 @@ import tools.jackson.databind.JsonNode;
  */
 class IssueAssigneeTest extends BareAppTest {
 
-    /** An account ID no account has. */
-    private static final long NO_ACCOUNT = 4_000_000_000_000L;
-
     private IssueFlow flow;
 
     @BeforeEach
     void setUp() {
         flow = new IssueFlow(fixtures, clock);
-    }
-
-    private static ApiResponse setAssignee(Session staff, String key, long accountId) {
-        return staff.client().put("/api/console/issues/" + key + "/assignee").json(Map.of("accountId", accountId))
-                .send();
     }
 
     private static ApiResponse candidates(Session staff, String code) {
@@ -74,7 +68,7 @@ class IssueAssigneeTest extends BareAppTest {
     // S3-AC-24
 
     @Test
-    @DisplayName("S3-AC-24 an agent assigns themself, an admin an agent, an agent an admin: each raises the version by 1, and the same person again changes nothing")
+    @DisplayName("S3-AC-24, S3-AC-28 an agent assigns themself, an admin an agent, an agent an admin: each raises the version by 1, the console list and detail carry the person, and the same person again changes nothing")
     void staffSetAndChangeTheAssignee() {
         World w = flow.world();
         Session otherAgent = fixtures.agent(w.admin(), w.code());
@@ -87,8 +81,12 @@ class IssueAssigneeTest extends BareAppTest {
         assertThat(text(byAgent.path("assignee"), "name")).isEqualTo(w.agent().name());
         assertThat(text(byAgent.path("assignee"), "role")).isEqualTo("AGENT");
         assertThat(version(byAgent)).as("version after the first assignee").isEqualTo(start + 1);
-        assertThat(assigneeId(listed(w.agent(), w.code(), issue.key()))).as("assignee in the list")
-                .isEqualTo(w.agent().accountId());
+        for (JsonNode view : List.of(flow.detail(w.agent(), issue.key()), listed(w.agent(), w.code(), issue.key()))) {
+            assertThat(assigneeId(view)).as("assignee in %s", view).isEqualTo(w.agent().accountId());
+            assertThat(text(view.path("assignee"), "name")).isEqualTo(w.agent().name());
+            assertThat(view.path("assigneeUnavailable").isBoolean()).isTrue();
+            assertThat(view.path("assigneeUnavailable").booleanValue()).as("assigneeUnavailable in %s", view).isFalse();
+        }
 
         JsonNode byAdmin = flow.assign(w.admin(), issue.key(), otherAgent.accountId());
 
@@ -115,7 +113,7 @@ class IssueAssigneeTest extends BareAppTest {
     // S3-AC-25
 
     @Test
-    @DisplayName("S3-AC-25 a customer, an invited agent, a suspended agent, an agent of no company, and an ID of nobody get the same 400 with accountId UNKNOWN_VALUE, and the assignee stays")
+    @DisplayName("S3-AC-25 a customer, an invited agent, a suspended agent, an agent of no company, an agent of another company only, and an ID of nobody get the same 400 with accountId UNKNOWN_VALUE, and the assignee stays")
     void accountsThatCannotBeAssignedGetTheSame400() {
         World w = flow.world();
         Invitation invited = fixtures.invite(w.admin(), Role.AGENT);
@@ -129,10 +127,11 @@ class IssueAssigneeTest extends BareAppTest {
         accounts.put("an invited agent of the company", invited.accountId());
         accounts.put("a suspended agent of the company", suspended.accountId());
         accounts.put("an agent who is not assigned", w.unassignedAgent().accountId());
-        accounts.put("an ID of nobody", NO_ACCOUNT + Unique.number());
+        accounts.put("an agent assigned to another company only", w.agentElsewhere().accountId());
+        accounts.put("an ID of nobody", NO_ACCOUNT);
 
         Map<String, ApiResponse> answers = new LinkedHashMap<>();
-        accounts.forEach((who, id) -> answers.put(who, setAssignee(w.admin(), issue.key(), id)));
+        accounts.forEach((who, id) -> answers.put(who, assignRequest(w.admin(), issue.key(), id).send()));
 
         ApiResponse first = answers.values().iterator().next();
         answers.forEach((who, answer) -> {
@@ -147,7 +146,7 @@ class IssueAssigneeTest extends BareAppTest {
     // S3-AC-26
 
     @Test
-    @DisplayName("S3-AC-26 clearing the assignee leaves null and raises the version by 1; clearing an empty assignee is 200 and changes nothing")
+    @DisplayName("S3-AC-26, S3-AC-28 clearing the assignee leaves null and false in the response, the detail, and the list, and raises the version by 1; clearing an empty assignee is 200 and changes nothing")
     void clearingTheAssignee() {
         World w = flow.world();
         Issue issue = fixtures.fileIssue(w.reporter(), w.code());
@@ -158,6 +157,7 @@ class IssueAssigneeTest extends BareAppTest {
         assertNoAssignee("the response of clearing", cleared);
         assertThat(version(cleared)).as("version after clearing").isEqualTo(version(assigned) + 1);
         assertNoAssignee("the issue read again", flow.detail(w.admin(), issue.key()));
+        assertNoAssignee("the list item", listed(w.agent(), w.code(), issue.key()));
 
         JsonNode again = flow.unassign(w.admin(), issue.key());
 
@@ -187,8 +187,8 @@ class IssueAssigneeTest extends BareAppTest {
                     .as("candidates of %s for %s", w.code(), staff.role())
                     .contains(w.admin().accountId(), secondAdmin.accountId(), w.agent().accountId())
                     .doesNotContain(suspendedAdmin.accountId(), invitedAdmin.accountId(), invitedAgent.accountId(),
-                            suspendedAgent.accountId(), w.unassignedAgent().accountId(), w.reporter().accountId(),
-                            w.colleague().accountId())
+                            suspendedAgent.accountId(), w.unassignedAgent().accountId(),
+                            w.agentElsewhere().accountId(), w.reporter().accountId(), w.colleague().accountId())
                     .doesNotHaveDuplicates();
             JsonNode agent = people.stream().filter(n -> n.path("accountId").asLong(-1) == w.agent().accountId())
                     .findFirst().orElseThrow();
@@ -219,27 +219,6 @@ class IssueAssigneeTest extends BareAppTest {
         assertThat(unassigned.text()).doesNotContain(w.agent().name());
     }
 
-    // S3-AC-28
-
-    @Test
-    @DisplayName("S3-AC-28 the console list and detail carry assignee and assigneeUnavailable: null and false without an assignee, the person once set")
-    void listAndDetailCarryTheAssignee() {
-        World w = flow.world();
-        Issue issue = fixtures.fileIssue(w.reporter(), w.code());
-
-        assertNoAssignee("the detail", flow.detail(w.agent(), issue.key()));
-        assertNoAssignee("the list item", listed(w.agent(), w.code(), issue.key()));
-
-        flow.assign(w.admin(), issue.key(), w.agent().accountId());
-
-        for (JsonNode view : List.of(flow.detail(w.agent(), issue.key()), listed(w.agent(), w.code(), issue.key()))) {
-            assertThat(assigneeId(view)).as("assignee in %s", view).isEqualTo(w.agent().accountId());
-            assertThat(text(view.path("assignee"), "name")).isEqualTo(w.agent().name());
-            assertThat(view.path("assigneeUnavailable").isBoolean()).isTrue();
-            assertThat(view.path("assigneeUnavailable").booleanValue()).as("assigneeUnavailable in %s", view).isFalse();
-        }
-    }
-
     // S3-AC-30
 
     @Test
@@ -268,10 +247,10 @@ class IssueAssigneeTest extends BareAppTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(Loss.class)
-    @DisplayName("S3-AC-31 an assignee taken off the company or suspended stays the assignee and is marked unavailable; assigned again or reactivated, the mark goes")
+    @DisplayName("S3-AC-31 an assignee taken off the company (and still assigned to another) or suspended stays the assignee and is marked unavailable; assigned again or reactivated, the mark goes")
     void assigneeWhoLostAccessIsMarkedUnavailable(Loss loss) {
         World w = flow.world();
-        Session assignee = fixtures.agent(w.admin(), w.code());
+        Session assignee = fixtures.agent(w.admin(), w.code(), w.elsewhere().code());
         Issue issue = fixtures.fileIssue(w.reporter(), w.code());
         flow.assign(w.admin(), issue.key(), assignee.accountId());
 

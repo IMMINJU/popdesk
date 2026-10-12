@@ -110,6 +110,12 @@ Use `Wait.until`, `Wait.untilAsserted`, and `Wait.holds` (or the `await...` meth
 
 `FailedWrite` makes a write of the app fail in the database, next to `HeldWrite`, which makes one wait: `FailedWrite.statement(db, table, events, marker)` fails the statement that writes a row holding the marker, and `FailedWrite.commit(db, table, marker)` lets the insert through and fails the commit (a deferred constraint trigger). Close it to drop the trigger.
 
+`Concurrently.send(threads, calls)` sends requests at the same time; `Concurrently.finish(future, what)` waits for a request a test started on another thread and held with `HeldWrite`.
+
+### Cleanup records
+
+`new CleanupRecords(db).ofNewJob(earlierJobs, since, atLeast)` finds the record a new cleanup job left (OPS-2) without naming its table or the job: the table is the one that names a job of an earlier slice, the record a row there that names none of them, ran at or after `since`, and deleted at least `atLeast` rows. It gives null while there is none, so call it in `Wait.until`.
+
 ### Log
 
 `log.all()` holds everything since the context started, including the startup log. Take `AppLog.Mark m = log.mark()` before the request and read `log.since(m)` or `log.jsonLines(m)`. Other contexts' background work can write between, so search for your own values.

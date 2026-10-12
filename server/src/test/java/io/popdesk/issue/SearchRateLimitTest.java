@@ -98,7 +98,7 @@ class SearchRateLimitTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S3-AC-15 the search limit is per account and window: a colleague can still search, and the limited customer can after 60 seconds")
+    @DisplayName("S3-AC-15 the search limit is per account and window: a colleague can still search, and the limited customer cannot after 59 seconds and can after 61")
     void limitIsPerAccountAndWindow() {
         World w = flow.world();
         for (int i = 0; i < LIMIT; i++) {
@@ -108,11 +108,14 @@ class SearchRateLimitTest extends BareAppTest {
 
         ApiResponse byColleague = listRequest(w.colleague(), "q", IssueFlow.word()).send();
         ApiResponse byAgent = listRequest(w.agent(), "q", IssueFlow.word()).send();
-        clock.advance(Duration.ofSeconds(61));
+        clock.advance(Duration.ofSeconds(59));
+        ApiResponse insideWindow = listRequest(w.reporter(), "q", IssueFlow.word()).send();
+        clock.advance(Duration.ofSeconds(2));
         ApiResponse afterWindow = listRequest(w.reporter(), "q", IssueFlow.word()).send();
 
         assertThat(byColleague.status()).as("a colleague's search").isEqualTo(200);
         assertThat(byAgent.status()).as("an agent's search").isEqualTo(200);
-        assertThat(afterWindow.status()).as("the limited customer's search after 60 seconds").isEqualTo(200);
+        assertRateLimited(insideWindow);
+        assertThat(afterWindow.status()).as("the limited customer's search after 61 seconds").isEqualTo(200);
     }
 }

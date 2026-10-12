@@ -1,5 +1,6 @@
 package io.popdesk.boundary;
 
+import static io.popdesk.issue.IssueFlow.NO_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.issue.IssueFlow;
@@ -20,16 +21,15 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * The customer-company boundary on the endpoints of slice 3 that name an issue (S3-AC-88): a
- * customer of company A on the portal, and an agent assigned to A only on the console, send a
- * request that would be valid for their own issue to an issue of company B. The answer is the 404 of
- * an issue key nobody has, and B's issue and its history are as they were.
+ * customer of company A on the portal, and on the console an agent assigned to A only and an agent
+ * assigned to nothing, send a request that would be valid for their own issue to an issue of company
+ * B. The answer is the 404 of an issue key nobody has, and B's issue and its history are as they were.
+ * For the history that is S3-AC-67.
  *
  * <p>B's issue is {@code RESOLVED} with an assignee, so that every request here would change
  * something if it went through.
  */
 class IssueBoundaryTest extends BareAppTest {
-
-    private static final String NO_KEY = "ZZ9NOPE-999999";
 
     /** What a request needs besides the caller and the issue key. */
     private record Input(long version, long ownAccountId) {}
@@ -74,7 +74,7 @@ class IssueBoundaryTest extends BareAppTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(Operation.class)
-    @DisplayName("S3-AC-88 a customer of A and an agent assigned to A only get the 404 of a missing key for an issue of B, and the issue stays as it was")
+    @DisplayName("S3-AC-88, S3-AC-67 a customer of A, an agent assigned to A only, and an agent assigned to nothing get the 404 of a missing key for an issue of B, and the issue stays as it was")
     void issueOfAnotherCompanyIsNotFound(Operation operation) {
         Session admin = flow.admin();
         Company a = fixtures.createCompany(admin);
@@ -87,17 +87,20 @@ class IssueBoundaryTest extends BareAppTest {
         flow.moveTo(admin, ofB.key(), "RESOLVED");
         JsonNode before = flow.detail(admin, ofB.key());
         List<JsonNode> historyBefore = flow.history(admin, ofB.key());
-        Session caller = operation.portal ? customerOfA : agentOfA;
-        Input input = new Input(before.path("version").asLong(-1), caller.accountId());
+        List<Session> callers = operation.portal ? List.of(customerOfA) : List.of(agentOfA, fixtures.agent(admin));
         flow.tick();
 
-        ApiResponse answer = operation.call.request(caller, caller.api("/issues/" + ofB.key()), input).send();
-        ApiResponse missing = operation.call.request(caller, caller.api("/issues/" + NO_KEY), input).send();
+        for (Session caller : callers) {
+            Input input = new Input(before.path("version").asLong(-1), caller.accountId());
 
-        assertThat(missing.status()).as(missing.request() + " -> " + missing.snippet()).isEqualTo(404);
-        assertThat(answer.status()).as(answer.request() + " -> " + answer.snippet()).isEqualTo(404);
-        assertThat(answer.errorCode()).isEqualTo("NOT_FOUND");
-        assertThat(answer.text()).as("body, like an issue key nobody has").isEqualTo(missing.text());
+            ApiResponse answer = operation.call.request(caller, caller.api("/issues/" + ofB.key()), input).send();
+            ApiResponse missing = operation.call.request(caller, caller.api("/issues/" + NO_KEY), input).send();
+
+            assertThat(missing.status()).as(missing.request() + " -> " + missing.snippet()).isEqualTo(404);
+            assertThat(answer.status()).as(answer.request() + " -> " + answer.snippet()).isEqualTo(404);
+            assertThat(answer.errorCode()).isEqualTo("NOT_FOUND");
+            assertThat(answer.text()).as("body, like an issue key nobody has").isEqualTo(missing.text());
+        }
         assertThat(flow.detail(admin, ofB.key())).as("the issue of B after the request").isEqualTo(before);
         assertThat(flow.history(admin, ofB.key())).as("the history of B's issue after the request")
                 .isEqualTo(historyBefore);

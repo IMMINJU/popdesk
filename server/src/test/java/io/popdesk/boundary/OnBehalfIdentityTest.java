@@ -40,7 +40,7 @@ class OnBehalfIdentityTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S3-AC-29, S3-AC-36 the portal's list, detail, and edit answer for an issue an agent filed for the customer and an admin is assigned to hold no name, email, or account ID of either")
+    @DisplayName("S3-AC-29, S3-AC-36 the portal's list, detail, edit, close, and reopen answers for an issue an agent filed for the customer and an admin is assigned to hold no name, email, or account ID of either")
     void portalHoldsNoStaffOfAnIssueFiledOnBehalf() {
         IssueFlow flow = new IssueFlow(fixtures, clock);
         Session first = flow.admin();
@@ -76,6 +76,12 @@ class OnBehalfIdentityTest extends BareAppTest {
         JsonNode edited = flow.edit(customer, issue.key(), Map.of("priority", "HIGH"));
         answers.put("the edit answer", List.of(edited));
         texts.put("the edit answer", edited.toString());
+        JsonNode closed = flow.close(customer, issue.key());
+        answers.put("the close answer", List.of(closed));
+        texts.put("the close answer", closed.toString());
+        JsonNode reopened = flow.reopen(customer, issue.key());
+        answers.put("the reopen answer", List.of(reopened));
+        texts.put("the reopen answer", reopened.toString());
 
         SoftAssertions softly = new SoftAssertions();
         for (Session staff : List.of(agent, admin)) {

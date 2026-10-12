@@ -14,6 +14,7 @@ import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.NewIssue;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -23,7 +24,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -62,12 +62,20 @@ class IssueStatusTest extends BareAppTest {
 
     @ParameterizedTest(name = "{0} to {1}")
     @MethodSource("cells")
-    @DisplayName("S3-AC-48, S3-AC-49 the eight transitions of the table are stored with the version raised by 1; the other seventeen are 400 INVALID_TRANSITION and change nothing")
+    @DisplayName("S3-AC-48, S3-AC-49, S3-AC-59 the console issue lists the transitions of the table for its status and both apps say whether it can be reopened; the eight transitions of the table are stored with the version raised by 1; the other seventeen are 400 INVALID_TRANSITION and change nothing")
     void transitionTable(String from, String to) {
         Scene s = steps.scene();
         Issue issue = flow.fileIn(s.customer(), NewIssue.in(s.code()), s.admin(), from);
         JsonNode before = flow.detail(s.admin(), issue.key());
         assertThat(text(before, "status")).as("status before the request").isEqualTo(from);
+        assertThat(before.path("nextStatuses").isArray()).as("nextStatuses is a list in %s", before).isTrue();
+        assertThat(before.path("nextStatuses").values()).extracting(n -> n.asString(null))
+                .as("nextStatuses of %s", from).containsExactlyInAnyOrderElementsOf(ALLOWED.get(from));
+        for (JsonNode view : List.of(before, flow.detail(s.customer(), issue.key()))) {
+            assertThat(view.path("reopenable").isBoolean()).as("reopenable is a flag in %s", view).isTrue();
+            assertThat(view.path("reopenable").booleanValue()).as("reopenable of %s in %s", from, view)
+                    .isEqualTo(from.equals("RESOLVED") || from.equals("CLOSED"));
+        }
         flow.tick();
 
         ApiResponse answer = statusRequest(s.admin(), issue.key(), to).send();
@@ -89,46 +97,26 @@ class IssueStatusTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S3-AC-49 a status name that does not exist is 400 INVALID_INPUT with the field status, and nothing changes")
+    @DisplayName("S3-AC-49 a status name that does not exist, a body without status, and a null status are 400 INVALID_INPUT with the field status, and nothing changes")
     void unknownStatusName() {
         Scene s = steps.scene();
         Issue issue = flow.fileIn(s.customer(), NewIssue.in(s.code()), s.admin(), "CONFIRMED");
         JsonNode before = flow.detail(s.admin(), issue.key());
 
-        ApiResponse answer = statusRequest(s.admin(), issue.key(), "DONE").send();
+        for (Map<String, String> body : List.of(Map.of("status", "DONE"), Map.<String, String>of(),
+                Collections.<String, String>singletonMap("status", null))) {
+            ApiResponse answer = s.admin().client().put("/api/console/issues/" + issue.key() + "/status").json(body)
+                    .send();
 
-        assertThat(answer.status()).as(answer.request() + " -> " + answer.snippet()).isEqualTo(400);
-        assertThat(answer.errorCode()).isEqualTo("INVALID_INPUT");
-        assertThat(fieldNames(answer)).contains("status");
-        assertThat(flow.detail(s.admin(), issue.key())).as("the issue after the refused request").isEqualTo(before);
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"RECEIVED", "CONFIRMED", "IN_PROGRESS", "RESOLVED", "CLOSED"})
-    @DisplayName("S3-AC-59 the console issue lists the transitions of the table for its status, and both apps say whether it can be reopened")
-    void nextStatusesFollowTheTable(String status) {
-        Scene s = steps.scene();
-        Issue issue = flow.fileIn(s.customer(), NewIssue.in(s.code()), s.admin(), status);
-        boolean reopenable = status.equals("RESOLVED") || status.equals("CLOSED");
-
-        JsonNode staffView = flow.detail(s.admin(), issue.key());
-        JsonNode customerView = flow.detail(s.customer(), issue.key());
-
-        assertThat(text(staffView, "status")).isEqualTo(status);
-        assertThat(staffView.path("nextStatuses").isArray()).as("nextStatuses is a list in %s", staffView).isTrue();
-        assertThat(staffView.path("nextStatuses").values()).extracting(n -> n.asString(null))
-                .as("nextStatuses of %s", status).containsExactlyInAnyOrderElementsOf(ALLOWED.get(status));
-        assertThat(staffView.path("reopenable").isBoolean()).as("reopenable is a flag in %s", staffView).isTrue();
-        assertThat(staffView.path("reopenable").booleanValue()).as("console reopenable of %s", status)
-                .isEqualTo(reopenable);
-        assertThat(customerView.path("reopenable").isBoolean()).as("reopenable is a flag in %s", customerView)
-                .isTrue();
-        assertThat(customerView.path("reopenable").booleanValue()).as("portal reopenable of %s", status)
-                .isEqualTo(reopenable);
+            assertThat(answer.status()).as(answer.request() + " " + body + " -> " + answer.snippet()).isEqualTo(400);
+            assertThat(answer.errorCode()).as("code for %s", body).isEqualTo("INVALID_INPUT");
+            assertThat(fieldNames(answer)).as("fields for %s", body).contains("status");
+        }
+        assertThat(flow.detail(s.admin(), issue.key())).as("the issue after the refused requests").isEqualTo(before);
     }
 
     @Test
-    @DisplayName("S3-AC-50, S3-AC-59 RESOLVED leaves the resolved time, going back to IN_PROGRESS clears it, CLOSED leaves the closed time and keeps the resolved time, on both apps")
+    @DisplayName("S3-AC-50, S3-AC-59 RESOLVED leaves the resolved time, going back to IN_PROGRESS clears it, CLOSED leaves the closed time and keeps the resolved time, and an issue closed from RECEIVED has no resolved time, on both apps")
     void resolvedAndClosedTimes() {
         Scene s = steps.scene();
         Issue issue = flow.fileIn(s.customer(), NewIssue.in(s.code()), s.admin(), "IN_PROGRESS");
@@ -152,18 +140,12 @@ class IssueStatusTest extends BareAppTest {
 
         assertThat(time(closedIssue, "closedAt")).as("closedAt in the response").isEqualTo(closed);
         assertTimes("CLOSED after RESOLVED", s, issue.key(), secondResolved, closed);
-    }
 
-    @Test
-    @DisplayName("S3-AC-50 an issue closed from RECEIVED has a closed time and no resolved time")
-    void closedWithoutResolving() {
-        Scene s = steps.scene();
-        Issue issue = fixtures.fileIssue(s.customer(), s.code());
+        Issue neverResolved = fixtures.fileIssue(s.customer(), s.code());
+        Instant closedAtOnce = flow.tick();
+        flow.changeStatus(s.admin(), neverResolved.key(), "CLOSED");
 
-        Instant closed = flow.tick();
-        flow.changeStatus(s.admin(), issue.key(), "CLOSED");
-
-        assertTimes("CLOSED from RECEIVED", s, issue.key(), null, closed);
+        assertTimes("CLOSED from RECEIVED", s, neverResolved.key(), null, closedAtOnce);
     }
 
     /** Both apps give these two times for the issue; null means the field is there and null. */

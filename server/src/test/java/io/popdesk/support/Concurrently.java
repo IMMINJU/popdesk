@@ -2,6 +2,7 @@ package io.popdesk.support;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -50,6 +51,27 @@ public final class Concurrently {
             throw new AssertionError("Interrupted while waiting for concurrent requests", e);
         } finally {
             pool.shutdownNow();
+        }
+    }
+
+    /**
+     * The response of a request a test started on another thread and held back in the database
+     * ({@link HeldWrite}), once the test let it go. Fails with an {@link AssertionError} when it is not
+     * there within 30 seconds; {@code what} names the request in that message.
+     */
+    public static ApiResponse finish(CompletableFuture<ApiResponse> running, String what) {
+        try {
+            return running.get(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("Interrupted while " + what + " finished", e);
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof AssertionError failed) {
+                throw failed;
+            }
+            throw new AssertionError(what + " failed: " + e.getCause(), e.getCause());
+        } catch (TimeoutException e) {
+            throw new AssertionError(what + " did not finish within 30 seconds of the release", e);
         }
     }
 }

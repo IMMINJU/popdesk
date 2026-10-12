@@ -11,7 +11,7 @@ import io.popdesk.issue.IssueFlow.World;
 import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
-import io.popdesk.support.DbInspector.Column;
+import io.popdesk.support.CleanupRecords;
 import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.File;
 import io.popdesk.support.Fixtures.Session;
@@ -20,13 +20,10 @@ import io.popdesk.support.Wait;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -39,9 +36,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The {@code Idempotency-Key} header of the two requests that file an issue: the portal's, as JSON
@@ -57,9 +52,7 @@ class IdempotencyKeyTest extends BareAppTest {
 
     /** The cleanup jobs of the earlier slices; their rows tell which table holds the records. */
     private static final Set<String> EARLIER_JOBS = Set.of("outbox-failed-cleanup", "attachment-cleanup",
-            "session-cleanup", "password-reset-cleanup");
-
-    private static final JsonMapper JSON = JsonMapper.builder().build();
+            "session-cleanup", "password-reset-cleanup", "audit-retention");
 
     /** The three ways to file an issue. */
     enum Way {
@@ -98,10 +91,12 @@ class IdempotencyKeyTest extends BareAppTest {
     }
 
     private IssueFlow flow;
+    private CleanupRecords cleanup;
 
     @BeforeEach
     void setUp() {
         flow = new IssueFlow(fixtures, clock);
+        cleanup = new CleanupRecords(db);
     }
 
     private static String newKey() {
@@ -142,19 +137,32 @@ class IdempotencyKeyTest extends BareAppTest {
 
     // S3-AC-41
 
+    static Stream<Arguments> waysAndKeys() {
+        return Stream.of(
+                Arguments.of("portal, JSON", Way.PORTAL_JSON, newKey()),
+                Arguments.of("portal, multipart", Way.PORTAL_MULTIPART, newKey()),
+                Arguments.of("on behalf", Way.ON_BEHALF, newKey()),
+                // The longest key, with the first and the last visible ASCII character.
+                Arguments.of("portal, JSON, a key of 100 characters", Way.PORTAL_JSON,
+                        "!~" + UUID.randomUUID() + "a".repeat(62)));
+    }
+
     @ParameterizedTest(name = "{0}")
-    @EnumSource(Way.class)
-    @DisplayName("S3-AC-41 a filing sent again with the same key and content answers 201 with the first issue: one issue, one number")
-    void sameKeyAndContentGiveTheFirstIssue(Way way) {
+    @MethodSource("waysAndKeys")
+    @DisplayName("S3-AC-41, S3-AC-45 a filing sent again with the same key, of up to 100 visible ASCII characters, and the same content answers 201 with the first issue as it is now: one issue, one number")
+    void sameKeyAndContentGiveTheFirstIssue(String what, Way way, String key) {
         World w = flow.world();
         Filing filing = filing(way, w);
-        String key = newKey();
+        assertThat(key.length()).as("length of the key").isBetween(1, 100);
         String filed = filing.request(key).expect(201).jsonText("key");
+        flow.changeStatus(w.agent(), filed, "CONFIRMED");
 
         ApiResponse again = filing.request(key).send();
 
         assertThat(again.status()).as(again.request()).isEqualTo(201);
         assertThat(again.jsonText("key")).as("key of the second answer").isEqualTo(filed);
+        assertThat(text(again.json(), "status")).as("status in the second answer, as the issue is now")
+                .isEqualTo("CONFIRMED");
         assertThat(titled(w.admin(), filing.title())).as("issues titled %s", filing.title()).hasSize(1);
         if (way == Way.PORTAL_MULTIPART) {
             assertThat(fileNames(w.reporter(), filed)).as("files of %s", filed).containsExactly("first.txt");
@@ -172,6 +180,7 @@ class IdempotencyKeyTest extends BareAppTest {
         PORTAL_PRIVATE,
         PORTAL_COMPANY,
         ON_BEHALF_TITLE,
+        ON_BEHALF_CONTENT,
         ON_BEHALF_CHANNEL,
         ON_BEHALF_REPORTER
     }
@@ -187,7 +196,7 @@ class IdempotencyKeyTest extends BareAppTest {
                 : portalFiling(Way.PORTAL_JSON, ofBoth, w.code());
         Filing second = switch (change) {
             case PORTAL_TITLE, ON_BEHALF_TITLE -> first.with("title", Unique.text("Another title"));
-            case PORTAL_CONTENT -> first.with("content", "Other content.");
+            case PORTAL_CONTENT, ON_BEHALF_CONTENT -> first.with("content", "Other content.");
             case PORTAL_PRIORITY -> first.with("priority", "URGENT");
             case PORTAL_PRIVATE -> first.with("private", true);
             case PORTAL_COMPANY -> first.with("companyCode", other.code());
@@ -309,19 +318,6 @@ class IdempotencyKeyTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S3-AC-45 a key of 100 visible ASCII characters is taken: the filing sent again gives the first issue")
-    void keyOf100CharactersIsTaken() {
-        World w = flow.world();
-        Filing filing = filing(Way.PORTAL_JSON, w);
-        String key = "!~" + UUID.randomUUID() + "a".repeat(62);
-        assertThat(key).hasSize(100);
-
-        String filed = filing.request(key).expect(201).jsonText("key");
-
-        assertThat(filing.request(key).expect(201).jsonText("key")).as("key of the second answer").isEqualTo(filed);
-    }
-
-    @Test
     @DisplayName("S3-AC-45 without the header every request files a new issue, on the portal and on behalf")
     void withoutTheHeaderEveryRequestFiles() {
         World w = flow.world();
@@ -352,93 +348,15 @@ class IdempotencyKeyTest extends BareAppTest {
 
         Instant due = clock.advance(Duration.ofMinutes(62)).truncatedTo(ChronoUnit.MICROS);
         JsonNode record = Wait.until("a record of a cleanup job other than " + EARLIER_JOBS + " that ran at or after "
-                + due + " and deleted at least the one key", Duration.ofSeconds(90), () -> newJobRecord(due));
-        assertThat(deletedCount(record)).as("deleted count in %s", record).isGreaterThanOrEqualTo(1);
+                + due + " and deleted at least the one key", Duration.ofSeconds(90),
+                () -> cleanup.ofNewJob(EARLIER_JOBS, due, 1));
+        assertThat(CleanupRecords.deletedCount(record)).as("deleted count in %s", record).isGreaterThanOrEqualTo(1);
 
         Session nextDay = fixtures.signInAgain(w.reporter());
         ApiResponse afterCleanup = filing.by(nextDay).request(key).send();
         assertThat(afterCleanup.status()).as(afterCleanup.request()).isEqualTo(201);
         assertThat(afterCleanup.jsonText("key")).as("the key after the cleanup").isNotEqualTo(filed);
         assertThat(titled(flow.admin(), filing.title())).as("issues titled %s", filing.title()).hasSize(2);
-    }
-
-    /** The table whose rows are the records of the cleanup jobs: the one that names an earlier job; null while none does. */
-    private String recordTable() {
-        for (String table : db.tables()) {
-            for (Column c : db.columns(table)) {
-                boolean textColumn = c.dataType().equals("text") || c.dataType().equals("character varying");
-                if (textColumn && db.count("select count(*) from \"" + table + "\" where \"" + c.name()
-                        + "\" = 'session-cleanup'") > 0) {
-                    return table;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * A cleanup record that belongs to none of the earlier jobs, ran at or after {@code since}, and
-     * counts at least one deleted row; null while there is none.
-     */
-    private JsonNode newJobRecord(Instant since) {
-        String table = recordTable();
-        if (table == null) {
-            return null;
-        }
-        for (Map<String, Object> r : db.rows("select row_to_json(t)::text as j from \"" + table + "\" t")) {
-            JsonNode row = parse((String) r.get("j"));
-            if (!namesEarlierJob(row) && ranSince(row, since) && deletedCount(row) >= 1) {
-                return row;
-            }
-        }
-        return null;
-    }
-
-    private static boolean namesEarlierJob(JsonNode row) {
-        for (JsonNode value : row.values()) {
-            if (value.isString() && EARLIER_JOBS.contains(value.stringValue())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean ranSince(JsonNode row, Instant since) {
-        for (JsonNode value : row.values()) {
-            if (value.isString()) {
-                try {
-                    Instant time = OffsetDateTime.parse(value.stringValue()).toInstant().truncatedTo(ChronoUnit.MICROS);
-                    if (!time.isBefore(since)) {
-                        return true;
-                    }
-                } catch (DateTimeParseException notATime) {
-                    // Another text column of the row.
-                }
-            }
-        }
-        return false;
-    }
-
-    /** The largest number in a column that is not a key (tenant_id, id, *_id, *Id), or -1. */
-    private static long deletedCount(JsonNode row) {
-        long max = -1;
-        for (Map.Entry<String, JsonNode> column : row.properties()) {
-            String name = column.getKey();
-            boolean key = name.equalsIgnoreCase("id") || name.toLowerCase(Locale.ROOT).endsWith("_id")
-                    || name.endsWith("Id");
-            if (!key && column.getValue().isIntegralNumber()) {
-                max = Math.max(max, column.getValue().asLong());
-            }
-        }
-        return max;
-    }
-
-    private static JsonNode parse(String text) {
-        try {
-            return JSON.readTree(text);
-        } catch (JacksonException e) {
-            throw new AssertionError("row_to_json gave text that is not JSON: " + text, e);
-        }
     }
 
     // S3-AC-47

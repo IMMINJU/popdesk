@@ -56,7 +56,7 @@ class IssueSearchTest extends BareAppTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(App.class)
-    @DisplayName("S3-AC-11 q finds an issue by any part of its title or content, ignoring case, and goes together with other filters")
+    @DisplayName("S3-AC-11, S3-AC-14 q finds an issue by any part of its title or content, ignoring case and the spaces around q, and goes together with other filters")
     void findsByTitleOrContent(App app) {
         World w = flow.world();
         Session viewer = viewer(w, app);
@@ -73,6 +73,7 @@ class IssueSearchTest extends BareAppTest {
         needles.put("the title word in capitals", inTitle.toUpperCase(Locale.ROOT));
         needles.put("the middle of the title word", inTitle.substring(1, inTitle.length() - 1));
         needles.put("the end of one word and the start of the next", "in " + inTitle.substring(0, 3));
+        needles.put("the title word with two spaces before and after it", "  " + inTitle + "  ");
         needles.put("a Korean word of the content", korean);
         needles.put("the middle of the Korean word", korean.substring(1, korean.length() - 1));
 

@@ -4,6 +4,7 @@ import static io.popdesk.issue.IssueFlow.listRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.issue.IssueFlow;
+import io.popdesk.issue.IssueFlow.OnBehalf;
 import io.popdesk.issue.IssueFlow.World;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.AppLog.Mark;
@@ -92,7 +93,7 @@ class IssueSearchLogTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S3-AC-92 editing an issue, and searches and edits refused with 400, 409, and 429, leave no form of the text in the log")
+    @DisplayName("S3-AC-92 editing an issue, searching the reporters, filing on behalf with a key, and searches, edits, and filings refused with 400, 409, and 429, leave no form of the text or the key in the log")
     void editAndRefusedRequestsLeaveNoText() {
         World w = flow.world();
         List<String> values = new ArrayList<>();
@@ -107,7 +108,7 @@ class IssueSearchLogTest extends BareAppTest {
         Map<String, Object> stale = new LinkedHashMap<>();
         stale.put("title", text("Stale", values));
         stale.put("version", flow.version(w.reporter(), issue.key()) - 1);
-        ApiResponse conflict = w.reporter().client().patch("/api/portal/issues/" + issue.key()).json(stale).send();
+        ApiResponse conflict = IssueFlow.editRequest(w.reporter(), issue.key(), stale).send();
         String tooLong = text("Too long", values) + " " + "x".repeat(100);
         values.add(tooLong);
         ApiResponse refusedSearch = listRequest(w.agent(), "q", tooLong).send();
@@ -116,11 +117,28 @@ class IssueSearchLogTest extends BareAppTest {
             listRequest(w.colleague(), "q", limited).expect(200);
         }
         ApiResponse overLimit = listRequest(w.colleague(), "q", limited).send();
+        String reporters = "/api/console/companies/" + w.code() + "/reporters";
+        ApiResponse reporterSearch = w.agent().client().get(reporters).query("q", text("Reporter", values)).send();
+        String tooLongForReporters = text("Reporter too long", values) + " " + "x".repeat(100);
+        values.add(tooLongForReporters);
+        ApiResponse refusedReporterSearch = w.agent().client().get(reporters).query("q", tooLongForReporters).send();
+        String key = "key-" + IssueFlow.word();
+        String refusedKey = "key-" + IssueFlow.word();
+        values.addAll(List.of(key, refusedKey));
+        flow.onBehalfRequest(w.agent(), OnBehalf.of(w.code(), w.reporter().accountId()).title(text("By phone", values))
+                .content(text("Said", values))).header("Idempotency-Key", key).expect(201);
+        String refusedTitle = text("Refused by phone", values) + " " + "x".repeat(200);
+        values.add(refusedTitle);
+        ApiResponse refusedOnBehalf = flow.onBehalfRequest(w.agent(), OnBehalf.of(w.code(), w.reporter().accountId())
+                .title(refusedTitle)).header("Idempotency-Key", refusedKey).send();
 
         assertThat(conflict.status()).as(conflict.request()).isEqualTo(409);
         assertThat(conflict.errorCode()).isEqualTo("VERSION_CONFLICT");
         assertThat(refusedSearch.status()).as(refusedSearch.request()).isEqualTo(400);
         assertThat(overLimit.status()).as(overLimit.request()).isEqualTo(429);
+        assertThat(reporterSearch.status()).as(reporterSearch.request()).isEqualTo(200);
+        assertThat(refusedReporterSearch.status()).as(refusedReporterSearch.request()).isEqualTo(400);
+        assertThat(refusedOnBehalf.status()).as(refusedOnBehalf.request()).isEqualTo(400);
         assertNotLogged(mark, values);
     }
 }

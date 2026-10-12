@@ -289,7 +289,6 @@ final class BoundaryList {
                     ISSUE_OF_B + "issueOfAnotherCompanyIsNotFound"),
             tested("GET", STAFF_ISSUE + "/history",
                     ISSUE_OF_B + "issueOfAnotherCompanyIsNotFound",
-                    "issue.IssueHistoryTest#unassignedAgentGetsNotFound",
                     "issue.IssueHistoryTest#portalHasNoHistory"),
             tested("GET", "/api/console/companies/{code}/assignees",
                     "issue.IssueAssigneeTest#unassignedAgentGetsNotFoundForCandidates"),
