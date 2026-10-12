@@ -211,7 +211,7 @@ export function C3IssueList() {
   }
 
   return (
-    <div className="pd-screen">
+    <div className="pd-screen pd-issues">
       <div className="pd-screen-head">
         <PageTitle titleRef={heading}>문의 목록</PageTitle>
         <Button

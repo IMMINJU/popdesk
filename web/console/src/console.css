@@ -153,6 +153,16 @@
 
 /* C-3: 보기 고르기 above the filter row, the row itself, and what it shows when a filter is on.
    The parts of the row line up on the input; a narrow window wraps them onto more lines. */
+/* Eight columns: a cell breaks between words only, and the table scrolls sideways when that is too wide. */
+.pd-issues .pd-table td {
+  word-break: keep-all;
+}
+
+.pd-issues .pd-table .pd-person,
+.pd-issues .pd-table .pd-muted {
+  white-space: nowrap;
+}
+
 .pd-views {
   display: flex;
   flex-wrap: wrap;
