@@ -318,6 +318,67 @@
   padding: var(--space-8);
 }
 
+/* P-3 filter row: the parts line up on the search input and wrap onto more lines.
+   At mobile width only the search shows; 필터 opens the rest as a column. */
+
+.pd-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3) var(--space-4);
+}
+
+.pd-filters > .pd-field[data-pd='SearchField'] {
+  flex: 1 1 14rem;
+  max-width: 22rem;
+}
+
+/* At PC width the folding box is not a box: its parts stand in the row. */
+.pd-filters-more {
+  display: contents;
+}
+
+.pd-filters-more > .pd-field[data-pd='Select'] {
+  width: 11rem;
+}
+
+.pd-filters-more > .pd-group {
+  gap: 0;
+}
+
+.pd-filters-more > .pd-group > legend {
+  margin-bottom: var(--space-1);
+}
+
+.pd-filters-more > .pd-group > .pd-group-options {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  min-height: var(--field-height);
+}
+
+/* The label line above an input, kept empty so the checkbox and the link stand beside the inputs. */
+.pd-filters-more > .pd-check,
+.pd-filters-clear {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--field-height);
+  margin-top: calc(var(--text-sm-line) + var(--space-1));
+}
+
+.pd-filters-clear {
+  font-size: var(--text-sm);
+}
+
+.pd-filters-toggle .pd-icon {
+  transition: transform var(--duration-fast) var(--easing);
+}
+
+.pd-filters-toggle[data-open='true'] .pd-icon {
+  transform: rotate(180deg);
+}
+
 /* P-3 list: each row is one link. Two lines on every width: what it is, then where and when. */
 
 .pd-issue-rows {
@@ -364,6 +425,9 @@ a.pd-issue-row:focus-visible {
 .pd-issue-row-status {
   grid-area: status;
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
 }
 
 .pd-issue-row-key {
@@ -431,6 +495,27 @@ a.pd-issue-row:focus-visible {
 }
 
 @media (max-width: 639.98px) {
+  .pd-filters > .pd-field[data-pd='SearchField'] {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .pd-filters-more {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    width: 100%;
+  }
+
+  .pd-filters-more > .pd-field[data-pd='Select'] {
+    width: 100%;
+  }
+
+  .pd-filters-more > .pd-check,
+  .pd-filters-clear {
+    margin-top: 0;
+  }
+
   .pd-issue-row-title-text {
     display: -webkit-box;
     -webkit-box-orient: vertical;
