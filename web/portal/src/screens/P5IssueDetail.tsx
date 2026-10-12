@@ -3,6 +3,8 @@
 // Slice 3 (3-issues screens.md 2절) adds the times and the mark of a filing by the
 // support team to the head, the band of a resolved issue, what its reporter can do
 // (문의 종료, 해결 확인, 다시 열기), and 고치기.
+// Slice 4 (4-talk screens.md 2절) adds 댓글 고치기·댓글 지우기 on my own comments, the trace of a
+// deleted comment, and the `#comment-ID` of the address. No mentions here (S4-AC-25).
 import {
   Alert,
   AttachmentList,
@@ -18,6 +20,7 @@ import {
   RelativeTime,
   Skeleton,
   StatusBadge,
+  commentActionDescribedBy,
   type AttachmentItem,
   type FileRejectReason,
   type UploadItem,
@@ -38,6 +41,7 @@ import {
 } from '../app/attachments';
 import { RateLimitBand, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
+import { CommentEdit, type EditGone } from '../app/CommentEdit';
 import { useCooldown, useFieldErrors, useLeaveGuard, useLive, useLoad } from '../app/hooks';
 import { IssueEdit } from '../app/IssueEdit';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
@@ -53,6 +57,8 @@ type Comment = Schemas['Comment'];
 
 const LIST_SIZE = 100;
 const ISSUE_CLOSED_TEXT = '문의가 종료되어 댓글을 달 수 없습니다.';
+/** The band over the comments when an edit could not be saved any more. */
+const EDIT_GONE_TEXT = { closed: 'comment.editClosed', deleted: 'comment.alreadyDeleted', notFound: 'comment.notFound' } as const;
 /** The server says so when the status changed before the request came (S3-AC-82). */
 const ALREADY_CHANGED = ['ISSUE_CLOSED', 'NOT_REOPENABLE', 'INVALID_TRANSITION'];
 /** 문의 종료 asks first; 해결 확인 is the same request without the question. */
@@ -156,7 +162,22 @@ function IssueDetail(props: { issueKey: string }) {
   const [actionFailure, setActionFailure] = useState<Failure | null>(null);
   const [editing, setEditing] = useState(false);
   const [editDirty, setEditDirty] = useState(false);
-  const blocker = useLeaveGuard(draft.trim() !== '' || (editing && editDirty));
+
+  // Slice 4: one comment is edited at a time; a deleted one is asked about first.
+  const [editingComment, setEditingComment] = useState<number | null>(null);
+  const [commentDirty, setCommentDirty] = useState(false);
+  // What to do once the text in the comment's editor may be thrown away: close it (null) or edit another comment.
+  const [discarding, setDiscarding] = useState<{ next: number | null } | null>(null);
+  const [editGone, setEditGone] = useState<{ why: EditGone; draft: string } | null>(null);
+  const [removing, setRemoving] = useState<Comment | null>(null);
+  const [removePending, setRemovePending] = useState(false);
+  const [removeError, setRemoveError] = useState<string | undefined>(undefined);
+  // Counts the questions: an answer for a question already closed is dropped.
+  const removeAsk = useRef(0);
+  const editButtons = useRef(new Map<number, HTMLButtonElement>());
+  const focusEditButton = useRef<number | null>(null);
+  const hashDone = useRef(false);
+  const blocker = useLeaveGuard(draft.trim() !== '' || (editing && editDirty) || (editingComment !== null && commentDirty));
 
   // Attachments
   const [uploads, setUploads] = useState<Upload[]>([]);
@@ -183,6 +204,24 @@ function IssueDetail(props: { issueKey: string }) {
     if (focusEditor.current) {
       focusEditor.current = false;
       editorRef.current?.focus();
+    }
+    if (focusEditButton.current !== null) {
+      const button = editButtons.current.get(focusEditButton.current);
+      if (button) {
+        focusEditButton.current = null;
+        button.focus();
+      }
+    }
+    // `#comment-ID` of the address: once, when the comments are in. A comment that is not among them is left alone.
+    if (detail && !hashDone.current) {
+      hashDone.current = true;
+      const wanted = /^#(comment-\d+)$/.exec(location.hash)?.[1];
+      const el = wanted === undefined ? null : document.getElementById(wanted);
+      if (el) {
+        el.focus();
+        // jsdom has none.
+        if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'center' });
+      }
     }
   });
 
@@ -297,6 +336,67 @@ function IssueDetail(props: { issueKey: string }) {
     void send();
   };
 
+  // Comments: 고치기, 지우기 --------------------------------------------
+  const closeCommentEdit = (next: number | null) => {
+    if (next === null) focusEditButton.current = editingComment;
+    setEditingComment(next);
+    setCommentDirty(false);
+    setDiscarding(null);
+  };
+
+  /** Closes the editor, or moves it to another comment; with text to lose it asks first. */
+  const leaveCommentEdit = (next: number | null) => {
+    if (editingComment !== null && commentDirty) setDiscarding({ next });
+    else closeCommentEdit(next);
+  };
+
+  const onCommentSaved = async (id: number) => {
+    setEditingComment(null);
+    setCommentDirty(false);
+    setEditGone(null);
+    focusComment.current = id;
+    await load.reload();
+    if (live()) toast(t('comment.editedToast'));
+  };
+
+  const onCommentGone = (why: EditGone, text: string) => {
+    setEditingComment(null);
+    setCommentDirty(false);
+    setEditGone({ why, draft: text });
+    // The issue too: closed, or no longer in sight (then the whole screen says 찾을 수 없습니다).
+    void load.reload();
+  };
+
+  const closeRemove = () => {
+    removeAsk.current += 1;
+    setRemoving(null);
+    setRemovePending(false);
+    setRemoveError(undefined);
+  };
+
+  const confirmRemove = async () => {
+    if (!removing || removePending) return;
+    const target = removing;
+    const asked = removeAsk.current;
+    setRemovePending(true);
+    setRemoveError(undefined);
+    const result = await call(api.DELETE('/api/portal/issues/{key}/comments/{id}', { params: { path: { key, id: target.id } } }));
+    // The screen has gone, or the question was closed while it was on its way.
+    if (!live() || asked !== removeAsk.current) return;
+    if (result.ok) {
+      closeRemove();
+      focusComment.current = target.id;
+      await load.reload();
+      if (live()) toast(t('comment.deletedToast'));
+    } else if (result.failure.kind === 'notFound') {
+      closeRemove();
+      void load.reload();
+    } else {
+      setRemovePending(false);
+      setRemoveError(failureText(result.failure));
+    }
+  };
+
   // Attachments --------------------------------------------------------
   const replaceUpload = (id: string, patch: Partial<Upload>) => {
     setUploads((current) => current.map((u) => (u.id === id ? { ...u, ...patch } : u)));
@@ -382,6 +482,8 @@ function IssueDetail(props: { issueKey: string }) {
   }));
 
   const comments = byTime(detail.comments);
+  // The second sentence of the question: only for files of the comment itself that are still there.
+  const removeFiles = removing !== null && detail.attachments.some((a) => a.commentId === removing.id && !a.deleted);
 
   let footer: ReactNode = null;
   if (closed) {
@@ -644,31 +746,116 @@ function IssueDetail(props: { issueKey: string }) {
         <h2 id="comments-title" className="pd-section-title">
           댓글 {comments.length}개
         </h2>
+        {editGone && (
+          <div className="pd-comment-unsent">
+            <Alert
+              tone="error"
+              onClose={() => {
+                setEditGone(null);
+              }}
+              closeLabel={TEXT.close}
+            >
+              {t(EDIT_GONE_TEXT[editGone.why])}
+            </Alert>
+            <div className="pd-kept-draft">
+              <p className="pd-label">{t('comment.unsent')}</p>
+              <pre>{editGone.draft}</pre>
+            </div>
+          </div>
+        )}
         {comments.length === 0 ? (
           <p className="pd-muted">아직 댓글이 없습니다.</p>
         ) : (
           <div className="pd-comment-list">
-            {comments.map((c) => (
-              <CommentItem
-                key={c.id}
-                id={`comment-${String(c.id)}`}
-                author={
-                  c.author.kind === 'SUPPORT_TEAM'
-                    ? { kind: 'support' }
-                    : {
-                        kind: 'person',
-                        name: c.author.name ?? '',
-                        isMe: c.author.accountId === meId,
-                        photoUrl: photoUrl(c.author.accountId, c.author.photoUpdatedAt),
+            {comments.map((c) => {
+              const domId = `comment-${String(c.id)}`;
+              // Who gets which button is the screen's to say (S4-AC-60): the writer alone, while still in the company.
+              const own = c.author.kind === 'CUSTOMER' && c.author.accountId === meId && detail.member;
+              const canEditComment = own && !closed;
+              const editingThis = editingComment === c.id;
+              return (
+                <CommentItem
+                  key={c.id}
+                  id={domId}
+                  author={
+                    c.author.kind === 'SUPPORT_TEAM'
+                      ? { kind: 'support' }
+                      : {
+                          kind: 'person',
+                          name: c.author.name ?? '',
+                          isMe: c.author.accountId === meId,
+                          photoUrl: photoUrl(c.author.accountId, c.author.photoUpdatedAt),
+                        }
+                  }
+                  visibility="public"
+                  createdAt={c.createdAt}
+                  body={c.content}
+                  supportLabel={TEXT.supportTeam}
+                  meLabel={TEXT.me}
+                  deleted={c.deleted}
+                  deletedLabel={t('comment.deleted')}
+                  deletedAt={c.deletedAt}
+                  // A deleted comment shows no 고침, whatever the server still holds.
+                  editedAt={c.deleted ? null : c.editedAt}
+                  editedLabel={t('comment.edited')}
+                  {...(!c.deleted && !editingThis && own
+                    ? {
+                        actions: (
+                          <>
+                            {canEditComment && (
+                              <Button
+                                ref={(el) => {
+                                  if (el) editButtons.current.set(c.id, el);
+                                  else editButtons.current.delete(c.id);
+                                }}
+                                variant="quiet"
+                                size="sm"
+                                describedBy={commentActionDescribedBy(domId)}
+                                onClick={() => {
+                                  leaveCommentEdit(c.id);
+                                }}
+                              >
+                                {t('comment.edit')}
+                              </Button>
+                            )}
+                            <Button
+                              variant="quiet"
+                              size="sm"
+                              describedBy={commentActionDescribedBy(domId)}
+                              onClick={() => {
+                                setRemoving(c);
+                              }}
+                            >
+                              {t('comment.delete')}
+                            </Button>
+                          </>
+                        ),
                       }
-                }
-                visibility="public"
-                createdAt={c.createdAt}
-                body={c.content}
-                supportLabel={TEXT.supportTeam}
-                meLabel={TEXT.me}
-              />
-            ))}
+                    : {})}
+                  {...(editingThis
+                    ? {
+                        editing: (
+                          <CommentEdit
+                            issueKey={key}
+                            comment={c}
+                            onDirtyChange={setCommentDirty}
+                            onCancel={() => {
+                              leaveCommentEdit(null);
+                            }}
+                            onUnchanged={() => {
+                              closeCommentEdit(null);
+                            }}
+                            onSaved={() => {
+                              void onCommentSaved(c.id);
+                            }}
+                            onGone={onCommentGone}
+                          />
+                        ),
+                      }
+                    : {})}
+                />
+              );
+            })}
           </div>
         )}
       </section>
@@ -689,6 +876,35 @@ function IssueDetail(props: { issueKey: string }) {
         }}
         onCancel={() => {
           setDeleteTarget(null);
+        }}
+      />
+      <ConfirmDialog
+        open={removing !== null}
+        tone="danger"
+        title={t('comment.delete')}
+        message={removeFiles ? `${t('comment.askDelete')} ${t('comment.askDeleteFiles')}` : t('comment.askDelete')}
+        confirmLabel={t('comment.delete')}
+        cancelLabel={t('comment.keep')}
+        pending={removePending}
+        pendingLabel={t('comment.deleting')}
+        {...(removeError === undefined ? {} : { error: removeError })}
+        onConfirm={() => {
+          void confirmRemove();
+        }}
+        onCancel={closeRemove}
+      />
+      <ConfirmDialog
+        open={discarding !== null}
+        title={TEXT.leaveTitle}
+        message={TEXT.leaveMessage}
+        confirmLabel={TEXT.leave}
+        cancelLabel={TEXT.stay}
+        tone="danger"
+        onConfirm={() => {
+          closeCommentEdit(discarding?.next ?? null);
+        }}
+        onCancel={() => {
+          setDiscarding(null);
         }}
       />
       <ConfirmDialog
