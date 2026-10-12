@@ -63,8 +63,8 @@ class PortalCommentController {
     @Operation(operationId = "createComment", summary = "Add a public comment",
             description = "Only the reporter may comment (S0-AC-51, S0-AC-52).")
     @ApiResponse(responseCode = "201", description = "Created.")
-    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `content` empty or over 4,000. "
-            + "`ISSUE_CLOSED`: the issue is closed.")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `content` empty or over 4,000, or not "
+            + "text (`INVALID_FORMAT`). `ISSUE_CLOSED`: the issue is closed.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: the caller can see the issue but is not its "
             + "reporter, or left the company (S0-AC-52, PROJ-4). `CSRF_TOKEN_INVALID`.")
@@ -81,8 +81,8 @@ class PortalCommentController {
                     + "too. A new `content` sets `editedAt`; the content the comment already has does not "
                     + "(S4-AC-06).")
     @ApiResponse(responseCode = "200", description = "The comment as it is now.")
-    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `content` empty, over 4,000, or `null`. "
-            + "`COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` "
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `content` empty, over 4,000, or `null`, "
+            + "or not text (`INVALID_FORMAT`). `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` "
             + "(S4-AC-04).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: the caller did not write the comment, or left "

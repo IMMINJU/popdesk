@@ -109,6 +109,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 400 | `FILE_TOO_LARGE` | The uploaded file is over 10 MB |
 | 400 | `ISSUE_ATTACHMENTS_TOO_LARGE` | The public attachments of the issue (on the issue and its public comments) would pass 50 MB |
 | 400 | `ATTACHMENT_QUOTA_EXCEEDED` | All attachments of the team would pass `POPDESK_ATTACHMENT_QUOTA` |
+| 400 | `CHANNEL_DISABLED` | Sending a failed outbox row again, or a test email: the channel (mail, webhook, or the outside copy of the audit log) is not configured, or `POPDESK_SANDBOX` turned it off. Nothing changed and nothing was sent |
 | 401 | `UNAUTHENTICATED` | No session, or the session ended |
 | 401 | `SIGN_IN_FAILED` | Sign-in failed. The same body whatever the reason: unknown email, wrong password, invited, suspended, or locked account, or an account of the other app |
 | 403 | `FORBIDDEN` | The caller may not do this: the action is for other roles, or the caller can see the target but may not act on it |
@@ -276,6 +277,7 @@ Limits are per account over a 60-second window:
 | Upload a profile photo | 10 |
 | List with a search term | 60 (the issue lists, the account list, and the list of customers staff can file for count together). A list without `q` is not counted, whatever other filters it has |
 | Customer manager sends an invitation, or sends one again | 20 (both count together) |
+| Admin sends a test email | 5 |
 | Sign-in attempts | 20 per IP address |
 | Password reset requests | 20 per IP address; at most one reset email per account every 15 minutes |
 

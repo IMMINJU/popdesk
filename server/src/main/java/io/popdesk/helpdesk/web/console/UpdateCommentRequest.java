@@ -11,5 +11,7 @@ public record UpdateCommentRequest(
         @Schema(type = "string", description = "Markdown, 1 to 4,000 characters. `null` is refused.")
                 JsonNode content,
         @Schema(implementation = Long[].class, description = "The whole list of account IDs the comment mentions "
-                + "from now on, up to 10, by the rules of `createComment`. `null` is the same as an empty list. "
-                + "Left out, the mentions stay (S4-AC-24).") JsonNode mentions) {}
+                + "from now on, up to 10 counting the whole list. Only an account new to the list is checked by "
+                + "the rules of `createComment`; one the comment mentions already is not checked again and may "
+                + "stay. `null` is the same as an empty list. Left out, the mentions stay (S4-AC-24).")
+                JsonNode mentions) {}

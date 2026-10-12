@@ -8,7 +8,8 @@ public record Notification(
         long id,
         NotificationKind kind,
         @Schema(description = "The issue the item is about, as it is now; null for `DELIVERY_FAILED`, "
-                + "`ATTACHMENT_QUOTA_WARNING`, and `MEMBERSHIP_REQUESTED` (S4-AC-40).", nullable = true)
+                + "`ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, and "
+                + "`MEMBERSHIP_REQUESTED` (S4-AC-40).", nullable = true)
                 NotificationIssue issue,
         @Schema(description = "The company of the issue, or the company a `MEMBERSHIP_REQUESTED` item is about; "
                 + "null for the other kinds.", nullable = true) String companyCode,

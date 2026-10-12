@@ -73,7 +73,8 @@ class ConsoleCommentController {
     @ApiResponse(responseCode = "201", description = "Created.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `content` empty or over 4,000; `mentions` "
             + "over 10 (`TOO_MANY`, S4-AC-21) or with an account that cannot be mentioned here (`UNKNOWN_VALUE`, "
-            + "one answer whatever the reason, S4-AC-20). `ISSUE_CLOSED`: the issue is closed.")
+            + "one answer whatever the reason, S4-AC-20); `content` that is not text or `mentions` that is not "
+            + "a list of whole numbers (`INVALID_FORMAT` on that field). `ISSUE_CLOSED`: the issue is closed.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such issue, or the caller cannot see it.")
@@ -92,9 +93,10 @@ class ConsoleCommentController {
                     + "only accounts new to it are told (S4-AC-24).")
     @ApiResponse(responseCode = "200", description = "The comment as it is now.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `content` empty, over 4,000, or `null`; "
-            + "`mentions` over 10 (`TOO_MANY`) or with an account that cannot be mentioned here (`UNKNOWN_VALUE`); "
-            + "`fields` lists all. `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue "
-            + "is `CLOSED` (S4-AC-04).")
+            + "`mentions` over 10 (`TOO_MANY`) or with an account new to the list that cannot be mentioned here "
+            + "(`UNKNOWN_VALUE`); `content` that is not text or `mentions` that is not a list of whole numbers "
+            + "(`INVALID_FORMAT` on that field); `fields` lists all. `COMMENT_DELETED`: the comment is deleted "
+            + "(S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` (S4-AC-04).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: the caller did not write the comment. "
             + "`CSRF_TOKEN_INVALID`.")

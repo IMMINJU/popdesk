@@ -302,7 +302,8 @@ class ConsoleIssueController {
     MentionCandidates listMentionCandidates(
             @PathVariable String key,
             @Parameter(description = "`true`: for an internal comment, so without the reporter. Left out or "
-                    + "`false`: for a public comment.", schema = @Schema(type = "boolean", defaultValue = "false"))
+                    + "`false`: for a public comment. Only these two spellings are taken: `TRUE`, `1`, or an "
+                    + "empty value is 400.", schema = @Schema(type = "boolean", defaultValue = "false"))
                     @RequestParam(defaultValue = "false") String internal) {
         return new MentionCandidates(issues.mentionCandidates(CurrentAccount.get().viewer(), key, internal).stream()
                 .map(p -> person(p.accountId(), p.name(), p.role(), p.photoUpdatedAt())).toList());

@@ -10,6 +10,12 @@ public enum NotificationKind {
     DELIVERY_FAILED,
     /** Attachments passed 80% of the team quota. */
     ATTACHMENT_QUOTA_WARNING,
+    /** Sending email has only failed for over an hour (S4B-AC-29). */
+    MAIL_STALLED,
+    /** Sending the webhook has only failed for over an hour (S4B-AC-29). */
+    WEBHOOK_STALLED,
+    /** Sending the outside copy of the audit log has only failed for over an hour (S4B-AC-29). */
+    AUDIT_FORWARD_STALLED,
     /** A customer manager invited an email that already has an account (S2-AC-39). */
     MEMBERSHIP_REQUESTED,
     /** Staff added a public comment, to the reporter (S4-AC-27). Never in a staff inbox. */

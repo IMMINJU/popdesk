@@ -67,7 +67,8 @@ class ConsoleAttachmentController {
     @ApiResponse(responseCode = "400", description = "`FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), "
             + "`ISSUE_ATTACHMENTS_TOO_LARGE` (public attachments of the issue over 50 MB), "
             + "`ATTACHMENT_QUOTA_EXCEEDED` (team quota), `INVALID_INPUT` (field `file` `TOO_LONG`: name over 255; "
-            + "field `commentId` `UNKNOWN_VALUE`: not the caller's comment on this issue) (S0-AC-57, S0-AC-58). "
+            + "field `commentId` `UNKNOWN_VALUE`: not the caller's comment on this issue, or a deleted "
+            + "comment) (S0-AC-57, S0-AC-58). "
             + "`ISSUE_CLOSED`.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")

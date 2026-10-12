@@ -18,4 +18,5 @@ public record Comment(
         @Schema(nullable = true) OffsetDateTime deletedAt,
         @Schema(description = "The author, or an admin (CMT-3).", nullable = true) Person deletedBy,
         @Schema(description = "The accounts the comment mentions, as they were chosen: someone who can no longer "
-                + "see the issue stays in the list (S4-AC-19, S4-AC-26).") List<Person> mentions) {}
+                + "see the issue stays in the list (S4-AC-19, S4-AC-26). In name order, then by account ID.")
+                List<Person> mentions) {}
