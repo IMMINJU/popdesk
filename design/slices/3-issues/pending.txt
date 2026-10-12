@@ -48,3 +48,4 @@ server io/popdesk/start/TrigramExtensionTest.java
 server io/popdesk/deploy/IssueUpgradeTest.java
 server io/popdesk/deploy/RestoreForeignExtensionTest.java
 server io/popdesk/ops/CheckOrderTest.java
+server io/popdesk/deploy/IssueSampleTest.java

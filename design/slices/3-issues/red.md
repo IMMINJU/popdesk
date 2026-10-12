@@ -2,7 +2,7 @@
 
 > 실패한 테스트는 이름만 적었다. 실패 메시지는 넣지 않았다. 숨긴 E2E는 여기 없다(레포 밖).
 
-- 단언 실패 369, 통과 0, 허용한 통과 18, 오류 0, 건너뜀 0
+- 단언 실패 379, 통과 0, 허용한 통과 17, 오류 0, 건너뜀 0
 - 판정: 통과
 
 ## 처음부터 통과해도 된다고 허용한 테스트 (점검에서 이유를 본다)
@@ -16,12 +16,11 @@
 - `io.popdesk.issue.IssueHistoryTest.portalHasNoHistory`: 포털 호스트에는 이력 경로가 없고 콘솔 경로는 포털 호스트에서 404다(D-43)
 - `io.popdesk.issue.PortalIssueFilterTest.staffOnlyNamesAreRejected(String, String)[1]`: 포털 목록은 첫 묶음부터 허용 목록에 없는 쿼리 이름을 400으로 답한다(S0-AC-48)
 - `io.popdesk.issue.PortalIssueFilterTest.staffOnlyNamesAreRejected(String, String)[2]`: 포털 목록은 첫 묶음부터 허용 목록에 없는 쿼리 이름을 400으로 답한다(S0-AC-48)
-- `io.popdesk.issue.PortalIssueFilterTest.staffOnlyNamesAreRejected(String, String)[3]`: 포털 목록은 첫 묶음부터 허용 목록에 없는 쿼리 이름을 400으로 답한다(S0-AC-48)
-- `io.popdesk.issue.PortalIssueFilterTest.staffOnlyNamesAreRejected(String, String)[4]`: 포털 목록은 첫 묶음부터 허용 목록에 없는 쿼리 이름을 400으로 답한다(S0-AC-48)
 - `io.popdesk.ops.CheckOrderTest.unauthenticatedFirst`: 있던 테스트다. 새 엔드포인트도 로그인 전에는 401이 먼저다
 - `io.popdesk.ops.CheckOrderTest.inputBeforeConflict`: 있던 테스트다. 이 탭이 줄을 더하지 않았다
 - `io.popdesk.ops.CheckOrderTest.roleBeforeTargetAndInput`: 있던 테스트다. 열린 담당 수 둘은 관리자 전용 패턴에 이미 걸려 상담원이 403이다
 - `io.popdesk.ops.IssueSearchLogTest.searchAndFilingLeaveNoText`: 앱에 접근 로그와 쿼리 문자열을 적는 코드가 없어 지금도 검색어와 제목이 로그에 없다
+- `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 동작(동료의 열린 문의): 버튼은 []`: 동료의 문의에 동작이 없다는 부정 단언이라 동작이 아직 없는 지금도 참이다
 - `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 동작(동료의 해결된 문의): 버튼은 []`: 동료의 문의에 동작과 해결 띠가 없다는 부정 단언이라 동작이 아직 없는 지금도 참이다
 - `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 동작(동료의 종료된 문의(reopenable이 참)): 버튼은 []`: 위와 같다. reopenable이 참이어도 올린 사람이 아니면 "다시 열기"가 없다는 부정 단언이다
 - `src/components/SearchField.test.tsx.SearchField > SearchField 꼴: role="search" 안의 이름표 있는 검색 입력. hint는 aria-describedby로 잇고 maxLength는 기본 100, disabled면 막힌다`: 계약 껍데기(s3-c4-web)가 이름표, role="search", hint, maxLength, disabled를 이미 그린다
@@ -59,6 +58,7 @@
 - `io.popdesk.issue.IdempotencyKeyTest.sameKeyWithOtherContentIsRefused(Change)[6]`
 - `io.popdesk.issue.IdempotencyKeyTest.sameKeyWithOtherContentIsRefused(Change)[7]`
 - `io.popdesk.issue.IdempotencyKeyTest.sameKeyWithOtherContentIsRefused(Change)[8]`
+- `io.popdesk.issue.IdempotencyKeyTest.sameKeyWithOtherContentIsRefused(Change)[9]`
 - `io.popdesk.issue.IdempotencyKeyTest.keyIsForgottenAfterADay`
 - `io.popdesk.issue.IdempotencyKeyTest.filesAreNotCompared`
 - `io.popdesk.issue.IdempotencyKeyTest.failedFilingKeepsNoKey(Failure)[1]`
@@ -66,10 +66,10 @@
 - `io.popdesk.issue.IdempotencyKeyTest.failedFilingKeepsNoKey(Failure)[3]`
 - `io.popdesk.issue.IdempotencyKeyTest.filingsWithOneKeyAtTheSameTimeFileOnce(Way)[1]`
 - `io.popdesk.issue.IdempotencyKeyTest.filingsWithOneKeyAtTheSameTimeFileOnce(Way)[2]`
-- `io.popdesk.issue.IdempotencyKeyTest.sameKeyAndContentGiveTheFirstIssue(Way)[1]`
-- `io.popdesk.issue.IdempotencyKeyTest.sameKeyAndContentGiveTheFirstIssue(Way)[2]`
-- `io.popdesk.issue.IdempotencyKeyTest.sameKeyAndContentGiveTheFirstIssue(Way)[3]`
-- `io.popdesk.issue.IdempotencyKeyTest.keyOf100CharactersIsTaken`
+- `io.popdesk.issue.IdempotencyKeyTest.sameKeyAndContentGiveTheFirstIssue(String, Way, String)[1]`
+- `io.popdesk.issue.IdempotencyKeyTest.sameKeyAndContentGiveTheFirstIssue(String, Way, String)[2]`
+- `io.popdesk.issue.IdempotencyKeyTest.sameKeyAndContentGiveTheFirstIssue(String, Way, String)[3]`
+- `io.popdesk.issue.IdempotencyKeyTest.sameKeyAndContentGiveTheFirstIssue(String, Way, String)[4]`
 - `io.popdesk.issue.IdempotencyKeyTest.malformedKeyIsRefused(String, String)[1]`
 - `io.popdesk.issue.IdempotencyKeyTest.malformedKeyIsRefused(String, String)[2]`
 - `io.popdesk.issue.IdempotencyKeyTest.malformedKeyIsRefused(String, String)[3]`
@@ -77,7 +77,6 @@
 - `io.popdesk.issue.IdempotencyKeyTest.keyBelongsToTheAccount`
 - `io.popdesk.issue.IdempotencyKeyTest.withoutTheHeaderEveryRequestFiles`
 - `io.popdesk.issue.IssueAssigneeTest.clearingTheAssignee`
-- `io.popdesk.issue.IssueAssigneeTest.listAndDetailCarryTheAssignee`
 - `io.popdesk.issue.IssueAssigneeTest.closedIssueTakesAndLosesAnAssignee`
 - `io.popdesk.issue.IssueAssigneeTest.assigneeWhoLostAccessIsMarkedUnavailable(Loss)[1]`
 - `io.popdesk.issue.IssueAssigneeTest.assigneeWhoLostAccessIsMarkedUnavailable(Loss)[2]`
@@ -108,24 +107,25 @@
 - `io.popdesk.issue.IssueCloseReopenTest.reporterClosesFromAnyOpenStatus(String)[4]`
 - `io.popdesk.issue.IssueCloseReopenTest.reporterTakenOutOfTheCompanyCannotReopen`
 - `io.popdesk.issue.IssueEditTest.consoleEditCannotChangePrivateOrCompany`
-- `io.popdesk.issue.IssueEditTest.statusChangeMakesTheReadVersionOld`
+- `io.popdesk.issue.IssueEditTest.closedComesBeforeAnOldVersion`
+- `io.popdesk.issue.IssueEditTest.wrongValueIsRefused(String, Editor, String, String, String)[1]`
+- `io.popdesk.issue.IssueEditTest.wrongValueIsRefused(String, Editor, String, String, String)[2]`
+- `io.popdesk.issue.IssueEditTest.wrongValueIsRefused(String, Editor, String, String, String)[3]`
+- `io.popdesk.issue.IssueEditTest.wrongValueIsRefused(String, Editor, String, String, String)[4]`
+- `io.popdesk.issue.IssueEditTest.wrongValueIsRefused(String, Editor, String, String, String)[5]`
+- `io.popdesk.issue.IssueEditTest.wrongValueIsRefused(String, Editor, String, String, String)[6]`
 - `io.popdesk.issue.IssueEditTest.sameValuesChangeNothing(Editor)[1]`
 - `io.popdesk.issue.IssueEditTest.sameValuesChangeNothing(Editor)[2]`
 - `io.popdesk.issue.IssueEditTest.portalEditTakesNoOtherField`
 - `io.popdesk.issue.IssueEditTest.missingVersionIsInvalid`
 - `io.popdesk.issue.IssueEditTest.closedIssueCannotBeEdited(Editor)[1]`
 - `io.popdesk.issue.IssueEditTest.closedIssueCannotBeEdited(Editor)[2]`
-- `io.popdesk.issue.IssueEditTest.oldVersionIsAConflict(Editor)[1]`
-- `io.popdesk.issue.IssueEditTest.oldVersionIsAConflict(Editor)[2]`
+- `io.popdesk.issue.IssueEditTest.oldVersionIsAConflict(Editor, String)[1]`
+- `io.popdesk.issue.IssueEditTest.oldVersionIsAConflict(Editor, String)[2]`
+- `io.popdesk.issue.IssueEditTest.oldVersionIsAConflict(Editor, String)[3]`
 - `io.popdesk.issue.IssueEditTest.reporterTakenOutOfTheCompanyCannotEdit`
-- `io.popdesk.issue.IssueEditTest.nullTitleOrPriorityIsRefused(String)[1]`
-- `io.popdesk.issue.IssueEditTest.nullTitleOrPriorityIsRefused(String)[2]`
 - `io.popdesk.issue.IssueEditTest.editChangesOnlyTheFieldsSent(Editor)[1]`
 - `io.popdesk.issue.IssueEditTest.editChangesOnlyTheFieldsSent(Editor)[2]`
-- `io.popdesk.issue.IssueEditTest.editKeepsTheRulesOfFiling(String, String, String, String)[1]`
-- `io.popdesk.issue.IssueEditTest.editKeepsTheRulesOfFiling(String, String, String, String)[2]`
-- `io.popdesk.issue.IssueEditTest.editKeepsTheRulesOfFiling(String, String, String, String)[3]`
-- `io.popdesk.issue.IssueEditTest.editKeepsTheRulesOfFiling(String, String, String, String)[4]`
 - `io.popdesk.issue.IssueEditTest.colleagueCannotEdit`
 - `io.popdesk.issue.IssueFilterTest.assigneeFilter`
 - `io.popdesk.issue.IssueFilterTest.filteredListIsNewestFirstInPages`
@@ -135,7 +135,7 @@
 - `io.popdesk.issue.IssueFilterTest.statusFilterKeepsTheAgentScope`
 - `io.popdesk.issue.IssueFilterTest.meaninglessAssignee(String)[1]`
 - `io.popdesk.issue.IssueFilterTest.meaninglessAssignee(String)[2]`
-- `io.popdesk.issue.IssueFilterTest.suspendedAdminAssigneeIsUnavailable`
+- `io.popdesk.issue.IssueFilterTest.reporterAndAssigneeFiltersKeepTheAgentScope`
 - `io.popdesk.issue.IssueFilterTest.unseenCompanyIsEmptyLikeMissingCode`
 - `io.popdesk.issue.IssueFilterTest.unknownParameter(String, String)[1]`
 - `io.popdesk.issue.IssueFilterTest.unknownParameter(String, String)[2]`
@@ -146,7 +146,6 @@
 - `io.popdesk.issue.IssueFilterTest.statusFilter(List)[2]`
 - `io.popdesk.issue.IssueFilterTest.statusFilter(List)[3]`
 - `io.popdesk.issue.IssueHistoryTest.twoFieldsLeaveTwoEntriesAndReopeningOne`
-- `io.popdesk.issue.IssueHistoryTest.unassignedAgentGetsNotFound`
 - `io.popdesk.issue.IssueHistoryTest.oldestFirstInPages`
 - `io.popdesk.issue.IssueHistoryTest.customerIsTheActorOfTheirChanges`
 - `io.popdesk.issue.IssueHistoryTest.filingLeavesOneCreatedEntry`
@@ -193,13 +192,7 @@
 - `io.popdesk.issue.IssueStatusTest.transitionTable(String, String)[24]`
 - `io.popdesk.issue.IssueStatusTest.transitionTable(String, String)[25]`
 - `io.popdesk.issue.IssueStatusTest.resolvedAndClosedTimes`
-- `io.popdesk.issue.IssueStatusTest.nextStatusesFollowTheTable(String)[1]`
-- `io.popdesk.issue.IssueStatusTest.nextStatusesFollowTheTable(String)[2]`
-- `io.popdesk.issue.IssueStatusTest.nextStatusesFollowTheTable(String)[3]`
-- `io.popdesk.issue.IssueStatusTest.nextStatusesFollowTheTable(String)[4]`
-- `io.popdesk.issue.IssueStatusTest.nextStatusesFollowTheTable(String)[5]`
 - `io.popdesk.issue.IssueStatusTest.unknownStatusName`
-- `io.popdesk.issue.IssueStatusTest.closedWithoutResolving`
 - `io.popdesk.issue.OnBehalfFilingTest.consoleShowsWhoFiledAndThePortalOnlyThatSupportDid`
 - `io.popdesk.issue.OnBehalfFilingTest.filingsOnBehalfAreCountedBeforeTheCompanyIsFound`
 - `io.popdesk.issue.OnBehalfFilingTest.unassignedAgentGetsNotFound`
@@ -244,12 +237,14 @@
 - `io.popdesk.ops.IssueSearchLogTest.editAndRefusedRequestsLeaveNoText`
 - `io.popdesk.start.TrigramExtensionTest.userThatMayNotCreateTheExtension`
 - `io.popdesk.start.TrigramExtensionTest.extensionCreatedByAnAdministrator`
-- `src/screens/C10MemberList.clear.test.tsx.C-10 구성원 목록 (3번 묶음) > S3-AC-85 C-10 상담원 정지: 모든 고객사에 걸친 담당인 열린 문의 수와 꺼진 체크 상자를 보인다. 체크하고 정지하면 clearAssignments=true로 보내고 토스트에 "담당 N건을 비웠습니다"`
-- `src/screens/C10MemberList.clear.test.tsx.C-10 구성원 목록 (3번 묶음) > S3-AC-85 C-10 관리자 정지: 모든 고객사에 걸친 담당인 열린 문의 수와 꺼진 체크 상자를 보인다. 체크하고 정지하면 clearAssignments=true로 보내고 토스트에 "담당 N건을 비웠습니다"`
-- `src/screens/C10MemberList.clear.test.tsx.C-10 구성원 목록 (3번 묶음) > S3-AC-85 C-10 정지(체크하지 않음): clearAssignments 없이 보내고 토스트에 비운 수가 없다`
+- `src/screens/C10MemberList.clear.test.tsx.C-10 구성원 목록 (3번 묶음) > S3-AC-85 C-10 상담원 정지: 모든 고객사에 걸친 담당인 열린 문의 수와 꺼진 체크 상자를 보인다. "N건"은 글자이고 대화상자에 링크가 없다. 체크하고 정지하면 clearAssignments=true로 보내고 토스트에 "담당 N건을 비웠습니다"`
+- `src/screens/C10MemberList.clear.test.tsx.C-10 구성원 목록 (3번 묶음) > S3-AC-85 C-10 관리자 정지: 모든 고객사에 걸친 담당인 열린 문의 수와 꺼진 체크 상자를 보인다. "N건"은 글자이고 대화상자에 링크가 없다. 체크하고 정지하면 clearAssignments=true로 보내고 토스트에 "담당 N건을 비웠습니다"`
+- `src/screens/C10MemberList.clear.test.tsx.C-10 구성원 목록 (3번 묶음) > S3-AC-85 C-10 정지(체크하지 않음): 담당을 비우라고 보내지 않고 토스트에 비운 수가 없다`
+- `src/screens/C10MemberList.clear.test.tsx.C-10 구성원 목록 (3번 묶음) > S3-AC-85 C-10 체크한 뒤 취소: 다른 사람으로 다시 열면 체크 상자가 꺼져 있고, 정지하면 담당을 비우라고 보내지 않는다`
 - `src/screens/C10MemberList.clear.test.tsx.C-10 구성원 목록 (3번 묶음) > S3-AC-85 C-10 고객 정지: 담당인 문의 수를 부르지 않고 체크 상자도 없다`
 - `src/screens/C10MemberList.clear.test.tsx.C-10 구성원 목록 (3번 묶음) > S3-AC-86 C-10 필터를 주소에: 역할, 상태, 검색어를 바꾸면 주소의 쿼리에 실리고 그 값으로 목록을 부른다`
 - `src/screens/C10MemberList.clear.test.tsx.C-10 구성원 목록 (3번 묶음) > S3-AC-86 C-10 주소로 바로 열기: 쿼리의 역할, 상태, 검색어로 필터를 그리고 그 값으로 부른다`
+- `src/screens/C10MemberList.clear.test.tsx.C-10 구성원 목록 (3번 묶음) > S3-AC-86 C-10 주소가 바뀌면: 걸러 연 화면에서 메뉴의 "구성원"을 누르면 필터가 풀리고, 뒤로 가면 앞의 필터로 다시 부른다`
 - `src/screens/C10MemberList.clear.test.tsx.C-10 구성원 목록 (3번 묶음) > C-10 axe (3번 묶음): 수와 체크 상자가 있는 정지 대화상자에 접근성 위반이 없다`
 - `src/screens/C12AuditLog.cleared.test.tsx.C-12 감사 로그 (3번 묶음) > S3-AC-72 C-12 배정 빼기의 바뀐 값: clearedIssues가 있으면 "비운 담당: 3건"이 보이고, 없는 항목에는 없다`
 - `src/screens/C12AuditLog.cleared.test.tsx.C-12 감사 로그 (3번 묶음) > S3-AC-72 C-12 계정 정지의 바뀐 값: clearedIssues가 있으면 "비운 담당: 3건"이 보이고, 없는 항목에는 없다`
@@ -260,6 +255,8 @@
 - `src/screens/C19IssueCreate.test.tsx.C-19 대리 등록 > S3-AC-84 C-19 등록: 고른 값을 JSON으로 보내고 Idempotency-Key를 붙인다. 보내는 동안 버튼을 막고, 성공하면 만든 문의의 상세로 가며 토스트 "문의를 올렸습니다"`
 - `src/screens/C19IssueCreate.test.tsx.C-19 대리 등록 > S3-AC-84 C-19 키: 5xx 뒤 그대로 다시 보내면 같은 키, 칸을 고친 뒤 보내면 다른 키, 폼을 새로 열면 또 다른 키`
 - `src/screens/C19IssueCreate.test.tsx.C-19 대리 등록 > C-19 409 IDEMPOTENCY_KEY_REUSED: 새 키로 한 번 다시 보낸다`
+- `src/screens/C19IssueCreate.test.tsx.C-19 대리 등록 > C-19 409 IDEMPOTENCY_KEY_REUSED가 이어짐: 새 키로 한 번만 다시 보내고 멈춘다. 쓴 글은 남는다`
+- `src/screens/C19IssueCreate.test.tsx.C-19 대리 등록 > C-19 고객을 고르지 않고 "등록": 요청을 보내지 않고 고객 칸 아래에 "고객을 골라 주세요."를 보인다`
 - `src/screens/C19IssueCreate.test.tsx.C-19 대리 등록 > C-19 400 칸 오류: 틀린 칸 아래에 알리고, 고객 칸의 UNKNOWN_VALUE는 정해진 문구와 함께 고객 목록을 다시 부른다. 쓴 글은 남는다`
 - `src/screens/C19IssueCreate.test.tsx.C-19 대리 등록 > C-19 400 COMPANY_NOT_ACTIVE: 오류 띠 "멈췄거나 보관된 고객사입니다.". 쓴 글은 남는다`
 - `src/screens/C19IssueCreate.test.tsx.C-19 대리 등록 > C-19 404: 오류 띠 "이 고객사를 찾을 수 없습니다". 쓴 글은 남는다`
@@ -277,8 +274,13 @@
 - `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 필터 줄: 검색, 상태, 고객사, 담당자를 바꿀 때마다 주소의 쿼리와 목록 요청의 쿼리가 같은 값을 싣는다`
 - `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 담당자 필터의 사람: 고객사를 고르기 전에는 사람이 없고, 고르면 그 고객사의 후보가 선택지로 나온다. 고르면 assignee에 계정 ID를 싣는다`
 - `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 필터를 바꾸면 1쪽으로: 3쪽에서 상태를 고르면 주소와 요청의 쪽이 1이다`
+- `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 필터를 건 채 2쪽으로: 주소와 목록 요청이 필터와 쪽을 함께 싣는다`
+- `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 뒤로 가기: 필터를 건 채 2쪽으로 갔다가 뒤로 가면 같은 필터의 1쪽이 다시 나온다`
 - `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 주소로 바로 열기: 쿼리의 값으로 필터를 그리고 그 값으로 부른다`
 - `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 주소의 틀린 값: 모르는 상태, 꼴이 틀린 담당자와 올린 사람은 그 값만 버리고 나머지로 부른다`
+- `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 후보에 없는 담당자(목록의 줄에 그 사람이 있음): 고객사를 고르지 않고 assignee=계정 ID로 열면 담당자 고르기에 "정상담"이 골라져 있고 요청의 assignee는 그 ID 그대로다`
+- `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 후보에 없는 담당자(줄이 없어 이름을 모름): 고객사를 고르지 않고 assignee=계정 ID로 열면 담당자 고르기에 "다른 사람"이 골라져 있고 요청의 assignee는 그 ID 그대로다`
+- `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 이름을 모르는 올린 사람: reporter=계정 ID로 열었는데 결과가 비면 조각은 "올린 사람: 한 명"이다`
 - `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 필터 지우기: 필터가 걸려 있을 때만 있고, 누르면 "전체" 보기가 되고 검색 칸이 비워진다`
 - `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 올린 사람 조각: reporter가 걸려 있으면 필터 줄에 "올린 사람: 김고객"과 "올린 사람 필터 지우기"가 있다. 누르면 그 필터만 지운다. 줄에는 메뉴가 없다`
 - `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > S3-AC-76 C-3 고객사를 바꾸면: 사람으로 건 담당자 필터는 비우고 "나"는 남긴다`
@@ -292,9 +294,9 @@
 - `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > C-3 "대리 등록" 버튼: 머리에 있고 C-19로 간다. 고객사로 걸러져 있었으면 C-19에 그 고객사가 골라져 있다`
 - `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > C-3 "대리 등록" 버튼: 고를 고객사가 없는 상담원에게도 보인다`
 - `src/screens/C3IssueList.filters.test.tsx.C-3 문의 목록 (3번 묶음) > C-3 axe (3번 묶음): 보기 고르기, 필터 줄, 담당자 칸과 배지가 있는 표에 접근성 위반이 없다`
-- `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-80 C-4 머리의 담당자 줄(이름)과 "바꾸기" 버튼`
-- `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-80 C-4 머리의 담당자 줄("담당 없음")과 "바꾸기" 버튼`
-- `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-80 C-4 머리의 담당자 줄("볼 수 없음"과 안내)과 "바꾸기" 버튼`
+- `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-80 C-4 머리의 담당자 줄(이름)과 하나뿐인 "바꾸기" 버튼`
+- `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-80 C-4 머리의 담당자 줄("담당 없음")과 하나뿐인 "바꾸기" 버튼`
+- `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-80 C-4 머리의 담당자 줄("볼 수 없음"과 안내)과 하나뿐인 "바꾸기" 버튼`
 - `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-80 C-4 머리의 받은 경로 PORTAL: "포털"`
 - `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-80 C-4 머리의 받은 경로 PHONE: "전화"`
 - `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-80 C-4 머리의 받은 경로 OTHER: "그 밖"`
@@ -327,10 +329,11 @@
 - `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-79 C-4 400 ISSUE_CLOSED: 토스트 "상태가 이미 바뀌었습니다"와 함께 문의를 다시 불러와 버튼이 새 상태에 맞게 바뀐다`
 - `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-79 C-4 400 NOT_REOPENABLE: 토스트 "상태가 이미 바뀌었습니다"와 함께 문의를 다시 불러와 버튼이 새 상태에 맞게 바뀐다`
 - `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-87 C-4 떠난 뒤 온 답(상태): 바꾸는 중에 목록으로 옮긴 뒤 온 실패는 토스트를 띄우지 않고 주소도 그대로다`
+- `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > S3-AC-87 C-4 다른 문의로 옮긴 뒤 온 답: 종료하는 중에 다른 문의로 옮기면 대화상자가 닫히고, 뒤에 온 답은 토스트를 띄우지 않으며 옮겨 간 문의가 그대로 보인다`
 - `src/screens/C4IssueDetail.actions.test.tsx.C-4 문의 상세 (3번 묶음) > C-4 axe (3번 묶음): 담당자 줄, 동작 줄이 있는 화면과 열린 담당자 대화상자에 접근성 위반이 없다`
 - `src/screens/C4IssueDetail.edit.test.tsx.C-4 고치기 > S3-AC-81 C-4 고치기: 제목, 내용, 우선순위가 지금 값이 든 입력칸으로 바뀐다. 바뀐 것이 없으면 "저장"이 막혀 있고 "취소"는 묻지 않고 돌아간다`
 - `src/screens/C4IssueDetail.edit.test.tsx.C-4 고치기 > S3-AC-81 C-4 고치기 저장: 읽어 온 version과 바뀐 칸만 보낸다. 성공하면 보기로 돌아가 새 값을 보이고 토스트 "문의를 고쳤습니다"`
-- `src/screens/C4IssueDetail.edit.test.tsx.C-4 고치기 > S3-AC-81 C-4 고치기 409: 입력은 그대로 두고 Alert로 알리며 지금의 제목, 우선순위, 상태와 "지금 내용 보기"를 보인다. 다시 저장하면 새 version으로 보낸다`
+- `src/screens/C4IssueDetail.edit.test.tsx.C-4 고치기 > S3-AC-81 C-4 고치기 409: 입력은 그대로 두고 Alert로 알리며 이름이 "지금 값"인 구역 안에 지금의 제목, 우선순위, 상태와 "지금 내용 보기"를 읽기 전용으로 보인다. 다시 저장하면 새 version으로 보낸다`
 - `src/screens/C4IssueDetail.edit.test.tsx.C-4 고치기 > S3-AC-81 C-4 고치기 400 ISSUE_CLOSED: Alert "문의가 종료되어 고칠 수 없습니다". 입력은 그대로 두고 "저장"을 막는다`
 - `src/screens/C4IssueDetail.edit.test.tsx.C-4 고치기 > S3-AC-81 C-4 고치기 취소와 떠나기: 바꾼 글이 있으면 묻고, 그 자리에 글이 남는다`
 - `src/screens/C4IssueDetail.edit.test.tsx.C-4 고치기 > C-4 axe (고치기): 입력칸으로 바뀐 화면과 409의 지금 값이 보이는 화면에 접근성 위반이 없다`
@@ -347,23 +350,28 @@
 - `src/screens/C4IssueDetail.edit.test.tsx.C-4 이력 > S3-AC-80 C-4 이력: 접혀 있고 펼칠 때 20줄을 부른다. 받은 순서(오래된 것부터)로 보이고 "더 보기"로 다음 20줄을 잇는다`
 - `src/screens/C4IssueDetail.edit.test.tsx.C-4 이력 > S3-AC-80 C-4 이력의 내용 전 값: "전 내용 보기"를 펼치면 글 그대로 보인다. 마크다운으로 그리지 않는다`
 - `src/screens/C4IssueDetail.edit.test.tsx.C-4 이력 > S3-AC-80 C-4 이력 다시 부르기: 펼쳐 둔 채 상태를 바꾸면 이력을 다시 부르고 새 줄이 보인다`
+- `src/screens/C4IssueDetail.edit.test.tsx.C-4 이력 > S3-AC-80 C-4 이력 다시 부르기(담당자): 펼쳐 둔 채 담당자를 바꾸면 이력을 다시 부르고 새 줄이 보인다`
 - `src/screens/C4IssueDetail.edit.test.tsx.C-4 이력 > C-4 axe (이력): 펼친 이력 구역에 접근성 위반이 없다`
-- `src/screens/C9CompanyDetail.clear.test.tsx.C-9 배정 빼기와 담당 비우기 > S3-AC-85 C-9 배정 빼기 0건: 대화상자가 열리며 수를 부른다. 문구는 지금 그대로이고 체크 상자가 없다. 빼면 clearAssignments 없이 보낸다`
+- `src/screens/C9CompanyDetail.clear.test.tsx.C-9 배정 빼기와 담당 비우기 > S3-AC-85 C-9 배정 빼기 0건: 대화상자가 열리며 수를 부른다. 문구는 지금 그대로이고 체크 상자가 없다. 빼면 담당을 비우라고 보내지 않는다`
 - `src/screens/C9CompanyDetail.clear.test.tsx.C-9 배정 빼기와 담당 비우기 > S3-AC-85 C-9 배정 빼기 수를 받는 중: 대화상자는 바로 열리고 수 자리만 비어 있다. "빼기"는 막지 않는다`
-- `src/screens/C9CompanyDetail.clear.test.tsx.C-9 배정 빼기와 담당 비우기 > S3-AC-85 C-9 배정 빼기 1건 이상: 한 줄과 꺼진 체크 상자, 도움말, 거른 문의 목록으로 가는 새 탭 링크. 체크하지 않고 빼면 쿼리가 없고 토스트에 비운 수가 없다`
+- `src/screens/C9CompanyDetail.clear.test.tsx.C-9 배정 빼기와 담당 비우기 > S3-AC-85 C-9 배정 빼기 1건 이상: 한 줄과 꺼진 체크 상자, 도움말. "N건"은 글자이고 대화상자에 링크가 없다. 체크하지 않고 빼면 담당을 비우라고 보내지 않고 토스트에 비운 수가 없다`
 - `src/screens/C9CompanyDetail.clear.test.tsx.C-9 배정 빼기와 담당 비우기 > S3-AC-85 C-9 담당 비우기: 체크하고 빼면 clearAssignments=true로 보내고, 토스트에 응답이 준 수로 "담당 N건을 비웠습니다"를 붙인다`
 - `src/screens/C9CompanyDetail.clear.test.tsx.C-9 배정 빼기와 담당 비우기 > S3-AC-85 C-9 수를 받지 못함: "담당인 문의 수를 확인하지 못했습니다."와 수 없는 체크 상자. 체크하고 빼면 clearAssignments=true로 보낸다`
+- `src/screens/C9CompanyDetail.clear.test.tsx.C-9 배정 빼기와 담당 비우기 > S3-AC-85 C-9 체크한 뒤 취소: 다른 상담원으로 다시 열면 체크 상자가 꺼져 있고, 빼면 담당을 비우라고 보내지 않는다`
 - `src/screens/C9CompanyDetail.clear.test.tsx.C-9 배정 빼기와 담당 비우기 > S3-AC-85 C-9 소속 고객 빼기: 담당인 문의 수를 부르지 않는다`
 - `src/screens/C9CompanyDetail.clear.test.tsx.C-9 배정 빼기와 담당 비우기 > S3-AC-87 C-9 닫힌 뒤 온 수: 이상담의 수를 받는 중에 닫고 정상담으로 열면, 뒤에 온 이상담의 수를 정상담의 대화상자에 보이지 않는다`
 - `src/screens/C9CompanyDetail.clear.test.tsx.C-9 배정 빼기와 담당 비우기 > C-9 axe (3번 묶음): 수와 체크 상자가 있는 배정 빼기 대화상자에 접근성 위반이 없다`
 - `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-76 P-3 쿼리 없이 오면: 필터 없는 전체다. 보기 고르기와 "필터 지우기"가 없고, 소속이 하나면 고객사 필터도 없다. 상태의 말은 고객의 말이다`
 - `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-76 P-3 필터 줄: 검색, 상태, 고객사, "내가 올린 문의만"을 바꿀 때마다 주소의 쿼리와 목록 요청의 쿼리가 같은 값을 싣는다`
 - `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-76 P-3 필터를 바꾸면 1쪽으로: 3쪽에서 상태를 고르면 주소와 요청의 쪽이 1이다`
+- `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-76 P-3 필터를 건 채 2쪽으로: 주소와 목록 요청이 필터와 쪽을 함께 싣는다`
+- `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-76 P-3 뒤로 가기: 필터를 건 채 2쪽으로 갔다가 뒤로 가면 같은 필터의 1쪽이 다시 나온다`
+- `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-76 P-3 주소의 틀린 값: 모르는 상태와 꼴이 틀린 mine은 그 값만 버리고 나머지로 부른다`
 - `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-76 P-3 주소로 바로 열기: 쿼리의 값으로 필터를 그리고 그 값으로 부른다`
 - `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-76 P-3 필터 지우기: 필터가 걸려 있을 때만 있고, 누르면 쿼리 없는 전체가 되고 검색 칸과 체크가 비워진다`
 - `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-76 P-3 거른 결과가 없음: "조건에 맞는 문의가 없습니다"와 "필터 지우기". 필터가 없을 때의 빈 문구는 쓰지 않는다`
 - `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > P-3 좁은 화면(640px 아래): 검색만 보이고 "필터" 버튼으로 상태와 "내가 올린 문의만"이 펼쳐진다`
-- `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-83 P-3 줄: 해결된 내 문의에만 "확인이 필요합니다", 대리 등록한 문의의 올린 사람은 "나 (지원팀이 대신 올림)"이나 "이름 (지원팀이 대신 올림)"`
+- `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-83 P-3 줄: 해결된 내 문의에만 "확인이 필요합니다"(종료된 내 문의에는 없다), 대리 등록한 문의의 올린 사람은 "나 (지원팀이 대신 올림)"이나 "이름 (지원팀이 대신 올림)"`
 - `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-87 P-3 늦게 온 답(검색): 검색어를 빨리 둘 바꾸면, 먼저 보낸 것이 늦게 와도 마지막 검색어의 결과만 보인다`
 - `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > S3-AC-87 P-3 떠난 뒤 온 답: 걸러 부른 목록의 401이 P-4로 옮긴 뒤에 와도 주소를 /login으로 바꾸지 않는다`
 - `src/screens/P3IssueList.filters.test.tsx.P-3 문의 목록 (3번 묶음) > P-3 axe (3번 묶음): 필터 줄과 배지가 있는 목록에 접근성 위반이 없다`
@@ -377,9 +385,10 @@
 - `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 동작(내 종료된 문의(다시 열 수 있음)): 버튼은 [ '다시 열기' ]`
 - `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 동작(내 종료된 문의(14일 지남)): 버튼은 []`
 - `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 동작(소속에서 빠진 내 열린 문의): 버튼은 [ '문의 종료' ]`
-- `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 "문의 종료": POST …/close 를 보내고(확인 대화상자: 이 문의를 종료할까요? 14일 안에는 다시 열 수 있습니다.) 토스트 "문의를 종료했습니다"로 알린 뒤 문의를 다시 불러와 버튼이 바뀐다`
-- `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 "해결 확인": POST …/close 를 보내고(확인 대화상자: null) 토스트 "확인했습니다. 문의를 종료했습니다"로 알린 뒤 문의를 다시 불러와 버튼이 바뀐다`
-- `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 "다시 열기": POST …/reopen 를 보내고(확인 대화상자: 이 문의를 다시 열까요? 지원팀이 다시 확인합니다.) 토스트 "문의를 다시 열었습니다"로 알린 뒤 문의를 다시 불러와 버튼이 바뀐다`
+- `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 접수됨 문의의 "문의 종료": POST …/close 를 보내고(확인 대화상자: 이 문의를 종료할까요? 14일 안에는 다시 열 수 있습니다.) 토스트 "문의를 종료했습니다"로 알린 뒤 문의를 다시 불러와 버튼이 바뀐다`
+- `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 해결됨 문의의 "해결 확인": POST …/close 를 보내고(확인 대화상자: null) 토스트 "확인했습니다. 문의를 종료했습니다"로 알린 뒤 문의를 다시 불러와 버튼이 바뀐다`
+- `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 해결됨 문의의 "다시 열기": POST …/reopen 를 보내고(확인 대화상자: 이 문의를 다시 열까요? 지원팀이 다시 확인합니다.) 토스트 "문의를 다시 열었습니다"로 알린 뒤 문의를 다시 불러와 버튼이 바뀐다`
+- `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 종료됨 문의의 "다시 열기": POST …/reopen 를 보내고(확인 대화상자: 이 문의를 다시 열까요? 지원팀이 다시 확인합니다.) 토스트 "문의를 다시 열었습니다"로 알린 뒤 문의를 다시 불러와 버튼이 바뀐다`
 - `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 400 ISSUE_CLOSED: 토스트 "문의 상태가 이미 바뀌었습니다"와 함께 문의를 다시 불러와 버튼이 새 상태에 맞게 바뀐다`
 - `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 400 NOT_REOPENABLE: 토스트 "문의 상태가 이미 바뀌었습니다"와 함께 문의를 다시 불러와 버튼이 새 상태에 맞게 바뀐다`
 - `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > S3-AC-82 P-5 403: 보는 사이 소속에서 빠졌으면 권한 띠를 보이고 문의를 다시 불러와 동작이 줄어든다`
@@ -387,7 +396,7 @@
 - `src/screens/P5IssueDetail.actions.test.tsx.P-5 문의 상세 (3번 묶음) > P-5 axe (3번 묶음): 해결 띠와 동작이 있는 화면, 열린 확인 대화상자에 접근성 위반이 없다`
 - `src/screens/P5IssueDetail.edit.test.tsx.P-5 고치기 > S3-AC-81 P-5 고치기: 제목, 내용, 우선순위가 지금 값이 든 입력칸으로 바뀐다. 바뀐 것이 없으면 "저장"이 막혀 있고 "취소"는 묻지 않고 돌아간다`
 - `src/screens/P5IssueDetail.edit.test.tsx.P-5 고치기 > S3-AC-81 P-5 고치기 저장: 읽어 온 version과 바뀐 칸만 보낸다. 성공하면 보기로 돌아가 새 값을 보이고 토스트 "문의를 고쳤습니다"`
-- `src/screens/P5IssueDetail.edit.test.tsx.P-5 고치기 > S3-AC-81 P-5 고치기 409: 입력은 그대로 두고 Alert로 알리며 지금의 제목, 우선순위, 상태(고객의 말)와 "지금 내용 보기"를 보인다. 내부 칸은 없다. 다시 저장하면 새 version으로 보낸다`
+- `src/screens/P5IssueDetail.edit.test.tsx.P-5 고치기 > S3-AC-81 P-5 고치기 409: 입력은 그대로 두고 Alert로 알리며 이름이 "지금 값"인 구역 안에 지금의 제목, 우선순위, 상태(고객의 말)와 "지금 내용 보기"를 읽기 전용으로 보인다. 내부 칸은 없다. 다시 저장하면 새 version으로 보낸다`
 - `src/screens/P5IssueDetail.edit.test.tsx.P-5 고치기 > S3-AC-81 P-5 고치기 400 ISSUE_CLOSED: Alert "문의가 종료되어 고칠 수 없습니다". 입력은 그대로 두고 "저장"을 막는다`
 - `src/screens/P5IssueDetail.edit.test.tsx.P-5 고치기 > S3-AC-81 P-5 고치기 취소와 떠나기: 바꾼 글이 있으면 묻고, 그 자리에 글이 남는다`
 - `src/screens/P5IssueDetail.edit.test.tsx.P-5 고치기 > P-5 axe (고치기): 입력칸으로 바뀐 화면과 409의 지금 값이 보이는 화면에 접근성 위반이 없다`
