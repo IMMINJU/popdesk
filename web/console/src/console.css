@@ -158,7 +158,6 @@
    is too wide. */
 .pd-issues .pd-table td {
   padding-block: var(--space-2);
-  word-break: keep-all;
 }
 
 /* Over the inline width of the column: its min-width still holds the title at that width. */
@@ -166,10 +165,10 @@
   width: auto !important;
 }
 
-/* The title breaks between words, and inside one only when the word alone is wider than the column. */
+/* The title breaks between words (every table cell does, styles.css), and inside one only when the
+   word alone is wider than the column. */
 .pd-issues .pd-title-cell a {
   white-space: normal;
-  word-break: keep-all;
   overflow-wrap: anywhere;
 }
 
@@ -294,12 +293,8 @@
 
 /* C-12 audit log: wider filters, the two actions with their help, cells of two lines */
 
-/* Korean breaks between any two letters: 시각, 한 사람, 일, and 대상 break between
-   words only, and 바뀐 값 takes the rest. Too narrow for that, the table scrolls sideways. */
-.pd-audit .pd-table td {
-  word-break: keep-all;
-}
-
+/* 시각, 한 사람, 일, and 대상 break between words only (every table cell does, styles.css), and
+   바뀐 값 takes the rest. Too narrow for that, the table scrolls sideways. */
 .pd-audit .pd-table .pd-time,
 .pd-audit .pd-table .pd-code {
   white-space: nowrap;

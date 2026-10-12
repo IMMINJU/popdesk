@@ -85,14 +85,8 @@
   max-width: 20rem;
 }
 
-/* Korean breaks between any two letters: a cell breaks between words only, so a narrow
-   screen does not press 이름 into one letter a line. Too narrow for that, the table
-   scrolls sideways (.pd-table-wrap). The row menu is fixed to the window and is not cut. */
-.pd-members .pd-table td {
-  word-break: keep-all;
-}
-
-/* The line under the invitation form breaks between words too. */
+/* The cells break between words only (every table cell does, styles.css). The line under the
+   invitation form is no shared part, so it says so itself. */
 .pd-invite-note {
   word-break: keep-all;
 }

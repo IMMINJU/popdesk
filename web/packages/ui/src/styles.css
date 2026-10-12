@@ -131,6 +131,43 @@ textarea {
   }
 }
 
+/* Line breaks ------------------------------------------------------------ */
+
+/* Korean text breaks between any two letters unless told otherwise. In the text places of the
+   shared parts (a band, a dialog, a toast, a row of a list, a table cell) it breaks between
+   words only. Screens do not repeat this. */
+.pd-alert-body,
+.pd-dialog-title,
+.pd-dialog-description,
+.pd-dialog-body,
+.pd-toast,
+.pd-card-link,
+.pd-inbox-row,
+.pd-comment-head,
+.pd-comment-deleted,
+.pd-comment-mentions,
+.pd-people-picker,
+.pd-table td {
+  word-break: keep-all;
+}
+
+/* A run without a space (an English word, a URL) breaks where the line ends rather than run out
+   of its box. Not in a table cell: there it would let a narrow window press a column down to one
+   letter a line. A cell keeps its words whole and the table scrolls sideways (.pd-table-wrap). */
+.pd-alert-body,
+.pd-dialog-title,
+.pd-dialog-description,
+.pd-dialog-body,
+.pd-toast,
+.pd-card-link,
+.pd-inbox-row,
+.pd-comment-head,
+.pd-comment-deleted,
+.pd-comment-mentions,
+.pd-people-picker {
+  overflow-wrap: anywhere;
+}
+
 /* Button ---------------------------------------------------------------- */
 
 .pd-button {
@@ -756,9 +793,6 @@ textarea {
   flex-direction: column;
   gap: var(--space-1);
   min-width: 0;
-  /* Korean breaks between words; a long run without a space still breaks. */
-  word-break: keep-all;
-  overflow-wrap: anywhere;
 }
 
 .pd-alert-title {
@@ -922,12 +956,6 @@ textarea {
   color: var(--text-muted);
   font-size: var(--text-sm);
   line-height: var(--text-sm-line);
-}
-
-.pd-dialog-description,
-.pd-dialog-body {
-  word-break: keep-all;
-  overflow-wrap: anywhere;
 }
 
 .pd-dialog-body {
