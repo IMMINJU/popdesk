@@ -14,19 +14,22 @@ import {
   expectNoAxeViolations,
   found,
   gate,
+  hrefPath,
   isBlocked,
   on,
   openDialog,
+  paged,
   pageText,
   renderAt,
   screen,
   sent,
+  spokenText,
   state,
   text,
   within,
   type Issue,
 } from '../__tests__/console';
-import { answered, closed, confirmButton, rejected, settle } from '../__tests__/console1a';
+import { answered, closed, confirmButton, rejected, route, settle } from '../__tests__/console1a';
 import { expectNotSaid, said } from '../__tests__/console2';
 import { ISSUES, issueIn, metaOf, s3 } from '../__tests__/console3';
 
@@ -43,7 +46,8 @@ type User = ReturnType<typeof renderAt>['user'];
 const title = () => found(() => screen.queryByRole('heading', { level: 1 }), '문의 제목');
 /** The value of a line of the head, waited for. */
 const meta = (term: string) => found(() => metaOf(term), `머리의 "${term}" 줄`);
-const changeButton = () => button(/^(담당자 )?바꾸기$/);
+const CHANGE = /^(담당자 )?바꾸기$/;
+const changeButton = () => button(CHANGE);
 /** The action buttons the screen shows now, in the order of ACTIONS. */
 const actionsShown = () => ACTIONS.filter((name) => screen.queryByRole('button', { name }) !== null);
 const radio = (box: HTMLElement, name: string | RegExp) => found(() => within(box).queryByRole<HTMLInputElement>('radio', { name }), `대화상자의 "${String(name)}"`);
@@ -62,16 +66,19 @@ describe('C-4 문의 상세 (3번 묶음)', () => {
     { what: '"담당 없음"', over: {}, shows: ['담당 없음'], hides: ['볼 수 없음'] },
     { what: '"볼 수 없음"과 안내', over: { assignee: OTHER_AGENT_PERSON, assigneeUnavailable: true }, shows: ['정상담', '볼 수 없음'], hides: ['담당 없음'] },
   ] satisfies { what: string; over: Partial<Issue>; shows: string[]; hides: string[] }[])(
-    'S3-AC-80 C-4 머리의 담당자 줄($what)과 "바꾸기" 버튼',
+    'S3-AC-80 C-4 머리의 담당자 줄($what)과 하나뿐인 "바꾸기" 버튼',
     async ({ over, shows, hides }) => {
       state.issue = issueIn('RECEIVED', over);
       renderAt(URL_7);
 
-      const line = text(await meta('담당자'));
+      // What a screen reader reads: a "볼 수 없음" drawn only for the eye does not count.
+      const line = spokenText(await meta('담당자'));
       for (const word of shows) expect(line).toContain(word);
       for (const word of hides) expect(line).not.toContain(word);
       expect(pageText().includes(UNAVAILABLE_HELP), '볼 수 없다는 안내 한 줄').toBe(over.assigneeUnavailable === true);
-      await changeButton();
+      await eventually(() => {
+        expect(screen.queryAllByRole('button', { name: CHANGE }), '"바꾸기" 버튼').toHaveLength(1);
+      });
     },
   );
 
@@ -324,7 +331,9 @@ describe('C-4 문의 상세 (3번 묶음)', () => {
       }
       const [call] = await sent(method, `${ISSUE_7}/${path}`);
       expect(await call?.body).toEqual(body);
-      expect(openDialog(), asks === null ? '묻지 않고 바로 한다' : '대화상자가 닫힘').toBeNull();
+      // A confirm dialog may stay open, blocked, until the answer comes.
+      if (asks === null) expect(openDialog(), '묻지 않고 바로 한다').toBeNull();
+      else await closed();
       await said(`상태를 바꿨습니다: ${word}`);
       await eventually(() => {
         expect(actionsShown()).toEqual(after);
@@ -351,7 +360,7 @@ describe('C-4 문의 상세 (3번 묶음)', () => {
     await eventually(() => {
       expect(actionsShown()).toEqual(after);
     });
-    expect(openDialog()).toBeNull();
+    await closed();
   });
 
   test('S3-AC-87 C-4 떠난 뒤 온 답(상태): 바꾸는 중에 목록으로 옮긴 뒤 온 실패는 토스트를 띄우지 않고 주소도 그대로다', async () => {
@@ -376,6 +385,48 @@ describe('C-4 문의 상세 (3번 묶음)', () => {
     expectNotSaid('상태가 이미 바뀌었습니다');
     expect(window.location.pathname).toBe('/companies');
     expect(issueReads(), '떠난 화면이 문의를 다시 읽지 않는다').toBe(reads);
+  });
+
+  test('S3-AC-87 C-4 다른 문의로 옮긴 뒤 온 답: 종료하는 중에 다른 문의로 옮기면 대화상자가 닫히고, 뒤에 온 답은 토스트를 띄우지 않으며 옮겨 간 문의가 그대로 보인다', async () => {
+    state.issue = issueIn('RECEIVED');
+    const other = issueIn('IN_PROGRESS', { key: 'ACME-9', title: '다른 문의' });
+    route('get', `${ISSUES}/ACME-9`, () => HttpResponse.json(other));
+    route('get', `${ISSUES}/ACME-9/comments`, () => HttpResponse.json(paged([])));
+    route('get', `${ISSUES}/ACME-9/attachments`, () => HttpResponse.json(paged([])));
+    const release = gate();
+    route('put', `${ISSUE_7}/status`, async () => {
+      await release.opened;
+      return rejected('INVALID_TRANSITION');
+    });
+    // ACME-9 → 목록 → ACME-7, so that two steps back is the other issue.
+    const { user } = renderAt('/issues/ACME-9');
+    await found(() => screen.queryByRole('heading', { level: 1, name: '다른 문의' }), '문의 제목 "다른 문의"');
+    await user.click(await found(() => screen.queryAllByRole('link').find((a) => hrefPath(a) === '/issues'), '문의 목록으로 가는 링크'));
+    await user.click(await found(() => screen.queryAllByRole('link').find((a) => hrefPath(a) === URL_7), 'ACME-7로 가는 링크'));
+    await eventually(() => {
+      expect(actionsShown()).toEqual(['확인', '처리 시작', '종료']);
+    });
+
+    await user.click(await button('종료'));
+    await user.click(confirmButton(await found(() => screen.queryByRole('alertdialog'), '확인 대화상자')));
+    await sent('PUT', `${ISSUE_7}/status`);
+    window.history.go(-2);
+    await atPath('/issues/ACME-9');
+    await found(() => screen.queryByRole('heading', { level: 1, name: '다른 문의' }), '문의 제목 "다른 문의"');
+    await closed();
+
+    const reads = issueReads();
+    const done = answered('PUT', `${ISSUE_7}/status`);
+    release.open();
+    await done;
+    await settle();
+
+    expectNotSaid('상태가 이미 바뀌었습니다');
+    expect(openDialog()).toBeNull();
+    expect(window.location.pathname).toBe('/issues/ACME-9');
+    expect(text(screen.getByRole('heading', { level: 1 }))).toBe('다른 문의');
+    expect(actionsShown(), '옮겨 간 문의의 동작').toEqual(['해결']);
+    expect(issueReads(), '떠난 문의를 다시 읽지 않는다').toBe(reads);
   });
 
   test('C-4 axe (3번 묶음): 담당자 줄, 동작 줄이 있는 화면과 열린 담당자 대화상자에 접근성 위반이 없다', async () => {

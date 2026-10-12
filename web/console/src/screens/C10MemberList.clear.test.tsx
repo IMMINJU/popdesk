@@ -1,12 +1,12 @@
 // 3번 묶음 screens.md 2절 C-10 구성원 목록: 정지 대화상자의 담당 비우기(S3-AC-85)와 필터를 주소에 싣기(S3-AC-86).
+import { act } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
-import { account, callsTo, eventually, expectNoAxeViolations, found, renderAt, screen, sent, state, text, within } from '../__tests__/console';
+import { account, callsTo, eventually, expectNoAxeViolations, found, link, renderAt, screen, sent, state, text, within } from '../__tests__/console';
 import { closed, openRowAction, rowOf, settle } from '../__tests__/console1a';
 import { expectNotSaid, said } from '../__tests__/console2';
-import { chosen, s3, select } from '../__tests__/console3';
+import { CLEAR, chosen, clearBox, go as press, s3, select } from '../__tests__/console3';
 
 const ACCOUNTS = '/api/console/accounts';
-const CLEAR = '이 문의들의 담당을 비웁니다';
 
 const LEE = account({ id: 2, email: 'lee@popdesk.test', name: '이상담', role: 'AGENT' });
 const YOON = account({ id: 5, email: 'yoon@popdesk.test', name: '윤관리', role: 'ADMIN' });
@@ -17,8 +17,7 @@ function seed() {
   state.accounts = [account(), LEE, YOON, HAN, KIM];
 }
 
-const clearBox = (box: HTMLElement) => within(box).queryByRole<HTMLInputElement>('checkbox', { name: CLEAR });
-const go = (box: HTMLElement) => within(box).getByRole('button', { name: '정지' });
+const go = (box: HTMLElement) => press(box, '정지');
 const searchBox = () => found(() => screen.queryByRole<HTMLInputElement>('searchbox'), '검색 칸');
 const lastList = () => new URL(callsTo('GET', ACCOUNTS).at(-1)?.url ?? 'http://x/').searchParams;
 const address = () => new URLSearchParams(window.location.search);
@@ -28,7 +27,7 @@ describe('C-10 구성원 목록 (3번 묶음)', () => {
   test.each([
     ['상담원', LEE],
     ['관리자', YOON],
-  ])('S3-AC-85 C-10 %s 정지: 모든 고객사에 걸친 담당인 열린 문의 수와 꺼진 체크 상자를 보인다. 체크하고 정지하면 clearAssignments=true로 보내고 토스트에 "담당 N건을 비웠습니다"', async (_, who) => {
+  ])('S3-AC-85 C-10 %s 정지: 모든 고객사에 걸친 담당인 열린 문의 수와 꺼진 체크 상자를 보인다. "N건"은 글자이고 대화상자에 링크가 없다. 체크하고 정지하면 clearAssignments=true로 보내고 토스트에 "담당 N건을 비웠습니다"', async (_, who) => {
     seed();
     s3.openAssignments = 4;
     const { user } = renderAt('/members');
@@ -38,10 +37,7 @@ describe('C-10 구성원 목록 (3번 묶음)', () => {
     await eventually(() => {
       expect(text(box)).toContain(`${who.name} 님이 담당인 열린 문의가 4건 있습니다.`);
     });
-    const toList = await found(() => within(box).queryByRole<HTMLAnchorElement>('link', { name: /4건/ }), '"4건" 링크');
-    expect(new URL(toList.href).pathname).toBe('/issues');
-    expect(new URL(toList.href).searchParams.get('assignee')).toBe(String(who.id));
-    expect(new URL(toList.href).searchParams.has('companyCode'), '고객사로 거르지 않는다').toBe(false);
+    expect(within(box).queryAllByRole('link'), '"4건"은 링크가 아니다').toHaveLength(0);
     expect(text(box)).toContain('비우지 않으면 담당자로 남지만 문의를 볼 수 없습니다.');
     expect(text(box)).toContain(`${who.name} 님을 정지합니다.`);
     const check = await found(() => clearBox(box), `체크 상자 "${CLEAR}"`);
@@ -56,7 +52,7 @@ describe('C-10 구성원 목록 (3번 묶음)', () => {
     await said('담당 4건을 비웠습니다');
   });
 
-  test('S3-AC-85 C-10 정지(체크하지 않음): clearAssignments 없이 보내고 토스트에 비운 수가 없다', async () => {
+  test('S3-AC-85 C-10 정지(체크하지 않음): 담당을 비우라고 보내지 않고 토스트에 비운 수가 없다', async () => {
     seed();
     s3.openAssignments = 4;
     const { user } = renderAt('/members');
@@ -65,9 +61,31 @@ describe('C-10 구성원 목록 (3번 묶음)', () => {
 
     await user.click(go(box));
     await sent('POST', `${ACCOUNTS}/2/suspend`);
-    expect(suspendQuery(2).has('clearAssignments')).toBe(false);
+    expect(suspendQuery(2).get('clearAssignments'), 'clearAssignments는 없거나 false').not.toBe('true');
     await said('이상담 님을 정지했습니다');
+    await settle();
     expectNotSaid(/담당 \d+건을 비웠습니다/);
+  });
+
+  test('S3-AC-85 C-10 체크한 뒤 취소: 다른 사람으로 다시 열면 체크 상자가 꺼져 있고, 정지하면 담당을 비우라고 보내지 않는다', async () => {
+    seed();
+    s3.openAssignments = 4;
+    const { user } = renderAt('/members');
+    const first = await openRowAction(user, LEE.name, '정지');
+    await user.click(await found(() => clearBox(first), `체크 상자 "${CLEAR}"`));
+    expect(clearBox(first)).toBeChecked();
+    await user.click(within(first).getByRole('button', { name: '취소' }));
+    await closed();
+
+    const second = await openRowAction(user, YOON.name, '정지');
+    expect(await found(() => clearBox(second), `체크 상자 "${CLEAR}"`), '다시 연 대화상자의 체크 상자').not.toBeChecked();
+    await user.click(go(second));
+    await sent('POST', `${ACCOUNTS}/5/suspend`);
+    expect(suspendQuery(5).get('clearAssignments')).not.toBe('true');
+    await said('윤관리 님을 정지했습니다');
+    await settle();
+    expectNotSaid(/담당 \d+건을 비웠습니다/);
+    expect(callsTo('POST', `${ACCOUNTS}/2/suspend`), '취소한 이상담').toHaveLength(0);
   });
 
   test('S3-AC-85 C-10 고객 정지: 담당인 문의 수를 부르지 않고 체크 상자도 없다', async () => {
@@ -89,7 +107,7 @@ describe('C-10 구성원 목록 (3번 묶음)', () => {
     expect(text(box)).not.toContain('담당인 열린 문의');
     await user.click(go(box));
     await sent('POST', `${ACCOUNTS}/11/suspend`);
-    expect(suspendQuery(11).has('clearAssignments')).toBe(false);
+    expect(suspendQuery(11).get('clearAssignments')).not.toBe('true');
   });
 
   test('S3-AC-86 C-10 필터를 주소에: 역할, 상태, 검색어를 바꾸면 주소의 쿼리에 실리고 그 값으로 목록을 부른다', async () => {
@@ -125,6 +143,33 @@ describe('C-10 구성원 목록 (3번 묶음)', () => {
     expect(chosen(await select(/^상태/))).toBe('정지');
     expect(await searchBox()).toHaveValue('han');
     expect(callsTo('GET', ACCOUNTS).every((c) => new URL(c.url).searchParams.get('role') === 'AGENT'), '거르지 않은 요청이 없다').toBe(true);
+  });
+
+  test('S3-AC-86 C-10 주소가 바뀌면: 걸러 연 화면에서 메뉴의 "구성원"을 누르면 필터가 풀리고, 뒤로 가면 앞의 필터로 다시 부른다', async () => {
+    seed();
+    const { user } = renderAt('/members?role=AGENT&q=lee');
+    await rowOf(LEE.name);
+    expect(lastList().get('role')).toBe('AGENT');
+
+    // The same screen with another address: a screen that read the query only when it opened keeps the old filters.
+    await user.click(await link('구성원'));
+    await rowOf(KIM.name);
+    expect(window.location.search).toBe('');
+    expect([lastList().get('role'), lastList().get('status'), lastList().get('q') ?? '']).toEqual([null, null, '']);
+    expect(await searchBox()).toHaveValue('');
+
+    act(() => {
+      window.history.back();
+    });
+    await eventually(() => {
+      expect([address().get('role'), address().get('q')]).toEqual(['AGENT', 'lee']);
+      expect([lastList().get('role'), lastList().get('q')]).toEqual(['AGENT', 'lee']);
+    });
+    expect(chosen(await select(/^역할/))).toBe('상담원');
+    expect(await searchBox()).toHaveValue('lee');
+    await eventually(() => {
+      expect(screen.queryAllByRole('row').some((r) => text(r).includes(KIM.name)), '걸러진 김고객').toBe(false);
+    });
   });
 
   test('C-10 axe (3번 묶음): 수와 체크 상자가 있는 정지 대화상자에 접근성 위반이 없다', async () => {

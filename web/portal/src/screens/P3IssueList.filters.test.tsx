@@ -1,4 +1,5 @@
 // 3번 묶음 screens.md 2절 P-3 문의 목록: 필터 줄, 좁은 화면, 줄의 배지와 "(지원팀이 대신 올림)", 늦게 온 답.
+import { act } from '@testing-library/react';
 import { HttpResponse } from 'msw/http';
 import { describe, expect, test } from 'vitest';
 import {
@@ -41,6 +42,16 @@ const statusBox = async (word: string) => within(await statusGroup()).getByRole<
 const mineBox = () => found(() => screen.queryByRole<HTMLInputElement>('checkbox', { name: '내가 올린 문의만' }), '체크 "내가 올린 문의만"');
 const companySelects = () => screen.queryAllByLabelText(/^고객사/, { selector: 'select' });
 const clearFilters = () => [...screen.queryAllByRole('link', { name: '필터 지우기' }), ...screen.queryAllByRole('button', { name: '필터 지우기' })];
+const pageLink = (n: number) => screen.queryByRole('link', { name: new RegExp(`^${String(n)}(쪽)?$`) });
+
+/** A list of three pages with one row each, named after its page: ACME-1, ACME-2, ACME-3. */
+function threePages() {
+  on('get', ISSUES, ({ request }) => {
+    const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+    return HttpResponse.json(paged([summary({ key: `ACME-${String(page)}` })], { page, totalElements: 45, totalPages: 3 }));
+  });
+}
+
 const rowKeys = () =>
   screen
     .queryAllByRole<HTMLAnchorElement>('link')
@@ -63,6 +74,7 @@ describe('P-3 문의 목록 (3번 묶음)', () => {
     expect(filtersOf(lastList())).toEqual(filters());
     expect(companySelects(), '소속이 하나일 때 고객사 필터').toHaveLength(0);
     expect(clearFilters(), '"필터 지우기"').toHaveLength(0);
+    expect(screen.queryByRole('button', { name: '필터' }), '넓은 화면의 "필터" 버튼').toBeNull();
     for (const view of ['내 담당', '담당 없음', '전체']) expect(screen.queryByRole('link', { name: view }), `보기 "${view}"`).toBeNull();
   });
 
@@ -102,6 +114,53 @@ describe('P-3 문의 목록 (3번 묶음)', () => {
 
     await listed({ mine: 'true', status: ['RESOLVED'] });
     await link(/ACME-1\b/);
+  });
+
+  test('S3-AC-76 P-3 필터를 건 채 2쪽으로: 주소와 목록 요청이 필터와 쪽을 함께 싣는다', async () => {
+    threePages();
+    const { user } = renderAt('/issues?mine=true&status=RECEIVED');
+    await link(/ACME-1\b/);
+
+    await user.click(await found(() => pageLink(2), '2쪽 링크'));
+
+    await link(/ACME-2\b/);
+    const wanted = filters({ mine: 'true', status: ['RECEIVED'] });
+    expect(filtersOf(addressQuery()), '주소의 쿼리').toEqual(wanted);
+    expect(addressQuery().get('page'), '주소의 쪽').toBe('2');
+    expect(filtersOf(lastList()), '목록 요청의 쿼리').toEqual(wanted);
+    expect(lastList().get('page'), '요청의 쪽').toBe('2');
+    expect(await mineBox()).toBeChecked();
+  });
+
+  test('S3-AC-76 P-3 뒤로 가기: 필터를 건 채 2쪽으로 갔다가 뒤로 가면 같은 필터의 1쪽이 다시 나온다', async () => {
+    threePages();
+    const { user } = renderAt('/issues?mine=true&status=RECEIVED');
+    await link(/ACME-1\b/);
+    await user.click(await found(() => pageLink(2), '2쪽 링크'));
+    await link(/ACME-2\b/);
+
+    act(() => {
+      window.history.back();
+    });
+
+    await link(/ACME-1\b/);
+    await eventually(() => {
+      expect(rowKeys()).toEqual(['ACME-1']);
+    });
+    expect(filtersOf(addressQuery()), '주소의 쿼리').toEqual(filters({ mine: 'true', status: ['RECEIVED'] }));
+    expect(Number(addressQuery().get('page') ?? '1'), '주소의 쪽').toBe(1);
+    expect(await mineBox()).toBeChecked();
+    expect(await statusBox('접수됨')).toBeChecked();
+  });
+
+  test('S3-AC-76 P-3 주소의 틀린 값: 모르는 상태와 꼴이 틀린 mine은 그 값만 버리고 나머지로 부른다', async () => {
+    renderAt('/issues?status=BOGUS&status=RECEIVED&mine=maybe&q=%EA%B2%B0%EC%A0%9C');
+
+    await link(/ACME-7/);
+    expect(filtersOf(lastList())).toEqual(filters({ q: '결제', status: ['RECEIVED'] }));
+    expect(await statusBox('접수됨')).toBeChecked();
+    expect(await mineBox()).not.toBeChecked();
+    expect(await searchBox()).toHaveValue('결제');
   });
 
   test('S3-AC-76 P-3 주소로 바로 열기: 쿼리의 값으로 필터를 그리고 그 값으로 부른다', async () => {
@@ -171,12 +230,13 @@ describe('P-3 문의 목록 (3번 묶음)', () => {
     await mineBox();
   });
 
-  test('S3-AC-83 P-3 줄: 해결된 내 문의에만 "확인이 필요합니다", 대리 등록한 문의의 올린 사람은 "나 (지원팀이 대신 올림)"이나 "이름 (지원팀이 대신 올림)"', async () => {
+  test('S3-AC-83 P-3 줄: 해결된 내 문의에만 "확인이 필요합니다"(종료된 내 문의에는 없다), 대리 등록한 문의의 올린 사람은 "나 (지원팀이 대신 올림)"이나 "이름 (지원팀이 대신 올림)"', async () => {
     state.issues = [
       summary({ key: 'ACME-1', status: 'RESOLVED' }),
       summary({ key: 'ACME-2', status: 'RESOLVED', reporter: COLLEAGUE }),
       summary({ key: 'ACME-3', filedBySupport: true }),
       summary({ key: 'ACME-4', filedBySupport: true, reporter: COLLEAGUE }),
+      summary({ key: 'ACME-5', status: 'CLOSED' }),
     ];
     renderAt('/issues');
 
@@ -186,6 +246,7 @@ describe('P-3 문의 목록 (3번 묶음)', () => {
     });
     expect(text(theirs), '해결된 동료의 문의').not.toContain(NEEDS_CHECK);
     expect(text(filedForMe), '해결되지 않은 내 문의').not.toContain(NEEDS_CHECK);
+    expect(text(await link(/ACME-5\b/)), '종료된 내 문의').not.toContain(NEEDS_CHECK);
     expect(text(filedForMe)).toContain(`나 ${SUPPORT_FILED}`);
     expect(text(filedForThem)).toContain(`박동료 ${SUPPORT_FILED}`);
     expect(text(mine), '고객이 스스로 올린 문의').not.toContain(SUPPORT_FILED);

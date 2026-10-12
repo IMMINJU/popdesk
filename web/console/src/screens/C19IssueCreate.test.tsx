@@ -11,6 +11,7 @@ import {
   button,
   callsTo,
   company,
+  describedText,
   dialog,
   draftKept,
   errors,
@@ -68,6 +69,15 @@ const ready = () =>
     expect(again !== null && !isBlocked(again), '"등록"을 다시 누를 수 있다').toBe(true);
   });
 const keysSent = () => callsTo('POST', ISSUES).map((c) => c.headers.get('Idempotency-Key'));
+/**
+ * The error text under the customer field: what the box that finds a customer, or the
+ * list of customers (a group, a list of radios or of options named 고객), is described by.
+ */
+const customerError = () =>
+  [customerSearch(), ...['radiogroup', 'group', 'listbox'].flatMap((role) => screen.queryAllByRole(role, { name: /^고객(?!사)/ }))]
+    .filter((el) => el !== null)
+    .map((el) => describedText(el))
+    .join(' ');
 
 /** Picks ACME and 김고객 and writes a title: the least a form needs. */
 async function fill(user: User, title = '전화로 받은 문의') {
@@ -259,6 +269,39 @@ describe('C-19 대리 등록', () => {
     expect(second, '다시 보낸 키').not.toBe(first);
   });
 
+  test('C-19 409 IDEMPOTENCY_KEY_REUSED가 이어짐: 새 키로 한 번만 다시 보내고 멈춘다. 쓴 글은 남는다', async () => {
+    on('post', ISSUES, () => rejected('IDEMPOTENCY_KEY_REUSED', 409));
+    const { user } = renderAt(URL_NEW);
+    await fill(user, '보내지 못한 제목');
+    await user.click(await submit());
+
+    await sent('POST', ISSUES, 2);
+    await settle();
+    await settle();
+    expect(callsTo('POST', ISSUES), '다시 보내기는 한 번뿐').toHaveLength(2);
+    const [first, second] = keysSent();
+    expect(second, '다시 보낸 키').not.toBe(first);
+    expect(window.location.pathname).toBe(URL_NEW);
+    expect(draftKept('보내지 못한 제목')).toBe(true);
+  });
+
+  test('C-19 고객을 고르지 않고 "등록": 요청을 보내지 않고 고객 칸 아래에 "고객을 골라 주세요."를 보인다', async () => {
+    const { user } = renderAt(URL_NEW);
+    await found(() => customer(customerLine(KIM)), `"${customerLine(KIM)}"`);
+    await user.type(await titleBox(), '고객을 고르지 않은 문의');
+    expect(customerError()).not.toContain('고객을 골라 주세요.');
+
+    await user.click(await submit());
+
+    await eventually(() => {
+      expect(customerError(), '고객 칸의 오류 문구(aria-describedby)').toContain('고객을 골라 주세요.');
+    });
+    await settle();
+    expect(callsTo('POST', ISSUES), '보내지 않는다').toHaveLength(0);
+    expect(window.location.pathname).toBe(URL_NEW);
+    expect(await titleBox()).toHaveValue('고객을 고르지 않은 문의');
+  });
+
   test('C-19 400 칸 오류: 틀린 칸 아래에 알리고, 고객 칸의 UNKNOWN_VALUE는 정해진 문구와 함께 고객 목록을 다시 부른다. 쓴 글은 남는다', async () => {
     on('post', ISSUES, () =>
       errors.invalid([
@@ -273,7 +316,7 @@ describe('C-19 대리 등록', () => {
 
     await expectFieldError(await titleBox());
     await eventually(() => {
-      expect(pageText()).toContain(NOT_A_REPORTER);
+      expect(customerError(), '고객 칸의 오류 문구(aria-describedby)').toContain(NOT_A_REPORTER);
       expect(callsTo('GET', REPORTERS_ACME).length, '고객 목록을 다시 부름').toBeGreaterThan(asked);
     });
     expect(await titleBox()).toHaveValue('긴 제목');

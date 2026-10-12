@@ -21,14 +21,13 @@ import {
 } from '../__tests__/console';
 import { answered, closed, region, rowOf, settle } from '../__tests__/console1a';
 import { expectNotSaid, said } from '../__tests__/console2';
-import { s3 } from '../__tests__/console3';
+import { CLEAR, clearBox, go as press, s3 } from '../__tests__/console3';
 
 const URL_ACME = '/companies/ACME';
 const AGENTS = '/api/console/companies/ACME/agents';
 const COUNT_LEE = `${AGENTS}/2/open-assignments`;
 const COUNT_JUNG = `${AGENTS}/3/open-assignments`;
 const NOW_TEXT = '이상담 님은 이 고객사의 문의를 더 보지 못합니다.';
-const CLEAR = '이 문의들의 담당을 비웁니다';
 const KEEP_HELP = "비우지 않으면 담당자로 남지만 문의를 볼 수 없습니다. 문의 목록의 '담당자가 볼 수 없음'으로 찾을 수 있습니다.";
 
 const LEE = member({ accountId: 2, email: 'lee@popdesk.test', name: '이상담' });
@@ -46,17 +45,17 @@ async function openRemove(user: User, list: RegExp, name: string): Promise<HTMLE
 
 const openUnassign = (user: User, name = LEE.name) => openRemove(user, /배정 상담원/, name);
 /** The button that takes the agent out. */
-const go = (box: HTMLElement) => within(box).getByRole('button', { name: '빼기' });
-const clearBox = (box: HTMLElement) => within(box).queryByRole<HTMLInputElement>('checkbox', { name: CLEAR });
+const go = (box: HTMLElement) => press(box, '빼기');
 const lastDelete = (path: string) => new URL(callsTo('DELETE', path).at(-1)?.url ?? 'http://x/').searchParams;
 
 describe('C-9 배정 빼기와 담당 비우기', () => {
-  test('S3-AC-85 C-9 배정 빼기 0건: 대화상자가 열리며 수를 부른다. 문구는 지금 그대로이고 체크 상자가 없다. 빼면 clearAssignments 없이 보낸다', async () => {
+  test('S3-AC-85 C-9 배정 빼기 0건: 대화상자가 열리며 수를 부른다. 문구는 지금 그대로이고 체크 상자가 없다. 빼면 담당을 비우라고 보내지 않는다', async () => {
     state.agents = [LEE, JUNG];
     const { user } = renderAt(URL_ACME);
+    // Listening before the dialog asks: this request is not held, so its answer may be out at once.
+    const done = answered('GET', COUNT_LEE);
     const box = await openUnassign(user);
 
-    const done = answered('GET', COUNT_LEE);
     await sent('GET', COUNT_LEE);
     await done;
     await settle();
@@ -66,14 +65,14 @@ describe('C-9 배정 빼기와 담당 비우기', () => {
 
     await user.click(go(box));
     await sent('DELETE', `${AGENTS}/2`);
-    expect(lastDelete(`${AGENTS}/2`).has('clearAssignments')).toBe(false);
+    expect(lastDelete(`${AGENTS}/2`).get('clearAssignments'), 'clearAssignments는 없거나 false').not.toBe('true');
     await said('이상담 님을 배정에서 뺐습니다');
+    await settle();
     expectNotSaid(/담당 \d+건을 비웠습니다/);
   });
 
   test('S3-AC-85 C-9 배정 빼기 수를 받는 중: 대화상자는 바로 열리고 수 자리만 비어 있다. "빼기"는 막지 않는다', async () => {
     state.agents = [LEE];
-    s3.openAssignments = 2;
     const release = gate();
     on('get', COUNT_LEE, async () => {
       await release.opened;
@@ -94,7 +93,7 @@ describe('C-9 배정 빼기와 담당 비우기', () => {
     expect(isBlocked(go(box)), '수가 온 뒤의 "빼기"').toBe(false);
   });
 
-  test('S3-AC-85 C-9 배정 빼기 1건 이상: 한 줄과 꺼진 체크 상자, 도움말, 거른 문의 목록으로 가는 새 탭 링크. 체크하지 않고 빼면 쿼리가 없고 토스트에 비운 수가 없다', async () => {
+  test('S3-AC-85 C-9 배정 빼기 1건 이상: 한 줄과 꺼진 체크 상자, 도움말. "N건"은 글자이고 대화상자에 링크가 없다. 체크하지 않고 빼면 담당을 비우라고 보내지 않고 토스트에 비운 수가 없다', async () => {
     state.agents = [LEE, JUNG];
     s3.openAssignments = 3;
     const { user } = renderAt(URL_ACME);
@@ -107,17 +106,13 @@ describe('C-9 배정 빼기와 담당 비우기', () => {
     expect(text(box)).toContain(KEEP_HELP);
     const check = await found(() => clearBox(box), `체크 상자 "${CLEAR}"`);
     expect(check).not.toBeChecked();
-    const toList = await found(() => within(box).queryByRole<HTMLAnchorElement>('link', { name: /3건/ }), '"3건" 링크');
-    const target = new URL(toList.href);
-    expect(target.pathname).toBe('/issues');
-    expect(target.searchParams.get('companyCode')).toBe('ACME');
-    expect(target.searchParams.get('assignee')).toBe('2');
-    expect(toList).toHaveAttribute('target', '_blank');
+    expect(within(box).queryAllByRole('link'), '"3건"은 링크가 아니다').toHaveLength(0);
 
     await user.click(go(box));
     await sent('DELETE', `${AGENTS}/2`);
-    expect(lastDelete(`${AGENTS}/2`).has('clearAssignments')).toBe(false);
+    expect(lastDelete(`${AGENTS}/2`).get('clearAssignments'), 'clearAssignments는 없거나 false').not.toBe('true');
     await said('이상담 님을 배정에서 뺐습니다');
+    await settle();
     expectNotSaid(/담당 \d+건을 비웠습니다/);
   });
 
@@ -156,6 +151,27 @@ describe('C-9 배정 빼기와 담당 비우기', () => {
     await sent('DELETE', `${AGENTS}/2`);
     expect(lastDelete(`${AGENTS}/2`).get('clearAssignments')).toBe('true');
     await said('담당 4건을 비웠습니다');
+  });
+
+  test('S3-AC-85 C-9 체크한 뒤 취소: 다른 상담원으로 다시 열면 체크 상자가 꺼져 있고, 빼면 담당을 비우라고 보내지 않는다', async () => {
+    state.agents = [LEE, JUNG];
+    s3.openAssignments = 3;
+    const { user } = renderAt(URL_ACME);
+    const first = await openUnassign(user);
+    await user.click(await found(() => clearBox(first), `체크 상자 "${CLEAR}"`));
+    expect(clearBox(first)).toBeChecked();
+    await user.click(within(first).getByRole('button', { name: '취소' }));
+    await closed();
+
+    const second = await openUnassign(user, JUNG.name);
+    expect(await found(() => clearBox(second), `체크 상자 "${CLEAR}"`), '다시 연 대화상자의 체크 상자').not.toBeChecked();
+    await user.click(go(second));
+    await sent('DELETE', `${AGENTS}/3`);
+    expect(lastDelete(`${AGENTS}/3`).get('clearAssignments')).not.toBe('true');
+    await said('정상담 님을 배정에서 뺐습니다');
+    await settle();
+    expectNotSaid(/담당 \d+건을 비웠습니다/);
+    expect(callsTo('DELETE', `${AGENTS}/2`), '취소한 이상담').toHaveLength(0);
   });
 
   test('S3-AC-85 C-9 소속 고객 빼기: 담당인 문의 수를 부르지 않는다', async () => {

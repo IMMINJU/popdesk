@@ -728,10 +728,10 @@ export function draftKept(draft: string): boolean {
   return values.some((v) => v.includes(draft)) || pageText().includes(draft);
 }
 
-/** Navigation links in the console menu, by name. */
+/** Navigation links in the console menu (the `nav` named 메뉴), by name. */
 export function menuLinks(): string[] {
   return screen
-    .queryAllByRole('navigation')
+    .queryAllByRole('navigation', { name: '메뉴' })
     .flatMap((nav) => Array.from(nav.querySelectorAll('a')))
     .map((a) => text(a));
 }

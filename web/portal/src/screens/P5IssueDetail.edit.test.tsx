@@ -12,7 +12,6 @@ import {
   found,
   hrefPath,
   isBlocked,
-  pageText,
   renderAt,
   screen,
   sent,
@@ -40,12 +39,16 @@ const priority = (word: string) =>
 const save = () => button('저장');
 const editing = () => screen.queryAllByLabelText('제목', { selector: 'input' }).length > 0;
 const patches = () => callsTo('PATCH', ISSUE_7);
-/** A thing that opens a folded part: a button, or the `summary` of a `details`. */
-const opener = (name: RegExp) =>
-  found(
-    () => screen.queryByRole('button', { name }) ?? Array.from(document.querySelectorAll<HTMLElement>('summary')).find((s) => name.test(text(s))),
-    `펼치는 것 ${String(name)}`,
-  );
+/** The read-only part that shows what the issue holds now, after a 409: the group named 지금 값. */
+const nowValues = () => screen.queryByRole('group', { name: '지금 값' });
+const nowShown = () => found(nowValues, '구역 "지금 값"');
+/** A thing inside 지금 값 that opens a folded part: a button, or the `summary` of a `details`. */
+const openerInNow = (name: RegExp) =>
+  found(() => {
+    const part = nowValues();
+    if (!part) return null;
+    return within(part).queryByRole('button', { name }) ?? Array.from(part.querySelectorAll<HTMLElement>('summary')).find((s) => name.test(text(s)));
+  }, `"지금 값" 안의 펼치는 것 ${String(name)}`);
 
 async function openEdit(user: User) {
   await user.click(await button('고치기'));
@@ -94,7 +97,7 @@ describe('P-5 고치기', () => {
     });
   });
 
-  test('S3-AC-81 P-5 고치기 409: 입력은 그대로 두고 Alert로 알리며 지금의 제목, 우선순위, 상태(고객의 말)와 "지금 내용 보기"를 보인다. 내부 칸은 없다. 다시 저장하면 새 version으로 보낸다', async () => {
+  test('S3-AC-81 P-5 고치기 409: 입력은 그대로 두고 Alert로 알리며 이름이 "지금 값"인 구역 안에 지금의 제목, 우선순위, 상태(고객의 말)와 "지금 내용 보기"를 읽기 전용으로 보인다. 내부 칸은 없다. 다시 저장하면 새 version으로 보낸다', async () => {
     state.issue = issueIn('RECEIVED', { version: 4 });
     let first = true;
     route('patch', ISSUE_7, async ({ request }) => {
@@ -117,13 +120,21 @@ describe('P-5 고치기', () => {
 
     await alertWith(CONFLICT);
     expect(await titleBox(), '입력은 그대로').toHaveValue('내가 고친 제목');
+    // Inside the part, not on the page: "긴급" is a radio of the form and the status a badge of the head.
+    await nowShown();
     await eventually(() => {
-      for (const now of ['남이 고친 제목', '긴급', '확인됨']) expect(pageText(), `지금 값 "${now}"`).toContain(now);
+      for (const now of ['남이 고친 제목', '긴급', '확인됨']) expect(text(nowValues()), `지금 값 "${now}"`).toContain(now);
     });
-    for (const staffOnly of ['담당자', '받은 경로']) expect(text(screen.getByRole('main')), `"${staffOnly}"`).not.toContain(staffOnly);
-    await user.click(await opener(/지금 내용 보기/));
+    const part = await nowShown();
+    expect(text(part), '상태는 고객의 말로').not.toMatch(/확인(?!됨)/);
+    for (const staffOnly of ['담당자', '받은 경로']) {
+      expect(text(part), `"지금 값"의 "${staffOnly}"`).not.toContain(staffOnly);
+      expect(text(screen.getByRole('main')), `"${staffOnly}"`).not.toContain(staffOnly);
+    }
+    for (const role of ['textbox', 'radio', 'checkbox', 'combobox']) expect(within(part).queryAllByRole(role), `읽기 전용: 구역 안의 ${role}`).toHaveLength(0);
+    await user.click(await openerInNow(/지금 내용 보기/));
     await eventually(() => {
-      expect(pageText()).toContain('남이 고친 내용');
+      expect(text(nowValues())).toContain('남이 고친 내용');
     });
 
     await user.click(await save());
@@ -186,6 +197,7 @@ describe('P-5 고치기', () => {
 
     await user.click(await save());
     await alertWith(CONFLICT);
+    await nowShown();
     await expectNoAxeViolations();
   });
 });

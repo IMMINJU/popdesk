@@ -19,7 +19,8 @@ describe('콘솔 옆 메뉴: 고객사의 소속 요청 수 (2번 묶음)', () =
   test('S2-AC-48 옆 메뉴(관리자): "고객사"에 걸려 있는 요청의 합이 붙고, 링크의 이름은 "고객사 소속 요청 3건"', async () => {
     state.companies = [ACME, BETA];
     pending.requests = [request({ id: 301 }), request({ id: 302 }), request({ id: 303, company: IN_BETA })];
-    renderAt('/issues');
+    // A screen that does not ask for the companies itself: what is counted below is the frame's own requests.
+    renderAt('/me');
 
     const companies = await link('고객사 소속 요청 3건');
     expect(hrefPath(companies)).toBe('/companies');
@@ -49,7 +50,7 @@ describe('콘솔 옆 메뉴: 고객사의 소속 요청 수 (2번 묶음)', () =
     pending.requests = [request({ id: 301 }), request({ id: 302 })];
     renderAt('/issues');
 
-    const nav = await found(() => screen.queryByRole('navigation'), '메뉴');
+    const nav = await found(() => screen.queryByRole('navigation', { name: '메뉴' }), '메뉴');
     await link('문의');
     await settle();
     expect(within(nav).queryAllByRole('link', { name: /고객사|소속 요청/ })).toHaveLength(0);

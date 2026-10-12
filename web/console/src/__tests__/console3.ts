@@ -325,10 +325,30 @@ export function issueRow(key: string): Promise<HTMLElement> {
   );
 }
 
-/** A thing that opens a folded part: a button, or the `summary` of a `details`. */
-export function opener(name: RegExp): Promise<HTMLElement> {
-  return found(
-    () => screen.queryByRole('button', { name }) ?? Array.from(document.querySelectorAll<HTMLElement>('summary')).find((s) => name.test(text(s))),
-    `펼치는 것 ${String(name)}`,
-  );
+/** A thing that opens a folded part: a button, or the `summary` of a `details`. Inside `root` when given. */
+export function opener(name: RegExp, root: () => HTMLElement | null = () => document.body): Promise<HTMLElement> {
+  return found(() => {
+    const scope = root();
+    if (!scope) return null;
+    return within(scope).queryByRole('button', { name }) ?? Array.from(scope.querySelectorAll<HTMLElement>('summary')).find((s) => name.test(text(s)));
+  }, `펼치는 것 ${String(name)}`);
+}
+
+/** The part of C-4 that shows what the issue holds now, after a 409 on 고치기: the group named 지금 값. */
+export function nowValues(): HTMLElement | null {
+  return screen.queryByRole('group', { name: '지금 값' });
+}
+
+// ---------------------------------------------------------------------------
+// 배정 빼기 (C-9) and 계정 정지 (C-10): clearing the open assignments
+
+export const CLEAR = '이 문의들의 담당을 비웁니다';
+
+export function clearBox(box: HTMLElement): HTMLInputElement | null {
+  return within(box).queryByRole<HTMLInputElement>('checkbox', { name: CLEAR });
+}
+
+/** The button of the dialog that goes on: "빼기" or "정지". */
+export function go(box: HTMLElement, name: '빼기' | '정지'): HTMLElement {
+  return within(box).getByRole('button', { name });
 }

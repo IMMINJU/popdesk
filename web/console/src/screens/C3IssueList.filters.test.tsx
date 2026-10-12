@@ -67,6 +67,16 @@ const statusGroup = () => found(() => screen.queryByRole('group', { name: '상�
 const statusBox = async (word: string) => within(await statusGroup()).getByRole<HTMLInputElement>('checkbox', { name: word });
 const clearFilters = () => [...screen.queryAllByRole('link', { name: '필터 지우기' }), ...screen.queryAllByRole('button', { name: '필터 지우기' })];
 const rowsShown = () => screen.queryAllByRole('row').filter((r) => within(r).queryAllByRole('cell').length > 0);
+const pageLink = (n: number) => screen.queryByRole('link', { name: new RegExp(`^${String(n)}(쪽)?$`) });
+const inDocumentOrder = (a: Element, b: Element) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
+
+/** A list of three pages with one row each, named after its page: ACME-1, ACME-2, ACME-3. */
+function threePages() {
+  on('get', ISSUES, ({ request }) => {
+    const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+    return HttpResponse.json(paged([summary({ key: `ACME-${String(page)}` })], { page, totalElements: 45, totalPages: 3 }));
+  });
+}
 
 async function search(user: User, words: string) {
   await user.type(await searchBox(), `${words}{Enter}`);
@@ -150,11 +160,9 @@ describe('C-3 문의 목록 (3번 묶음)', () => {
     await user.selectOptions(assignee, '나');
     await listed({ companyCode: 'ACME', q: '결제', status: ['RECEIVED', 'CLOSED'], assignee: 'me' });
 
+    // The other filters stay when the company changes ("나" is not a person of the company).
     await user.selectOptions(await select(/^고객사/), BETA.name);
-    await eventually(() => {
-      expect(addressQuery().get('companyCode')).toBe('BETA');
-      expect(lastList().get('companyCode')).toBe('BETA');
-    });
+    await listed({ companyCode: 'BETA', q: '결제', status: ['RECEIVED', 'CLOSED'], assignee: 'me' });
   });
 
   test('S3-AC-76 C-3 담당자 필터의 사람: 고객사를 고르기 전에는 사람이 없고, 고르면 그 고객사의 후보가 선택지로 나온다. 고르면 assignee에 계정 ID를 싣는다', async () => {
@@ -185,6 +193,43 @@ describe('C-3 문의 목록 (3번 묶음)', () => {
 
     await listed({ companyCode: 'ACME', status: ['RECEIVED'] });
     await issueRow('ACME-1');
+  });
+
+  test('S3-AC-76 C-3 필터를 건 채 2쪽으로: 주소와 목록 요청이 필터와 쪽을 함께 싣는다', async () => {
+    threePages();
+    const { user } = renderAt(`${URL_ACME}&status=RECEIVED`);
+    await issueRow('ACME-1');
+
+    await user.click(await found(() => pageLink(2), '2쪽 링크'));
+
+    await issueRow('ACME-2');
+    const wanted = filters({ companyCode: 'ACME', status: ['RECEIVED'] });
+    expect(filtersOf(addressQuery()), '주소의 쿼리').toEqual(wanted);
+    expect(addressQuery().get('page'), '주소의 쪽').toBe('2');
+    expect(filtersOf(lastList()), '목록 요청의 쿼리').toEqual(wanted);
+    expect(lastList().get('page'), '요청의 쪽').toBe('2');
+    expect(await statusBox('접수')).toBeChecked();
+  });
+
+  test('S3-AC-76 C-3 뒤로 가기: 필터를 건 채 2쪽으로 갔다가 뒤로 가면 같은 필터의 1쪽이 다시 나온다', async () => {
+    threePages();
+    const { user } = renderAt(`${URL_ACME}&status=RECEIVED`);
+    await issueRow('ACME-1');
+    await user.click(await found(() => pageLink(2), '2쪽 링크'));
+    await issueRow('ACME-2');
+
+    act(() => {
+      window.history.back();
+    });
+
+    await issueRow('ACME-1');
+    await eventually(() => {
+      expect(rowsShown().map((r) => cellText(r, '키'))).toEqual(['ACME-1']);
+    });
+    expect(filtersOf(addressQuery()), '주소의 쿼리').toEqual(filters({ companyCode: 'ACME', status: ['RECEIVED'] }));
+    expect(Number(addressQuery().get('page') ?? '1'), '주소의 쪽').toBe(1);
+    expect(await statusBox('접수')).toBeChecked();
+    expect(chosen(await select(/^고객사/))).toBe(ACME.name);
   });
 
   test('S3-AC-76 C-3 주소로 바로 열기: 쿼리의 값으로 필터를 그리고 그 값으로 부른다', async () => {
@@ -218,6 +263,38 @@ describe('C-3 문의 목록 (3번 묶음)', () => {
     expect((await statusBox('접수')).checked).toBe(true);
     expect(chosen(await select(/^담당자/))).toBe('전체');
     expect(pageText()).not.toContain('올린 사람:');
+  });
+
+  test.each([
+    { what: '목록의 줄에 그 사람이 있음', issues: [summary({ key: 'ACME-1', assignee: OTHER_AGENT_PERSON })], label: OTHER_AGENT_PERSON.name },
+    { what: '줄이 없어 이름을 모름', issues: [], label: '다른 사람' },
+  ])('S3-AC-76 C-3 후보에 없는 담당자($what): 고객사를 고르지 않고 assignee=계정 ID로 열면 담당자 고르기에 "$label"이 골라져 있고 요청의 assignee는 그 ID 그대로다', async ({ issues, label }) => {
+    state.companies = [ACME, BETA];
+    state.issues = issues;
+    renderAt('/issues?assignee=3');
+
+    await listed({ assignee: '3' });
+    if (issues.length > 0) await issueRow('ACME-1');
+    const assignee = await select(/^담당자/);
+    await eventually(() => {
+      expect(chosen(assignee)).toBe(label);
+    });
+    await settle();
+    expect(chosen(assignee), '답이 다 온 뒤에도').toBe(label);
+    expect(optionLabels(assignee).filter((l) => l === label), `선택지 "${label}"`).toHaveLength(1);
+    expect(filtersOf(lastList()).assignee).toBe('3');
+    expect(filtersOf(addressQuery()).assignee).toBe('3');
+  });
+
+  test('S3-AC-76 C-3 이름을 모르는 올린 사람: reporter=계정 ID로 열었는데 결과가 비면 조각은 "올린 사람: 한 명"이다', async () => {
+    state.issues = [];
+    renderAt('/issues?reporter=11');
+
+    await listed({ reporter: '11' });
+    await eventually(() => {
+      expect(pageText()).toContain('올린 사람: 한 명');
+    });
+    await found(() => screen.queryByRole('button', { name: '올린 사람 필터 지우기' }), '"올린 사람 필터 지우기"');
   });
 
   test('S3-AC-76 C-3 필터 지우기: 필터가 걸려 있을 때만 있고, 누르면 "전체" 보기가 되고 검색 칸이 비워진다', async () => {
@@ -290,11 +367,16 @@ describe('C-3 문의 목록 (3번 묶음)', () => {
       expect(pageText()).toContain('조건에 맞는 문의가 없습니다');
     });
     expect(pageText()).not.toContain('아직 문의가 없습니다.');
+    // Two of them: the one of the filter row, and after it the one of the empty state.
     const main = screen.getByRole('main');
-    const inEmpty = clearFilters().filter((el) => main.contains(el));
-    expect(inEmpty.length, '"필터 지우기"').toBeGreaterThan(0);
+    const inMain = clearFilters()
+      .filter((el) => main.contains(el))
+      .sort(inDocumentOrder);
+    expect(inMain, '필터 줄과 빈 상태의 "필터 지우기"').toHaveLength(2);
+    const search = await searchBox();
+    expect((inMain[1] as HTMLElement).compareDocumentPosition(search) & Node.DOCUMENT_POSITION_PRECEDING, '빈 상태의 것은 검색 칸 뒤에 있다').toBeTruthy();
 
-    await user.click(inEmpty.at(-1) as HTMLElement);
+    await user.click(inMain[1] as HTMLElement);
     await listed({});
     await eventually(() => {
       expect(pageText()).toContain('아직 문의가 없습니다.');

@@ -27,7 +27,7 @@ import {
 } from '../__tests__/console';
 import { route } from '../__tests__/console1a';
 import { said } from '../__tests__/console2';
-import { ISSUES, history, issueIn, opener, s3, type IssueHistoryEntry, type UpdateIssueRequest } from '../__tests__/console3';
+import { ISSUES, history, issueIn, nowValues, opener, s3, type IssueHistoryEntry, type UpdateIssueRequest } from '../__tests__/console3';
 
 const URL_7 = '/issues/ACME-7';
 const ISSUE_7 = `${ISSUES}/ACME-7`;
@@ -46,6 +46,8 @@ const priority = (word: string) =>
 const save = () => button('저장');
 const editing = () => screen.queryAllByLabelText('제목', { selector: 'input' }).length > 0;
 const patches = () => callsTo('PATCH', ISSUE_7);
+/** The read-only part named 지금 값, waited for. */
+const nowShown = () => found(nowValues, '구역 "지금 값"');
 
 async function openEdit(user: User) {
   await user.click(await button('고치기'));
@@ -101,7 +103,7 @@ describe('C-4 고치기', () => {
     });
   });
 
-  test('S3-AC-81 C-4 고치기 409: 입력은 그대로 두고 Alert로 알리며 지금의 제목, 우선순위, 상태와 "지금 내용 보기"를 보인다. 다시 저장하면 새 version으로 보낸다', async () => {
+  test('S3-AC-81 C-4 고치기 409: 입력은 그대로 두고 Alert로 알리며 이름이 "지금 값"인 구역 안에 지금의 제목, 우선순위, 상태와 "지금 내용 보기"를 읽기 전용으로 보인다. 다시 저장하면 새 version으로 보낸다', async () => {
     state.issue = issueIn('RECEIVED', { version: 4 });
     let first = true;
     route('patch', ISSUE_7, async ({ request }) => {
@@ -124,12 +126,16 @@ describe('C-4 고치기', () => {
 
     await alertWith(CONFLICT);
     expect(await titleBox(), '입력은 그대로').toHaveValue('내가 고친 제목');
+    // Inside the part, not on the page: "긴급" is a radio of the form and "처리 중" a badge of the head.
+    await nowShown();
     await eventually(() => {
-      for (const now of ['남이 고친 제목', '긴급', '처리 중']) expect(pageText(), `지금 값 "${now}"`).toContain(now);
+      for (const now of ['남이 고친 제목', '긴급', '처리 중']) expect(text(nowValues()), `지금 값 "${now}"`).toContain(now);
     });
-    await user.click(await opener(/지금 내용 보기/));
+    const part = await nowShown();
+    for (const role of ['textbox', 'radio', 'checkbox', 'combobox']) expect(within(part).queryAllByRole(role), `읽기 전용: 구역 안의 ${role}`).toHaveLength(0);
+    await user.click(await opener(/지금 내용 보기/, nowValues));
     await eventually(() => {
-      expect(pageText()).toContain('남이 고친 내용');
+      expect(text(nowValues())).toContain('남이 고친 내용');
     });
 
     await user.click(await save());
@@ -192,6 +198,7 @@ describe('C-4 고치기', () => {
 
     await user.click(await save());
     await alertWith(CONFLICT);
+    await nowShown();
     await expectNoAxeViolations();
   });
 });
@@ -306,6 +313,29 @@ describe('C-4 이력', () => {
     await eventually(() => {
       expect(historyReads(), '이력을 다시 부름').toBeGreaterThan(reads);
       expect(pageText()).toContain('이상담 님이 상태를 접수에서 확인으로 바꿨습니다');
+    });
+  });
+
+  test('S3-AC-80 C-4 이력 다시 부르기(담당자): 펼쳐 둔 채 담당자를 바꾸면 이력을 다시 부르고 새 줄이 보인다', async () => {
+    state.issue = issueIn('RECEIVED');
+    s3.history = [history({ kind: 'CREATED', field: null, oldValue: null, newValue: null, actor: CUSTOMER_PERSON })];
+    const { user } = renderAt(URL_7);
+    await openHistory(user);
+    await eventually(() => {
+      expect(pageText()).toMatch(/님이 문의를 올렸습니다/);
+    });
+    const reads = historyReads();
+
+    s3.history = [...s3.history, history({ id: 2, field: 'ASSIGNEE', oldValue: null, newValue: '3', newPerson: OTHER_AGENT_PERSON, actor: ADMIN_PERSON })];
+    await user.click(await button(/^(담당자 )?바꾸기$/));
+    const box = await found(() => screen.queryByRole('dialog', { name: '담당자' }), '대화상자 "담당자"');
+    await user.click(await found(() => within(box).queryByRole('radio', { name: /정상담/ }), '대화상자의 "정상담"'));
+    await user.click(await found(() => within(box).queryByRole('button', { name: '저장' }), '"저장"'));
+
+    await sent('PUT', `${ISSUE_7}/assignee`);
+    await eventually(() => {
+      expect(historyReads(), '이력을 다시 부름').toBeGreaterThan(reads);
+      expect(pageText()).toContain('최관리 님이 담당자를 정상담 님으로 정했습니다');
     });
   });
 

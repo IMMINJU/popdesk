@@ -78,6 +78,7 @@ describe('P-5 문의 상세 (3번 묶음)', () => {
     { who: '내 해결된 문의', issue: issueIn('RESOLVED'), member: true, shows: ['고치기', '해결 확인', '다시 열기'], says: [RESOLVED_BAND] },
     { who: '내 종료된 문의(다시 열 수 있음)', issue: issueIn('CLOSED'), member: true, shows: ['다시 열기'], says: [] },
     { who: '내 종료된 문의(14일 지남)', issue: issueIn('CLOSED', { reopenable: false }), member: true, shows: [], says: [TOO_LATE] },
+    { who: '동료의 열린 문의', issue: issueIn('IN_PROGRESS', { reporter: COLLEAGUE }), member: true, shows: [], says: [] },
     { who: '동료의 해결된 문의', issue: issueIn('RESOLVED', { reporter: COLLEAGUE }), member: true, shows: [], says: [] },
     { who: '동료의 종료된 문의(reopenable이 참)', issue: issueIn('CLOSED', { reporter: COLLEAGUE }), member: true, shows: [], says: [] },
     { who: '소속에서 빠진 내 열린 문의', issue: issueIn('RECEIVED'), member: false, shows: ['문의 종료'], says: [LEFT_COMPANY] },
@@ -95,11 +96,12 @@ describe('P-5 문의 상세 (3번 묶음)', () => {
   });
 
   test.each([
-    { from: issueIn('RECEIVED'), press: '문의 종료', asks: ASK_CLOSE, path: 'close', toast: '문의를 종료했습니다', not: '확인했습니다', after: ['다시 열기'] },
-    { from: issueIn('RESOLVED'), press: '해결 확인', asks: null, path: 'close', toast: '확인했습니다. 문의를 종료했습니다', not: null, after: ['다시 열기'] },
-    { from: issueIn('RESOLVED'), press: '다시 열기', asks: ASK_REOPEN, path: 'reopen', toast: '문의를 다시 열었습니다', not: null, after: ['고치기', '문의 종료'] },
+    { now: '접수됨', from: issueIn('RECEIVED'), press: '문의 종료', asks: ASK_CLOSE, path: 'close', toast: '문의를 종료했습니다', not: '확인했습니다', after: ['다시 열기'] },
+    { now: '해결됨', from: issueIn('RESOLVED'), press: '해결 확인', asks: null, path: 'close', toast: '확인했습니다. 문의를 종료했습니다', not: null, after: ['다시 열기'] },
+    { now: '해결됨', from: issueIn('RESOLVED'), press: '다시 열기', asks: ASK_REOPEN, path: 'reopen', toast: '문의를 다시 열었습니다', not: null, after: ['고치기', '문의 종료'] },
+    { now: '종료됨', from: issueIn('CLOSED'), press: '다시 열기', asks: ASK_REOPEN, path: 'reopen', toast: '문의를 다시 열었습니다', not: null, after: ['고치기', '문의 종료'] },
   ])(
-    'S3-AC-82 P-5 "$press": POST …/$path 를 보내고(확인 대화상자: $asks) 토스트 "$toast"로 알린 뒤 문의를 다시 불러와 버튼이 바뀐다',
+    'S3-AC-82 P-5 $now 문의의 "$press": POST …/$path 를 보내고(확인 대화상자: $asks) 토스트 "$toast"로 알린 뒤 문의를 다시 불러와 버튼이 바뀐다',
     async ({ from, press, asks, path, toast, not, after }) => {
       state.issue = from;
       const { user } = renderAt(URL_7);
@@ -113,7 +115,9 @@ describe('P-5 문의 상세 (3번 묶음)', () => {
       }
       const [call] = await sent('POST', `${ISSUE_7}/${path}`);
       expect(await call?.body, '본문 없음').toBeUndefined();
-      expect(openDialog(), asks === null ? '묻지 않고 바로 한다' : '대화상자가 닫힘').toBeNull();
+      // A confirm dialog may stay open, blocked, until the answer comes.
+      if (asks === null) expect(openDialog(), '묻지 않고 바로 한다').toBeNull();
+      else await closed();
       await said(toast);
       if (not !== null) expectNotSaid(not);
       await eventually(() => {
@@ -141,7 +145,7 @@ describe('P-5 문의 상세 (3번 묶음)', () => {
     await eventually(() => {
       expect(actionsShown()).toEqual(after);
     });
-    expect(openDialog()).toBeNull();
+    await closed();
   });
 
   test('S3-AC-82 P-5 403: 보는 사이 소속에서 빠졌으면 권한 띠를 보이고 문의를 다시 불러와 동작이 줄어든다', async () => {
@@ -161,7 +165,7 @@ describe('P-5 문의 상세 (3번 묶음)', () => {
       expect(actionsShown()).toEqual([]);
     });
     expectNotSaid('문의를 다시 열었습니다');
-    expect(openDialog()).toBeNull();
+    await closed();
   });
 
   test('S3-AC-87 P-5 늦게 온 답: 다시 여는 중에 다른 문의로 옮기면 대화상자가 닫히고, 뒤에 온 답은 토스트를 띄우지 않으며 옮겨 간 문의가 그대로 보인다', async () => {

@@ -1,5 +1,5 @@
 // 3번 묶음 screens.md 3절 SearchField. 이름표가 있는 검색 입력, 입력을 멈춘 뒤와 Enter에 알린다.
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -18,6 +18,11 @@ const clearButton = () => screen.queryByRole('button', { name: CLEAR });
 function fakeUser() {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   return userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTime(ms) });
+}
+
+/** What typing leaves in the box, in one step and without waiting: for a clock that stands still. */
+function enter(value: string) {
+  fireEvent.change(box(), { target: { value } });
 }
 
 function pass(ms: number) {
@@ -64,23 +69,24 @@ describe('SearchField', () => {
   test.each([
     ['기본 300ms', undefined, 300],
     ['delayMs 500', 500, 500],
-  ])('SearchField 지연(%s): 입력을 멈추고 그 시간이 지나야 onSearch를 한 번 부른다. 사라진 뒤에는 부르지 않는다', async (_, delayMs, wait) => {
-    const user = fakeUser();
+  ])('SearchField 지연(%s): 입력을 멈추고 그 시간이 지나야 onSearch를 한 번 부른다. 사라진 뒤에는 부르지 않는다', (_, delayMs, wait) => {
+    // A clock that only `pass` moves. With one that also moves with real time, a busy machine eats the room below.
+    vi.useFakeTimers();
     const onSearch = vi.fn();
     const { unmount } = render(<SearchField label="문의 검색" value="" onSearch={onSearch} {...(delayMs === undefined ? {} : { delayMs })} />);
 
-    await user.type(box(), '결');
+    enter('결');
     pass(wait - 100);
-    await user.type(box(), '제');
+    enter('결제');
     expect(box()).toHaveValue('결제');
     // The clock starts again at the last key: counted from the first one, the time is over here.
-    pass(wait - 150);
+    pass(wait - 1);
     expect(onSearch, '시간이 지나기 전').not.toHaveBeenCalled();
 
-    pass(200);
+    pass(1);
     expect(onSearch.mock.calls).toEqual([['결제']]);
 
-    await user.type(box(), ' 오류');
+    enter('결제 오류');
     unmount();
     pass(wait * 2);
     expect(onSearch.mock.calls, '사라진 뒤').toEqual([['결제']]);
