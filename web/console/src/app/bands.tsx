@@ -1,60 +1,17 @@
-// Bands for a failed save (screens.md 2절): 401 with a login link in a new tab,
-// 403, 400 without fields, 409, 5xx, and the 429 countdown.
-import { Alert, FormErrorSummary, type FieldError } from '@popdesk/ui';
+// The shared bands with this app's texts.
+import { RateLimitBand as RateLimitBandWith, SaveFailure as SaveFailureWith } from '@popdesk/app/bands';
 import { failureText, rateLimitedText, TEXT } from './messages';
 import type { Failure } from './result';
 
-/**
- * The band for `failure`. 400 with fields goes to the summary band and 429 to
- * RateLimitBand, so both draw nothing here.
- */
+export { FieldSummary } from '@popdesk/app/bands';
+
+const SAVE_WORDS = { openLogin: TEXT.openLogin, saveSessionEnded: TEXT.saveSessionEnded, failureText };
+const RATE_WORDS = { canRetry: TEXT.canRetry, rateLimitedText };
+
 export function SaveFailure(props: { failure: Failure | null; known?: Record<string, string> }) {
-  const { failure } = props;
-  if (!failure || failure.kind === 'invalid' || failure.kind === 'rateLimited') return null;
-  if (failure.kind === 'unauthenticated') {
-    return (
-      <Alert
-        tone="error"
-        action={
-          <a href="/login" target="_blank" rel="noopener">
-            {TEXT.openLogin}
-          </a>
-        }
-      >
-        {TEXT.saveSessionEnded}
-      </Alert>
-    );
-  }
-  return <Alert tone="error">{failureText(failure, props.known)}</Alert>;
+  return <SaveFailureWith {...props} words={SAVE_WORDS} />;
 }
 
-/**
- * 429: the seconds fall on the screen, but a screen reader hears the first text
- * once; the live region is not read again every second. When sending is open
- * again, one polite notice says so.
- */
 export function RateLimitBand(props: { active: boolean; left: number; initial: number; ended: boolean }) {
-  if (props.active) {
-    return (
-      <Alert tone="error">
-        <span aria-hidden="true">{rateLimitedText(props.left)}</span>
-        <span className="pd-sr-only">{rateLimitedText(props.initial)}</span>
-      </Alert>
-    );
-  }
-  if (props.ended) return <Alert tone="info">{TEXT.canRetry}</Alert>;
-  return null;
-}
-
-/** Summary band above a form after a 400 with fields (useFieldErrors().summary). */
-export function FieldSummary(props: { summary: { title: string; items: FieldError[]; serverMessage?: string } | null }) {
-  const { summary } = props;
-  if (!summary) return null;
-  return (
-    <FormErrorSummary
-      title={summary.title}
-      errors={summary.items}
-      {...(summary.serverMessage === undefined ? {} : { serverMessage: summary.serverMessage })}
-    />
-  );
+  return <RateLimitBandWith {...props} words={RATE_WORDS} />;
 }
