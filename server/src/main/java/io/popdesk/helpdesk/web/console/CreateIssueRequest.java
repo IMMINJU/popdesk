@@ -2,6 +2,8 @@ package io.popdesk.helpdesk.web.console;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.UUID;
+import tools.jackson.databind.JsonNode;
 
 /** An issue staff file on behalf of a customer (ISSUE-9, ADR D-34). */
 public record CreateIssueRequest(
@@ -18,4 +20,5 @@ public record CreateIssueRequest(
         @Schema(allowableValues = {"LOW", "NORMAL", "HIGH", "URGENT"},
                 description = "`NORMAL` when left out.") String priority,
         @JsonProperty("private")
-                @Schema(description = "Public when left out.") Boolean privateIssue) {}
+                @Schema(description = "Public when left out.") Boolean privateIssue,
+        @Schema(implementation = UUID[].class, description = ConsoleImageController.IMAGE_IDS) JsonNode imageIds) {}

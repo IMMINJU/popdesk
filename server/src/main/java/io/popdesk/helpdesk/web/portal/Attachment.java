@@ -15,6 +15,9 @@ public record Attachment(
         @Schema(description = "Bytes.") long size,
         String contentType,
         @Schema(description = "The comment it belongs to; null for a file on the issue itself.", nullable = true) Long commentId,
+        @Schema(description = "A content image: uploaded with `uploadImage` and attached through `imageIds` of a "
+                + "save, to be shown in the content as `![…](attachment:{id})`. Listed, downloaded, and deleted "
+                + "like every other attachment (S5-AC-24).") boolean inline,
         Person uploadedBy,
         OffsetDateTime createdAt,
         boolean deleted,

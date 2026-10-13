@@ -159,7 +159,8 @@ class ConsoleIssueController {
             + "10,000, `priority` unknown, `channel` missing or not `PHONE` or `OTHER` (S3-AC-35), `reporterId` "
             + "missing, or not an `ACTIVE` customer who belongs to the company (`UNKNOWN_VALUE`, one answer "
             + "whatever the reason, S3-AC-33); `fields` lists all. `Idempotency-Key` not 1 to 100 visible ASCII "
-            + "characters (S3-AC-45). `COMPANY_NOT_ACTIVE`: the company is not `ACTIVE`.")
+            + "characters (S3-AC-45). `COMPANY_NOT_ACTIVE`: the company is not `ACTIVE`. "
+            + ConsoleImageController.IMAGE_ERRORS_400)
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company, or the caller, an agent, is "
@@ -199,7 +200,7 @@ class ConsoleIssueController {
     @ApiResponse(responseCode = "200", description = "The issue as it is now.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `version` missing (`REQUIRED`), `title` "
             + "empty, over 200, or `null`, `content` over 10,000, `priority` unknown or `null`; `fields` lists "
-            + "all. `ISSUE_CLOSED`: the issue is `CLOSED` (S3-AC-21).")
+            + "all. `ISSUE_CLOSED`: the issue is `CLOSED` (S3-AC-21). " + ConsoleImageController.IMAGE_ERRORS_400)
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
@@ -275,7 +276,10 @@ class ConsoleIssueController {
 
     @Operation(operationId = "listIssueHistory", summary = "History of an issue",
             description = "One `CREATED` entry, then one `CHANGED` entry for each field that changed, oldest "
-                    + "first (S3-AC-61, S3-AC-62, S3-AC-64). The portal has no such path (S3-AC-65).")
+                    + "first (S3-AC-61, S3-AC-62, S3-AC-64). An attachment that was attached to the issue or one "
+                    + "of its comments after the filing, or deleted, is a `CHANGED` entry of the field "
+                    + "`ATTACHMENT` (S5-AC-40, S5-AC-41); the files and images a filing brings are part of "
+                    + "`CREATED` and leave no entry (S5-AC-42). The portal has no such path (S3-AC-65).")
     @ApiResponse(responseCode = "200", description = "One page.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")

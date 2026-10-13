@@ -64,7 +64,8 @@ class PortalCommentController {
             description = "Only the reporter may comment (S0-AC-51, S0-AC-52).")
     @ApiResponse(responseCode = "201", description = "Created.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `content` empty or over 4,000, or not "
-            + "text (`INVALID_FORMAT`). `ISSUE_CLOSED`: the issue is closed.")
+            + "text (`INVALID_FORMAT`). `ISSUE_CLOSED`: the issue is closed. "
+            + PortalImageController.IMAGE_ERRORS_400)
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: the caller can see the issue but is not its "
             + "reporter, or left the company (S0-AC-52, PROJ-4). `CSRF_TOKEN_INVALID`.")
@@ -83,7 +84,7 @@ class PortalCommentController {
     @ApiResponse(responseCode = "200", description = "The comment as it is now.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `content` empty, over 4,000, or `null`, "
             + "or not text (`INVALID_FORMAT`). `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` "
-            + "(S4-AC-04).")
+            + "(S4-AC-04). " + PortalImageController.IMAGE_ERRORS_400)
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: the caller did not write the comment, or left "
             + "the company (S4-AC-05). `CSRF_TOKEN_INVALID`.")

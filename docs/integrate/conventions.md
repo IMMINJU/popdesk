@@ -108,7 +108,10 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 400 | `FILE_EMPTY` | The uploaded file has 0 bytes |
 | 400 | `FILE_TOO_LARGE` | The uploaded file is over 10 MB |
 | 400 | `ISSUE_ATTACHMENTS_TOO_LARGE` | The public attachments of the issue (on the issue and its public comments) would pass 50 MB |
-| 400 | `ATTACHMENT_QUOTA_EXCEEDED` | All attachments of the team would pass `POPDESK_ATTACHMENT_QUOTA` |
+| 400 | `ATTACHMENT_QUOTA_EXCEEDED` | All attachments of the team, temporary images included, would pass `POPDESK_ATTACHMENT_QUOTA` |
+| 400 | `FILE_NOT_IMAGE` | The file uploaded as an image for an issue's content or a comment is not a PNG, JPEG, GIF, or WebP file, judged by its first bytes |
+| 400 | `TEMPORARY_IMAGE_LIMIT_EXCEEDED` | The caller's temporary images (uploaded, not attached yet, and under 24 hours old) would pass 20 images or 50 MB |
+| 400 | `TEMPORARY_IMAGE_INVALID` | An ID in `imageIds` of a request that saves an issue or a comment is not a temporary image the caller can attach: it is unknown, another account uploaded it, it is attached already, it is over 24 hours old, or it is an ordinary attachment. One body for all of these, and it does not say which ID. Nothing was saved |
 | 400 | `CHANNEL_DISABLED` | Sending a failed outbox row again, or a test email: the channel (mail, webhook, or the outside copy of the audit log) is not configured, or `POPDESK_SANDBOX` turned it off. Nothing changed and nothing was sent |
 | 401 | `UNAUTHENTICATED` | No session, or the session ended |
 | 401 | `SIGN_IN_FAILED` | Sign-in failed. The same body whatever the reason: unknown email, wrong password, invited, suspended, or locked account, or an account of the other app |
@@ -163,6 +166,19 @@ Attachments are always addressed under their issue:
 - An `{id}` that is not a UUID in its 36-character form (`8-4-4-4-12` hexadecimal digits, either letter case) is an ID that does not exist: the same 404.
 - Attachment IDs are hard to guess (`ATT-7`), but that is not a permission check.
 - Uploads and downloads are each limited to 16 at a time. Over the limit, the response is 503 with a `Retry-After` header.
+
+An image for an issue's content or a comment is uploaded before that issue or comment is saved, so it has no issue yet. Until a save attaches it, it is a temporary image with a path of its own:
+
+```
+/api/portal/images/{id}
+/api/console/images/{id}
+```
+
+- Only the account that uploaded a temporary image reads it there. Nobody else does, not an admin and not a colleague of the same company.
+- A temporary image is kept for 24 hours. A request that saves an issue or a comment and names the image's ID in `imageIds` attaches it; an image that is not attached by then is deleted and leaves no trace.
+- Once attached, the image is an attachment of that issue with the same ID. It is addressed under the issue like every other attachment, by the rules above, and its temporary path answers 404.
+- The temporary path (download, `HEAD`, range requests) answers 404 with the same status, headers, and body in all of these cases: the ID does not exist or is not a UUID in its 36-character form, another account uploaded the image, the image is attached already, it is over 24 hours old (also while it is not deleted yet), or it is still being written or already deleted.
+- Uploads and downloads of temporary images take places of the same 16 uploads and 16 downloads.
 
 ## Member list of a customer manager
 
@@ -244,6 +260,11 @@ A `page` past the last page returns an empty `items`. A `page` below 1 or a `siz
 
 Issue content and comments are stored as the Markdown the author wrote. Clients render it with an allow list: no scripts, no event attributes, no `javascript:` links.
 
+- An image is shown only when it is written as `![description](attachment:{id})`, with `{id}` the 36-character UUID of an attachment. The client builds the address from the ID: the attachment path of the issue, or the temporary path for an image the author uploaded and has not saved yet ("Attachment paths"). The description is the image's alternative text.
+- Image syntax with any other address (`http:`, `https:`, `data:`) and raw `<img>` are not shown as images. They stay text, so opening an issue never fetches anything from another server (D-59).
+- The server does not read image IDs out of the content. A save attaches the images its `imageIds` names and no others, whatever the content says; the content is stored as written either way.
+- Taking an image out of the content does not delete it. It stays an attachment of the issue until someone deletes it.
+
 ## Deletion that leaves a trace (COM-7)
 
 Some deletions keep the row and leave a trace: the content fields are cleared, and the row records `deleted`, the time of deletion, and who deleted it. Lists show the item in its place as "Deleted".
@@ -273,7 +294,7 @@ Limits are per account over a 60-second window:
 |---|---|
 | Create an issue | 10 |
 | Add or edit a comment | 30 (both count together; deleting a comment is not counted) |
-| Upload an attachment | 30 (each file of a new issue counts as one; a new issue whose files do not all fit is refused whole) |
+| Upload an attachment | 30 (each file of a new issue counts as one; a new issue whose files do not all fit is refused whole). An image uploaded for an issue's content or a comment counts here too, as one upload |
 | Upload a profile photo | 10 |
 | List with a search term | 60 (the issue lists, the account list, and the list of customers staff can file for count together). A list without `q` is not counted, whatever other filters it has |
 | Customer manager sends an invitation, or sends one again | 20 (both count together) |

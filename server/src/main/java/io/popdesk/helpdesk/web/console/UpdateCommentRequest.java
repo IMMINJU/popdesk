@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.web.console;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.UUID;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -14,4 +15,5 @@ public record UpdateCommentRequest(
                 + "from now on, up to 10 counting the whole list. Only an account new to the list is checked by "
                 + "the rules of `createComment`; one the comment mentions already is not checked again and may "
                 + "stay. `null` is the same as an empty list. Left out, the mentions stay (S4-AC-24).")
-                JsonNode mentions) {}
+                JsonNode mentions,
+        @Schema(implementation = UUID[].class, description = ConsoleImageController.IMAGE_IDS) JsonNode imageIds) {}

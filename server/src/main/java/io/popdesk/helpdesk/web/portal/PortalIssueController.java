@@ -118,7 +118,8 @@ class PortalIssueController {
     @ApiResponse(responseCode = "201", description = "Created. Also for a retry with the same "
             + "`Idempotency-Key` and content: the issue made the first time, as it is now (S3-AC-41).")
     @ApiResponse(responseCode = "400", description = CREATE_ERRORS_400 + " " + KEY_ERRORS_400 + " "
-            + FILE_ERRORS_400)
+            + FILE_ERRORS_400 + " " + PortalImageController.IMAGE_ERRORS_400 + " The 50 MB counts the files and "
+            + "the images of the filing together.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: the caller does not belong to the company "
@@ -236,7 +237,7 @@ class PortalIssueController {
     @ApiResponse(responseCode = "200", description = "The issue as it is now.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `version` missing (`REQUIRED`), `title` "
             + "empty, over 200, or `null`, `content` over 10,000, `priority` unknown or `null`; `fields` lists "
-            + "all. `ISSUE_CLOSED`: the issue is `CLOSED` (S3-AC-21).")
+            + "all. `ISSUE_CLOSED`: the issue is `CLOSED` (S3-AC-21). " + PortalImageController.IMAGE_ERRORS_400)
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = NOT_REPORTER + ", or no longer belongs to the company "
             + "(S3-AC-20). `CSRF_TOKEN_INVALID`.")
