@@ -17,8 +17,13 @@ import io.popdesk.support.BareAppTest;
 import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -66,35 +71,64 @@ class ImageUploadTest extends BareAppTest {
         assertThat(rows.byId(ids.get(0)).state()).as("file state of a temporary image").isEqualTo("stored");
     }
 
+    /** What the file part of an upload says about itself. */
+    private record Claim(String fileName, String contentType) {}
+
+    /** An image type that is not the format's own: what a client that trusts a wrong guess sends. */
+    private static String anotherImageType(Format format) {
+        return switch (format) {
+            case PNG -> "image/gif";
+            case JPEG -> "image/png";
+            case GIF87A, GIF89A -> "image/webp";
+            case WEBP -> "image/jpeg";
+        };
+    }
+
     @ParameterizedTest(name = "{0}")
     @EnumSource(Format.class)
-    @DisplayName("S5-AC-02, S5-AC-03 a PNG, JPEG, GIF, or WebP is stored whatever its name and the Content-Type sent, "
-            + "and is served with the Content-Type of its format, before and after it is attached")
+    @DisplayName("S5-AC-02, S5-AC-03 a PNG, JPEG, GIF, or WebP is stored whatever its name and the Content-Type sent "
+            + "(text/html, the type of another image format, image/svg+xml), and is served with the Content-Type of "
+            + "its format, before and after it is attached")
     void formatDecidesTheContentType(Format format) {
         Scene s = steps.scene();
         Issue issue = fixtures.fileIssue(s.customer(), s.code());
-        byte[] content = image(format, Unique.number());
+        Map<String, byte[]> stored = new LinkedHashMap<>();
+        Map<String, String> sentAs = new LinkedHashMap<>();
 
-        ApiResponse created = uploadRequest(s.customer(), "page.html", "text/html", content).send();
+        for (Claim claim : List.of(new Claim("page.html", "text/html"),
+                new Claim("other." + format.extension(), anotherImageType(format)),
+                new Claim("drawing.svg", "image/svg+xml"))) {
+            byte[] content = image(format, Unique.number());
+            ApiResponse created = uploadRequest(s.customer(), claim.fileName(), claim.contentType(), content).send();
 
-        String id = created.expectStatus(201).jsonText("id");
-        ApiResponse temporary = read(s.customer(), id);
-        assertThat(temporary.status()).as(temporary.request()).isEqualTo(200);
-        assertThat(temporary.header("Content-Type")).as("Content-Type of the temporary image")
-                .isEqualTo(format.contentType());
-        assertThat(s.customer().client().head(imagePath(s.customer(), id)).send().header("Content-Type"))
-                .as("Content-Type of HEAD").isEqualTo(format.contentType());
-        ImageSteps.commentWith(s.customer(), issue.key(), "With " + format, List.of(id));
-        JsonNode listed = AttachmentSteps.entry(s.customer(), issue.key(), id);
-        assertThat(listed).as("the image in the issue's attachment list").isNotNull();
-        assertThat(AttachmentSteps.text(listed, "contentType")).as("contentType in the list")
-                .isEqualTo(format.contentType());
-        ApiResponse attached = AttachmentSteps.download(s.customer(), issue.key(), id);
-        assertThat(attached.status()).as(attached.request()).isEqualTo(200);
-        assertThat(attached.header("Content-Type")).as("Content-Type of the attached image")
-                .isEqualTo(format.contentType());
-        assertThat(attached.header("X-Content-Type-Options")).isEqualTo("nosniff");
-        assertThat(attached.body()).isEqualTo(content);
+            String id = created.expectStatus(201).jsonText("id");
+            ApiResponse temporary = read(s.customer(), id);
+            assertThat(temporary.status()).as(temporary.request()).isEqualTo(200);
+            assertThat(temporary.header("Content-Type"))
+                    .as("Content-Type of the temporary image sent as %s", claim.contentType())
+                    .isEqualTo(format.contentType());
+            assertThat(s.customer().client().head(imagePath(s.customer(), id)).send().header("Content-Type"))
+                    .as("Content-Type of HEAD for the image sent as %s", claim.contentType())
+                    .isEqualTo(format.contentType());
+            stored.put(id, content);
+            sentAs.put(id, claim.contentType());
+        }
+
+        ImageSteps.commentWith(s.customer(), issue.key(), "With " + format, stored.keySet());
+        stored.forEach((id, content) -> {
+            JsonNode listed = AttachmentSteps.entry(s.customer(), issue.key(), id);
+            assertThat(listed).as("the image sent as %s in the issue's attachment list", sentAs.get(id)).isNotNull();
+            assertThat(AttachmentSteps.text(listed, "contentType"))
+                    .as("contentType in the list for the image sent as %s", sentAs.get(id))
+                    .isEqualTo(format.contentType());
+            ApiResponse attached = AttachmentSteps.download(s.customer(), issue.key(), id);
+            assertThat(attached.status()).as(attached.request()).isEqualTo(200);
+            assertThat(attached.header("Content-Type"))
+                    .as("Content-Type of the attached image sent as %s", sentAs.get(id))
+                    .isEqualTo(format.contentType());
+            assertThat(attached.header("X-Content-Type-Options")).isEqualTo("nosniff");
+            assertThat(attached.body()).isEqualTo(content);
+        });
     }
 
     @ParameterizedTest(name = "{0}")
@@ -128,13 +162,73 @@ class ImageUploadTest extends BareAppTest {
                         text("Just notes, number " + n)),
                 Arguments.of("HTML sent as image/png", "pixel.png", "image/png",
                         text("<html><body onload=alert(" + n + ")></body></html>")),
-                Arguments.of("a GIF of a version there is not", "old.gif", "image/gif", text("GIF88a" + n)));
+                Arguments.of("a GIF of a version there is not", "old.gif", "image/gif", text("GIF88a" + n)),
+                Arguments.of("a BMP", "photo.bmp", "image/bmp", bmp(n)),
+                Arguments.of("a TIFF, low byte first", "scan.tif", "image/tiff", tiff(ByteOrder.LITTLE_ENDIAN, n)),
+                Arguments.of("a TIFF, high byte first, named .png and sent as image/png", "scan.png", "image/png",
+                        tiff(ByteOrder.BIG_ENDIAN, n)),
+                Arguments.of("an ICO", "favicon.ico", "image/x-icon", ico(n)));
+    }
+
+    // Images of formats the app does not take. Each is a one-pixel file followed by the digits of n.
+
+    private static byte[] bmp(long n) {
+        ByteBuffer b = ByteBuffer.allocate(58).order(ByteOrder.LITTLE_ENDIAN);
+        b.put(text("BM")).putInt(58).putInt(0).putInt(54);
+        b.putInt(40).putInt(1).putInt(1).putShort((short) 1).putShort((short) 24).putInt(0).putInt(4)
+                .putInt(2835).putInt(2835).putInt(0).putInt(0);
+        b.put(new byte[] {0, 0, (byte) 0xFF, 0});
+        return withTail(b, n);
+    }
+
+    private static byte[] tiff(ByteOrder order, long n) {
+        ByteBuffer b = ByteBuffer.allocate(111).order(order);
+        b.put(text(order == ByteOrder.LITTLE_ENDIAN ? "II" : "MM")).putShort((short) 42).putInt(8);
+        b.putShort((short) 8);
+        tiffShort(b, 256, 1);
+        tiffShort(b, 257, 1);
+        tiffShort(b, 258, 8);
+        tiffShort(b, 259, 1);
+        tiffShort(b, 262, 1);
+        tiffLong(b, 273, 110);
+        tiffShort(b, 278, 1);
+        tiffLong(b, 279, 1);
+        b.putInt(0).put((byte) 0x80);
+        return withTail(b, n);
+    }
+
+    private static void tiffShort(ByteBuffer b, int tag, int value) {
+        b.putShort((short) tag).putShort((short) 3).putInt(1).putShort((short) value).putShort((short) 0);
+    }
+
+    private static void tiffLong(ByteBuffer b, int tag, int value) {
+        b.putShort((short) tag).putShort((short) 4).putInt(1).putInt(value);
+    }
+
+    private static byte[] ico(long n) {
+        ByteBuffer b = ByteBuffer.allocate(70).order(ByteOrder.LITTLE_ENDIAN);
+        b.putShort((short) 0).putShort((short) 1).putShort((short) 1);
+        b.put(new byte[] {1, 1, 0, 0}).putShort((short) 1).putShort((short) 32).putInt(48).putInt(22);
+        b.putInt(40).putInt(1).putInt(2).putShort((short) 1).putShort((short) 32).putInt(0).putInt(0)
+                .putInt(0).putInt(0).putInt(0).putInt(0);
+        b.put(new byte[] {0, 0, (byte) 0xFF, (byte) 0xFF}).putInt(0);
+        return withTail(b, n);
+    }
+
+    private static byte[] withTail(ByteBuffer full, long n) {
+        if (full.hasRemaining()) {
+            throw new IllegalStateException(full.remaining() + " bytes of the image are not written");
+        }
+        byte[] tail = text("#" + n);
+        byte[] out = Arrays.copyOf(full.array(), full.capacity() + tail.length);
+        System.arraycopy(tail, 0, out, full.capacity(), tail.length);
+        return out;
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("filesThatAreNoImages")
     @DisplayName("S5-AC-02 a file whose first bytes are not PNG, JPEG, GIF, or WebP is 400 FILE_NOT_IMAGE whatever "
-            + "its name and the Content-Type sent, and nothing of it is stored")
+            + "its name and the Content-Type sent, an image of another format too, and nothing of it is stored")
     void notAnImage(String what, String fileName, String contentType, byte[] content) {
         Scene s = steps.scene();
         // The format check is the only thing that differs from an upload that works.

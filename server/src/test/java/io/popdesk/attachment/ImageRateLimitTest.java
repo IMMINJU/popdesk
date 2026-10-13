@@ -24,6 +24,12 @@ import org.junit.jupiter.api.Test;
  */
 class ImageRateLimitTest extends BareAppTest {
 
+    /**
+     * How many probes may be stored before the test gives up: with the image uploaded before and the
+     * one after, the prober stays under the 20 temporary images of an account ({@link ImageSteps#MAX_IMAGES}).
+     */
+    private static final int MAX_STORED_PROBES = ImageSteps.MAX_IMAGES - 5;
+
     private AttachmentSteps steps;
 
     @BeforeEach
@@ -73,11 +79,19 @@ class ImageRateLimitTest extends BareAppTest {
                         1_000));
             }
 
+            // Each probe that is stored is one more temporary image of the prober. The probing ends well
+            // before the 20 of an account, so a 400 for that limit is never read as the answer here.
+            int[] storedProbes = {0};
             ApiResponse refused = Wait.until("an image upload refused while 16 uploads run", () -> {
                 ApiResponse r = upload(prober, "probe.png", png());
-                return r.status() == 201 ? null : r;
+                if (r.status() != 201) {
+                    return r;
+                }
+                return ++storedProbes[0] >= MAX_STORED_PROBES ? r : null;
             });
 
+            assertThat(refused.status()).as("the 16 uploads did not fill up: %s image uploads in a row were stored "
+                    + "while 16 attachment uploads were held", storedProbes[0]).isNotEqualTo(201);
             assertThat(refused.status()).as("%s: %s", refused.request(), refused.snippet()).isEqualTo(503);
             assertThat(refused.errorCode()).isEqualTo("SERVER_BUSY");
             assertThat(refused.header("Retry-After")).as("Retry-After").isNotBlank();

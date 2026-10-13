@@ -29,10 +29,14 @@ import io.popdesk.support.Unique;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -241,5 +245,36 @@ class ImageBindRefusalTest extends BareAppTest {
         assertThat(fieldCode(over, "imageIds")).as("code of the field imageIds").isEqualTo("TOO_MANY");
         assertThat(TalkFlow.comments(st.customer(), st.key())).as("comments of the issue")
                 .noneMatch(comment -> content.equals(text(comment, "content")));
+    }
+
+    static Stream<Arguments> valuesThatAreNoText() {
+        return Stream.of(
+                Arguments.of("a number", 7),
+                Arguments.of("an object", Map.of("id", unknownId())));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("valuesThatAreNoText")
+    @DisplayName("S5-AC-21 imageIds with a value that is not text is 400 INVALID_INPUT with imageIds INVALID_FORMAT, "
+            + "as the contract says; no comment is stored and the good image sent with it stays temporary "
+            + "(acceptance.md 5절 14)")
+    void valueThatIsNoTextIsInvalidInput(String what, Object value) {
+        Stage st = ImageSteps.stage(fixtures);
+        // An image is attached on this issue first, so the refusal below is about the value sent.
+        attachedByComment(st.customer(), st.key(), png());
+        String good = uploaded(st.customer());
+        String content = Unique.text("Not an image ID");
+
+        ApiResponse refused = TalkFlow.addRequest(st.customer(), st.key(), body("content", content, "imageIds",
+                List.of(good, value))).send();
+
+        assertThat(refused.status()).as("%s in imageIds: %s", what, refused.snippet()).isEqualTo(400);
+        assertThat(refused.errorCode()).as(what).isEqualTo("INVALID_INPUT");
+        assertThat(fieldCode(refused, "imageIds")).as("code of the field imageIds for %s", what)
+                .isEqualTo("INVALID_FORMAT");
+        assertThat(TalkFlow.comments(st.customer(), st.key())).as("comments of the issue")
+                .noneMatch(comment -> content.equals(text(comment, "content")));
+        assertThat(read(st.customer(), good).status()).as("the good image of the refused request, still temporary")
+                .isEqualTo(200);
     }
 }

@@ -284,4 +284,33 @@ class ImageBindTest extends BareAppTest {
                 .filter(issue -> st.marker().equals(text(issue, "title")))).as("issues titled %s", st.marker())
                 .hasSize(1);
     }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(value = Write.class, names = {"PORTAL_FILING", "PORTAL_FILING_MULTIPART", "ON_BEHALF_FILING"})
+    @DisplayName("S5-AC-20 a filing sent again with its Idempotency-Key and other imageIds answers the first issue "
+            + "as it is: the other image is not attached and stays temporary (acceptance.md 5절 16)")
+    void filingSentAgainWithOtherImages(Write write) {
+        Stage st = ImageSteps.stage(fixtures);
+        Session writer = write.writer(st);
+        String id = uploaded(writer);
+        byte[] otherContent = png();
+        String other = uploaded(writer, otherContent);
+        String idempotencyKey = "image-" + UUID.randomUUID();
+
+        ApiResponse first = write.request(st, List.of(id)).header("Idempotency-Key", idempotencyKey).send();
+        ApiResponse again = write.request(st, List.of(other)).header("Idempotency-Key", idempotencyKey).send();
+
+        assertThat(first.status()).as("%s: %s", first.request(), first.snippet()).isEqualTo(201);
+        assertThat(again.status()).as("sent again with another image: %s", again.snippet()).isEqualTo(201);
+        assertThat(again.jsonText("key")).as("key of the answer to the second request").isEqualTo(first.jsonText("key"));
+        assertThat(inlineIds(st.customer(), first.jsonText("key"))).as("inline attachments of the issue")
+                .containsExactly(id);
+        ApiResponse stillTemporary = read(writer, other);
+        assertThat(stillTemporary.status()).as("the image of the second request on the temporary path: %s",
+                stillTemporary.snippet()).isEqualTo(200);
+        assertThat(stillTemporary.body()).isEqualTo(otherContent);
+        assertThat(TalkFlow.items(IssueFlow.list(st.customer())).stream()
+                .filter(issue -> st.marker().equals(text(issue, "title")))).as("issues titled %s", st.marker())
+                .hasSize(1);
+    }
 }

@@ -101,18 +101,32 @@ class ImageLimitTest extends BareAppTest {
 
     @Test
     @DisplayName("S5-AC-04, S5-AC-05 five images of exactly 10 MB are stored, 50 MB in all; one more small image is 400 "
-            + "TEMPORARY_IMAGE_LIMIT_EXCEEDED")
+            + "TEMPORARY_IMAGE_LIMIT_EXCEEDED; attaching one of the five makes room for 10 MB more, and no more")
     void fiftyMegabytes() {
         Scene s = steps.scene();
+        Issue issue = fixtures.fileIssue(s.customer(), s.code());
+        AttachmentRows rows = new AttachmentRows(db);
+        List<String> ids = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             ApiResponse stored = upload(s.customer(), "ten-" + i + ".png", image(Format.PNG, MAX_FILE,
                     Unique.number()));
             assertThat(stored.status()).as("image %s of 10 MB: %s", i + 1, stored.snippet()).isEqualTo(201);
+            ids.add(stored.jsonText("id"));
         }
         byte[] over = png();
 
         ApiResponse refused = upload(s.customer(), "one-more.png", over);
 
-        assertLimited(refused, over, new AttachmentRows(db));
+        assertLimited(refused, over, rows);
+
+        ImageSteps.commentWith(s.customer(), issue.key(), "Attaching the first 10 MB", List.of(ids.getFirst()));
+        ApiResponse afterAttaching = upload(s.customer(), "ten-again.png", image(Format.PNG, MAX_FILE,
+                Unique.number()));
+        byte[] overAgain = png();
+        ApiResponse fullAgain = upload(s.customer(), "one-more-again.png", overAgain);
+
+        assertThat(afterAttaching.status()).as("10 MB more after one of the five was attached: %s",
+                afterAttaching.snippet()).isEqualTo(201);
+        assertLimited(fullAgain, overAgain, rows);
     }
 }

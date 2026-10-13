@@ -4,6 +4,7 @@ import static io.popdesk.attachment.AttachmentSteps.MAX_FILE;
 import static io.popdesk.attachment.AttachmentSteps.bytes;
 import static io.popdesk.attachment.AttachmentSteps.list;
 import static io.popdesk.attachment.AttachmentSteps.text;
+import static io.popdesk.attachment.ImageSteps.attachmentHistory;
 import static io.popdesk.attachment.ImageSteps.image;
 import static io.popdesk.attachment.ImageSteps.inlineIds;
 import static io.popdesk.attachment.ImageSteps.read;
@@ -70,13 +71,65 @@ class ImageBindLimitTest extends BareAppTest {
                 .containsExactlyInAnyOrder(toTheLimit, internal);
         assertThat(list(st.customer(), st.key()).stream().mapToLong(n -> n.path("size").asLong()).sum())
                 .as("public bytes of the issue").isEqualTo(AttachmentSteps.MAX_PUBLIC_PER_ISSUE);
+        assertThat(attachmentHistory(st.agent(), st.key())).as("ATTACHMENT entries of the issue (S5-AC-45)")
+                .extracting(e -> text(e, "newValue")).contains(toTheLimit, internal).doesNotContain(over, ofAgent);
+    }
+
+    @Test
+    @DisplayName("S5-AC-23 the 50 MB hold for every write and for the images of one request together: a comment "
+            + "with two images that each fit and together pass 50 MB is 400 ISSUE_ATTACHMENTS_TOO_LARGE and attaches "
+            + "neither; an issue edit attaches an image up to 50 MB and is refused with one that passes it")
+    void twoImagesTogetherAndAnIssueEdit() {
+        Stage st = ImageSteps.stage(fixtures);
+        byte[] tenMb = bytes(MAX_FILE, 32);
+        for (int i = 0; i < 4; i++) {
+            AttachmentSteps.upload(st.customer(), st.key(), "file-" + i + ".bin", tenMb).expectStatus(201);
+        }
+        int half = MAX_FILE / 2;
+        String fits = uploaded(st.customer(), image(Format.PNG, half, Unique.number()));
+        String oneByteMore = uploaded(st.customer(), image(Format.PNG, half + 1, Unique.number()));
+        String toTheLimit = uploaded(st.customer(), image(Format.PNG, half, Unique.number()));
+        String refusedContent = Unique.text("Two images over 50 MB");
+        Stage first = st.withMarker(Unique.text("Edit to 45 MB"));
+        Stage over = st.withMarker(Unique.text("Edit over 50 MB"));
+        Stage last = st.withMarker(Unique.text("Edit to 50 MB"));
+
+        ApiResponse together = TalkFlow.addRequest(st.customer(), st.key(), body("content", refusedContent,
+                "imageIds", List.of(fits, oneByteMore))).send();
+        List<String> afterTheComment = inlineIds(st.agent(), st.key());
+        ApiResponse editThatFits = Write.PORTAL_ISSUE_EDIT.request(first, List.of(fits)).send();
+        long versionBefore = ImageSteps.version(st.customer(), st.key());
+        ApiResponse editOver = Write.PORTAL_ISSUE_EDIT.request(over, List.of(oneByteMore)).send();
+        boolean overSaved = Write.PORTAL_ISSUE_EDIT.saved(over);
+        long versionAfter = ImageSteps.version(st.customer(), st.key());
+        ApiResponse editToTheLimit = Write.PORTAL_ISSUE_EDIT.request(last, List.of(toTheLimit)).send();
+
+        assertThat(together.status()).as("two images, 50 MB and a byte with the files: %s", together.snippet())
+                .isEqualTo(400);
+        assertThat(together.errorCode()).isEqualTo("ISSUE_ATTACHMENTS_TOO_LARGE");
+        assertThat(afterTheComment).as("inline attachments after the refused comment").isEmpty();
+        assertThat(TalkFlow.comments(st.agent(), st.key())).as("comments of the issue")
+                .noneMatch(comment -> refusedContent.equals(text(comment, "content")));
+        assertThat(editThatFits.status()).as("an issue edit to 45 MB: %s", editThatFits.snippet()).isEqualTo(200);
+        assertThat(editOver.status()).as("an issue edit to 50 MB and a byte: %s", editOver.snippet()).isEqualTo(400);
+        assertThat(editOver.errorCode()).isEqualTo("ISSUE_ATTACHMENTS_TOO_LARGE");
+        assertThat(overSaved).as("the content of the refused edit is stored").isFalse();
+        assertThat(versionAfter).as("version after the refused edit").isEqualTo(versionBefore);
+        assertThat(read(st.customer(), oneByteMore).status()).as("the image of the refused requests, still temporary")
+                .isEqualTo(200);
+        assertThat(editToTheLimit.status()).as("an issue edit to exactly 50 MB: %s", editToTheLimit.snippet())
+                .isEqualTo(200);
+        assertThat(inlineIds(st.agent(), st.key())).as("inline attachments of the issue")
+                .containsExactlyInAnyOrder(fits, toTheLimit);
+        assertThat(attachmentHistory(st.agent(), st.key())).as("ATTACHMENT entries of the issue (S5-AC-45)")
+                .extracting(e -> text(e, "newValue")).contains(fits, toTheLimit).doesNotContain(oneByteMore);
     }
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(value = Write.class, names = {"PORTAL_COMMENT", "CONSOLE_COMMENT", "PORTAL_ISSUE_EDIT",
-            "CONSOLE_ISSUE_EDIT"})
-    @DisplayName("S5-AC-28 a comment or an edit on a closed issue is 400 ISSUE_CLOSED with images as without; the "
-            + "images stay temporary and are attached to another issue afterwards")
+            "CONSOLE_ISSUE_EDIT", "PORTAL_COMMENT_EDIT", "CONSOLE_COMMENT_EDIT"})
+    @DisplayName("S5-AC-28 a comment, an issue edit, or a comment edit on a closed issue is 400 ISSUE_CLOSED with "
+            + "images as without; the images stay temporary and are attached to another issue afterwards")
     void closedIssueTakesNoImages(Write write) {
         Stage st = ImageSteps.stage(fixtures);
         String id = uploaded(write.writer(st));
