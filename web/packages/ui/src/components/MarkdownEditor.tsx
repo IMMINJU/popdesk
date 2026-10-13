@@ -313,7 +313,8 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
     const inserted = `![${fileName.replace(/[[\]]/g, '')}](attachment:${imageId})\n`;
     const next = value.slice(0, at) + inserted + value.slice(at);
     const after = (position: number) => (position >= at ? position + inserted.length : position);
-    for (const other of marks()) if (other !== mark && other.at > at) other.at += inserted.length;
+    // An upload begun later at the same place goes under this one too, hence ">=".
+    for (const other of marks()) if (other !== mark && other.at >= at) other.at += inserted.length;
     // The next file of the same batch goes under this one.
     mark.at = at + inserted.length;
     latest.current.value = next;
@@ -334,7 +335,10 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
       setUploading(next.file.name);
       const { file } = next;
       const upload = latest.current.onImageUpload;
-      const result: ImageUploadResult = upload ? await upload(file).catch(() => ({ ok: false, message: '' })) : { ok: false, message: '' };
+      // `then` so that a function that throws before it returns a promise fails the same way.
+      const result: ImageUploadResult = await Promise.resolve()
+        .then(() => (upload ? upload(file) : { ok: false as const, message: '' }))
+        .catch(() => ({ ok: false as const, message: '' }));
       if (!alive.current) return;
       if (result.ok) insertImage(next.mark, file.name, result.id);
       else setFailures((list) => [...list, { name: file.name, message: result.message }]);
