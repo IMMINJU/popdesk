@@ -32,7 +32,7 @@ export { FormErrorSummary, type FieldError, type FormErrorSummaryProps } from '.
 export { IconButton, type IconButtonProps } from './components/IconButton';
 export { InboxList, type InboxListItem, type InboxListLink, type InboxListProps } from './components/InboxList';
 export { IssueList, type IssueListItem, type IssueListProps } from './components/IssueList';
-export { MarkdownEditor, type MarkdownEditorProps, type MarkdownTool } from './components/MarkdownEditor';
+export { MarkdownEditor, type ImageUploadResult, type MarkdownEditorProps, type MarkdownTool } from './components/MarkdownEditor';
 export { MarkdownView, type MarkdownViewProps } from './components/MarkdownView';
 export { Pagination, type PageLink, type PaginationProps } from './components/Pagination';
 export { PasswordField, type PasswordFieldProps } from './components/PasswordField';

@@ -7,7 +7,8 @@
 // Inline: code spans, **strong**, *em*, ~~del~~, [links](url), <autolinks>,
 // bare http(s) URLs, backslash escapes, and images of one kind:
 // `![alt](attachment:{uuid})`, drawn only when the caller gives an address for the id (D-59).
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
+import { MarkdownImage } from './components/MarkdownImage';
 
 export interface MarkdownOptions {
   /**
@@ -88,33 +89,6 @@ function altText(label: string): string {
     out += label[i] ?? '';
   }
   return out;
-}
-
-/** An uploaded image. When it cannot be read, one line takes its place: the description and `unreadableText`. */
-function MarkdownImage(props: { src: string; alt: string; unreadableText: string }) {
-  const [failed, setFailed] = useState<string | null>(null);
-  if (failed === props.src) {
-    return (
-      <span className="pd-markdown-noimage">
-        {props.alt !== '' && (
-          <>
-            <span className="pd-markdown-noimage-alt">{props.alt}</span>{' '}
-          </>
-        )}
-        <span>{props.unreadableText}</span>
-      </span>
-    );
-  }
-  return (
-    <img
-      src={props.src}
-      alt={props.alt}
-      loading="lazy"
-      onError={() => {
-        setFailed(props.src);
-      }}
-    />
-  );
 }
 
 const TRAILING_PUNCT = `.,;:!?)]'"`;

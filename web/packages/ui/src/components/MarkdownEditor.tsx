@@ -1,10 +1,28 @@
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { codePoints } from '../format';
 import { describedBy } from '../aria';
+import { WarningIcon } from '../icons';
 import { FieldError, FieldHelp } from './fieldParts';
 import { MarkdownView } from './MarkdownView';
 
-/** Toolbar buttons in the first slice. The image button comes with ATT-6. */
+/** What an image upload ends with. The text of a failure is made by the app. */
+export type ImageUploadResult = { ok: true; id: string } | { ok: false; message: string };
+
+/**
+ * Toolbar buttons in the first slice. The image button (ATT-6) is not one of them: it comes
+ * after these when `onImageUpload` is given.
+ */
 export type MarkdownTool =
   | 'bold'
   | 'italic'
@@ -49,7 +67,68 @@ export interface MarkdownEditorProps {
   previewLabel?: string;
   toolbarLabel?: string;
   emptyPreviewText?: string;
+  /**
+   * 이미지 (slice 5): uploads one file. With it the toolbar gets an "이미지" button after `tools`,
+   * and the text area takes pasted images and dropped files. Several files go one at a time.
+   * When one is up, `![file name](attachment:{id})` and a line break go in where the cursor
+   * was when the upload began. Absent: none of this, the editor is what it was.
+   */
+  onImageUpload?: ((file: File) => Promise<ImageUploadResult>) | undefined;
+  /** The address of an image by its id, for the preview (see MarkdownView). Absent: images stay text there. */
+  imageSrc?: ((id: string) => string | null) | undefined;
+  /** Told `true` when uploads begin and `false` when the last one ends, so the screen can hold its save back. */
+  onImageBusyChange?: ((busy: boolean) => void) | undefined;
+  /** Name of the image button. Default "이미지". */
+  imageLabel?: string | undefined;
+  /** The line under the text area while a file is going up. Default "이미지 올리는 중… (file name)". */
+  imageUploadingText?: ((fileName: string) => string) | undefined;
+  /** The line while files are dragged over the text area. Default "여기에 놓으면 이미지를 넣습니다". */
+  imageDropText?: string | undefined;
+  /** The line after a dropped file that is not an image. */
+  imageOnlyText?: string | undefined;
+  /** Handed to the preview (see MarkdownView). */
+  unreadableImageText?: string | undefined;
   ref?: Ref<HTMLTextAreaElement>;
+}
+
+const IMAGE_ACCEPT = 'image/png,image/jpeg,image/gif,image/webp';
+
+const IMAGE_GLYPH = (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="3" width="12" height="10" rx="1.5" />
+    <circle cx="5.75" cy="6.5" r="1" fill="currentColor" stroke="none" />
+    <path d="m2.5 11.5 3.25-3 2.5 2.25 2-1.75 3.25 3" />
+  </svg>
+);
+
+/** A place in the text that follows what is typed around it while an upload is on its way. */
+interface Mark {
+  at: number;
+}
+
+/**
+ * Where the position `at` of `before` is in `after`, taking the change as one replaced run
+ * (what one key press, paste or tool makes). A position before the run stays, one after it
+ * moves by the difference in length, one inside it goes to the end of what replaced it.
+ */
+function movedPosition(at: number, before: string, after: string): number {
+  const shorter = Math.min(before.length, after.length);
+  let head = 0;
+  while (head < shorter && before[head] === after[head]) head += 1;
+  if (at <= head) return at;
+  let tail = 0;
+  while (tail < shorter - head && before[before.length - 1 - tail] === after[after.length - 1 - tail]) tail += 1;
+  if (at >= before.length - tail) return at + after.length - before.length;
+  return after.length - tail;
+}
+
+function isImage(file: File): boolean {
+  return file.type.startsWith('image/');
+}
+
+/** True while what is dragged or dropped is files (not a piece of text). */
+function carriesFiles(transfer: DataTransfer): boolean {
+  return Array.from(transfer.types).includes('Files');
 }
 
 const ALL_TOOLS: readonly MarkdownTool[] = ['bold', 'italic', 'strikethrough', 'heading', 'bulletList', 'orderedList', 'quote', 'code', 'link'];
@@ -181,6 +260,116 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
   const [activeTool, setActiveTool] = useState(0);
   const mode = props.mode ?? ownMode;
   const tools = props.tools ?? ALL_TOOLS;
+  // The image button is not a tool: it comes after `tools`, and not at all without a toolbar.
+  const imageButton = props.onImageUpload !== undefined && tools.length > 0;
+  const buttonCount = tools.length + (imageButton ? 1 : 0);
+
+  const fileInput = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [failures, setFailures] = useState<{ name: string; message: string }[]>([]);
+  const [dragging, setDragging] = useState(false);
+  const [notImage, setNotImage] = useState(false);
+  const queue = useRef<{ file: File; mark: Mark }[]>([]);
+  /** The mark of the upload on its way. Set while the queue is being worked through. */
+  const active = useRef<Mark | null>(null);
+  const alive = useRef(true);
+  const latest = useRef({ value: props.value, onChange: props.onChange, onImageUpload: props.onImageUpload, onImageBusyChange: props.onImageBusyChange });
+
+  const marks = () => new Set([...(active.current ? [active.current] : []), ...queue.current.map((item) => item.mark)]);
+
+  useLayoutEffect(() => {
+    const before = latest.current.value;
+    if (before !== props.value) {
+      for (const mark of marks()) mark.at = movedPosition(mark.at, before, props.value);
+    }
+    latest.current = { value: props.value, onChange: props.onChange, onImageUpload: props.onImageUpload, onImageBusyChange: props.onImageBusyChange };
+  });
+
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      // An answer that comes after this is dropped. The screen is told the uploads are over.
+      alive.current = false;
+      queue.current = [];
+      if (active.current) latest.current.onImageBusyChange?.(false);
+    };
+  }, []);
+
+  const insertImage = (mark: Mark, fileName: string, imageId: string) => {
+    const { value, onChange } = latest.current;
+    const at = Math.min(mark.at, value.length);
+    // "[" and "]" in a file name would end the description early.
+    const inserted = `![${fileName.replace(/[[\]]/g, '')}](attachment:${imageId})\n`;
+    const next = value.slice(0, at) + inserted + value.slice(at);
+    const after = (position: number) => (position >= at ? position + inserted.length : position);
+    for (const other of marks()) if (other !== mark && other.at > at) other.at += inserted.length;
+    // The next file of the same batch goes under this one.
+    mark.at = at + inserted.length;
+    latest.current.value = next;
+    const el = area.current;
+    const selection = el ? ([after(el.selectionStart), after(el.selectionEnd)] as const) : null;
+    onChange(next);
+    if (!selection) return;
+    // Setting the value moves the cursor to the end; put it back where the writer had it.
+    requestAnimationFrame(() => {
+      area.current?.setSelectionRange(selection[0], selection[1]);
+    });
+  };
+
+  const drain = async () => {
+    latest.current.onImageBusyChange?.(true);
+    for (let next = queue.current.shift(); next; next = queue.current.shift()) {
+      active.current = next.mark;
+      setUploading(next.file.name);
+      const { file } = next;
+      const upload = latest.current.onImageUpload;
+      const result: ImageUploadResult = upload ? await upload(file).catch(() => ({ ok: false, message: '' })) : { ok: false, message: '' };
+      if (!alive.current) return;
+      if (result.ok) insertImage(next.mark, file.name, result.id);
+      else setFailures((list) => [...list, { name: file.name, message: result.message }]);
+    }
+    active.current = null;
+    setUploading(null);
+    latest.current.onImageBusyChange?.(false);
+  };
+
+  /** The one way in for the button, a paste and a drop. The files go up one at a time, in this order. */
+  const takeImages = (files: File[]) => {
+    const el = area.current;
+    if (!props.onImageUpload || props.disabled || !el || files.length === 0) return;
+    // A new upload by the writer clears what the last one left.
+    setFailures([]);
+    setNotImage(false);
+    // With a selection, the image goes after it and the selected text stays.
+    const mark = { at: el.selectionEnd };
+    queue.current.push(...files.map((file) => ({ file, mark })));
+    if (!active.current) void drain();
+  };
+
+  const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!props.onImageUpload || props.disabled) return;
+    const images = Array.from(e.clipboardData.files).filter(isImage);
+    // Text alone, or a file that is not an image, is pasted as before.
+    if (images.length === 0) return;
+    e.preventDefault();
+    takeImages(images);
+  };
+
+  const onDragOver = (e: DragEvent<HTMLTextAreaElement>) => {
+    if (!props.onImageUpload || props.disabled || !carriesFiles(e.dataTransfer)) return;
+    e.preventDefault();
+    setDragging(true);
+  };
+
+  const onDrop = (e: DragEvent<HTMLTextAreaElement>) => {
+    if (!props.onImageUpload || props.disabled || !carriesFiles(e.dataTransfer)) return;
+    // Without this the browser opens the dropped file.
+    e.preventDefault();
+    setDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    takeImages(files.filter(isImage));
+    setNotImage(files.some((file) => !isImage(file)));
+  };
 
   const setArea = (el: HTMLTextAreaElement | null) => {
     area.current = el;
@@ -217,10 +406,10 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
 
   const onToolKey = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const moves: Record<string, number> = {
-      ArrowRight: (index + 1) % tools.length,
-      ArrowLeft: (index - 1 + tools.length) % tools.length,
+      ArrowRight: (index + 1) % buttonCount,
+      ArrowLeft: (index - 1 + buttonCount) % buttonCount,
       Home: 0,
-      End: tools.length - 1,
+      End: buttonCount - 1,
     };
     const next = moves[e.key];
     if (next === undefined) return;
@@ -246,6 +435,7 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
       data-mode={mode}
       data-internal={props.internal ? 'true' : undefined}
       data-invalid={props.error ? 'true' : undefined}
+      data-dragging={dragging ? 'true' : undefined}
     >
       <div className="pd-field-head">
         <label className={props.labelHidden ? 'pd-sr-only' : 'pd-label'} htmlFor={id}>
@@ -296,7 +486,7 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
                   className="pd-editor-tool"
                   aria-label={labels[tool]}
                   title={labels[tool]}
-                  tabIndex={index === Math.min(activeTool, tools.length - 1) ? 0 : -1}
+                  tabIndex={index === Math.min(activeTool, buttonCount - 1) ? 0 : -1}
                   disabled={props.disabled}
                   onMouseDown={(e) => {
                     // Keep the selection in the text area.
@@ -313,7 +503,49 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
                   <span aria-hidden="true">{TOOL_GLYPHS[tool]}</span>
                 </button>
               ))}
+              {imageButton && (
+                <button
+                  ref={(el) => {
+                    toolButtons.current[tools.length] = el;
+                  }}
+                  type="button"
+                  className="pd-editor-tool"
+                  aria-label={props.imageLabel ?? '이미지'}
+                  title={props.imageLabel ?? '이미지'}
+                  tabIndex={Math.min(activeTool, buttonCount - 1) === tools.length ? 0 : -1}
+                  disabled={props.disabled}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                  }}
+                  onClick={() => {
+                    setActiveTool(tools.length);
+                    fileInput.current?.click();
+                  }}
+                  onKeyDown={(e) => {
+                    onToolKey(e, tools.length);
+                  }}
+                >
+                  <span aria-hidden="true">{IMAGE_GLYPH}</span>
+                </button>
+              )}
             </div>
+          )}
+          {imageButton && (
+            <input
+              ref={fileInput}
+              type="file"
+              hidden
+              tabIndex={-1}
+              accept={IMAGE_ACCEPT}
+              multiple
+              disabled={props.disabled}
+              aria-label={props.imageLabel ?? '이미지'}
+              onChange={(e) => {
+                takeImages(Array.from(e.target.files ?? []));
+                // Lets the same file be picked again.
+                e.target.value = '';
+              }}
+            />
           )}
         </div>
         <div id={writePanelId} role="tabpanel" aria-labelledby={writeTabId} hidden={mode !== 'write'} className="pd-editor-panel">
@@ -327,6 +559,13 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
               props.onChange(e.target.value);
             }}
             onKeyDown={onAreaKey}
+            onPaste={onPaste}
+            onDragEnter={onDragOver}
+            onDragOver={onDragOver}
+            onDragLeave={() => {
+              setDragging(false);
+            }}
+            onDrop={onDrop}
             placeholder={props.placeholder}
             maxLength={props.maxLength}
             disabled={props.disabled}
@@ -347,11 +586,37 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
             {props.value.trim() === '' ? (
               <p className="pd-editor-empty">{props.emptyPreviewText ?? '미리 볼 내용이 없습니다'}</p>
             ) : (
-              <MarkdownView source={props.value} />
+              <MarkdownView source={props.value} imageSrc={props.imageSrc} unreadableImageText={props.unreadableImageText} />
             )}
           </div>
         )}
       </div>
+      {dragging && <p className="pd-editor-note">{props.imageDropText ?? '여기에 놓으면 이미지를 넣습니다'}</p>}
+      {uploading !== null && (
+        <p className="pd-editor-note" role="status">
+          {props.imageUploadingText ? props.imageUploadingText(uploading) : `이미지 올리는 중… (${uploading})`}
+        </p>
+      )}
+      {(failures.length > 0 || notImage) && (
+        <div className="pd-editor-failures" role="alert">
+          {notImage && (
+            <p className="pd-field-error">
+              <WarningIcon size={14} />
+              <span>{props.imageOnlyText ?? '이미지 파일만 본문에 넣을 수 있습니다. 다른 파일은 첨부로 올리세요'}</span>
+            </p>
+          )}
+          {failures.map((failure, index) => (
+            // The list only grows, and is emptied as a whole.
+            <p key={index} className="pd-field-error">
+              <WarningIcon size={14} />
+              <span>
+                {failure.name}
+                {failure.message !== '' && `: ${failure.message}`}
+              </span>
+            </p>
+          ))}
+        </div>
+      )}
       <FieldHelp id={helpId} text={props.helpText} />
       <FieldError id={errorId} text={props.error} />
     </div>
