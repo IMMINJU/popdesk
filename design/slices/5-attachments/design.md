@@ -51,13 +51,13 @@
 - `<img>`는 `loading="lazy"`, 폭은 CSS로 묶는다(`.pd-markdown img`). 읽기 실패는 `onError`로 자리 글을 보인다.
 - 편집기: 이미지 단추(도구 열째), 붙여 넣기, 끌어다 놓기. 셋 다 같은 함수 하나로 간다. 올리는 중과 실패는 편집기 아래 한 줄이다. 지금 편집기에는 붙여 넣기와 끌어다 놓기 처리가 없다 [소스: `MarkdownEditor.tsx`].
 - 주소 고르기: 이 편집에서 올린 ID는 임시 경로, 그 밖은 문의의 첨부 경로. 저장이 성공하면 그 ID들은 묶인 것이 된다.
-- 내려받기 머리글(`Content-Disposition: attachment`)이 있어도 `<img>`는 그린다 [추론: 브라우저는 `<img>`에서 이 머리글을 보지 않는다. 계약 앞 실험 1].
+- 내려받기 머리글(`Content-Disposition: attachment`)이 있어도 `<img>`는 그린다(6절 1에서 Chrome으로 봤다).
 
 ## 6. 계약 앞에 볼 것
 
 | # | 볼 것 | 어떻게 | 결과에 따라 |
 |---|---|---|---|
-| 1 | `Content-Disposition: attachment`와 `nosniff`로 내려온 PNG·WebP가 `<img>`로 그려지는가 | 지금 이미지를 띄워 첨부로 올린 PNG의 주소를 `<img>`에 넣어 본다(Chrome) | 안 그려지면 본문 이미지의 읽기에만 머리글을 달리한다(기준 S5-AC-10을 고친다) |
+| 1 | `Content-Disposition: attachment`와 `nosniff`로 내려온 PNG가 `<img>`로 그려지는가 | **봤다(2026-10-13)**: 그려진다. 그 머리글 셋과 `image/png`로 2×3 PNG를 주는 작은 서버를 띄워 Chrome 155의 `<img>`에 넣었고 `naturalWidth` 2, `naturalHeight` 3으로 읽혔다. WebP와 다른 브라우저는 보지 않았다 | 기준 그대로. 구현 뒤 브라우저 확인에서 진짜 경로로 다시 본다 |
 | 2 | 메일과 웹훅이 글의 본문을 싣는가 | **봤다(2026-10-13)**: 싣지 않는다. `MailText`의 문의 메일은 제목만 싣고 [소스: `MailText.java:70`], `notification` 패키지에 글의 `content`를 읽는 곳이 없다(`grep` 0건) | 할 일 없음. `acceptance.md` 5절 12는 닫는다 |
 | 3 | 문의 고치기가 문의 행을 잠그는가 | **봤다**: 잠근다. `IssueService`의 쓰기 셋과 `CommentService`의 달기·고치기·지우기가 `issues.lockByKey`로 시작한다 [소스: `IssueService.java:415·433·518`, `CommentService.java:104·156·215`] | 표와 같다. 묶기는 그 뒤에 온다 |
 | 4 | 팀 총량이 어떤 상태의 행을 세는가 | **봤다**: `state = 'stored'`인 모든 행 [소스: `AttachmentRepository.storedBytes`] | 임시 이미지는 `stored`라 그대로 세어진다(S5-AC-06). `pending`인 동안은 안 세어진다(지금 첨부와 같다) |
