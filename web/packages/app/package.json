@@ -3,10 +3,13 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./attachments": "./src/attachments.ts",
     "./bands": "./src/bands.tsx",
     "./busy": "./src/busy.ts",
     "./csrf": "./src/csrf.ts",
+    "./Disclosure": "./src/Disclosure.tsx",
     "./hooks": "./src/hooks.ts",
+    "./IssueEdit": "./src/IssueEdit.tsx",
     "./locale": "./src/locale.ts",
     "./messages": "./src/messages.ts",
     "./navigate": "./src/navigate.ts",
