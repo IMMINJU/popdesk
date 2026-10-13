@@ -85,6 +85,11 @@ describe('MarkdownView 이미지', () => {
     ['attachment: 뒤가 주소다', 'https://images.example/a.png'],
     ['attachment: 뒤가 javascript:다', 'javascript:alert(1)'],
     ['비었다', ''],
+    // 36 characters, like a UUID, and all in lower case: a check of the length and the case alone lets these through.
+    ['36자이지만 ../로 채운 경로다', `${'../'.repeat(11)}x/y`],
+    ['36자이지만 줄표 자리가 틀렸다', '7f1c2a9e0-c4b-4d8e-9a51-3b2f6c1d0e01'],
+    ['36자이지만 16진수가 아닌 g가 들었다', '7f1c2a9e-0c4b-4d8e-9a51-3b2f6c1d0g01'],
+    ['36자이지만 %2f가 들었다', '7f1c2a9e-0c4b-4d8e-9a51-3b2f6c1%2f01'],
   ])('S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: %s', async (_why, target) => {
     const { container, imageSrc } = await drawnWithProof(`![설명](attachment:${target})`);
 

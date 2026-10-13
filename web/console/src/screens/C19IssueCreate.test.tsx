@@ -104,7 +104,7 @@ describe('C-19 대리 등록', () => {
     expect(within(channel).getByRole('radio', { name: '그 밖' })).not.toBeChecked();
     expect(within(channel).getAllByRole('radio')).toHaveLength(2);
     expect(pageText()).toContain('첨부는 등록한 뒤 문의에서 올립니다.');
-    expect(document.querySelector('input[type="file"]'), '첨부 칸').toBeNull();
+    expect(screen.queryAllByLabelText(/첨부/, { selector: 'input[type="file"]' }), '첨부 칸').toHaveLength(0);
     expect(pageText()).not.toContain('의 이름으로 올립니다');
   });
 

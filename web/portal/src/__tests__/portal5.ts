@@ -3,8 +3,10 @@
 // slice 5 to the fake server, in the shape of docs/integrate/openapi-portal.json,
 // and the helpers the slice 5 screen tests share.
 //
-// Every fake answer made here goes through `checkResponse`: a fixture that does not
-// fit the contract file fails the test that used it.
+// The answers made here (the image upload and the attachment list) go through
+// `checkResponse`: a fixture that does not fit the contract file fails the test that
+// used it. A 400 of a save made with `rejected` of portal1a does not; its shape is
+// checked against the contract file in packages/api/src/testing/contract.test.ts.
 import { HttpResponse, http } from 'msw/http';
 import { afterEach, beforeEach, expect } from 'vitest';
 import { checkResponse } from '../../../packages/api/src/testing/contract';
@@ -91,15 +93,18 @@ export function temporaryPath(id: string): string {
 export const s5: {
   /** IDs for the next uploads, first one first. */
   nextIds: string[];
-} = { nextIds: [] };
+  /** The images uploaded and not attached yet: the file name of each, by ID. */
+  temporary: Map<string, string>;
+} = { nextIds: [], temporary: new Map() };
 
 function requireSession(): Response | undefined {
   return state.signedIn ? undefined : errors.unauthenticated();
 }
 
 /** What the server does with a good image: stores it and answers 201 with its ID. */
-export function acceptImage(): Response {
+export function acceptImage(fileName = 'image.png'): Response {
   const id = s5.nextIds.shift() ?? crypto.randomUUID();
+  s5.temporary.set(id, fileName);
   return HttpResponse.json(contract('uploadImage', 201, { id }), { status: 201 });
 }
 
@@ -109,14 +114,71 @@ export function imageRejected(code: string): Response {
   return HttpResponse.json(contract('uploadImage', 400, body), { status: 400 });
 }
 
+/** A save on its way: the `imageIds` it sent, and the comment they go to once the answer says it was saved. */
+interface Save {
+  ids: string[];
+  commentId: () => number | null;
+}
+
+type PathParams = Record<string, string | readonly string[] | undefined>;
+
+const saving = new Map<string, Save>();
+
+/** `imageIds` of a save request: of a JSON body, or of the `issue` part of a multipart body. */
+async function sentImageIds(request: Request): Promise<string[]> {
+  const copy = request.clone();
+  const multipart = (copy.headers.get('content-type') ?? '').includes('multipart/form-data');
+  const text = multipart ? ((await readParts(copy)).find((p) => p.name === 'issue')?.text ?? '') : await copy.text();
+  const ids = (JSON.parse(text === '' ? '{}' : text) as { imageIds?: unknown }).imageIds;
+  return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : [];
+}
+
+/**
+ * Stands in front of a save handler of the earlier support files: it notes the
+ * `imageIds` and answers nothing, so the earlier handler answers as before.
+ */
+function noting(commentId: (params: PathParams) => () => number | null) {
+  return async ({ request, requestId, params }: { request: Request; requestId: string; params: PathParams }) => {
+    saving.set(requestId, { ids: await sentImageIds(request), commentId: commentId(params) });
+    return undefined;
+  };
+}
+
+/** What a save that went through does with its images: each becomes a content image in the list (S5-AC-20). */
+function attach(save: Save) {
+  const commentId = save.commentId();
+  for (const id of save.ids) {
+    const fileName = s5.temporary.get(id);
+    if (fileName === undefined) continue;
+    s5.temporary.delete(id);
+    state.attachments = [...state.attachments, inlineAttachment({ id, fileName, commentId })];
+  }
+}
+
+server.events.on('response:mocked', ({ requestId, response }) => {
+  const save = saving.get(requestId);
+  if (!save) return;
+  saving.delete(requestId);
+  if (response.ok) attach(save);
+});
+
+const onIssue = () => () => null;
+const onNewComment = () => () => state.comments.at(-1)?.id ?? null;
+const onComment = (params: PathParams) => () => Number(params.id);
+
 /** What the slice 5 server does when nothing goes wrong. Tests replace one with `on` of portal.ts. */
 const handlers5 = [
   http.post(`*${IMAGES}`, async ({ request }) => {
     const denied = requireSession();
     if (denied) return denied;
-    await readParts(request);
-    return acceptImage();
+    const parts = await readParts(request);
+    return acceptImage(partFileName(parts.find((p) => p.name === 'file')));
   }),
+  // The saves of the earlier files again: those do not know `imageIds`.
+  http.post('*/api/portal/issues', noting(onIssue)),
+  http.patch('*/api/portal/issues/:key', noting(onIssue)),
+  http.post('*/api/portal/issues/:key/comments', noting(onNewComment)),
+  http.patch('*/api/portal/issues/:key/comments/:id', noting(onComment)),
   // The list again, through the contract check.
   http.get('*/api/portal/issues/:key/attachments', ({ params }) => {
     const denied = requireSession() ?? (params.key === state.issue.key ? undefined : errors.notFound());
@@ -133,6 +195,8 @@ const handlers5 = [
 
 beforeEach(() => {
   s5.nextIds = [NEW_IMAGE, NEW_IMAGE_2];
+  s5.temporary = new Map();
+  saving.clear();
   contractProblems.length = 0;
   server.use(...handlers5);
 });

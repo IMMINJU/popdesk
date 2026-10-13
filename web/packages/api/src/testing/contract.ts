@@ -7,7 +7,9 @@
 // `type` (a name or a list of names, which is how a nullable field is written),
 // `enum`, `required`, `properties`, `additionalProperties`, `items`, `oneOf`,
 // `format` (uuid, date-time, int32, int64) and `pattern`. An object schema without
-// `additionalProperties` takes no field it does not name.
+// `additionalProperties` takes no field it does not name. `description` and
+// `default` say nothing about a value. Any other word (`allOf`, `anyOf`, `const`,
+// a length, a range) throws: a word this reader skipped would let a wrong fixture through.
 import { readFileSync } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,6 +39,29 @@ interface Operation {
 export interface ContractDocument {
   paths?: Record<string, Record<string, Operation>>;
   components?: { schemas?: Record<string, Schema> };
+}
+
+/** The words `violations` checks, and the ones that say nothing about a value. */
+const KNOWN_WORDS: ReadonlySet<string> = new Set([
+  '$ref',
+  'type',
+  'enum',
+  'required',
+  'properties',
+  'additionalProperties',
+  'items',
+  'oneOf',
+  'format',
+  'pattern',
+  'description',
+  'default',
+]);
+
+/** The words of one schema node this reader does not know, each in quotes. */
+function unknownIn(schema: Schema): string[] {
+  return Object.keys(schema)
+    .filter((word) => !KNOWN_WORDS.has(word))
+    .map((word) => `"${word}"`);
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -72,9 +97,12 @@ function formatProblem(format: string, value: unknown): string | undefined {
 
 /**
  * Where `value` breaks `schema`, one line for each place: the path of the field
- * (`$.items[0].inline`) and why. Empty when it fits.
+ * (`$.items[0].inline`) and why. Empty when it fits. Throws when the schema of a
+ * field it reaches has a word this reader does not know.
  */
 export function violations(doc: ContractDocument, schema: Schema, value: unknown, path = '$'): string[] {
+  const unknown = unknownIn(schema);
+  if (unknown.length > 0) throw new Error(`${path}: the contract check does not know the schema word ${unknown.join(', ')}`);
   if (schema.$ref !== undefined) {
     const target = resolve(doc, schema.$ref);
     return target ? violations(doc, target, value, path) : [`${path}: the contract has no ${schema.$ref}`];
@@ -131,6 +159,40 @@ export function violations(doc: ContractDocument, schema: Schema, value: unknown
   return out;
 }
 
+/**
+ * Every schema word in `doc` this reader does not know, with where it is: in the
+ * named schemas and in every `schema` under the paths (parameters, request bodies,
+ * responses). Empty when the reader can check the whole file.
+ */
+export function unknownWords(doc: ContractDocument): string[] {
+  const out: string[] = [];
+  const inSchema = (schema: Schema, where: string) => {
+    const unknown = unknownIn(schema);
+    if (unknown.length > 0) out.push(`${where}: ${unknown.join(', ')}`);
+    for (const [name, field] of Object.entries(schema.properties ?? {})) inSchema(field, `${where}.properties.${name}`);
+    if (schema.items) inSchema(schema.items, `${where}.items`);
+    if (typeof schema.additionalProperties === 'object') inSchema(schema.additionalProperties, `${where}.additionalProperties`);
+    (schema.oneOf ?? []).forEach((branch, index) => {
+      inSchema(branch, `${where}.oneOf[${String(index)}]`);
+    });
+  };
+  const inPaths = (node: unknown, where: string) => {
+    if (Array.isArray(node)) {
+      node.forEach((item, index) => {
+        inPaths(item, `${where}[${String(index)}]`);
+      });
+    } else if (typeof node === 'object' && node !== null) {
+      for (const [key, value] of Object.entries(node)) {
+        if (key === 'schema') inSchema(value as Schema, `${where}.schema`);
+        else inPaths(value, `${where}.${key}`);
+      }
+    }
+  };
+  for (const [name, schema] of Object.entries(doc.components?.schemas ?? {})) inSchema(schema, `#/components/schemas/${name}`);
+  inPaths(doc.paths ?? {}, '#/paths');
+  return out;
+}
+
 /** The JSON schema of the `status` response of `operationId`, or why there is none. */
 export function responseSchema(doc: ContractDocument, operationId: string, status: number): Schema | string {
   for (const item of Object.values(doc.paths ?? {})) {
@@ -158,7 +220,8 @@ export function checkAgainst<T>(doc: ContractDocument, source: string, operation
 
 const documents = new Map<ContractApp, ContractDocument>();
 
-function contract(app: ContractApp): ContractDocument {
+/** The contract file of `app`, read once. */
+export function contractDocument(app: ContractApp): ContractDocument {
   let doc = documents.get(app);
   if (!doc) {
     // A path, not `new URL(…, import.meta.url)`: Vite takes that form for an asset of the app and refuses a file outside `web/`.
@@ -177,5 +240,5 @@ function contract(app: ContractApp): ContractDocument {
  *     HttpResponse.json(checkResponse('portal', 'uploadImage', 201, { id }), { status: 201 })
  */
 export function checkResponse<T>(app: ContractApp, operationId: string, status: number, value: T): T {
-  return checkAgainst(contract(app), `openapi-${app}.json`, operationId, status, value);
+  return checkAgainst(contractDocument(app), `openapi-${app}.json`, operationId, status, value);
 }

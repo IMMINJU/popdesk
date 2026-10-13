@@ -1,6 +1,7 @@
 // 5번 묶음 screens.md 1~3절, C-4 문의 상세: 본문과 댓글의 이미지(S5-AC-50), 댓글 쓰기·댓글 고치기·문의 고치기의
 // 편집기에서 올리기와 저장의 imageIds(S5-AC-54, 57, 58), 미리 보기의 주소(S5-AC-56), 첨부 목록의 "본문 이미지"와
 // 이력의 첨부 줄(S5-AC-59). 편집기와 마크다운 보기 자체는 @popdesk/ui의 테스트가 본다.
+import { fireEvent } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import {
   ADMIN_PERSON,
@@ -187,6 +188,7 @@ describe('C-4 문의 상세: 본문 이미지', () => {
     expect(text(await statusWith('이미지 올리는 중'))).toContain('shot.png');
     expect(isBlocked(await button('고객에게 답변 보내기')), '올리는 동안 보내기 단추').toBe(true);
     await user.click(await button('고객에게 답변 보내기'));
+    await settle();
     expect(callsTo('POST', COMMENTS_7), '올리는 동안 누른 보내기').toHaveLength(0);
 
     release.open();
@@ -194,6 +196,95 @@ describe('C-4 문의 상세: 본문 이미지', () => {
     await eventually(() => {
       expect(isBlocked(screen.getByRole('button', { name: '고객에게 답변 보내기' })), '올라간 뒤 보내기 단추').toBe(false);
     });
+  });
+
+  test('S5-AC-54 C-4 댓글 쓰기, 올리는 중의 Ctrl+Enter: 편집칸에서 눌러도 저장 요청이 나가지 않고 쓰던 글이 남는다. 올라간 뒤에 누르면 나간다', async () => {
+    state.issue = issueIn('IN_PROGRESS');
+    const release = gate();
+    on('post', IMAGES, async () => {
+      await release.opened;
+      return acceptImage();
+    });
+    const { user } = renderAt(URL_7);
+    const box = await writeBox();
+    await user.type(box, '화면을 붙입니다');
+    await pickImages(user, writeFormNow, imageFile('shot.png'));
+    await statusWith('이미지 올리는 중');
+
+    await user.click(box);
+    await user.keyboard('{Control>}{Enter}{/Control}');
+    await settle();
+    expect(callsTo('POST', COMMENTS_7), '올리는 동안의 Ctrl+Enter').toHaveLength(0);
+    expect((await writeBox()).value, '쓰던 글').toBe('화면을 붙입니다');
+
+    release.open();
+    await inserted(writeBox, 'shot.png', NEW_IMAGE);
+    await eventually(() => {
+      expect(isBlocked(screen.getByRole('button', { name: '고객에게 답변 보내기' })), '올라간 뒤 보내기 단추').toBe(false);
+    });
+    await user.click(await writeBox());
+    await user.keyboard('{Control>}{Enter}{/Control}');
+
+    const [post] = await sent('POST', COMMENTS_7);
+    expect(await imageIdsOf(post)).toEqual([NEW_IMAGE]);
+  });
+
+  test.each([
+    {
+      editor: '내부 메모 쓰기',
+      prepare: () => {
+        state.issue = issueIn('IN_PROGRESS');
+      },
+      open: async (user: User) => {
+        const box = await writeBox();
+        await user.click(await found(() => screen.queryByRole('radio', { name: '내부 메모' }), '"내부 메모" 라디오'));
+        return box;
+      },
+      scope: writeFormNow,
+      save: '내부 메모 남기기',
+    },
+    { editor: '댓글 고치기', prepare: withMyComment, open: openCommentEdit, scope: editForm, save: SAVE_COMMENT },
+    { editor: '문의 고치기', prepare: withIssueImage, open: openIssueEdit, scope: issueForm, save: '저장' },
+  ])('S5-AC-54 C-4 $editor, 올리는 동안: "$save"가 막히고 올라가면 풀린다', async ({ prepare, open, scope, save }) => {
+    prepare();
+    const release = gate();
+    on('post', IMAGES, async () => {
+      await release.opened;
+      return acceptImage();
+    });
+    const { user } = renderAt(URL_7);
+    // A text that differs from the saved one: "저장" of an unchanged issue is blocked whether or not an upload runs.
+    await user.type(await open(user), '더 적습니다');
+    await eventually(() => {
+      expect(isBlocked(within(scope() as HTMLElement).getByRole('button', { name: save })), `올리기 전 "${save}"`).toBe(false);
+    });
+
+    await pickImages(user, scope, imageFile('shot.png'));
+    expect(text(await statusWith('이미지 올리는 중'))).toContain('shot.png');
+    expect(isBlocked(await buttonIn(scope, save)), `올리는 동안 "${save}"`).toBe(true);
+
+    release.open();
+    await eventually(() => {
+      expect(isBlocked(within(scope() as HTMLElement).getByRole('button', { name: save })), `올라간 뒤 "${save}"`).toBe(false);
+    });
+  });
+
+  test('S5-AC-57 C-4 댓글 쓰기: 글에 이 편집에서 올리지 않은 attachment:ID(문의에 있던 이미지)가 있어도 imageIds는 여기서 올린 것 하나뿐이다', async () => {
+    state.issue = issueIn('IN_PROGRESS');
+    state.attachments = [inlineAttachment()];
+    const { user } = renderAt(URL_7);
+    const box = await writeBox();
+    await user.click(box);
+    fireEvent.change(box, { target: { value: `${OLD_SYNTAX}\n` } });
+    await pickImages(user, writeFormNow, imageFile('shot.png'));
+    await inserted(writeBox, 'shot.png', NEW_IMAGE);
+    await user.click(await button('고객에게 답변 보내기'));
+
+    const [post] = await sent('POST', COMMENTS_7);
+    const body = (await post?.body) as CreateCommentRequest;
+    expect(body.content, '있던 이미지의 글은 그대로 간다').toContain(OLD_SYNTAX);
+    expect(body.content).toContain(imageSyntax('shot.png', NEW_IMAGE));
+    expect(await imageIdsOf(post)).toEqual([NEW_IMAGE]);
   });
 
   test('S5-AC-58 C-4 댓글 쓰기, 저장이 400 TEMPORARY_IMAGE_INVALID: 쓴 글이 남고 "이미지를 다시 올린 뒤 저장하세요"를 알린다', async () => {
@@ -243,6 +334,65 @@ describe('C-4 문의 상세: 본문 이미지', () => {
     expect(body.content).toContain(imageSyntax('shot.png', NEW_IMAGE));
     expect(body.version).toBe(4);
     expect(await imageIdsOf(patch)).toEqual([NEW_IMAGE]);
+  });
+
+  test('S5-AC-57 C-4 댓글 고치기, 저장한 뒤: 올린 이미지는 묶인 것이 된다. 다시 열어 글만 고쳐 저장하면 둘째 요청에 imageIds 칸이 없다', async () => {
+    withMyComment();
+    const { user } = renderAt(URL_7);
+    await openCommentEdit(user);
+    await pickImages(user, editForm, imageFile('shot.png'));
+    await inserted(editBox, 'shot.png', NEW_IMAGE);
+    await user.click(await buttonIn(editForm, SAVE_COMMENT));
+
+    await eventually(() => {
+      expect(commentPatches()).toHaveLength(1);
+      expect(editForm(), '보기로 돌아감').toBeNull();
+    });
+    expect(await imageIdsOf(commentPatches()[0])).toEqual([NEW_IMAGE]);
+    expect(srcPath(await imageIn(() => commentById(21), 'shot.png')), '저장한 댓글의 이미지').toBe(attachmentPath(NEW_IMAGE));
+
+    const again = await openCommentEdit(user);
+    expect(again.value).toContain(imageSyntax('shot.png', NEW_IMAGE));
+    await user.type(again, '다시 봤습니다');
+    await user.click(await buttonIn(editForm, SAVE_COMMENT));
+
+    await eventually(() => {
+      expect(commentPatches()).toHaveLength(2);
+    });
+    const second = commentPatches()[1];
+    const body = (await second?.body) as UpdateCommentRequest;
+    expect(body.content).toContain('다시 봤습니다');
+    expect(body.content).toContain(imageSyntax('shot.png', NEW_IMAGE));
+    expect(await imageIdsOf(second), '이미 묶인 이미지뿐인 저장의 imageIds 칸').toBeUndefined();
+  });
+
+  test('S5-AC-57 C-4 문의 고치기, 저장한 뒤: 올린 이미지는 묶인 것이 된다. 다시 열어 글만 고쳐 저장하면 둘째 요청에 imageIds 칸이 없다', async () => {
+    withIssueImage();
+    const { user } = renderAt(URL_7);
+    await openIssueEdit(user);
+    await pickImages(user, issueForm, imageFile('shot.png'));
+    await inserted(issueContentBox, 'shot.png', NEW_IMAGE);
+    await user.click(await button('저장'));
+
+    const [first] = await sent('PATCH', ISSUE_7);
+    expect(await imageIdsOf(first)).toEqual([NEW_IMAGE]);
+    // The page has read the saved issue again: only then does "고치기" open with the new version.
+    await eventually(() => {
+      expect(issueForm(), '보기로 돌아감').toBeNull();
+    });
+    expect(srcPath(await imageIn(issueBody, 'shot.png')), '저장한 본문의 이미지').toBe(attachmentPath(NEW_IMAGE));
+
+    const again = await openIssueEdit(user);
+    expect(again.value).toContain(imageSyntax('shot.png', NEW_IMAGE));
+    await user.type(again, '다시 봤습니다');
+    await user.click(await button('저장'));
+
+    const patches = await sent('PATCH', ISSUE_7, 2);
+    const body = (await patches[1]?.body) as UpdateIssueRequest;
+    expect(body.content).toContain('다시 봤습니다');
+    expect(body.content).toContain(imageSyntax('shot.png', NEW_IMAGE));
+    expect(body.version).toBe(5);
+    expect(await imageIdsOf(patches[1]), '이미 묶인 이미지뿐인 저장의 imageIds 칸').toBeUndefined();
   });
 
   test('S5-AC-56 C-4 댓글 고치기의 미리 보기: 방금 올린 이미지는 임시 주소(/api/console/images/ID)로, 있던 이미지는 문의의 첨부 주소로 그린다', async () => {
@@ -296,6 +446,8 @@ describe('C-4 문의 상세: 본문 이미지', () => {
     expect(commentPatches()).toHaveLength(0);
     expect(screen.queryAllByRole('alert').map((el) => text(el)).join(' ')).not.toContain('이미지');
     expect((await openCommentEdit(user)).value).toBe(before);
+    expect(isBlocked(await buttonIn(editForm, SAVE_COMMENT)), `다시 연 편집기의 "${SAVE_COMMENT}"`).toBe(false);
+    expect(screen.queryAllByRole('status').some((el) => text(el).includes('이미지 올리는 중')), '다시 연 편집기의 "올리는 중"').toBe(false);
   });
 
   test('S5-AC-59 C-4 첨부 목록: inline인 줄에만 "본문 이미지" 표시가 있다. 내려받기 링크와 "지우기"는 다른 첨부와 같다', async () => {

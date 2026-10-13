@@ -17,6 +17,7 @@ import {
   gate,
   heading1,
   isBlocked,
+  issueBody,
   on,
   renderAt,
   screen,
@@ -25,7 +26,7 @@ import {
   text,
   within,
 } from '../__tests__/portal';
-import { rejected } from '../__tests__/portal1a';
+import { rejected, settle } from '../__tests__/portal1a';
 import {
   IMAGES,
   NEW_IMAGE,
@@ -47,6 +48,8 @@ import {
 const URL_NEW = '/issues/new';
 const ISSUES = '/api/portal/issues';
 const STALE_IMAGE = '본문의 이미지 가운데 올린 지 오래된 것이 있습니다. 이미지를 다시 올린 뒤 저장하세요';
+/** An image of some other issue: its markdown came with a text copied from there. */
+const COPIED_IMAGE = '5c000000-0000-4000-8000-000000000001';
 
 type User = ReturnType<typeof renderAt>['user'];
 
@@ -97,6 +100,7 @@ describe('P-4 문의 등록: 본문 이미지', () => {
     expect(text(busy)).toContain('shot.png');
     expect(isBlocked(await submit()), '올리는 동안 "올리기"').toBe(true);
     await user.click(await submit());
+    await settle();
     expect(callsTo('POST', ISSUES), '올리는 동안 누른 "올리기"').toHaveLength(0);
     expect(await contentBox(), '올리는 동안 편집칸').not.toBeDisabled();
 
@@ -126,6 +130,22 @@ describe('P-4 문의 등록: 본문 이미지', () => {
     expect(body.content).not.toContain(NEW_IMAGE);
     expect(await imageIdsOf(create)).toEqual([NEW_IMAGE_2]);
     await atPath('/issues/ACME-8');
+  });
+
+  test('S5-AC-57 P-4 저장: 본문에 이 편집에서 올리지 않은 attachment:ID가 있어도(다른 문의에서 복사한 글) imageIds는 여기서 올린 것 하나뿐이다', async () => {
+    const copied = imageSyntax('남의 화면', COPIED_IMAGE);
+    const { user } = renderAt(URL_NEW);
+    await fill(user);
+    fireEvent.change(await contentBox(), { target: { value: `${copied}\n` } });
+    await pickImages(user, main, imageFile('shot.png'));
+    await inserted('shot.png', NEW_IMAGE);
+    await user.click(await submit());
+
+    const [create] = await sent('POST', ISSUES);
+    const body = await issueBody(create);
+    expect(body.content, '복사한 글은 본문에 그대로 간다').toContain(copied);
+    expect(body.content).toContain(imageSyntax('shot.png', NEW_IMAGE));
+    expect(await imageIdsOf(create)).toEqual([NEW_IMAGE]);
   });
 
   test.each([

@@ -94,6 +94,14 @@ async function openIssueEdit(user: User) {
   return issueContentBox();
 }
 
+/** Waits until the page has read the saved issue again and shows `part` in its content: only then does "고치기" open with the new version. */
+async function savedBodyWith(part: string) {
+  await eventually(() => {
+    expect(issueForm(), '보기로 돌아감').toBeNull();
+    expect(text(issueBody()), '다시 읽은 문의 본문').toContain(part);
+  });
+}
+
 /** Waits until `box` holds the markdown of the uploaded image. */
 async function inserted(box: () => Promise<HTMLTextAreaElement>, name: string, id: string) {
   const el = await box();
@@ -216,12 +224,14 @@ describe('P-5 문의 상세: 본문 이미지', () => {
         return acceptImage();
       });
       const { user } = renderAt(URL_7);
-      await open(user);
+      // A text that differs from the saved one: "저장" of an unchanged issue is blocked whether or not an upload runs.
+      await user.type(await open(user), '더 적습니다');
 
       await pickImages(user, scope, imageFile('shot.png'));
       expect(text(await statusWith('이미지 올리는 중'))).toContain('shot.png');
       expect(isBlocked(await buttonIn(scope, save)), `올리는 동안 "${save}"`).toBe(true);
       await user.click(await buttonIn(scope, save));
+      await settle();
       expect(callsTo(method, path), `올리는 동안 누른 "${save}"`).toHaveLength(0);
 
       release.open();
@@ -239,6 +249,60 @@ describe('P-5 문의 상세: 본문 이미지', () => {
       expect(await imageIdsOf(request)).toEqual([NEW_IMAGE]);
     },
   );
+
+  test.each(EDITORS.filter(({ editor }) => editor !== '문의 고치기'))(
+    'S5-AC-54 P-5 $editor, 올리는 중의 Ctrl+Enter: 편집칸에서 눌러도 저장 요청이 나가지 않고 쓰던 글이 남는다. 올라간 뒤에 누르면 나간다',
+    async ({ prepare, open, scope, box, save, method, path }) => {
+      prepare();
+      const release = gate();
+      on('post', IMAGES, async () => {
+        await release.opened;
+        return acceptImage();
+      });
+      const { user } = renderAt(URL_7);
+      const el = await open(user);
+      // A text that differs from the saved one, so that a save has something to send.
+      await user.type(el, '더 적습니다');
+      const draft = el.value;
+      await pickImages(user, scope, imageFile('shot.png'));
+      await statusWith('이미지 올리는 중');
+
+      await user.click(el);
+      await user.keyboard('{Control>}{Enter}{/Control}');
+      await settle();
+      expect(callsTo(method, path), '올리는 동안의 Ctrl+Enter').toHaveLength(0);
+      expect((await box()).value, '쓰던 글').toBe(draft);
+
+      release.open();
+      await inserted(box, 'shot.png', NEW_IMAGE);
+      await eventually(() => {
+        expect(isBlocked(within(scope() as HTMLElement).getByRole('button', { name: save })), `올라간 뒤 "${save}"`).toBe(false);
+      });
+      await user.click(await box());
+      await user.keyboard('{Control>}{Enter}{/Control}');
+
+      const [request] = await sent(method, path);
+      expect(await imageIdsOf(request)).toEqual([NEW_IMAGE]);
+    },
+  );
+
+  test('S5-AC-57 P-5 댓글 쓰기: 올린 이미지를 글에서 뺀 뒤 보내면 그 ID를 보내지 않는다', async () => {
+    state.issue = issueIn('IN_PROGRESS');
+    const { user } = renderAt(URL_7);
+    const box = await writeBox();
+    await user.type(box, '화면은 빼고 보냅니다');
+    await pickImages(user, writeFormNow, imageFile('shot.png'));
+    await inserted(writeBox, 'shot.png', NEW_IMAGE);
+
+    fireEvent.change(box, { target: { value: box.value.replace(`${imageSyntax('shot.png', NEW_IMAGE)}\n`, '') } });
+    await user.click(await buttonIn(writeFormNow, SEND));
+
+    const [post] = await sent('POST', COMMENTS_7);
+    const body = (await post?.body) as { content: string };
+    expect(body.content).toContain('화면은 빼고 보냅니다');
+    expect(body.content).not.toContain(NEW_IMAGE);
+    expect((await imageIdsOf(post)) ?? [], '글에서 뺀 이미지의 ID').toEqual([]);
+  });
 
   test.each(EDITORS)(
     'S5-AC-56 S5-AC-63 P-5 미리 보기($editor): 방금 올린 이미지는 임시 주소(/api/portal/images/ID)로, 있던 이미지는 문의의 첨부 주소로 그린다',
@@ -283,6 +347,9 @@ describe('P-5 문의 상세: 본문 이미지', () => {
     await user.click(await buttonIn(editForm, SAVE_COMMENT));
     await said('댓글을 고쳤습니다');
     expect(await imageIdsOf(commentPatches()[0])).toEqual([NEW_IMAGE]);
+    await eventually(() => {
+      expect(editForm(), '보기로 돌아감').toBeNull();
+    });
 
     expect(srcPath(await imageIn(() => commentById(5), 'shot.png')), '저장한 댓글의 이미지').toBe(attachmentPath(NEW_IMAGE));
 
@@ -298,7 +365,7 @@ describe('P-5 문의 상세: 본문 이미지', () => {
     });
     const second = commentPatches()[1];
     expect(((await second?.body) as UpdateCommentRequest).content).toContain('다시 봤습니다');
-    expect((await imageIdsOf(second)) ?? [], '이미 묶인 이미지의 ID').toEqual([]);
+    expect(await imageIdsOf(second), '이미 묶인 이미지뿐인 저장의 imageIds 칸').toBeUndefined();
   });
 
   test('S5-AC-57 P-5 문의 고치기: version과 바뀐 내용, imageIds만 보낸다. 이미지를 올리지 않고 글만 고치면 있던 이미지의 ID를 보내지 않는다', async () => {
@@ -309,8 +376,9 @@ describe('P-5 문의 상세: 본문 이미지', () => {
 
     const [first] = await sent('PATCH', ISSUE_7);
     expect(((await first?.body) as UpdateIssueRequest).version).toBe(4);
-    expect((await imageIdsOf(first)) ?? [], '글만 고친 저장의 imageIds').toEqual([]);
+    expect(await imageIdsOf(first), '글만 고친 저장의 imageIds 칸').toBeUndefined();
     await said('문의를 고쳤습니다');
+    await savedBodyWith('다시 해 봤습니다');
 
     await openIssueEdit(user);
     await pickImages(user, issueForm, imageFile('shot.png'));
@@ -322,6 +390,32 @@ describe('P-5 문의 상세: 본문 이미지', () => {
     expect(Object.keys(body).sort()).toEqual(['content', 'imageIds', 'version']);
     expect(body.version).toBe(5);
     expect(body.imageIds).toEqual([NEW_IMAGE]);
+  });
+
+  test('S5-AC-57 P-5 문의 고치기, 저장한 뒤: 올린 이미지는 묶인 것이 된다. 다시 열어 글만 고쳐 저장하면 둘째 요청에 imageIds 칸이 없다', async () => {
+    withIssueImage();
+    const { user } = renderAt(URL_7);
+    await openIssueEdit(user);
+    await pickImages(user, issueForm, imageFile('shot.png'));
+    await inserted(issueContentBox, 'shot.png', NEW_IMAGE);
+    await user.click(await buttonIn(issueForm, '저장'));
+
+    const [first] = await sent('PATCH', ISSUE_7);
+    expect(await imageIdsOf(first)).toEqual([NEW_IMAGE]);
+    await said('문의를 고쳤습니다');
+    expect(srcPath(await imageIn(issueBody, 'shot.png')), '저장한 본문의 이미지').toBe(attachmentPath(NEW_IMAGE));
+
+    const again = await openIssueEdit(user);
+    expect(again.value).toContain(imageSyntax('shot.png', NEW_IMAGE));
+    await user.type(again, '다시 봤습니다');
+    await user.click(await buttonIn(issueForm, '저장'));
+
+    const patches = await sent('PATCH', ISSUE_7, 2);
+    const body = (await patches[1]?.body) as UpdateIssueRequest;
+    expect(body.content).toContain('다시 봤습니다');
+    expect(body.content).toContain(imageSyntax('shot.png', NEW_IMAGE));
+    expect(body.version).toBe(5);
+    expect(Object.keys(body).sort(), '이미 묶인 이미지뿐인 저장의 칸').toEqual(['content', 'version']);
   });
 
   test('S5-AC-54 P-5 댓글 고치기를 그만둔 뒤 온 올리기 답: 아무것도 바꾸지 않는다. 다시 고치기를 열면 원래 글이다', async () => {
@@ -349,6 +443,8 @@ describe('P-5 문의 상세: 본문 이미지', () => {
     expect(commentPatches()).toHaveLength(0);
     expect(screen.queryAllByRole('alert').map((el) => text(el)).join(' ')).not.toContain('이미지');
     expect((await openCommentEdit(user)).value).toBe(before);
+    expect(isBlocked(await buttonIn(editForm, SAVE_COMMENT)), `다시 연 편집기의 "${SAVE_COMMENT}"`).toBe(false);
+    expect(screen.queryAllByRole('status').some((el) => text(el).includes('이미지 올리는 중')), '다시 연 편집기의 "올리는 중"').toBe(false);
   });
 
   test('S5-AC-59 P-5 첨부 목록: inline인 줄에만 "본문 이미지" 표시가 있다. 내려받기 링크는 다른 첨부와 같고 "지우기"로 지우면 흔적 줄이 된다', async () => {

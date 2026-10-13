@@ -1,8 +1,9 @@
 // 웹 테스트의 가짜 응답을 계약 스키마로 검증하는 도움(5번 묶음 acceptance.md 4절).
 // 검증기는 직접 쓴 것이라 그 낱말마다 본다: $ref, nullable(type의 배열), enum, required,
-// additionalProperties가 없는 객체의 모르는 칸, items, oneOf, format, pattern.
+// additionalProperties가 없는 객체의 모르는 칸, items, oneOf, format, pattern. 모르는 낱말은 던진다.
+// 끝의 묶음은 5번 묶음 웹 테스트의 견본(portal5.ts, console5.ts)과 같은 값을 진짜 계약 파일로 본다.
 import { describe, expect, it, test } from 'vitest';
-import { checkAgainst, checkResponse, responseSchema, violations, type ContractDocument, type Schema } from './contract';
+import { checkAgainst, checkResponse, contractDocument, responseSchema, unknownWords, violations, type ContractDocument, type Schema } from './contract';
 
 const DOC: ContractDocument = {
   paths: {
@@ -113,6 +114,76 @@ describe('계약 검증기 violations', () => {
     expect(violations(DOC, { type: 'object', additionalProperties: true }, { any: 1 })).toEqual([]);
     expect(violations(DOC, { type: 'object', additionalProperties: false }, { any: 1 })).toEqual(['$.any: the contract has no such field']);
   });
+
+  it.each<[string, Record<string, unknown>, unknown]>([
+    ['allOf', { allOf: [{ type: 'string' }] }, 'x'],
+    ['anyOf', { anyOf: [{ type: 'string' }, { type: 'null' }] }, 'x'],
+    ['const', { type: 'string', const: 'FILE' }, 'FILE'],
+    ['not', { not: { type: 'null' } }, 'x'],
+    ['minLength', { type: 'string', minLength: 1 }, 'x'],
+    ['maxLength', { type: 'string', maxLength: 255 }, 'x'],
+    ['minimum', { type: 'integer', minimum: 1 }, 3],
+    ['maximum', { type: 'integer', maximum: 100 }, 3],
+    ['minItems', { type: 'array', minItems: 1 }, ['x']],
+    ['maxItems', { type: 'array', maxItems: 10 }, ['x']],
+    ['uniqueItems', { type: 'array', uniqueItems: true }, ['x']],
+    ['nullable', { type: 'string', nullable: true }, 'x'],
+  ])('모르는 낱말을 만나면 맞는 값이어도 던진다: %s', (word, schema, value) => {
+    expect(() => violations(DOC, schema as Schema, value)).toThrow(`$: the contract check does not know the schema word "${word}"`);
+  });
+
+  test('모르는 낱말은 닿은 칸의 자리와 함께 모두 말하고, 값에 대해 말하지 않는 낱말(description, default)은 지난다', () => {
+    const schema = {
+      type: 'object',
+      description: '설명',
+      properties: {
+        name: { type: 'string', description: '이름', default: 'x' },
+        files: { type: 'array', items: { type: 'string', minLength: 1, maxLength: 255 } },
+      },
+    } as Schema;
+
+    expect(violations(DOC, schema, { name: 'log.txt' })).toEqual([]);
+    expect(violations(DOC, schema, { name: 'log.txt', files: [] }), '닿지 않은 스키마는 보지 않는다').toEqual([]);
+    expect(() => violations(DOC, schema, { files: ['a'] })).toThrow('$.files[0]: the contract check does not know the schema word "minLength", "maxLength"');
+  });
+
+  test('unknownWords: 계약 파일의 이름 붙은 스키마와 경로 아래의 모든 schema에서 모르는 낱말을 자리와 함께 찾는다', () => {
+    const doc = {
+      paths: {
+        '/things': {
+          get: {
+            operationId: 'listThings',
+            parameters: [{ name: 'size', in: 'query', schema: { type: 'integer', format: 'int32', default: 20, maximum: 100 } }],
+            requestBody: { content: { 'application/json': { schema: { allOf: [{ $ref: '#/components/schemas/Thing' }] } } } },
+            responses: { '200': { content: { 'application/json': { schema: { $ref: '#/components/schemas/Thing' } } } } },
+          },
+        },
+      },
+      components: {
+        schemas: {
+          Thing: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', maxLength: 255 },
+              tags: { type: 'array', items: { type: 'string', minLength: 1 } },
+              owner: { oneOf: [{ type: 'null' }, { type: 'string', const: 'kim' }] },
+              labels: { type: 'object', additionalProperties: { type: 'string', pattern: '^a', anyOf: [] } },
+            },
+          },
+        },
+      },
+    } as unknown as ContractDocument;
+
+    expect(unknownWords(doc)).toEqual([
+      '#/components/schemas/Thing.properties.name: "maxLength"',
+      '#/components/schemas/Thing.properties.tags.items: "minLength"',
+      '#/components/schemas/Thing.properties.owner.oneOf[1]: "const"',
+      '#/components/schemas/Thing.properties.labels.additionalProperties: "anyOf"',
+      '#/paths./things.get.parameters[0].schema: "maximum"',
+      '#/paths./things.get.requestBody.content.application/json.schema: "allOf"',
+    ]);
+    expect(unknownWords(DOC)).toEqual([]);
+  });
 });
 
 describe('계약 검증기 응답 찾기', () => {
@@ -160,5 +231,104 @@ describe('계약 검증기 checkResponse: 진짜 계약 파일', () => {
   test('앱마다 자기 계약을 읽는다: 콘솔에만 있는 operation은 포털에서 못 찾는다', () => {
     expect(() => checkResponse('portal', 'listIssueHistory', 200, {})).toThrow('openapi-portal.json: the contract has no operation listIssueHistory');
     expect(() => checkResponse('console', 'listIssueHistory', 200, {})).toThrow('A fake listIssueHistory 200 response does not match openapi-console.json');
+  });
+
+  it.each(['portal', 'console'] as const)('%s: 계약 파일 전체에 검증기가 모르는 스키마 낱말이 없다', (app) => {
+    expect(unknownWords(contractDocument(app))).toEqual([]);
+  });
+});
+
+// The values the slice 5 screen tests give their fake servers (portal5.ts and console5.ts over
+// portal.ts, console.ts and console3.ts), written out here: those files start a fake server
+// and belong to the apps, so this package does not import them.
+describe('계약 검증기 checkResponse: 5번 묶음 웹 테스트의 견본', () => {
+  const T0 = '2026-10-08T03:15:00Z';
+  const OLD_IMAGE = '5a000000-0000-4000-8000-000000000001';
+  const PEOPLE = {
+    portal: { accountId: 11, kind: 'CUSTOMER', name: '김고객', photoUpdatedAt: null },
+    console: { accountId: 11, name: '김고객', role: 'CUSTOMER', photoUpdatedAt: null },
+  };
+  const AGENT_PERSON = { accountId: 2, name: '이상담', role: 'AGENT', photoUpdatedAt: null };
+
+  /** `attachment()` of the app's support file. */
+  function attachment(app: 'portal' | 'console', over: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id: '7f1c2a9e-0c4b-4d8e-9a51-3b2f6c1d0e01',
+      commentId: null,
+      contentType: 'text/plain',
+      createdAt: T0,
+      deleted: false,
+      deletedAt: null,
+      deletedBy: null,
+      fileName: 'log.txt',
+      inline: false,
+      ...(app === 'console' ? { internal: false } : {}),
+      size: 2048,
+      uploadedBy: PEOPLE[app],
+      ...over,
+    };
+  }
+
+  /** `inlineAttachment()` of portal5.ts and console5.ts. */
+  const inlineAttachment = (app: 'portal' | 'console', over: Record<string, unknown> = {}) =>
+    attachment(app, { id: OLD_IMAGE, fileName: 'old.png', contentType: 'image/png', inline: true, ...over });
+  /** A deleted content image: `deletedAttachment()` of console5.ts, and what the DELETE handler of portal5.ts leaves. */
+  const deletedImage = (app: 'portal' | 'console') => inlineAttachment(app, { deleted: true, fileName: null, deletedAt: T0, deletedBy: PEOPLE[app] });
+  /** `paged()` of the app's support file. */
+  const paged = (items: unknown[]) => ({ items, page: 1, size: 20, totalElements: items.length, totalPages: 1 });
+  /** `rejected()` and `imageRejected()` of the support files. */
+  const rejected = (code: string) => ({ code, message: `${code} (server text).` });
+
+  it.each(['portal', 'console'] as const)('%s: 첨부 목록(listAttachments 200)의 본문 이미지(inline이 참), 댓글의 본문 이미지, 지워진 흔적 견본이 계약에 맞는다', (app) => {
+    const page = paged([inlineAttachment(app), inlineAttachment(app, { commentId: 5 }), deletedImage(app), attachment(app)]);
+
+    expect(checkResponse(app, 'listAttachments', 200, page)).toBe(page);
+    const before5 = Object.fromEntries(Object.entries(inlineAttachment(app)).filter(([name]) => name !== 'inline'));
+    expect(() => checkResponse(app, 'listAttachments', 200, paged([before5])), 'inline이 없는 옛 견본').toThrow('$.items[0].inline: required, but missing');
+    expect(() => checkResponse(app, 'listAttachments', 200, paged([inlineAttachment(app, { inline: null })]))).toThrow('$.items[0].inline: expected boolean, got null null');
+  });
+
+  test('portal: 첨부에는 internal 칸이 없고, console: 내부 댓글의 본문 이미지는 internal이 참이다', () => {
+    expect(() => checkResponse('portal', 'listAttachments', 200, paged([inlineAttachment('portal', { internal: false })]))).toThrow(
+      '$.items[0].internal: the contract has no such field',
+    );
+    const page = paged([inlineAttachment('console', { commentId: 32, internal: true, uploadedBy: AGENT_PERSON })]);
+    expect(checkResponse('console', 'listAttachments', 200, page)).toBe(page);
+  });
+
+  test('console: 이력(listIssueHistory 200)의 ATTACHMENT 견본이 계약에 맞는다. 붙임은 newValue에, 지움은 oldValue에 첨부 ID가 든다', () => {
+    const entry = (over: Record<string, unknown>) => ({
+      id: 1,
+      kind: 'CHANGED',
+      field: 'ATTACHMENT',
+      oldValue: null,
+      newValue: null,
+      oldPerson: null,
+      newPerson: null,
+      actor: AGENT_PERSON,
+      createdAt: '2026-10-09T01:02:03Z',
+      ...over,
+    });
+    const page = paged([entry({ newValue: OLD_IMAGE }), entry({ oldValue: OLD_IMAGE }), entry({ newValue: OLD_IMAGE, actor: PEOPLE.console })]);
+
+    expect(checkResponse('console', 'listIssueHistory', 200, page)).toBe(page);
+    expect(() => checkResponse('console', 'listIssueHistory', 200, paged([entry({ newValue: OLD_IMAGE, fileName: 'old.png' })]))).toThrow(
+      '$.items[0].fileName: the contract has no such field',
+    );
+  });
+
+  it.each(['FILE_NOT_IMAGE', 'FILE_TOO_LARGE', 'FILE_EMPTY', 'TEMPORARY_IMAGE_LIMIT_EXCEEDED', 'ATTACHMENT_QUOTA_EXCEEDED'])(
+    'console: 올리기의 400 견본(%s)이 계약에 맞는다',
+    (code) => {
+      const body = rejected(code);
+      expect(checkResponse('console', 'uploadImage', 400, body)).toBe(body);
+    },
+  );
+
+  it.each(
+    (['portal', 'console'] as const).flatMap((app) => ['createIssue', 'updateIssue', 'createComment', 'updateComment'].map((operationId) => ({ app, operationId }))),
+  )('$app: 저장($operationId)의 400 TEMPORARY_IMAGE_INVALID 견본이 계약에 맞는다', ({ app, operationId }) => {
+    const body = rejected('TEMPORARY_IMAGE_INVALID');
+    expect(checkResponse(app, operationId, 400, body)).toBe(body);
   });
 });

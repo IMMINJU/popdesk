@@ -24,7 +24,7 @@ import {
   statusWith,
   text,
 } from '../__tests__/console';
-import { rejected } from '../__tests__/console1a';
+import { rejected, settle } from '../__tests__/console1a';
 import { ISSUES, KIM, select, type CreateIssueRequest } from '../__tests__/console3';
 import {
   IMAGES,
@@ -35,6 +35,7 @@ import {
   imageFile,
   imageIdsOf,
   imageInputOf,
+  imageRejected,
   imageSyntax,
   pickImages,
   proxyPayloadTooLarge,
@@ -43,6 +44,8 @@ import {
 
 const URL_NEW = '/issues/new';
 const STALE_IMAGE = '본문의 이미지 가운데 올린 지 오래된 것이 있습니다. 이미지를 다시 올린 뒤 저장하세요';
+/** An image of some other issue: its markdown came with a text copied from there. */
+const COPIED_IMAGE = '5c000000-0000-4000-8000-000000000001';
 
 type User = ReturnType<typeof renderAt>['user'];
 
@@ -100,6 +103,7 @@ describe('C-19 대리 등록: 본문 이미지', () => {
     expect(text(busy)).toContain('shot.png');
     expect(isBlocked(await submit()), '올리는 동안 "등록"').toBe(true);
     await user.click(await submit());
+    await settle();
     expect(callsTo('POST', ISSUES), '올리는 동안 누른 "등록"').toHaveLength(0);
     expect(await contentBox(), '올리는 동안 편집칸').not.toBeDisabled();
 
@@ -131,16 +135,32 @@ describe('C-19 대리 등록: 본문 이미지', () => {
     await atPath('/issues/ACME-8');
   });
 
+  test('S5-AC-57 C-19 저장: 본문에 이 편집에서 올리지 않은 attachment:ID가 있어도(다른 문의에서 복사한 글) imageIds는 여기서 올린 것 하나뿐이다', async () => {
+    const copied = imageSyntax('남의 화면', COPIED_IMAGE);
+    const { user } = renderAt(URL_NEW);
+    await fill(user);
+    fireEvent.change(await contentBox(), { target: { value: `${copied}\n` } });
+    await pickImages(user, main, imageFile('shot.png'));
+    await inserted('shot.png', NEW_IMAGE);
+    await user.click(await submit());
+
+    const [create] = await sent('POST', ISSUES);
+    const body = (await create?.body) as CreateIssueRequest;
+    expect(body.content, '복사한 글은 본문에 그대로 간다').toContain(copied);
+    expect(body.content).toContain(imageSyntax('shot.png', NEW_IMAGE));
+    expect(await imageIdsOf(create)).toEqual([NEW_IMAGE]);
+  });
+
   test.each([
-    { why: 'FILE_NOT_IMAGE', answer: () => rejected('FILE_NOT_IMAGE'), says: 'PNG, JPEG, GIF, WebP 이미지만 본문에 넣을 수 있습니다' },
-    { why: 'FILE_TOO_LARGE', answer: () => rejected('FILE_TOO_LARGE'), says: '파일 하나는 10MB까지입니다.' },
-    { why: 'FILE_EMPTY', answer: () => rejected('FILE_EMPTY'), says: '빈 파일은 올릴 수 없습니다.' },
+    { why: 'FILE_NOT_IMAGE', answer: () => imageRejected('FILE_NOT_IMAGE'), says: 'PNG, JPEG, GIF, WebP 이미지만 본문에 넣을 수 있습니다' },
+    { why: 'FILE_TOO_LARGE', answer: () => imageRejected('FILE_TOO_LARGE'), says: '파일 하나는 10MB까지입니다.' },
+    { why: 'FILE_EMPTY', answer: () => imageRejected('FILE_EMPTY'), says: '빈 파일은 올릴 수 없습니다.' },
     {
       why: 'TEMPORARY_IMAGE_LIMIT_EXCEEDED',
-      answer: () => rejected('TEMPORARY_IMAGE_LIMIT_EXCEEDED'),
+      answer: () => imageRejected('TEMPORARY_IMAGE_LIMIT_EXCEEDED'),
       says: '저장하지 않은 이미지가 너무 많습니다. 글을 저장한 뒤 다시 올리세요',
     },
-    { why: 'ATTACHMENT_QUOTA_EXCEEDED', answer: () => rejected('ATTACHMENT_QUOTA_EXCEEDED'), says: '팀의 첨부 용량이 모자랍니다. 관리자에게 알려 주세요.' },
+    { why: 'ATTACHMENT_QUOTA_EXCEEDED', answer: () => imageRejected('ATTACHMENT_QUOTA_EXCEEDED'), says: '팀의 첨부 용량이 모자랍니다. 관리자에게 알려 주세요.' },
     { why: '413(앞단의 답)', answer: () => proxyPayloadTooLarge(), says: '파일이 서버 앞단의 크기 상한에 걸렸습니다' },
     { why: '429', answer: () => errors.rateLimited(30), says: '요청이 많습니다. 30초 뒤 다시 하세요.' },
     { why: '연결 끊김', answer: () => HttpResponse.error(), says: '서버에 연결하지 못했습니다. 잠시 뒤 다시 하세요.' },

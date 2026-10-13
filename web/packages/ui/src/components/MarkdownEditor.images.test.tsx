@@ -109,6 +109,19 @@ function transfer(files: File[]) {
   };
 }
 
+/**
+ * What a drag carries before the drop. A browser keeps the files to itself until then:
+ * `files` is empty and `getAsFile` gives null. Only `types` and the kind and type of each item say that files are coming.
+ */
+function dragging(files: File[]) {
+  return {
+    files: Object.assign([] as File[], { item: () => null }),
+    items: files.map((f) => ({ kind: 'file', type: f.type, getAsFile: () => null })),
+    types: ['Files'],
+    getData: () => '',
+  };
+}
+
 /** Puts the cursor at `at` in the text area. */
 function cursor(t: HTMLTextAreaElement, at: number) {
   t.focus();
@@ -236,6 +249,24 @@ describe('MarkdownEditor 이미지 올리기', () => {
     expect(alertLine()).toBe('');
   });
 
+  test('S5-AC-54 MarkdownEditor 올라감: 파일 이름의 [와 ]는 빼고 설명에 넣는다(a[1].png는 ![a1.png](attachment:{id}))', async () => {
+    const { onImageUpload, started } = uploads();
+    const onChange = vi.fn();
+    render(<Controlled initial="" onChange={onChange} onImageUpload={onImageUpload} />);
+    const user = userEvent.setup();
+    const t = await area();
+
+    await user.upload(await imageInput(), png('a[1].png'));
+    const upload = await started(1);
+    expect(onImageUpload.mock.calls[0]?.[0].name, '올리는 파일의 이름은 그대로다').toBe('a[1].png');
+    await upload.answer({ ok: true, id: ID });
+
+    await waitFor(() => {
+      expect(t).toHaveValue(`![a1.png](attachment:${ID})\n`);
+    });
+    expect(onChange).toHaveBeenCalledWith(`![a1.png](attachment:${ID})\n`);
+  });
+
   test('S5-AC-54 MarkdownEditor 올라감: 올리는 사이 앞쪽에 글을 더 썼으면 그만큼 민 자리에, 뒤쪽에 썼으면 그 자리에 넣는다', async () => {
     const { onImageUpload, started } = uploads();
     render(<Controlled initial="앞글뒷글" onImageUpload={onImageUpload} />);
@@ -288,8 +319,8 @@ describe('MarkdownEditor 이미지 올리기', () => {
     const drag = png('drag.png');
     expect(text(container)).not.toContain(DROP_HERE);
 
-    fireEvent.dragEnter(t, { dataTransfer: transfer([drag]) });
-    const overNotPrevented = fireEvent.dragOver(t, { dataTransfer: transfer([drag]) });
+    fireEvent.dragEnter(t, { dataTransfer: dragging([drag]) });
+    const overNotPrevented = fireEvent.dragOver(t, { dataTransfer: dragging([drag]) });
     expect(overNotPrevented, '놓을 수 있게 dragover를 받는다').toBe(false);
     await waitFor(() => {
       expect(text(container)).toContain(DROP_HERE);
@@ -315,12 +346,12 @@ describe('MarkdownEditor 이미지 올리기', () => {
     const t = await area();
     await imageButton();
 
-    fireEvent.dragEnter(t, { dataTransfer: transfer([png('drag.png')]) });
-    fireEvent.dragOver(t, { dataTransfer: transfer([png('drag.png')]) });
+    fireEvent.dragEnter(t, { dataTransfer: dragging([png('drag.png')]) });
+    fireEvent.dragOver(t, { dataTransfer: dragging([png('drag.png')]) });
     await waitFor(() => {
       expect(text(container)).toContain(DROP_HERE);
     });
-    fireEvent.dragLeave(t, { dataTransfer: transfer([png('drag.png')]) });
+    fireEvent.dragLeave(t, { dataTransfer: dragging([png('drag.png')]) });
 
     await waitFor(() => {
       expect(text(container)).not.toContain(DROP_HERE);
