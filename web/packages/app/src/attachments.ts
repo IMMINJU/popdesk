@@ -70,6 +70,3 @@ export function uploadFile<A>(
 export function countedBytes<A extends { deleted: boolean; size: number }>(items: readonly A[], left?: (item: A) => boolean): number {
   return items.filter((a) => !a.deleted && !left?.(a)).reduce((sum, a) => sum + a.size, 0);
 }
-
-// Until `./bodyImages` is in the `exports` of package.json (that file is locked): the apps reach it through here.
-export * from './bodyImages';

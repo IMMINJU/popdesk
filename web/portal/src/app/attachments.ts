@@ -1,10 +1,12 @@
 // Uploading and opening attachments (screens.md P-4·P-5 첨부, ATT-1~5): the shared
 // code with the portal's paths.
-import { attachmentAddress, countedBytes, uploadFile, type ImagePaths } from '@popdesk/app/attachments';
+import { attachmentAddress, countedBytes, uploadFile } from '@popdesk/app/attachments';
+import type { ImagePaths } from '@popdesk/app/bodyImages';
 import { api, type Schemas } from '../api';
 import { call, type Result } from './result';
 
-export { ATTACHMENT_LIMITS, IMAGE_SAVE_TEXT, IMAGE_TEXT, REJECT_TEXT, uploadFailureText, useEditorImages, type UploadFailure } from '@popdesk/app/attachments';
+export { ATTACHMENT_LIMITS, REJECT_TEXT, uploadFailureText, type UploadFailure } from '@popdesk/app/attachments';
+export { IMAGE_SAVE_TEXT, IMAGE_TEXT, useEditorImages } from '@popdesk/app/bodyImages';
 
 export type Attachment = Schemas['Attachment'];
 
