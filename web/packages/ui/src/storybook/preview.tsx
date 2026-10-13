@@ -1,5 +1,6 @@
 import type { Decorator, Preview } from '@storybook/react-vite';
 import '../tokens.css';
+import '../styles.css';
 
 // Theme and density are switched on <html>, the same way the apps do it
 // (tokens.md 3·6절). C-9 adds the look; this only places the switches.

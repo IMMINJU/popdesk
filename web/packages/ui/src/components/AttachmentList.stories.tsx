@@ -77,3 +77,12 @@ export const Deleting: Story = {
     ],
   },
 };
+/** 본문 이미지 표시 (5-attachments screens.md 3절): listed, downloaded and deleted like any other attachment. */
+export const InlineImage: Story = {
+  args: {
+    items: [
+      { id: '1', name: 'shot.png', size: 240_000, href: '#', uploaderLabel: '나', createdAt: '2026-10-09T01:00:00Z', canDelete: true, inline: true },
+      { id: '2', name: 'guide.pdf', size: 1_200_000, href: '#', uploaderLabel: '지원팀', createdAt: '2026-10-09T02:00:00Z' },
+    ],
+  },
+};
