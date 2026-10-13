@@ -2,6 +2,7 @@
 // moving pages focuses the list heading and says "2쪽, 45건 가운데 21~40" once.
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { pageAnnouncement as sharedAnnouncement } from './messages';
 
 export const PAGE_SIZE = 20;
 
@@ -13,7 +14,7 @@ export interface PageInfo {
   items: readonly unknown[];
 }
 
-/** The app's text for the line read after a page change. */
+/** The text for the line read after a page change. */
 export type PageAnnouncement = (page: number, size: number, total: number, shown: number) => string;
 
 /** The page in the address, from 1. Anything else is page 1. */
@@ -27,7 +28,7 @@ export function usePageParam(name = 'page'): number {
  * After a page change: once the new page is in, focus `heading` and set the
  * announcement text for a `role="status"` line.
  */
-export function usePageMove(info: PageInfo | undefined, heading: { current: HTMLElement | null }, pageAnnouncement: PageAnnouncement) {
+export function usePageMove(info: PageInfo | undefined, heading: { current: HTMLElement | null }, pageAnnouncement: PageAnnouncement = sharedAnnouncement) {
   const moved = useRef(false);
   const [announcement, setAnnouncement] = useState('');
   const page = info?.page;

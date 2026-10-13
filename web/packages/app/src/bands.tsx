@@ -1,7 +1,8 @@
 // Bands for a failed save (screens.md 2절): 401 with a login link in a new tab,
 // 403, 400 without fields, 409, 5xx, and the 429 countdown. The texts are the
-// app's own and come in as `words`.
+// ones both apps share (messages.ts) unless others come in as `words`.
 import { Alert, FormErrorSummary, type FieldError } from '@popdesk/ui';
+import { failureText, rateLimitedText, TEXT } from './messages';
 import type { Failure } from './result';
 
 export interface SaveFailureWords {
@@ -15,12 +16,15 @@ export interface RateLimitWords {
   rateLimitedText: (seconds: number) => string;
 }
 
+const SAVE_WORDS: SaveFailureWords = { openLogin: TEXT.openLogin, saveSessionEnded: TEXT.saveSessionEnded, failureText };
+const RATE_WORDS: RateLimitWords = { canRetry: TEXT.canRetry, rateLimitedText };
+
 /**
  * The band for `failure`. 400 with fields goes to the summary band and 429 to
  * RateLimitBand, so both draw nothing here.
  */
-export function SaveFailure(props: { failure: Failure | null; known?: Record<string, string>; words: SaveFailureWords }) {
-  const { failure, words } = props;
+export function SaveFailure(props: { failure: Failure | null; known?: Record<string, string>; words?: SaveFailureWords }) {
+  const { failure, words = SAVE_WORDS } = props;
   if (!failure || failure.kind === 'invalid' || failure.kind === 'rateLimited') return null;
   if (failure.kind === 'unauthenticated') {
     return (
@@ -44,8 +48,8 @@ export function SaveFailure(props: { failure: Failure | null; known?: Record<str
  * once; the live region is not read again every second. When sending is open
  * again, one polite notice says so.
  */
-export function RateLimitBand(props: { active: boolean; left: number; initial: number; ended: boolean; words: RateLimitWords }) {
-  const { words } = props;
+export function RateLimitBand(props: { active: boolean; left: number; initial: number; ended: boolean; words?: RateLimitWords }) {
+  const { words = RATE_WORDS } = props;
   if (props.active) {
     return (
       <Alert tone="error">

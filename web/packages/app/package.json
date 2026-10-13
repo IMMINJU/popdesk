@@ -8,6 +8,7 @@
     "./csrf": "./src/csrf.ts",
     "./hooks": "./src/hooks.ts",
     "./locale": "./src/locale.ts",
+    "./messages": "./src/messages.ts",
     "./navigate": "./src/navigate.ts",
     "./PageNav": "./src/PageNav.tsx",
     "./paging": "./src/paging.ts",

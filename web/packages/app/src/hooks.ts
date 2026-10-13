@@ -1,8 +1,9 @@
 // Hooks every screen of both apps uses for the states of screens.md 2절. The
-// texts are the app's own and come in as arguments.
+// texts are the ones both apps share (messages.ts) unless others come in.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useBlocker } from 'react-router';
 import type { FieldError } from '@popdesk/ui';
+import { fieldSummaryTitle, fieldText, TEXT, type FieldLimits } from './messages';
 import type { Failure, FieldProblem, Result } from './result';
 import { useToLogin } from './sessionContext';
 
@@ -139,18 +140,15 @@ export function useLeaveGuard(dirty: boolean) {
   return useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
 }
 
-export interface FieldLimits {
-  min?: number;
-  max?: number;
-  /** What the field holds, e.g. "이메일" for INVALID_FORMAT. */
-  format?: string;
-}
+export type { FieldLimits };
 
-/** The app's texts for field errors. The object must keep its identity between renders. */
+/** The texts for field errors. The object must keep its identity between renders. */
 export interface FieldWords {
   fieldText: (code: string, limits?: FieldLimits) => string;
   fieldSummaryTitle: (count: number) => string;
 }
+
+const FIELD_WORDS: FieldWords = { fieldText, fieldSummaryTitle };
 
 export interface FieldSpec {
   /** `id` of the input, for focus and the summary link. */
@@ -175,7 +173,7 @@ export interface FieldErrors<F extends string> {
  * Field errors for one form (screens.md 2절 400 fields). `specs` lists the
  * form's fields in order; the keys are the API field names.
  */
-export function useFieldErrors<F extends string>(specs: Record<F, FieldSpec>, words: FieldWords): FieldErrors<F> {
+export function useFieldErrors<F extends string>(specs: Record<F, FieldSpec>, words: FieldWords = FIELD_WORDS): FieldErrors<F> {
   const [errors, setErrors] = useState<Partial<Record<F, string>>>({});
   const [summary, setSummary] = useState<FieldErrors<F>['summary']>(null);
   const focusId = useRef<string | null>(null);
@@ -263,7 +261,7 @@ export function useFocusWhenReady(ref: { current: HTMLElement | null }, ready: b
 }
 
 /** Sets `document.title`; the screen title goes first, then the app's `displayName` (screens.md 2절 접근성). */
-export function useDocumentTitle(title: string | null, displayName: string) {
+export function useDocumentTitle(title: string | null, displayName: string = TEXT.displayName) {
   useEffect(() => {
     if (title !== null) document.title = `${title} - ${displayName}`;
   }, [title, displayName]);
