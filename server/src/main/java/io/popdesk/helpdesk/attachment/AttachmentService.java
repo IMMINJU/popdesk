@@ -11,7 +11,8 @@ import io.popdesk.helpdesk.AccountRateLimit;
 import io.popdesk.helpdesk.IssueStatus;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.attachment.AttachmentRepository.AttachmentRow;
-import io.popdesk.helpdesk.attachment.storage.AttachmentStorage;
+import io.popdesk.helpdesk.attachment.AttachmentRepository.FilePlace;
+import io.popdesk.helpdesk.attachment.storage.AttachmentStorages;
 import io.popdesk.helpdesk.comment.CommentRepository;
 import io.popdesk.helpdesk.comment.CommentRepository.CommentRow;
 import io.popdesk.helpdesk.company.CompanyRepository;
@@ -49,8 +50,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Attachments of issues (ATT-1 to ATT-11). The one place that reads file contents from the
- * {@link AttachmentStorage}, and only after it found the attachment within the viewer's scope
+ * {@link AttachmentStorages}, and only after it found the attachment within the viewer's scope
  * (S0-AC-84, S0 premortem 10).
+ *
+ * <p>A new file goes to the storage the settings name. A file that is there already is read and removed
+ * where its row says it is (ATT-9, S5B-AC-10).
  *
  * <p>An upload has three steps (S0-AC-56): ① the {@code pending} row is committed, ② the contents are
  * written to the storage, ③ a business transaction locks the issue row and turns the row
@@ -104,7 +108,7 @@ public class AttachmentService implements IssueAttachments {
     private final IssueHistoryRepository history;
     private final CommentRepository comments;
     private final CompanyRepository companies;
-    private final AttachmentStorage storage;
+    private final AttachmentStorages storage;
     private final AccountRateLimit rateLimit;
     private final Transactions transactions;
     private final OpsAlerts alerts;
@@ -112,7 +116,7 @@ public class AttachmentService implements IssueAttachments {
     private final long quota;
 
     AttachmentService(AttachmentRepository attachments, IssueRepository issues, IssueHistoryRepository history,
-            CommentRepository comments, CompanyRepository companies, AttachmentStorage storage, AccountRateLimit rateLimit,
+            CommentRepository comments, CompanyRepository companies, AttachmentStorages storage, AccountRateLimit rateLimit,
             Transactions transactions, OpsAlerts alerts, Clock clock, Environment environment) {
         this.attachments = attachments;
         this.issues = issues;
@@ -183,7 +187,7 @@ public class AttachmentService implements IssueAttachments {
         });
         if (stored == null) {
             // The cleanup ended the pending row while step ② ran; the contents written since go too.
-            storage.delete(id);
+            deleteNew(id);
             throw new IllegalStateException("The attachment was ended before it was stored");
         }
         reviewQuota();
@@ -254,7 +258,7 @@ public class AttachmentService implements IssueAttachments {
         for (UUID id : ids) {
             try {
                 if (attachments.isEnded(id)) {
-                    storage.delete(id);
+                    deleteNew(id);
                 }
             } catch (RuntimeException e) {
                 log.warn("Removing the file of a failed filing failed ({}).", e.getClass().getSimpleName());
@@ -293,7 +297,7 @@ public class AttachmentService implements IssueAttachments {
                 List.of(new Received(file, received.name(), format.contentType()))).getFirst();
         if (attachments.updateStoredTemporary(id) != 1) {
             // The cleanup ended the pending row while step ② ran; the contents written since go too.
-            storage.delete(id);
+            deleteNew(id);
             throw new IllegalStateException("The image was ended before it was stored");
         }
         reviewQuota();
@@ -383,8 +387,7 @@ public class AttachmentService implements IssueAttachments {
      */
     public Download download(Viewer viewer, String key, String id) {
         AttachmentRow attachment = get(viewer, key, id);
-        return new Download(attachment, new AttachmentContents(attachment.size(),
-                (offset, length) -> storage.read(attachment.id(), offset, length)));
+        return new Download(attachment, contents(attachment));
     }
 
     /**
@@ -400,8 +403,36 @@ public class AttachmentService implements IssueAttachments {
     /** The temporary image and its contents after the check of {@link #temporaryImage} (S5-AC-10). */
     public Download downloadTemporaryImage(Viewer viewer, String id) {
         AttachmentRow image = temporaryImage(viewer, id);
-        return new Download(image, new AttachmentContents(image.size(),
-                (offset, length) -> storage.read(image.id(), offset, length)));
+        return new Download(image, contents(image));
+    }
+
+    /**
+     * The contents of a file the caller found in the viewer's scope, from the place its row names. The
+     * first piece is read here, before there is a response: a file that is gone or cannot be read is an
+     * error the caller answers with 500, never a response of the right length without its bytes
+     * (S5B-AC-31).
+     */
+    private AttachmentContents contents(AttachmentRow attachment) {
+        byte[] first = piece(attachment, 0, (int) Math.min(AttachmentContents.PIECE, attachment.size()));
+        if (first.length == 0 && attachment.size() > 0) {
+            log.error("The file of attachment {} in the {} storage is empty.", attachment.id(),
+                    attachment.storage());
+            throw new IllegalStateException("The attachment's contents ended before its size");
+        }
+        return new AttachmentContents(attachment.size(), first,
+                (offset, length) -> piece(attachment, offset, length));
+    }
+
+    /** One piece of a file. A failure is logged with the attachment's ID and storage kind, never its name. */
+    private byte[] piece(AttachmentRow attachment, long offset, int length) {
+        try {
+            return storage.read(attachment.storage(), attachment.storageLocation(), attachment.id(), offset,
+                    length);
+        } catch (RuntimeException e) {
+            log.error("Reading the file of attachment {} from the {} storage failed ({}).", attachment.id(),
+                    attachment.storage(), e.getClass().getSimpleName());
+            throw e;
+        }
     }
 
     // Deleting
@@ -463,7 +494,8 @@ public class AttachmentService implements IssueAttachments {
     public void removeFiles(List<UUID> ids) {
         for (UUID id : ids) {
             try {
-                storage.delete(id);
+                FilePlace place = attachments.filePlace(id).orElseThrow();
+                storage.delete(place.storage(), place.location(), id);
                 attachments.updatePurged(id);
             } catch (RuntimeException e) {
                 log.warn("Removing the file of a deleted attachment failed ({}); the attachment cleanup tries again.",
@@ -485,7 +517,7 @@ public class AttachmentService implements IssueAttachments {
                 .map(f -> {
                     UUID id = UUID.randomUUID();
                     return new PendingAttachment(id, issueId, commentId, f.name(), f.file().getSize(),
-                            f.contentType(), storage.kind(), storage.location(id), viewer.accountId(), now,
+                            f.contentType(), storage.kind(), storage.location(), viewer.accountId(), now,
                             inline);
                 })
                 .toList();
@@ -494,14 +526,19 @@ public class AttachmentService implements IssueAttachments {
         for (int i = 0; i < rows.size(); i++) {
             UUID id = rows.get(i).id();
             MultipartFile file = files.get(i).file();
-            try {
-                storage.write(id, file.getInputStream(), file.getSize());
+            try (InputStream contents = file.getInputStream()) {
+                storage.write(id, contents, file.getSize());
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
             ids.add(id);
         }
         return ids;
+    }
+
+    /** Removes what step ② wrote for a row of this request: it is in the storage of new files. */
+    private void deleteNew(UUID id) {
+        storage.delete(storage.kind(), storage.location(), id);
     }
 
     /** The file's name (1 to 255 characters, as sent) and content type; a bad name adds to {@code errors}. */

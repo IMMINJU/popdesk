@@ -1,10 +1,9 @@
 package io.popdesk.helpdesk.attachment.storage;
 
 import java.io.InputStream;
+import java.util.OptionalLong;
 import java.util.UUID;
-import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
 
 /**
  * {@link AttachmentStorage} in the table {@code attachment_content} ({@code POPDESK_STORAGE=db}): one
@@ -13,21 +12,14 @@ import org.springframework.stereotype.Component;
  * statement outside any transaction: writing commits before the business transaction begins
  * (S0-AC-56), and a download does not hold a connection between pieces.
  */
-@Component
-class DatabaseAttachmentStorage implements AttachmentStorage {
+final class DatabaseAttachmentStorage implements AttachmentStorage {
 
     static final String KIND = "db";
     static final String TABLE = "attachment_content";
 
     private final JdbcTemplate jdbc;
 
-    DatabaseAttachmentStorage(JdbcTemplate jdbc, Environment environment) {
-        String chosen = environment.getProperty("POPDESK_STORAGE", KIND);
-        if (!KIND.equals(chosen)) {
-            // disk and s3 come in a later slice; storing in the database instead would surprise a backup.
-            throw new IllegalStateException("POPDESK_STORAGE must be db in this version; disk and s3 are not "
-                    + "available yet (docs/operate/configuration.md).");
-        }
+    DatabaseAttachmentStorage(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
@@ -37,7 +29,7 @@ class DatabaseAttachmentStorage implements AttachmentStorage {
     }
 
     @Override
-    public String location(UUID attachmentId) {
+    public String location() {
         return TABLE;
     }
 
@@ -51,12 +43,23 @@ class DatabaseAttachmentStorage implements AttachmentStorage {
 
     @Override
     public byte[] read(UUID attachmentId, long offset, int length) {
-        return jdbc.query("select substring(data from ? for ?) from attachment_content where attachment_id = ?",
-                rs -> rs.next() ? rs.getBytes(1) : new byte[0], Math.toIntExact(offset + 1), length, attachmentId);
+        byte[] piece = jdbc.query("select substring(data from ? for ?) from attachment_content where attachment_id = ?",
+                rs -> rs.next() ? rs.getBytes(1) : null, Math.toIntExact(offset + 1), length, attachmentId);
+        if (piece == null) {
+            throw new StorageFileMissingException("The db storage has no contents for the attachment");
+        }
+        return piece;
     }
 
     @Override
     public void delete(UUID attachmentId) {
         jdbc.update("delete from attachment_content where attachment_id = ?", attachmentId);
+    }
+
+    @Override
+    public OptionalLong size(UUID attachmentId) {
+        Long size = jdbc.query("select octet_length(data) from attachment_content where attachment_id = ?",
+                rs -> rs.next() ? (Long) rs.getLong(1) : null, attachmentId);
+        return size == null ? OptionalLong.empty() : OptionalLong.of(size);
     }
 }

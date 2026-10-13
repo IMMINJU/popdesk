@@ -9,6 +9,10 @@ import org.springframework.core.io.AbstractResource;
  * writes to the response, ranges included (S0-AC-59). Its stream reads one piece of at most
  * {@link #PIECE} bytes at a time and skips without reading, so a download holds one piece in memory and
  * a range request reads only from where it starts (architecture.md "Attachment storage").
+ *
+ * <p>The first piece is read before there is a response, and handed over here: a file that is gone or
+ * cannot be read fails the request while it can still be answered with an error (S5B-AC-31). The
+ * stream uses that piece and does not read it again.
  */
 public final class AttachmentContents extends AbstractResource {
 
@@ -22,10 +26,13 @@ public final class AttachmentContents extends AbstractResource {
     }
 
     private final long size;
+    private final byte[] first;
     private final Pieces pieces;
 
-    AttachmentContents(long size, Pieces pieces) {
+    /** {@code first} is the piece at offset 0, already read; {@code pieces} reads the others. */
+    AttachmentContents(long size, byte[] first, Pieces pieces) {
         this.size = size;
+        this.first = first;
         this.pieces = pieces;
     }
 
@@ -58,7 +65,7 @@ public final class AttachmentContents extends AbstractResource {
 
         /** Offset in the file of the next byte to return. */
         private long position;
-        private byte[] piece = new byte[0];
+        private byte[] piece = first;
         /** Offset in the file of {@code piece[0]}. */
         private long pieceStart;
 

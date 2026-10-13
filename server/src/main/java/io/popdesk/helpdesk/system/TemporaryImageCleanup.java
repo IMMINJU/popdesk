@@ -2,7 +2,8 @@ package io.popdesk.helpdesk.system;
 
 import io.popdesk.Transactions;
 import io.popdesk.helpdesk.attachment.AttachmentService;
-import io.popdesk.helpdesk.attachment.storage.AttachmentStorage;
+import io.popdesk.helpdesk.attachment.storage.AttachmentStorages;
+import io.popdesk.helpdesk.attachment.storage.StorageUnreachableException;
 import io.popdesk.notification.CleanupJob;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -24,7 +25,9 @@ import org.springframework.stereotype.Component;
  * not attached and expired, so a save that attaches the image at the same time either finished before
  * (the row no longer matches and stays, file and all) or waits and finds no image (S5-AC-32). Then
  * the file is removed, then the row. When removing the file fails the row stays, and the next run
- * tries again (S5-AC-34); an expired image is read by nobody in between.
+ * tries again (S5-AC-34); an expired image is read by nobody in between. The file is removed from the
+ * storage its row names (S5B-AC-12), and a storage that cannot be reached at all ends the run there, as
+ * in the attachment cleanup (S5B-AC-35).
  */
 @Component
 class TemporaryImageCleanup implements CleanupJob {
@@ -33,13 +36,15 @@ class TemporaryImageCleanup implements CleanupJob {
 
     private static final String EXPIRED = "inline and issue_id is null and created_at <= ?";
 
+    private record Place(String storage, String location) {}
+
     private static final Logger log = LoggerFactory.getLogger(TemporaryImageCleanup.class);
 
     private final JdbcClient jdbc;
-    private final AttachmentStorage storage;
+    private final AttachmentStorages storage;
     private final Transactions transactions;
 
-    TemporaryImageCleanup(JdbcClient jdbc, AttachmentStorage storage, Transactions transactions) {
+    TemporaryImageCleanup(JdbcClient jdbc, AttachmentStorages storage, Transactions transactions) {
         this.jdbc = jdbc;
         this.storage = storage;
         this.transactions = transactions;
@@ -65,6 +70,10 @@ class TemporaryImageCleanup implements CleanupJob {
         for (UUID id : expired) {
             try {
                 deleted += transactions.run(() -> delete(id, until));
+            } catch (StorageUnreachableException e) {
+                log.warn("An attachment storage could not be reached; this run of the temporary image cleanup ends "
+                        + "here and the next run tries again.");
+                throw e;
             } catch (RuntimeException e) {
                 failed++;
                 log.warn("Deleting an expired temporary image failed ({}); the next run tries again.",
@@ -79,12 +88,14 @@ class TemporaryImageCleanup implements CleanupJob {
 
     /** The file, then the row, of one image if it is still expired and not attached; how many rows went. */
     private int delete(UUID id, Timestamp until) {
-        boolean locked = jdbc.sql("select id from attachment where id = ? and " + EXPIRED + " for no key update")
-                .params(id, until).query(UUID.class).optional().isPresent();
-        if (!locked) {
+        Place locked = jdbc.sql("select storage, storage_location from attachment where id = ? and " + EXPIRED
+                        + " for no key update")
+                .params(id, until).query((rs, row) -> new Place(rs.getString(1), rs.getString(2))).optional()
+                .orElse(null);
+        if (locked == null) {
             return 0;
         }
-        storage.delete(id);
+        storage.delete(locked.storage(), locked.location(), id);
         return jdbc.sql("delete from attachment where id = ?").params(id).update();
     }
 }

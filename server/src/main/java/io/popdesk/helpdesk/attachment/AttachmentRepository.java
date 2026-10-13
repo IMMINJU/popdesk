@@ -33,12 +33,14 @@ public class AttachmentRepository {
     /**
      * An attachment as the lists and downloads show it; a photo time is null without a profile photo.
      * {@code inline} is true for an image of a content (ATT-6). {@code issueId} is null only for a
-     * temporary image, which no list shows.
+     * temporary image, which no list shows. {@code storage} and {@code storageLocation} say where the
+     * file's contents are (ATT-9); no response shows them.
      */
     public record AttachmentRow(UUID id, UUID issueId, Long commentId, boolean internal, boolean inline,
             String fileName, long size, String contentType, String state, long uploadedById, String uploadedByName, Role uploadedByRole,
             Instant uploadedByPhotoUpdatedAt, Instant createdAt, Instant deletedAt, Long deletedById,
-            String deletedByName, Role deletedByRole, Instant deletedByPhotoUpdatedAt) {
+            String deletedByName, Role deletedByRole, Instant deletedByPhotoUpdatedAt, String storage,
+            String storageLocation) {
 
         public boolean deleted() {
             return !STORED.equals(state);
@@ -53,7 +55,7 @@ public class AttachmentRepository {
             + "a.file_name, a.size, a.content_type, a.state, a.uploaded_by, u.name as uploader_name, "
             + "u.role as uploader_role, up.updated_at as uploader_photo_updated_at, a.created_at, a.deleted_at, "
             + "a.deleted_by, d.name as deleter_name, d.role as deleter_role, "
-            + "dp.updated_at as deleter_photo_updated_at from attachment a ";
+            + "dp.updated_at as deleter_photo_updated_at, a.storage, a.storage_location from attachment a ";
 
     private static final String PEOPLE = "left join comment cm on cm.id = a.comment_id "
             + "join account u on u.id = a.uploaded_by left join account d on d.id = a.deleted_by "
@@ -154,6 +156,18 @@ public class AttachmentRepository {
                 .param(commentId).query(UUID.class).list();
     }
 
+    /** Where the contents of a file are: the row's {@code storage} and {@code storage_location} (ATT-9). */
+    record FilePlace(String storage, String location) {}
+
+    /**
+     * Where the file of a row is, whatever its state; empty when there is no such row. For removing the
+     * file of a row the caller ended, never for reading it.
+     */
+    Optional<FilePlace> filePlace(UUID id) {
+        return jdbc.sql("select storage, storage_location from attachment where id = ?").params(id)
+                .query((rs, row) -> new FilePlace(rs.getString(1), rs.getString(2))).optional();
+    }
+
     // Writes
 
     /** Step ①: the new attachment's row in state {@code pending}. Joins the caller's transaction. */
@@ -242,6 +256,7 @@ public class AttachmentRepository {
                 rs.getTimestamp("created_at").toInstant(),
                 deletedAt == null ? null : deletedAt.toInstant(), deletedBy, rs.getString("deleter_name"),
                 deleterRole == null ? null : Role.valueOf(deleterRole),
-                deleterPhoto == null ? null : deleterPhoto.toInstant());
+                deleterPhoto == null ? null : deleterPhoto.toInstant(), rs.getString("storage"),
+                rs.getString("storage_location"));
     }
 }
