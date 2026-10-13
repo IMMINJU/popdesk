@@ -55,6 +55,17 @@
 - 주소 고르기: 이 편집에서 올린 ID는 임시 경로, 그 밖은 문의의 첨부 경로. 저장이 성공하면 그 ID들은 묶인 것이 된다.
 - 내려받기 머리글(`Content-Disposition: attachment`)이 있어도 `<img>`는 그린다(6절 1에서 Chrome으로 봤다).
 
+공용 컴포넌트의 새 props(테스트가 이 이름으로 쓴다. 2026-10-13 메인이 정함):
+
+| 컴포넌트 | prop | 꼴 | 없을 때 |
+|---|---|---|---|
+| `MarkdownView` | `imageSrc` | `(id: string) => string \| null`. 소문자 UUID 글자를 받아 주소를 준다 | 이미지 문법은 지금처럼 글자다 |
+| `MarkdownEditor` | `onImageUpload` | `(file: File) => Promise<{ ok: true; id: string } \| { ok: false; message: string }>`. 실패의 글은 앱이 만든다 | 이미지 단추가 없고 붙여 넣기와 끌어다 놓기를 받지 않는다 |
+| `MarkdownEditor` | `imageSrc` | `MarkdownView`의 것과 같다. 미리 보기에 넘긴다 | 미리 보기의 이미지는 글자다 |
+| `MarkdownEditor` | `onImageBusyChange` | `(busy: boolean) => void`. 올리는 중인지를 화면에 알린다(저장 단추를 막는 데 쓴다) | – |
+
+이미지 단추의 이름은 "이미지"(`toolLabels`와 같은 길로 바꿀 수 있게 `imageLabel`). 올린 ID를 기억하고 보낼 ID를 고르는 것은 `@popdesk/app`의 훅이 하고, 그 이름과 꼴은 구현이 정한다(테스트는 화면으로 본다).
+
 ## 6. 계약 앞에 볼 것
 
 | # | 볼 것 | 어떻게 | 결과에 따라 |
