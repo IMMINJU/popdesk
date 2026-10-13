@@ -1,12 +1,18 @@
 # sha256 of each locked test file (CRLF read as LF). Written by scripts/ci/tests-lock.py write.
 # The implementing side must not change these files or this list (design/process.md C).
+09fadbcc97d82156172c681db8bc28634eeed84c86c61eefee8a8c09632deb21  server/src/test/java/io/popdesk/ApiPathPrefixTest.java
+2d07319020ba967adc612de7059e65da28e8b3cead92545388c29d61c1bbb2fb  server/src/test/java/io/popdesk/Baseline.java
 45af478527eba0e8179d6982f2d2e4cb3524a7a3caec6d64afe35cbcf1d7fca0  server/src/test/java/io/popdesk/InstallationLocaleTest.java
 246e4f66d9e6a5e294082a061379d3c2b6a5ed1a75ba12ad7f2245a7aa05ca8e  server/src/test/java/io/popdesk/ModulesTest.java
 9bcbeea8c05904d81b9d5445179481cd35bfad97b901bf552d7c308d8c6ad4c1  server/src/test/java/io/popdesk/OpenApiFilesTest.java
 5c750712a36e0908ac35a81d806dc2576d9dbdb455a51696a191d509f9512075  server/src/test/java/io/popdesk/PackageCyclesTest.java
 31bff945bf6a6e6d875dae587f1f3d6d23c94b7c4858a0f1d8cd5f2dfa9947c7  server/src/test/java/io/popdesk/PopdeskApplicationTest.java
+5e2afc28e27171163901ba2e71f35476db0ebf2f5e7d8beab40a4dd067bd8c11  server/src/test/java/io/popdesk/ProductionCodeRulesTest.java
+a5fdf2d73c43fb2005602df9773fbae53f19ac98b63a64d0ace6d397b1879500  server/src/test/java/io/popdesk/ProductionSources.java
+fc5710d9a0ed4e375ed9caea7c1748ae756acab1b4962199a499c048e6e4c589  server/src/test/java/io/popdesk/SwallowedExceptionsTest.java
 c9e31271da7381e1159bc986b03e4261ee463764222b2fcb8b40a8e33776e195  server/src/test/java/io/popdesk/TestPopdeskApplication.java
 1c095b41ad7b7637bb0d18281b05cbd7a53545030ffeae503a15f840b3641430  server/src/test/java/io/popdesk/TestcontainersConfiguration.java
+87201f6474dcff8529006b71e86fd5b0c422305cf151154d45cf0d29ab7b0931  server/src/test/java/io/popdesk/TransactionalPlacementTest.java
 a6b012e9e5c1e7205c99de7027f00883e856c2c49772c3944a54013d3c6b44cd  server/src/test/java/io/popdesk/attachment/AttachmentArchitectureTest.java
 9ef8a3d173269571aeba814ae26c0e245211eff495599d49c06249c7184b772a  server/src/test/java/io/popdesk/attachment/AttachmentCleanupTest.java
 2812232cc4ec7b361f79391d954a0db7df79511377b39034e4c7182336f56e1f  server/src/test/java/io/popdesk/attachment/AttachmentConcurrencyLimitTest.java
@@ -90,6 +96,7 @@ b37a2e9873694657178938374bf21aeb8e24fb41466e6184f70566d8043dabfc  server/src/tes
 2fd12109e87ae4c8a4bac841453f3abdc8d65b618cbb69167df719f9f3c5d47a  server/src/test/java/io/popdesk/auth/TrustedProxyPrefixTest.java
 5cb2141ef264cfa8d9b060114255209fd061690d8de686391af14e474c17dced  server/src/test/java/io/popdesk/auth/UntrustedProxyTest.java
 495a8d2fb25bf5de572e6ce93fed2be1db0d9ef5d8ff74a5f702a14b93e456af  server/src/test/java/io/popdesk/boundary/AccountStatus.java
+b22e79bb2d212159b1ecee2b4b4f384ed3edcaf4e03d87548119f481bf6ad686  server/src/test/java/io/popdesk/boundary/AdminOnlyContractTest.java
 a6c00b07fc8ed5b2c2f8e73c6c69712a40d89a0d92586ed77bcbb050d49bbd70  server/src/test/java/io/popdesk/boundary/AgentCannotManageAccountsTest.java
 410a64c382576a3dd477a46c5caba87c66e0f0dfcead0f3bbcc99b54ad5fcfca  server/src/test/java/io/popdesk/boundary/BoundaryChecks.java
 33d7af2e1eb904447809f0d3fbc1210d79e609ecee2ca57d1eba12770115d0b9  server/src/test/java/io/popdesk/boundary/BoundaryList.java
@@ -418,7 +425,10 @@ b9331b381fbf3dab7724d3ef2e66a33c55c87989b7a24e1ddfa4f2d0b5cb3f40  server/src/tes
 6958df38761e9211fac3811c1d428c410bd86cc16dcb65aab127de0e02ead2f4  server/src/test/java/io/popdesk/support/WebhookReceiver.java
 a6a2c59b2f03a9f0175d1c0cb4f1262a8027437142a95ffc833e2add0346071e  server/src/test/resources/META-INF/services/java.net.spi.InetAddressResolverProvider
 d66b5b992b42114ea6ed059efaaed7db4b77bb3f2a413dec8b957ca5d9bf1c9c  server/src/test/resources/META-INF/spring.factories
+5d63090e8301254fa8b07058403e5ed354341bc44b49bef7ce175eec6ef5b804  server/src/test/resources/architecture/open-paths.txt
 4f77c4552deda56531d60ddd268b37446c7f7518fc12326c957db09f5bbbb974  server/src/test/resources/architecture/package-cycles.txt
+52f135ad0be2b84bd0fb685175706e2d1a09ff2301ec6197adc99c720f6f4752  server/src/test/resources/architecture/production-code-rules.txt
+6699826dd52a197f3ca5a171bb6b33442fc5c6cca306f32585af14eb4b1646f4  server/src/test/resources/architecture/swallowed-exceptions.txt
 fb7adf275a484d382bec5dd1cecbc0ce4b4b786b872dae3df5aa88b9017db561  server/src/test/resources/deploy/README.txt
 5f3118aad05ef2bc3f920f5d1888b001bdafed9823d99a70c42b28db7e6c5cb8  server/src/test/resources/deploy/mail-tls/mail-server.p12
 55086b741c85d6dea09cf37eb7c5a64a9a8e64844b09347042e15e30c666c896  server/src/test/resources/deploy/mail-tls/mail-trust.p12

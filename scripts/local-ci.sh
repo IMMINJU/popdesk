@@ -4,6 +4,8 @@
 #   scripts/local-ci.sh [--out DIR] [STEP ...]
 #
 # Without steps it runs all of them. Steps: gates web server-1 .. server-5 server-openapi image deploy.
+# One more step runs only when named: deps (osv-scanner on the lockfiles; needs the network, and its
+# findings are written down when a slice closes, not judged here: ADR D-58).
 # Every step writes DIR/<step>.log; DIR/summary.txt gets one line for each step (result, seconds).
 # The exit code is 0 only when every step that ran passed, so a failed step can be run again alone.
 #
@@ -100,7 +102,14 @@ run_step() {
       python scripts/ci/check-locked-paths.py --base origin/main --role any &&
       MSYS_NO_PATHCONV=1 docker run --rm -v "$(cygpath -m "$ROOT" 2>/dev/null || echo "$ROOT"):/repo" \
         ghcr.io/gitleaks/gitleaks:latest git /repo --config /repo/.gitleaks.toml \
-        --log-opts="origin/main..HEAD" --no-banner --redact
+        --log-opts="origin/main..HEAD" --no-banner --redact &&
+      # The structure checks that start no app (ADR D-57, D-58). The server parts run them again.
+      cd "$ROOT/server" &&
+      heavy gates ./mvnw -o -B test         -Dtest=PackageCyclesTest,ApiPathPrefixTest,ProductionCodeRulesTest,SwallowedExceptionsTest,TransactionalPlacementTest
+      ;;
+    deps)
+      cd "$ROOT" &&
+      MSYS_NO_PATHCONV=1 docker run --rm -v "$(cygpath -m "$ROOT" 2>/dev/null || echo "$ROOT"):/src:ro"         ghcr.io/google/osv-scanner:latest scan source         --lockfile /src/server/pom.xml --lockfile /src/web/pnpm-lock.yaml
       ;;
     web)
       cd "$ROOT/web" &&
@@ -132,7 +141,7 @@ run_step() {
       heavy deploy sh -c './mvnw -o -B test -Dtest.groups=deploy -Dtest.excludedGroups=openapi $(python ../scripts/ci/pending.py server)'
       ;;
     *)
-      echo "local-ci: no step $1 (steps: ${ALL[*]})" >&2
+      echo "local-ci: no step $1 (steps: ${ALL[*]} deps)" >&2
       return 2
       ;;
   esac

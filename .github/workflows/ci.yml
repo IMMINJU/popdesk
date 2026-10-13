@@ -235,11 +235,11 @@ jobs:
   # - E2E (Playwright, compose) when server or web changed
   # - dependency vulnerabilities (osv-scanner) and licenses when a lockfile changed
   # - visual regression when web/packages/ui or a story changed
-  # - static checks on production code (design/process.md C-10): Error Prone (empty catch,
-  #   unused code), SpotBugs with FindSecBugs, ArchUnit and Modulith verify for ADR rules
-  #   (every controller method carries an authorization check, @Transactional only in services),
-  #   Semgrep (no System.exit, stack inspection, Thread.sleep, or @Profile("test") beans in
-  #   src/main; catch (Exception) only in the global handler), PMD CPD and jscpd for new duplication,
-  #   eslint no-empty, no-floating-promises, ban-ts-comment, playwright no-wait-for-timeout
+  # - static checks on production code: the server job and the web lint already run the ones of
+  #   ADR D-58 (paths under the three API prefixes, admin-only operations against the contract,
+  #   no sleep, exit, stack inspection, or profiles in src/main, no swallowed exceptions,
+  #   @Transactional not on controllers or repositories, no-console). Still to add: unused code
+  #   (Error Prone), SpotBugs with FindSecBugs, PMD CPD for new duplication on the server,
+  #   playwright no-wait-for-timeout
   # On release tags only (all == 'true'): every job above in full, upgrade tests,
   # SBOM (D-29), multi-arch image build (D-45)
