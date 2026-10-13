@@ -15,6 +15,22 @@ import java.util.UUID;
 public interface IssueAttachments {
 
     /**
+     * Attaches temporary images to an issue with the save of its content or of one of its comments
+     * (S5-AC-20): all of them or, with an exception, none. Only images that {@code uploadedBy} uploaded,
+     * that are attached nowhere, and that are not expired at {@code now} can be attached; anything else
+     * among the IDs, one that is no ID too, is 400 {@code TEMPORARY_IMAGE_INVALID}, one answer whatever
+     * is wrong and with whichever ID (S5-AC-21). Then the public attachments of the issue must not pass
+     * 50 MB with them: 400 {@code ISSUE_ATTACHMENTS_TOO_LARGE} (S5-AC-23). The caller's transaction is
+     * rolled back by either.
+     *
+     * @param issueId the issue, whose row the caller locked, or the ID of the issue it is filing
+     * @param commentId the comment the images belong to, which may be inserted after this call in the
+     *     same transaction; null for images of the issue's content
+     * @param internal whether that comment is internal: its images do not count toward the 50 MB
+     */
+    void attachImages(long uploadedBy, UUID issueId, Long commentId, boolean internal, ImageIds images, Instant now);
+
+    /**
      * Every stored attachment of a comment that is being deleted becomes {@code purging}, in ID order,
      * with the trace a deleted attachment leaves (S4-AC-14). Returns their IDs for {@link #removeFiles}.
      */

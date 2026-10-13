@@ -85,7 +85,7 @@ class ConsoleCommentController {
     @ResponseStatus(HttpStatus.CREATED)
     Comment createComment(@PathVariable String key, @RequestBody CreateCommentRequest request) {
         return comment(comments.add(CurrentAccount.get().viewer(), key, request.content(),
-                Boolean.TRUE.equals(request.internal()), request.mentions()));
+                Boolean.TRUE.equals(request.internal()), request.mentions(), request.imageIds()));
     }
 
     @Operation(operationId = "updateComment", summary = "Edit the caller's own comment",
@@ -110,7 +110,8 @@ class ConsoleCommentController {
     Comment updateComment(@PathVariable String key,
             @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String id,
             @RequestBody UpdateCommentRequest request) {
-        return comment(comments.edit(CurrentAccount.get().viewer(), key, id, request.content(), request.mentions()));
+        return comment(comments.edit(CurrentAccount.get().viewer(), key, id, request.content(), request.mentions(),
+                request.imageIds()));
     }
 
     @Operation(operationId = "deleteComment", summary = "Delete a comment",

@@ -12,6 +12,7 @@ import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.comment.CommentRepository.CommentRow;
 import io.popdesk.helpdesk.company.CompanyRepository;
 import io.popdesk.helpdesk.company.CompanyRepository.StaffRow;
+import io.popdesk.helpdesk.issue.ImageIds;
 import io.popdesk.helpdesk.issue.IssueAttachments;
 import io.popdesk.helpdesk.issue.IssueKey;
 import io.popdesk.helpdesk.issue.IssueNotifications;
@@ -89,15 +90,18 @@ public class CommentService {
      * the company (S0-AC-52, PROJ-4); staff add public or internal comments to issues they can see.
      *
      * <p>One transaction, retried once on a lock conflict, in the lock order of architecture.md: the
-     * issue row {@code FOR NO KEY UPDATE} before any INSERT (S0-AC-51), then the comment, its mentions,
+     * issue row {@code FOR NO KEY UPDATE} before any INSERT (S0-AC-51), then the images the comment
+     * attaches, to the ID its row is about to get (S5-AC-20), then the comment, its mentions,
      * the webhook row, and the inbox items and emails of whoever {@link IssueNotifications} tells. A
      * public staff comment sets the first response time once (S0-AC-46) and tells the reporter
      * (S0-AC-70); an internal one does neither (S0-AC-53). A customer's comment goes to the webhook.
      *
      * @param mentions the accounts staff mention with the comment (S4-AC-19), or null; a customer's
      *     are ignored (S4-AC-25)
+     * @param imageIds the temporary images to attach to the comment, as the request had them, or null
      */
-    public CommentRow add(Viewer viewer, String key, String content, boolean internal, List<Long> mentions) {
+    public CommentRow add(Viewer viewer, String key, String content, boolean internal, List<Long> mentions,
+            JsonNode imageIds) {
         rateLimit.count(AccountRateLimit.Action.COMMENT, viewer.accountId());
         IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
         return transactions.run(() -> {
@@ -109,6 +113,7 @@ public class CommentService {
             String text = TextInput.multiLine("content", content, true, CONTENT_MAX, errors);
             Set<Long> mentioned = viewer.staff() && mentions != null
                     ? mentionable(viewer, issue, internal, mentions, List.of(), errors) : Set.of();
+            ImageIds images = ImageIds.of(imageIds, errors);
             if (!errors.isEmpty()) {
                 throw ApiException.invalid(errors);
             }
@@ -116,7 +121,9 @@ public class CommentService {
                 throw issueClosed();
             }
             Instant now = now();
-            long id = comments.insert(issue.id(), viewer.accountId(), internal, text, now);
+            long id = comments.nextId();
+            attachments.attachImages(viewer.accountId(), issue.id(), id, internal, images, now);
+            comments.insert(id, issue.id(), viewer.accountId(), internal, text, now);
             comments.insertMentions(id, mentioned, now);
             if (viewer.customer()) {
                 webhooks.queue(WebhookKind.CUSTOMER_COMMENT, issue.id(), id);
@@ -143,12 +150,16 @@ public class CommentService {
      * customer only while they still belong to the company (403, S4-AC-02, S4-AC-05), the input (400),
      * then a deleted comment before a closed issue (S4-AC-08, S4-AC-04). The content the comment
      * already has leaves the time of the edit as it is, and so does a change of the mentions alone
-     * (S4-AC-06). Whether the comment is internal never changes (S4-AC-07).
+     * (S4-AC-06). Whether the comment is internal never changes (S4-AC-07). Images are attached to
+     * the comment before anything else is written, and attaching alone is no edit: the time of the edit
+     * stays as it is (S5-AC-20).
      *
      * @param id the comment's ID as the path had it; one that is no number is an ID no comment has
      * @param mentions the whole list from now on; a customer's is ignored (S4-AC-25)
+     * @param imageIds the temporary images to attach to the comment, as the request had them, or null
      */
-    public CommentRow edit(Viewer viewer, String key, String id, JsonNode content, JsonNode mentions) {
+    public CommentRow edit(Viewer viewer, String key, String id, JsonNode content, JsonNode mentions,
+            JsonNode imageIds) {
         rateLimit.count(AccountRateLimit.Action.COMMENT, viewer.accountId());
         IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
         long commentId = commentId(id);
@@ -169,6 +180,7 @@ public class CommentService {
                 mentioned = received == null ? null
                         : mentionable(viewer, issue, comment.internal(), received, mentionedNow, errors);
             }
+            ImageIds images = ImageIds.of(imageIds, errors);
             if (!errors.isEmpty()) {
                 throw ApiException.invalid(errors);
             }
@@ -180,10 +192,11 @@ public class CommentService {
             }
             boolean contentChanged = !text.equals(comment.content());
             MentionChange change = mentioned == null ? MentionChange.NONE : mentionChange(mentionedNow, mentioned);
+            Instant now = now();
+            attachments.attachImages(viewer.accountId(), issue.id(), commentId, comment.internal(), images, now);
             if (!contentChanged && change.empty()) {
                 return comment;
             }
-            Instant now = now();
             if (contentChanged) {
                 comments.updateContent(commentId, text, now);
             }

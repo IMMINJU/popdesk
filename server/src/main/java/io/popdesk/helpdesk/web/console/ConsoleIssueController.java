@@ -179,7 +179,7 @@ class ConsoleIssueController {
         Viewer viewer = CurrentAccount.get().viewer();
         IssueService.Prepared prepared = issues.prepareOnBehalf(viewer, new IssueService.NewIssueOnBehalf(
                 new IssueService.NewIssue(request.companyCode(), request.title(), request.content(),
-                        request.priority(), request.privateIssue()),
+                        request.priority(), request.privateIssue(), request.imageIds()),
                 request.reporterId(), request.channel()), idempotencyKey);
         return issue(prepared.filed() != null ? prepared.filed() : issues.file(viewer, prepared.draft()));
     }
@@ -210,7 +210,7 @@ class ConsoleIssueController {
     Issue updateIssue(@PathVariable String key, @RequestBody UpdateIssueRequest request) {
         return issue(issues.edit(CurrentAccount.get().viewer(), key, new IssueService.Edit(
                 PatchText.of("title", request.title()), PatchText.of("content", request.content()),
-                PatchText.of("priority", request.priority()), request.version())));
+                PatchText.of("priority", request.priority()), request.version(), request.imageIds())));
     }
 
     @Operation(operationId = "changeIssueStatus", summary = "Change an issue's status",

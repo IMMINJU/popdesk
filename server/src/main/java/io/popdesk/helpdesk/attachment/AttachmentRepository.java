@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -177,6 +178,27 @@ public class AttachmentRepository {
         return jdbc.sql("update attachment set state = 'stored' where id = ? and state = 'pending' and inline "
                         + "and issue_id is null")
                 .params(id).update();
+    }
+
+    /**
+     * Attaches temporary images to an issue, and to a comment when {@code commentId} is not null: one
+     * statement that changes only rows that are still temporary images of {@code uploadedBy}, created
+     * after {@code expired} (ATT-7). The rows are locked in ID order before they are changed
+     * (architecture.md "Concurrency and lock order", step 2). Returns the IDs it attached; the caller
+     * rolls back when that is not every ID it asked for. Of two writers that want an image, and of a
+     * writer and the cleanup, the one that locks its row first wins and the other finds it changed
+     * (S5-AC-22, S5-AC-32).
+     */
+    List<UUID> updateAttached(Collection<UUID> ids, long uploadedBy, UUID issueId, Long commentId, Instant expired) {
+        String[] texts = ids.stream().map(UUID::toString).toArray(String[]::new);
+        Timestamp after = Timestamp.from(expired);
+        return jdbc.sql("update attachment set issue_id = ?, comment_id = ? where id in ("
+                        + "select a.id from attachment a where a.id = any(?::uuid[]) and a.uploaded_by = ? and "
+                        + TEMPORARY + " and a.created_at > ? order by a.id for no key update) "
+                        + "and uploaded_by = ? and inline and issue_id is null and state = 'stored' "
+                        + "and created_at > ? returning id")
+                .params(issueId, commentId, texts, uploadedBy, after, uploadedBy, after)
+                .query(UUID.class).list();
     }
 
     /**

@@ -124,11 +124,20 @@ public class CommentRepository {
     // Writes
 
     /** A new comment; returns its ID. The caller has locked the issue row first. */
-    long insert(UUID issueId, long authorId, boolean internal, String content, Instant now) {
-        return jdbc.sql("insert into comment (tenant_id, issue_id, author_id, internal, content, created_at) "
-                        + "values (1, ?, ?, ?, ?, ?) returning id")
-                .params(issueId, authorId, internal, content, Timestamp.from(now))
-                .query(Long.class).single();
+    void insert(long id, UUID issueId, long authorId, boolean internal, String content, Instant now) {
+        jdbc.sql("insert into comment (id, tenant_id, issue_id, author_id, internal, content, created_at) "
+                        + "values (?, 1, ?, ?, ?, ?, ?)")
+                .params(id, issueId, authorId, internal, content, Timestamp.from(now))
+                .update();
+    }
+
+    /**
+     * The ID of the next comment, taken before its row is written: the images of a new comment are
+     * attached to this ID first, because attachment rows change before any INSERT (architecture.md
+     * "Concurrency and lock order").
+     */
+    long nextId() {
+        return jdbc.sql("select nextval(pg_get_serial_sequence('comment', 'id'))").query(Long.class).single();
     }
 
     /** A new content and the time of the edit. The content the comment had is kept nowhere (S4-AC-18). */

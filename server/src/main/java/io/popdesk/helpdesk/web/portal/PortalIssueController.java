@@ -91,7 +91,7 @@ class PortalIssueController {
         String priority = unknownPriority != null ? unknownPriority
                 : request.priority() == null ? null : request.priority().name();
         return new IssueService.NewIssue(request.companyCode(), request.title(), request.content(), priority,
-                request.privateIssue());
+                request.privateIssue(), request.imageIds());
     }
 
     static final String CREATE_ERRORS_400 = "`INVALID_INPUT`: `title` empty or over 200, `content` over 10,000, "
@@ -248,7 +248,7 @@ class PortalIssueController {
     Issue updateIssue(@PathVariable String key, @RequestBody UpdateIssueRequest request) {
         return issue(issues.edit(CurrentAccount.get().viewer(), key, new IssueService.Edit(
                 PatchText.of("title", request.title()), PatchText.of("content", request.content()),
-                PatchText.of("priority", request.priority()), request.version())));
+                PatchText.of("priority", request.priority()), request.version(), request.imageIds())));
     }
 
     @Operation(operationId = "closeIssue", summary = "Close an issue",

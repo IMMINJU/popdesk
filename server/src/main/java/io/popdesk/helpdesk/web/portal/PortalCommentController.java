@@ -74,7 +74,8 @@ class PortalCommentController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     Comment createComment(@PathVariable String key, @RequestBody CreateCommentRequest request) {
-        return comment(comments.add(CurrentAccount.get().viewer(), key, request.content(), false, null));
+        return comment(comments.add(CurrentAccount.get().viewer(), key, request.content(), false, null,
+                request.imageIds()));
     }
 
     @Operation(operationId = "updateComment", summary = "Edit the caller's own comment",
@@ -94,7 +95,8 @@ class PortalCommentController {
     Comment updateComment(@PathVariable String key,
             @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String id,
             @RequestBody UpdateCommentRequest request) {
-        return comment(comments.edit(CurrentAccount.get().viewer(), key, id, request.content(), null));
+        return comment(comments.edit(CurrentAccount.get().viewer(), key, id, request.content(), null,
+                request.imageIds()));
     }
 
     @Operation(operationId = "deleteComment", summary = "Delete the caller's own comment",

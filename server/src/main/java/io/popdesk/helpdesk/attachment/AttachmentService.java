@@ -15,6 +15,7 @@ import io.popdesk.helpdesk.attachment.storage.AttachmentStorage;
 import io.popdesk.helpdesk.comment.CommentRepository;
 import io.popdesk.helpdesk.comment.CommentRepository.CommentRow;
 import io.popdesk.helpdesk.company.CompanyRepository;
+import io.popdesk.helpdesk.issue.ImageIds;
 import io.popdesk.helpdesk.issue.IssueAttachments;
 import io.popdesk.helpdesk.issue.IssueKey;
 import io.popdesk.helpdesk.issue.IssueRepository;
@@ -30,6 +31,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -289,6 +292,32 @@ public class AttachmentService implements IssueAttachments {
     }
 
     /**
+     * Attaches temporary images with a save (S5-AC-20), inside the caller's transaction: one UPDATE
+     * for all of them, and when it did not attach every one, nothing is attached. Which ID it was and
+     * why is not told (S5-AC-21). The 50 MB of public attachments are counted after the UPDATE, under
+     * the caller's lock on the issue row, the images of this request among them (S5-AC-23).
+     */
+    @Override
+    public void attachImages(long uploadedBy, UUID issueId, Long commentId, boolean internal, ImageIds images,
+            Instant now) {
+        if (images.isEmpty()) {
+            return;
+        }
+        SortedSet<UUID> ids = new TreeSet<>();
+        for (String value : images.values()) {
+            ids.add(attachmentId(value).orElseThrow(AttachmentService::imageInvalid));
+        }
+        List<UUID> attached = attachments.updateAttached(ids, uploadedBy, issueId, commentId,
+                now.minus(IMAGE_LIFETIME));
+        if (attached.size() != ids.size()) {
+            throw imageInvalid();
+        }
+        if (!internal && attachments.publicBytes(issueId) > MAX_PUBLIC_PER_ISSUE) {
+            throw issueAttachmentsTooLarge();
+        }
+    }
+
+    /**
      * After attachments were stored: over 80% of the quota, a warning in the log and the operations alert
      * for the admins (S0-AC-58, S0-AC-80). The alert adds no item while it is raised already.
      */
@@ -522,6 +551,12 @@ public class AttachmentService implements IssueAttachments {
     private static ApiException issueAttachmentsTooLarge() {
         return new ApiException(HttpStatus.BAD_REQUEST, "ISSUE_ATTACHMENTS_TOO_LARGE",
                 "The public attachments of the issue would pass 50 MB.");
+    }
+
+    /** One answer for every image a save cannot attach, the same bytes each time (S5-AC-21). */
+    private static ApiException imageInvalid() {
+        return new ApiException(HttpStatus.BAD_REQUEST, "TEMPORARY_IMAGE_INVALID",
+                "An image cannot be attached. Upload the images again.");
     }
 
     private Instant now() {

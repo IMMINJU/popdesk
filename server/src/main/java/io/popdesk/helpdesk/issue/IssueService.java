@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Filing, listing, reading, and changing issues (ISSUE-1 to ISSUE-9, STATUS-1 to STATUS-7). Checks
@@ -75,8 +76,12 @@ public class IssueService {
      */
     private static final int STATUS_RETRIES = 3;
 
-    /** What a customer sent to file an issue, as received. {@code priority} is the name sent, or null. */
-    public record NewIssue(String companyCode, String title, String content, String priority, Boolean privateIssue) {}
+    /**
+     * What a customer sent to file an issue, as received. {@code priority} is the name sent, or null;
+     * {@code imageIds} the temporary images to attach to the new issue, or null.
+     */
+    public record NewIssue(String companyCode, String title, String content, String priority, Boolean privateIssue,
+            JsonNode imageIds) {}
 
     /**
      * What staff sent to file an issue for a customer, as received (ISSUE-9): the fields of
@@ -87,13 +92,15 @@ public class IssueService {
     /**
      * A checked filing, not written yet. The ID is chosen now, so attachments can point at it first.
      * {@code createdBy} is the staff member who files it for the reporter; null when the reporter files it.
-     * {@code key} is the key the filing was sent with, null without one.
+     * {@code key} is the key the filing was sent with, null without one. {@code images} are the
+     * temporary images the filing attaches; they are no part of what makes it another filing (S5-AC-20).
      */
     public record Draft(UUID id, long reporterId, Long createdBy, String channel, CompanyRow company, String title,
-            String content, Priority priority, boolean privateIssue, IdempotencyKey key) {
+            String content, Priority priority, boolean privateIssue, ImageIds images, IdempotencyKey key) {
 
         Draft with(IdempotencyKey key) {
-            return new Draft(id, reporterId, createdBy, channel, company, title, content, priority, privateIssue, key);
+            return new Draft(id, reporterId, createdBy, channel, company, title, content, priority, privateIssue,
+                    images, key);
         }
     }
 
@@ -122,15 +129,17 @@ public class IssueService {
 
     /**
      * What an edit sent (S3-AC-18). A field that was not sent keeps its value; {@code version} is the
-     * one the caller read, or null when it was left out.
+     * one the caller read, or null when it was left out. {@code imageIds} are the temporary images to
+     * attach to the issue, or null.
      */
-    public record Edit(PatchText title, PatchText content, PatchText priority, Long version) {}
+    public record Edit(PatchText title, PatchText content, PatchText priority, Long version, JsonNode imageIds) {}
 
     private final IssueRepository issues;
     private final IssueHistoryRepository history;
     private final IdempotencyKeyRepository keys;
     private final ReporterAccess reporters;
     private final CompanyRepository companies;
+    private final IssueAttachments attachments;
     private final WebhookQueue webhooks;
     private final IssueNotifications notifications;
     private final AccountRateLimit rateLimit;
@@ -138,13 +147,15 @@ public class IssueService {
     private final Clock clock;
 
     IssueService(IssueRepository issues, IssueHistoryRepository history, IdempotencyKeyRepository keys,
-            ReporterAccess reporters, CompanyRepository companies, WebhookQueue webhooks,
-            IssueNotifications notifications, AccountRateLimit rateLimit, Transactions transactions, Clock clock) {
+            ReporterAccess reporters, CompanyRepository companies, IssueAttachments attachments,
+            WebhookQueue webhooks, IssueNotifications notifications, AccountRateLimit rateLimit,
+            Transactions transactions, Clock clock) {
         this.issues = issues;
         this.history = history;
         this.keys = keys;
         this.reporters = reporters;
         this.companies = companies;
+        this.attachments = attachments;
         this.webhooks = webhooks;
         this.notifications = notifications;
         this.rateLimit = rateLimit;
@@ -171,12 +182,14 @@ public class IssueService {
         String title = TextInput.required("title", input.title(), TITLE_MAX, errors);
         String content = TextInput.multiLine("content", input.content(), false, CONTENT_MAX, errors);
         Priority priority = input.priority() == null ? Priority.NORMAL : priority(input.priority(), errors);
+        ImageIds images = ImageIds.of(input.imageIds(), errors);
         boolean keyed = idempotencyKey != null && IdempotencyKey.valid(idempotencyKey, errors);
         if (!errors.isEmpty()) {
             throw ApiException.invalid(errors);
         }
         return prepared(viewer, new Draft(UUID.randomUUID(), viewer.accountId(), null, CHANNEL_PORTAL, company, title,
-                content, priority, Boolean.TRUE.equals(input.privateIssue()), null), keyed ? idempotencyKey : null);
+                content, priority, Boolean.TRUE.equals(input.privateIssue()), images, null),
+                keyed ? idempotencyKey : null);
     }
 
     /**
@@ -212,19 +225,22 @@ public class IssueService {
         String title = TextInput.required("title", issue.title(), TITLE_MAX, errors);
         String content = TextInput.multiLine("content", issue.content(), false, CONTENT_MAX, errors);
         Priority priority = issue.priority() == null ? Priority.NORMAL : priority(issue.priority(), errors);
+        ImageIds images = ImageIds.of(issue.imageIds(), errors);
         boolean keyed = idempotencyKey != null && IdempotencyKey.valid(idempotencyKey, errors);
         if (!errors.isEmpty()) {
             throw ApiException.invalid(errors);
         }
         return prepared(staff, new Draft(UUID.randomUUID(), input.reporterId(), staff.accountId(), input.channel(),
-                company, title, content, priority, Boolean.TRUE.equals(issue.privateIssue()), null),
+                company, title, content, priority, Boolean.TRUE.equals(issue.privateIssue()), images, null),
                 keyed ? idempotencyKey : null);
     }
 
     /**
      * The last checks of a filing whose company and fields are fine. With a key, first what the account
      * did with it (slice 3 design section 4, step 1): the issue of an earlier filing with this content
-     * is the answer, whatever happened to the company since. Then the company must be active.
+     * is the answer, whatever happened to the company since, and whatever images this request names:
+     * the first filing attached its own (acceptance.md of slice 5, section 5, 16). Then the company
+     * must be active.
      */
     private Prepared prepared(Viewer viewer, Draft draft, String idempotencyKey) {
         Draft keyed = draft;
@@ -269,7 +285,8 @@ public class IssueService {
     /**
      * Writes a prepared filing in one transaction, retried once on a lock conflict (S0-AC-85), in the
      * lock order of architecture.md: {@code storeAttachments} turns the filing's pending attachments
-     * stored (step 2), then the key row and the webhook row, then the company counter, then the issue row
+     * stored and the filing's temporary images are attached to the issue's ID (step 2, S5-AC-20), then
+     * the key row and the webhook row, then the company counter, then the issue row
      * with the number it got (S0-AC-44), then the first entry of its history, by the person who filed
      * (S3-AC-61). A failed filing uses no number and keeps no key (S3-AC-47), and its attachments stay
      * pending (S0-AC-63).
@@ -301,6 +318,7 @@ public class IssueService {
                 throw ApiException.invalid(List.of(unknownReporter()));
             }
             storeAttachments.run();
+            attachments.attachImages(viewer.accountId(), draft.id(), null, false, draft.images(), now);
             IdempotencyKey key = draft.key();
             if (key != null && !keys.insert(viewer.accountId(), key.value(), key.requestHash(), draft.id(), now,
                     now.minus(IdempotencyKey.KEPT))) {
@@ -424,8 +442,9 @@ public class IssueService {
      * <p>One transaction, retried once on a lock conflict: the issue row {@code FOR NO KEY UPDATE}
      * first, so the status and the version checked here are the ones the UPDATE changes (S3-AC-52). A
      * {@code CLOSED} issue is 400 whatever version was sent (S3-AC-21); then a version that is not the
-     * issue's is 409 (S3-AC-19). Values the issue already has change nothing, not the version either
-     * (S3-AC-22). Each field that changed gets a history entry (S3-AC-62).
+     * issue's is 409 (S3-AC-19). Then the images of the edit are attached, before anything is inserted;
+     * attaching does not raise the version (S5-AC-20). Values the issue already has change nothing, not
+     * the version either (S3-AC-22). Each field that changed gets a history entry (S3-AC-62).
      */
     public IssueRow edit(Viewer viewer, String key, Edit input) {
         IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
@@ -451,6 +470,7 @@ public class IssueService {
             if (input.version() == null) {
                 errors.add(new ApiError.FieldError("version", "REQUIRED"));
             }
+            ImageIds images = ImageIds.of(input.imageIds(), errors);
             if (!errors.isEmpty()) {
                 throw ApiException.invalid(errors);
             }
@@ -463,10 +483,11 @@ public class IssueService {
             boolean titleChanged = !title.equals(issue.title());
             boolean contentChanged = !content.equals(issue.content());
             boolean priorityChanged = priority != issue.priority();
+            Instant now = now();
+            attachments.attachImages(viewer.accountId(), issue.id(), null, false, images, now);
             if (!titleChanged && !contentChanged && !priorityChanged) {
                 return issue;
             }
-            Instant now = now();
             issues.updateFields(issue.id(), title, content, priority, now);
             if (titleChanged) {
                 history.insertChanged(issue.id(), Field.TITLE, issue.title(), title, viewer.accountId(), now);
