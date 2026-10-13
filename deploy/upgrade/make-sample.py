@@ -142,6 +142,22 @@ def fill(project):
     customer.request("DELETE", f"/api/portal/issues/{keys[2]}/attachments/{deleted['id']}", expect=204)
     purging = upload(customer, "/api/portal", keys[2], "purging.bin", 6, 1_000)
 
+    # What slice 5 added to an attachment (S5-AC-60). A content image: uploaded as a temporary image and
+    # attached by the comment that shows it (attachment.inline, with its issue and its comment). It
+    # reads back the same under its issue, like the files above.
+    image = png(8, 16, 16)
+    image_id = customer.upload("/api/portal/images", "file", "error.png", image)["id"]
+    customer.json("POST", f"/api/portal/issues/{first}/comments",
+                  {"content": f"The error on the display: ![error](attachment:{image_id})", "imageIds": [image_id]},
+                  expect=201)
+    kept.append({"issue": first, "id": image_id, "fileName": "error.png", "size": len(image),
+                 "sha256": sha256(image)})
+    # A temporary image no content was saved with (inline, stored, no issue). Its created_at is left as
+    # it is, the time of this run: an installation restored from the sample 24 hours later or more
+    # deletes the row and its file at the first run of temporary-image-cleanup, so a check that wants
+    # to find it must not depend on it being there.
+    customer.upload("/api/portal/images", "file", "not-saved.png", png(9, 16, 16))
+
     # What slice 3 added to an issue (S3-AC-90), after the uploads: a closed issue takes none. The first
     # issue gets an assignee and goes on to RESOLVED; the second is CONFIRMED with a changed title and
     # priority. Each change is a CHANGED row of issue_history.
