@@ -22,6 +22,7 @@ function attachment(over: Partial<Attachment>): Attachment {
     deletedBy: null,
     fileName: 'log.txt',
     id: 'a1',
+    inline: false,
     internal: false,
     size: 100,
     uploadedBy: { accountId: 1, name: '김상담', role: 'AGENT', photoUpdatedAt: null },

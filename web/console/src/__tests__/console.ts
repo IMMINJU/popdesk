@@ -126,6 +126,7 @@ export function attachment(over: Partial<Attachment> = {}): Attachment {
     deletedAt: null,
     deletedBy: null,
     fileName: 'log.txt',
+    inline: false,
     internal: false,
     size: 2048,
     uploadedBy: CUSTOMER_PERSON,
