@@ -1,0 +1,12 @@
+# Added after deploy/compose.yml by S3AttachmentLoadTest.
+# The S3 stand-in of slice 5b (design.md 0절 11) on the same network as the app, as host "s3". The
+# test gives the root key pair and makes the bucket through the published port.
+services:
+  s3:
+    image: versity/versitygw:v1.8.0
+    command: ["posix", "/tmp"]
+    environment:
+      ROOT_ACCESS_KEY: ${POPDESK_TEST_S3_ACCESS}
+      ROOT_SECRET_KEY: ${POPDESK_TEST_S3_SECRET}
+    ports:
+      - "7070"
