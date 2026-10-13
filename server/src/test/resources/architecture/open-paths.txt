@@ -1,0 +1,6 @@
+# Controller paths outside /api/portal/, /api/console/, /api/public/ that are open on purpose
+# (ApiPathPrefixTest), as on 2026-10-13. Written as in the mapping annotation.
+# Lines are only removed from this file. A new path goes under one of the three prefixes.
+
+# Spring Boot's error path (ApiErrorController): the JSON body of an error the container forwards.
+${server.error.path:/error}
