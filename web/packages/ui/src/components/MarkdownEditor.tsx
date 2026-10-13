@@ -88,6 +88,11 @@ export interface MarkdownEditorProps {
   imageOnlyText?: string | undefined;
   /** Handed to the preview (see MarkdownView). */
   unreadableImageText?: string | undefined;
+  /**
+   * A new value takes away the lines of failed uploads: the screen saved the text, so they are
+   * about a text that is gone. Without it they stay until the writer starts the next upload.
+   */
+  imageNoticesKey?: number | string | undefined;
   ref?: Ref<HTMLTextAreaElement>;
 }
 
@@ -269,6 +274,12 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
   const [failures, setFailures] = useState<{ name: string; message: string }[]>([]);
   const [dragging, setDragging] = useState(false);
   const [notImage, setNotImage] = useState(false);
+  const [noticesKey, setNoticesKey] = useState(props.imageNoticesKey);
+  if (noticesKey !== props.imageNoticesKey) {
+    setNoticesKey(props.imageNoticesKey);
+    setFailures([]);
+    setNotImage(false);
+  }
   const queue = useRef<{ file: File; mark: Mark }[]>([]);
   /** The mark of the upload on its way. Set while the queue is being worked through. */
   const active = useRef<Mark | null>(null);

@@ -62,6 +62,7 @@ export function imageIdsToSend(uploaded: readonly string[], content: string): st
 export function useEditorImages(paths: ImagePaths | undefined) {
   const [uploaded, setUploaded] = useState<readonly string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [saves, setSaves] = useState(0);
 
   const onImageUpload = async (file: File): Promise<ImageUploadResult> => {
     if (!paths) return { ok: false, message: '' };
@@ -81,15 +82,16 @@ export function useEditorImages(paths: ImagePaths | undefined) {
     /** An upload is on its way: the save waits, by its button and by Ctrl+Enter. */
     busy,
     /** Props of the MarkdownEditor. Nothing without `paths`: the editor is then what it was. */
-    editor: paths ? { onImageUpload, imageSrc, onImageBusyChange: setBusy } : {},
+    editor: paths ? { onImageUpload, imageSrc, onImageBusyChange: setBusy, imageNoticesKey: saves } : {},
     /** The `imageIds` of a save of `content`, to spread into its body. */
     idsFor: (content: string): ImageIds => {
       const ids = imageIdsToSend(uploaded, content);
       return ids.length > 0 ? { imageIds: ids } : {};
     },
-    /** The save went through: the images it named are attached now. */
+    /** The save went through: the images it named are attached now, and what failed to go up before is no longer said. */
     saved: () => {
       setUploaded([]);
+      setSaves((n) => n + 1);
     },
   };
 }
