@@ -17,9 +17,11 @@ import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -156,6 +158,11 @@ class NoStoreTest extends BareAppTest {
         fixtures.comment(admin, issue.key(), "No store answer " + Unique.number());
         Map<String, String> values = Map.of("{key}", issue.key(), "{code}", company.code(), "{id}", file.id(),
                 "{accountId}", String.valueOf(agent.accountId()));
+        // A temporary image is read by the account that uploaded it, on its own path (S5-AC-10): each
+        // reader gets the ID of an image of their own there, not the ID of the issue's attachment.
+        Map<String, String> imageReads = Map.of(
+                "/api/portal/images/{id}", "/api/portal/images/" + temporaryImage(customer),
+                "/api/console/images/{id}", "/api/console/images/" + temporaryImage(admin));
         List<String> failed = new ArrayList<>();
 
         for (Operation op : operations()) {
@@ -165,7 +172,8 @@ class NoStoreTest extends BareAppTest {
             if (PHOTO_READS.contains(op.path())) {
                 continue;
             }
-            String path = withValues(op.path(), values) + REQUIRED_QUERY.getOrDefault(op.path(), "");
+            String path = withValues(imageReads.getOrDefault(op.path(), op.path()), values)
+                    + REQUIRED_QUERY.getOrDefault(op.path(), "");
             if (op.path().startsWith("/api/portal/") || op.path().startsWith("/api/public/")) {
                 checkSuccess(failed, op.method() + " " + path + " on the portal",
                         customer.client().request(op.method(), path).send());
@@ -234,6 +242,18 @@ class NoStoreTest extends BareAppTest {
         expectWithNoStore(failed, 204, browser.post("/api/public/sign-out"));
 
         assertThat(failed).as("writes that failed or had no no-store").isEmpty();
+    }
+
+    /** Uploads a temporary image of the caller (a PNG by its first bytes) and gives its ID. */
+    private static String temporaryImage(Session uploader) {
+        byte[] signature = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
+        byte[] rest = ("No store image " + Unique.number()).getBytes(StandardCharsets.UTF_8);
+        byte[] content = Arrays.copyOf(signature, signature.length + rest.length);
+        System.arraycopy(rest, 0, content, signature.length, rest.length);
+        return uploader.client().post(uploader.api("/images"))
+                .file("file", "nostore-" + Unique.number() + ".png", "image/png", content)
+                .expect(201)
+                .jsonText("id");
     }
 
     private static ApiResponse expectWithNoStore(List<String> failed, int status, ApiRequest request) {

@@ -29,9 +29,13 @@ import tools.jackson.databind.json.JsonMapper;
  */
 class PasswordResetCleanupTest extends ConnectedAppTest {
 
-    /** The cleanup jobs of the first slice; their rows tell which table holds the records. */
+    /**
+     * The cleanup jobs that are not the one of reset tokens: those of the first slice, whose rows tell
+     * which table holds the records, and those later slices added, whose runs after a day must not be
+     * taken for this one.
+     */
     private static final Set<String> EARLIER_JOBS = Set.of("outbox-failed-cleanup", "attachment-cleanup",
-            "session-cleanup");
+            "session-cleanup", "audit-retention", "idempotency-key-cleanup", "temporary-image-cleanup");
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 

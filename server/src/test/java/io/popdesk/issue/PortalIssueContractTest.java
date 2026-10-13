@@ -38,12 +38,13 @@ class PortalIssueContractTest {
      * the agent who filed: S3-AC-36), {@code resolvedAt} and {@code closedAt}, and on the issue
      * {@code reopenable} (S3-AC-59). Slice 4 added to the comment {@code editedAt} (S4-AC-07) and the
      * trace of a deleted one, {@code deleted} and {@code deletedAt}, never who deleted it (S4-AC-15).
-     * The two bodies a customer sends for a comment hold the content alone: no mentions (S4-AC-25).
+     * The two bodies a customer sends for a comment hold the content and, from slice 5 on, the images
+     * to attach ({@code imageIds}, S5-AC-20): no mentions (S4-AC-25).
      */
     private static final Map<String, List<String>> SNAPSHOT = new TreeMap<>(Map.of(
             "Comment", List.of("author", "content", "createdAt", "deleted", "deletedAt", "editedAt", "id"),
-            "CreateCommentRequest", List.of("content"),
-            "UpdateCommentRequest", List.of("content"),
+            "CreateCommentRequest", List.of("content", "imageIds"),
+            "UpdateCommentRequest", List.of("content", "imageIds"),
             "Issue", List.of("closedAt", "companyCode", "companyName", "content", "createdAt", "filedBySupport",
                     "key", "priority", "private", "reopenable", "reporter", "resolvedAt", "status", "title",
                     "updatedAt", "version"),

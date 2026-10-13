@@ -49,9 +49,12 @@ class IdempotencyKeyTest extends BareAppTest {
 
     private static final String HEADER = "Idempotency-Key";
 
-    /** The cleanup jobs of the earlier slices; their rows tell which table holds the records. */
+    /**
+     * The cleanup jobs that are not the one of idempotency keys (the image cleanup of slice 5 among
+     * them); their rows tell which table holds the records.
+     */
     private static final Set<String> EARLIER_JOBS = Set.of("outbox-failed-cleanup", "attachment-cleanup",
-            "session-cleanup", "password-reset-cleanup", "audit-retention");
+            "session-cleanup", "password-reset-cleanup", "audit-retention", "temporary-image-cleanup");
 
     /** The three ways to file an issue. */
     enum Way {

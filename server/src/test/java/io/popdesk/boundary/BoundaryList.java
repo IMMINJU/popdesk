@@ -42,6 +42,7 @@ final class BoundaryList {
     private static final String TALK_STAFF = "boundary.TalkStaffIdentityTest#";
     private static final String INBOX = "inbox.InboxReadTest#";
     private static final String DELIVERY = "ops.DeliveryAccessTest#";
+    private static final String IMAGE = "attachment.ImageReadTest#";
 
     static final List<Entry> ENTRIES = List.of(
             // Before sign-in, both hosts
@@ -371,5 +372,28 @@ final class BoundaryList {
                     DELIVERY + "signedOutIsUnauthenticated",
                     DELIVERY + "withoutCsrfTokenIsForbidden",
                     DELIVERY + "portalHostHasNeitherEndpoint",
-                    "ops.DeliveryCheckOrderTest#checksComeInOrder"));
+                    "ops.DeliveryCheckOrderTest#checksComeInOrder"),
+
+            // Slice 5 (S5-AC-11): the 6 operations it adds. A temporary image has no issue and no company yet,
+            // so its boundary is the account that uploaded it: nobody else reads it, not a colleague of the same
+            // company and not an admin. The tests named here check that; once an image is attached it is an
+            // attachment of its issue, under the attachment lines above.
+            none("POST", "/api/portal/images",
+                    "stores a temporary image of the caller; no input picks a target and the answer is the new ID alone"),
+            tested("GET", "/api/portal/images/{id}",
+                    IMAGE + "othersGetTheUnknownIdAnswer",
+                    IMAGE + "pathOfTheOtherApp",
+                    IMAGE + "attachedImageLeavesTheTemporaryPath"),
+            tested("HEAD", "/api/portal/images/{id}",
+                    IMAGE + "othersGetTheUnknownIdAnswer",
+                    IMAGE + "pathOfTheOtherApp",
+                    IMAGE + "attachedImageLeavesTheTemporaryPath"),
+            none("POST", "/api/console/images",
+                    "stores a temporary image of the caller; no input picks a target and the answer is the new ID alone"),
+            tested("GET", "/api/console/images/{id}",
+                    IMAGE + "othersGetTheUnknownIdAnswer",
+                    IMAGE + "pathOfTheOtherApp"),
+            tested("HEAD", "/api/console/images/{id}",
+                    IMAGE + "othersGetTheUnknownIdAnswer",
+                    IMAGE + "pathOfTheOtherApp"));
 }
