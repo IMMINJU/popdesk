@@ -42,7 +42,7 @@
 | `check-locked-paths.py --base main --role tests` | 테스트 쪽 합치기 | 테스트 쪽 브랜치가 테스트 경로 밖을 고쳤는지 본다 |
 | `check-locked-paths.py --base main --role impl` | 구현 쪽 합치기 | 구현 쪽 브랜치가 잠근 테스트, 잠금 목록, 병합된 마이그레이션, 생성 계약 파일, 관문, 테스트 실행·린트 설정을 고쳤는지 본다. 빌드·의존성 파일이 바뀌면 사람이 보라고 알린다 |
 | `tests-lock.py check`, `check-test-style.py` | 구현 쪽 합치기, CI | 잠근 테스트가 그대로인지 본다. 구현 쪽이 더한 단위 테스트의 mock·고정 대기는 경고만 한다 |
-| `check-fixture-literals.py` | 10 | 잠근 테스트의 데이터 값이 운영 코드에 그대로 있으면 알린다. 사람이 읽고 판단한다 |
+| `check-fixture-literals.py` | 10 | 잠근 테스트가 지어낸 입력값(이메일, UUID, 키 꼴)이 운영 코드에 그대로 있으면 알린다. 화면 문구는 모으지 않는다. 사람이 읽고 판단한다 |
 | `PackageCyclesTest`, ESLint `no-restricted-imports`, `pnpm dup`(jscpd), `check-portal-bundle.py` | 구현 쪽 합치기, CI | 구조 검사(D-57). 서버 패키지의 새 순환, 두 웹 앱이 서로의 코드를 가져오는 것, 웹 중복 줄이 상한(`web/.jscpd.json`)을 넘는 것, 포털 빌드에 콘솔 API 경로가 든 것을 실패로 본다. 기준선(`server/src/test/resources/architecture/package-cycles.txt`)과 설정은 잠겨 있다. 상한과 기준선은 줄이기만 한다 |
 
 구현 쪽에는 세 겹을 둔다.

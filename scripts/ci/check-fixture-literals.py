@@ -4,11 +4,12 @@
 Usage: check-fixture-literals.py
 
 Run from the repository root. Collects string literals from locked test files that look like
-test data (an email, text with a space, non-ASCII text, or letters mixed with digits, 6+ chars)
-and reports production files that have the same string as a whole literal. Substrings are not
-counted: a fragment like ' from ' in a test is not a fixture value. A hit can mean the implementation
-special-cases a test input. It can also be a legitimate shared value, so this only reports;
-a person reads the list in C-10. Always exits 0.
+an input a test made up (an email address, a UUID, or a key-like word of 8+ characters with both
+letters and digits and no space) and reports production files that have the same string as a whole
+literal. Screen copy and messages are not collected: the tests and the code share them on purpose,
+and they hid the few hits worth reading. Substrings are not counted. A hit can mean the
+implementation special-cases a test input. It can also be a legitimate shared value, so this only
+reports; a person reads the list in C-10. Always exits 0.
 """
 
 import re
@@ -23,15 +24,18 @@ PROD_SUFFIXES = {".java", ".kt", ".ts", ".tsx", ".js", ".sql", ".yml", ".yaml", 
 NOT_PROD = ("**/*.stories.tsx", "web/pnpm-lock.yaml", "web/pnpm-workspace.yaml", "**/eslint.config.*")
 
 
+EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+UUID_RE = re.compile(r"(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+KEY_RE = re.compile(r"[A-Za-z0-9_+/=-]{8,}")
+
+
 def looks_like_data(s):
-    if s != s.strip() or not re.search(r"[^\W\d_]", s):
-        return False  # padding, fragments, punctuation
-    if s.startswith(("/", "http", "#", "--", "classpath:")):
+    if EMAIL_RE.fullmatch(s) or UUID_RE.fullmatch(s):
+        return True
+    if not KEY_RE.fullmatch(s) or not (re.search(r"[A-Za-z]", s) and re.search(r"\d", s)):
         return False
-    if re.fullmatch(r"[A-Z0-9_.]+|[A-Za-z-]+|[a-z][a-zA-Z0-9]*", s):
-        return False  # codes, header names, identifiers
-    return ("@" in s or " " in s or re.search(r"[^\x00-\x7f]", s) is not None
-            or (re.search(r"[A-Za-z]", s) and re.search(r"\d", s)))
+    # Codes (FILE_TOO_LARGE_2), identifiers (sha256Hex), and names with a version (utf-8, base64url).
+    return not re.fullmatch(r"[A-Z0-9_]+|[a-z][a-zA-Z0-9]*|[A-Za-z]+[-_]?\d{1,4}[a-z]*", s)
 
 
 def main():
