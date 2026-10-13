@@ -31,6 +31,7 @@
         <spring-modulith.version>2.1.1</spring-modulith.version>
         <springdoc.version>3.1.1</springdoc.version>
         <bouncycastle.version>1.86</bouncycastle.version>
+        <awssdk.version>2.55.15</awssdk.version>
         <!-- Newer than Spring Boot 4.1.1 manages, for security fixes (trivy, C-10): Tomcat
              CVE-2026-65182, -65905, -68525; Jackson CVE-2026-68497, -89407, -89425, -91776, -91777.
              Remove each line when the Spring Boot version manages that version or a later one. -->
@@ -145,6 +146,33 @@
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark</artifactId>
             <version>0.30.0</version>
+        </dependency>
+        <!-- Attachments in S3-compatible storage, POPDESK_STORAGE=s3 (ADR D-38, D-60). Only the JDK's
+             URL connection as the HTTP client: the SDK's other clients (Netty, Apache 4 and 5) are left
+             out, which keeps this at 32 jars and 8.7 MB. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>${awssdk.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache5-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
+            <version>${awssdk.version}</version>
         </dependency>
 
         <dependency>
