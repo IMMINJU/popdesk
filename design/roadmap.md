@@ -108,4 +108,4 @@ v1에는 넣지 않지만 막지 않는다. 할 때는 결정을 먼저 남긴�
 - 2번에서: 담당자의 초대에 하루 한도를 거는 일은 필요해지면 한다(`archive/2-manager/premortem.md` 4절).
 - 3번에서: 라벨 필터와 작업 수는 6번, 자동 종료는 7번, SLA 칸과 필터는 8번, 이력의 익명화는 10번이다. 검색 없는 문의 목록이 10만 건에서 250~315 ms인 것은 6번에서 목록을 고칠 때 같이 본다(`archive/3-issues/verify.md` 8절).
 - 4번에서: 정리 작업이 하루 넘게 돌지 않을 때의 경보는 7번, `POPDESK_TIMEZONE`의 틀린 값을 시작할 때 막는 것은 날짜 판정(마감일)이 들어오는 6번이다(`archive/4b-delivery/verify.md` 8절). 서버 패키지 순환은 `account` ↔ `company` 하나가 남았고 초대나 구성원을 고치는 묶음에서 본다(D-57). `@popdesk/app`으로 옮긴 파일 가운데 테스트와 변이 테스트를 아직 재지 않은 것이 있다.
-- 5번에서: 저장소 `disk`·`s3`는 5b다. Storybook의 넘침 단언을 명령 줄에서 돌리는 실행기를 넣을지는 5b의 설계에서 정한다. 편집기의 새 문구를 `@popdesk/i18n`으로 옮기는 것은 영어 화면을 만들 때 한다(`archive/5-attachments/verify.md` 9절).
+- 5번에서: 저장소 `disk`·`s3`는 5b다(설계는 `slices/5b-storage/`, 2026-10-14 메인이 정함, 사용자 확인 전). Storybook의 넘침 단언을 명령 줄에서 돌리는 실행기는 6번 묶음의 첫 웹 일로 넣는다(5b는 화면을 바꾸지 않는다. `slices/5b-storage/acceptance.md` 5절 12). 편집기의 새 문구를 `@popdesk/i18n`으로 옮기는 것은 영어 화면을 만들 때 한다(`archive/5-attachments/verify.md` 9절).
