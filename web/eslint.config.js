@@ -45,6 +45,14 @@ export default tseslint.config(
       'no-restricted-imports': ['error', { patterns: ['@popdesk/api', '@popdesk/api/*', '**/console/src/**', '**/portal/src/**'] }],
     },
   },
+  // Production code does not write to the browser console. Tests and stories may.
+  {
+    files: ['portal/src/**/*.{ts,tsx}', 'console/src/**/*.{ts,tsx}', 'packages/*/src/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}', '**/__tests__/**', '**/test-setup.ts', '**/*.stories.tsx'],
+    rules: {
+      'no-console': 'error',
+    },
+  },
   {
     files: ['**/*.{js,mjs}'],
     extends: [tseslint.configs.disableTypeChecked],
