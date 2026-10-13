@@ -36,7 +36,7 @@ function called(person: { name: string | null; role: Person['role'] | null } | n
 }
 
 /** What one line says, and what it shows under itself. */
-function lineOf(entry: Entry, onBehalf: boolean): { text: string; detail?: ReactNode } {
+function lineOf(entry: Entry, onBehalf: boolean, fileName: (id: string | null) => string): { text: string; detail?: ReactNode } {
   // popdesk itself (account 0) has no name.
   const who = entry.actor.name === null ? '시스템이' : `${called(entry.actor)}이`;
   if (entry.kind === 'CREATED') return { text: onBehalf ? `${who} 대리 등록했습니다` : `${who} 문의를 올렸습니다` };
@@ -73,6 +73,11 @@ function lineOf(entry: Entry, onBehalf: boolean): { text: string; detail?: React
           </Disclosure>
         ),
       };
+    case 'ATTACHMENT':
+      // The entry holds the ID alone (S5-AC-43): attached in `newValue`, deleted in `oldValue`.
+      return entry.newValue !== null
+        ? { text: `${who} 첨부를 붙임: ${fileName(entry.newValue)}` }
+        : { text: `${who} 첨부를 지움: ${fileName(entry.oldValue)}` };
     default:
       // A field of a later release.
       return { text: `${who} 문의를 바꿨습니다` };
@@ -85,6 +90,8 @@ export interface IssueHistoryProps {
   onBehalf: boolean;
   /** A new number reads the open history again. */
   version: number;
+  /** The issue's attachments as listed now: an attachment line takes its file name from here. */
+  attachments: readonly { id: string; fileName: string | null }[];
 }
 
 export function IssueHistory(props: IssueHistoryProps) {
@@ -123,6 +130,9 @@ export function IssueHistory(props: IssueHistoryProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, issueKey, pages, version, retries]);
 
+  // A deleted attachment has no name any more, and one that is not listed has none to show.
+  const fileName = (id: string | null) => props.attachments.find((a) => a.id === id)?.fileName ?? '지워진 파일';
+
   return (
     <Disclosure label="이력" kind="section" onToggle={setOpen}>
       {answer === null && <p className="pd-muted">불러오는 중…</p>}
@@ -136,7 +146,7 @@ export function IssueHistory(props: IssueHistoryProps) {
       {answer && answer.items.length > 0 && (
         <ol className="pd-history">
           {answer.items.map((entry) => {
-            const line = lineOf(entry, props.onBehalf);
+            const line = lineOf(entry, props.onBehalf, fileName);
             return (
               <li key={entry.id}>
                 <p>

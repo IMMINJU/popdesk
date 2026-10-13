@@ -2,6 +2,7 @@
 // The portal has no "알릴 사람": the request holds the content alone (S4-AC-25).
 import { CommentEdit as CommentEditWith, type CommentEditProps as SharedProps } from '@popdesk/app/CommentEdit';
 import { api, type Schemas } from '../api';
+import { imagePaths } from './attachments';
 import { call } from './result';
 
 export type { EditGone } from '@popdesk/app/CommentEdit';
@@ -19,11 +20,12 @@ export function CommentEdit(props: CommentEditProps) {
     <CommentEditWith
       {...rest}
       comment={comment}
-      save={(content) =>
+      images={imagePaths(issueKey)}
+      save={(content, images) =>
         call(
           api.PATCH('/api/portal/issues/{key}/comments/{id}', {
             params: { path: { key: issueKey, id: comment.id } },
-            body: { content },
+            body: { content, ...images },
           }),
         )
       }

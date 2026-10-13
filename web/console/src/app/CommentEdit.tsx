@@ -2,6 +2,7 @@
 // "알릴 사람" under it. Only what changed is sent.
 import { CommentEdit as CommentEditWith, type CommentEditProps as SharedProps } from '@popdesk/app/CommentEdit';
 import { api, type Schemas } from '../api';
+import { imagePaths } from './attachments';
 import { MentionPicker } from './MentionPicker';
 import { useMentions } from './mentions';
 import { call } from './result';
@@ -26,11 +27,12 @@ export function CommentEdit(props: CommentEditProps) {
       {...rest}
       comment={comment}
       alsoDirty={mentions.changed}
-      save={(content) =>
+      images={imagePaths(issueKey)}
+      save={(content, images) =>
         call(
           api.PATCH('/api/console/issues/{key}/comments/{id}', {
             params: { path: { key: issueKey, id: comment.id } },
-            body: { ...(content === comment.content ? {} : { content }), ...(mentions.changed ? { mentions: mentions.ids } : {}) },
+            body: { ...(content === comment.content ? {} : { content }), ...(mentions.changed ? { mentions: mentions.ids } : {}), ...images },
           }),
         )
       }

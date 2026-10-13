@@ -32,10 +32,14 @@ import {
   ATTACHMENT_LIMITS,
   attachmentHref,
   checkAttachment,
+  IMAGE_SAVE_TEXT,
+  IMAGE_TEXT,
+  imagePaths,
   publicBytes,
   REJECT_TEXT,
   uploadAttachment,
   uploadFailureText,
+  useEditorImages,
   type Attachment,
   type UploadFailure,
 } from '../app/attachments';
@@ -155,6 +159,8 @@ function IssueDetail(props: { issueKey: string }) {
   const focusComment = useRef<number | null>(null);
   const focusEditor = useRef(false);
   const fields = useFieldErrors({ content: { id: 'comment-content', limits: { min: 1, max: 4000 } } });
+  // Slice 5: the images of the comment being written.
+  const images = useEditorImages(imagePaths(key));
 
   // Slice 3: what the reporter does to the issue, and 고치기.
   const [acting, setActing] = useState<Action | null>(null);
@@ -299,7 +305,7 @@ function IssueDetail(props: { issueKey: string }) {
   };
 
   const send = async () => {
-    if (sending || cooldown.active) return;
+    if (sending || cooldown.active || images.busy) return;
     setSendFailure(null);
     cooldown.clearEnded();
     fields.clear();
@@ -311,13 +317,14 @@ function IssueDetail(props: { issueKey: string }) {
     const result = await call(
       api.POST('/api/portal/issues/{key}/comments', {
         params: { path: { key } },
-        body: { content: draft },
+        body: { content: draft, ...images.idsFor(draft) },
       }),
     );
     setSending(false);
     if (result.ok) {
       focusComment.current = result.data.id;
       setDraft('');
+      images.saved();
       await load.reload();
       toast('댓글을 남겼습니다');
       return;
@@ -485,12 +492,15 @@ function IssueDetail(props: { issueKey: string }) {
         : { kind: 'person', photoUrl: photoUrl(a.uploadedBy.accountId, a.uploadedBy.photoUpdatedAt) },
     createdAt: a.createdAt,
     deleted: a.deleted,
+    inline: a.inline,
     canDelete: canWrite && !a.deleted && a.uploadedBy.kind === 'CUSTOMER' && a.uploadedBy.accountId === meId,
     deleting: deleting === a.id,
     ...(a.deleted ? {} : { href: attachmentHref(key, a.id) }),
   }));
 
   const comments = byTime(detail.comments);
+  // A content image is read from this issue's attachments (S5-AC-50).
+  const imageSrc = (id: string) => attachmentHref(key, id);
   // The second sentence of the question: only for files of the comment itself that are still there.
   const removeFiles = removing !== null && detail.attachments.some((a) => a.commentId === removing.id && !a.deleted);
 
@@ -513,7 +523,7 @@ function IssueDetail(props: { issueKey: string }) {
   } else if (canWrite) {
     footer = (
       <form className="pd-comment-form" aria-label="댓글 쓰기" noValidate onSubmit={onSubmit}>
-        <SaveFailure failure={sendFailure} known={{ ISSUE_CLOSED: ISSUE_CLOSED_TEXT }} />
+        <SaveFailure failure={sendFailure} known={{ ISSUE_CLOSED: ISSUE_CLOSED_TEXT, ...IMAGE_SAVE_TEXT }} />
         <RateLimitBand {...cooldown} />
         <MarkdownEditor
           ref={editorRef}
@@ -527,13 +537,14 @@ function IssueDetail(props: { issueKey: string }) {
           showCount
           placeholder="지원팀에 전할 내용을 씁니다."
           helpText="Ctrl+Enter(맥은 Cmd+Enter)로 보냅니다."
+          {...images.editor}
           onSubmitShortcut={() => {
             void send();
           }}
           {...(fields.errors.content ? { error: fields.errors.content } : {})}
         />
         <div className="pd-form-actions">
-          <Button type="submit" pending={sending} pendingLabel={TEXT.sending} blocked={cooldown.active}>
+          <Button type="submit" pending={sending} pendingLabel={TEXT.sending} blocked={cooldown.active || images.busy}>
             보내기
           </Button>
         </div>
@@ -702,7 +713,7 @@ function IssueDetail(props: { issueKey: string }) {
         />
       ) : (
         <article className="pd-detail-body" aria-label="문의 내용">
-          <MarkdownView source={issue.content} />
+          <MarkdownView source={issue.content} imageSrc={imageSrc} />
         </article>
       )}
 
@@ -724,6 +735,7 @@ function IssueDetail(props: { issueKey: string }) {
           emptyText="첨부 없음"
           deleteLabel="지우기"
           deletedLabel="지워진 첨부"
+          inlineLabel={IMAGE_TEXT.inline}
           onDelete={(id) => {
             setDeleteTarget(detail.attachments.find((a) => a.id === id) ?? null);
           }}
@@ -799,6 +811,7 @@ function IssueDetail(props: { issueKey: string }) {
                   visibility="public"
                   createdAt={c.createdAt}
                   body={c.content}
+                  imageSrc={imageSrc}
                   supportLabel={TEXT.supportTeam}
                   meLabel={TEXT.me}
                   deleted={c.deleted}

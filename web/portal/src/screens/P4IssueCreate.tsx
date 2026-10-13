@@ -22,7 +22,16 @@ import {
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SubmitEvent } from 'react';
 import { Link } from 'react-router';
 import { api, type Schemas } from '../api';
-import { ATTACHMENT_LIMITS, REJECT_TEXT, uploadAttachment, uploadFailureText, type UploadFailure } from '../app/attachments';
+import {
+  ATTACHMENT_LIMITS,
+  IMAGE_SAVE_TEXT,
+  imagePaths,
+  REJECT_TEXT,
+  uploadAttachment,
+  uploadFailureText,
+  useEditorImages,
+  type UploadFailure,
+} from '../app/attachments';
 import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { useCooldown, useFieldErrors, useLeaveGuard, useLoad } from '../app/hooks';
@@ -70,6 +79,8 @@ export function P4IssueCreate() {
   const [isPrivate, setPrivate] = useState(false);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const nextUpload = useRef(0);
+  // No issue yet: only the images uploaded here are drawn, from their temporary address.
+  const images = useEditorImages(imagePaths());
 
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -123,7 +134,7 @@ export function P4IssueCreate() {
 
   const submit = async (e: SubmitEvent) => {
     e.preventDefault();
-    if (pending || cooldown.active) return;
+    if (pending || cooldown.active || images.busy) return;
     setFailure(null);
     setBand(null);
     cooldown.clearEnded();
@@ -131,7 +142,7 @@ export function P4IssueCreate() {
     setPending(true);
     // A 413 from the app carries an error body; a proxy in front answers with its own page.
     const seen = { appError: false };
-    const body = { companyCode: chosen, title, content, priority, private: isPrivate };
+    const body = { companyCode: chosen, title, content, priority, private: isPrivate, ...images.idsFor(content) };
     const create = () => {
       // The same key for the same content sent again; a changed field makes a new filing (S3-AC-84).
       const text = JSON.stringify(body);
@@ -268,7 +279,7 @@ export function P4IssueCreate() {
       >
         <FieldSummary summary={fields.summary} />
         {band && <Alert tone="error">{band}</Alert>}
-        <SaveFailure failure={failure} known={{ IDEMPOTENCY_KEY_REUSED: t('portalIssueCreate.keyReused') }} />
+        <SaveFailure failure={failure} known={{ IDEMPOTENCY_KEY_REUSED: t('portalIssueCreate.keyReused'), ...IMAGE_SAVE_TEXT }} />
         <RateLimitBand {...cooldown} />
         {companyField}
         <TextField
@@ -288,6 +299,7 @@ export function P4IssueCreate() {
           maxLength={10000}
           showCount
           placeholder="무엇이 어떻게 안 되는지, 언제부터인지 적어 주세요."
+          {...images.editor}
           {...(fields.errors.content ? { error: fields.errors.content } : {})}
         />
         <div id="issue-priority">
@@ -314,7 +326,7 @@ export function P4IssueCreate() {
           dropHint="또는 여기로 끌어 놓으세요"
         />
         <div className="pd-form-actions pd-create-actions">
-          <Button type="submit" pending={pending} pendingLabel={TEXT.sending} blocked={cooldown.active}>
+          <Button type="submit" pending={pending} pendingLabel={TEXT.sending} blocked={cooldown.active || images.busy}>
             올리기
           </Button>
           <Button

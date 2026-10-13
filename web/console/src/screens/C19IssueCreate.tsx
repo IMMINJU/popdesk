@@ -18,6 +18,7 @@ import {
 import { useEffect, useRef, useState, type ReactNode, type SubmitEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api, type Schemas } from '../api';
+import { IMAGE_SAVE_TEXT, imagePaths, useEditorImages } from '../app/attachments';
 import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { useCooldown, useFieldErrors, useLeaveGuard, useLive, useLoad } from '../app/hooks';
@@ -64,6 +65,8 @@ export function C19IssueCreate() {
   const [priority, setPriority] = useState<Priority>('NORMAL');
   const [isPrivate, setPrivate] = useState(false);
   const [reporterReloads, setReporterReloads] = useState(0);
+  // No issue yet: only the images uploaded here are drawn, from their temporary address.
+  const images = useEditorImages(imagePaths());
 
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -144,7 +147,7 @@ export function C19IssueCreate() {
 
   const submit = (e: SubmitEvent) => {
     e.preventDefault();
-    if (pending || cooldown.active) return;
+    if (pending || cooldown.active || images.busy) return;
     setFailure(null);
     setBand(null);
     cooldown.clearEnded();
@@ -157,7 +160,7 @@ export function C19IssueCreate() {
       return;
     }
     setPending(true);
-    void send({ companyCode, reporterId: reporter.accountId, channel, title, content, priority, private: isPrivate }, false);
+    void send({ companyCode, reporterId: reporter.accountId, channel, title, content, priority, private: isPrivate, ...images.idsFor(content) }, false);
   };
 
   let body: ReactNode;
@@ -186,7 +189,7 @@ export function C19IssueCreate() {
       <form className="pd-form pd-create-form" noValidate onSubmit={submit}>
         <FieldSummary summary={fields.summary} />
         {band && <Alert tone="error">{band}</Alert>}
-        <SaveFailure failure={failure} known={{ IDEMPOTENCY_KEY_REUSED: t('issueOnBehalf.keyReused') }} />
+        <SaveFailure failure={failure} known={{ IDEMPOTENCY_KEY_REUSED: t('issueOnBehalf.keyReused'), ...IMAGE_SAVE_TEXT }} />
         <RateLimitBand {...cooldown} />
         <Select
           id={COMPANY_ID}
@@ -243,6 +246,7 @@ export function C19IssueCreate() {
           showCount
           placeholder="무엇이 어떻게 안 되는지, 언제부터인지 적어 주세요."
           helpText={t('issueOnBehalf.noFiles')}
+          {...images.editor}
           {...(fields.errors.content ? { error: fields.errors.content } : {})}
         />
         <div id="issue-priority">
@@ -264,7 +268,7 @@ export function C19IssueCreate() {
           >
             {TEXT.cancel}
           </Button>
-          <Button type="submit" pending={pending} pendingLabel={TEXT.sending} blocked={cooldown.active}>
+          <Button type="submit" pending={pending} pendingLabel={TEXT.sending} blocked={cooldown.active || images.busy}>
             {t('issueOnBehalf.submit')}
           </Button>
         </div>

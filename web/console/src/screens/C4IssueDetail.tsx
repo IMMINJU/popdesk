@@ -34,10 +34,14 @@ import {
   ATTACHMENT_LIMITS,
   attachmentHref,
   checkAttachment,
+  IMAGE_SAVE_TEXT,
+  IMAGE_TEXT,
+  imagePaths,
   publicBytes,
   REJECT_TEXT,
   uploadAttachment,
   uploadFailureText,
+  useEditorImages,
   type Attachment,
 } from '../app/attachments';
 import { RateLimitBand, SaveFailure } from '../app/bands';
@@ -160,6 +164,8 @@ function IssueDetail(props: { issueKey: string }) {
   const focusComment = useRef<number | null>(null);
   const focusEditor = useRef(false);
   const fields = useFieldErrors({ content: { id: 'comment-content', limits: { min: 1, max: 4000 } } });
+  // Slice 5: the images of the comment being written.
+  const images = useEditorImages(imagePaths(key));
   // 0 until the issue is in: nobody's account.
   const mentions = useMentions(key, false, load.data?.issue.reporter.accountId ?? 0);
 
@@ -303,7 +309,7 @@ function IssueDetail(props: { issueKey: string }) {
   };
 
   const send = async () => {
-    if (sending || cooldown.active) return;
+    if (sending || cooldown.active || images.busy) return;
     setSendFailure(null);
     cooldown.clearEnded();
     fields.clear();
@@ -314,7 +320,7 @@ function IssueDetail(props: { issueKey: string }) {
     setSending(true);
     const internal = visibility === 'internal';
     // Nobody picked: the body has no `mentions` at all.
-    const picked = mentions.ids.length > 0 ? { mentions: mentions.ids } : {};
+    const picked = { ...(mentions.ids.length > 0 ? { mentions: mentions.ids } : {}), ...images.idsFor(draft) };
     const result = await call(
       api.POST('/api/console/issues/{key}/comments', {
         params: { path: { key } },
@@ -326,7 +332,9 @@ function IssueDetail(props: { issueKey: string }) {
       focusComment.current = result.data.id;
       setDraft('');
       mentions.reset();
+      images.saved();
       await load.reload();
+      setHistoryVersion((n) => n + 1);
       toast(internal ? '내부 메모를 남겼습니다' : '답변을 보냈습니다');
       return;
     }
@@ -377,7 +385,9 @@ function IssueDetail(props: { issueKey: string }) {
     setEditGone(null);
     focusComment.current = id;
     await load.reload();
-    if (live()) toast(t('comment.editedToast'));
+    if (!live()) return;
+    setHistoryVersion((n) => n + 1);
+    toast(t('comment.editedToast'));
   };
 
   const onCommentGone = (why: EditGone, text: string) => {
@@ -408,7 +418,9 @@ function IssueDetail(props: { issueKey: string }) {
       closeRemove();
       focusComment.current = target.id;
       await load.reload();
-      if (live()) toast(t('comment.deletedToast'));
+      if (!live()) return;
+      setHistoryVersion((n) => n + 1);
+      toast(t('comment.deletedToast'));
     } else if (result.failure.kind === 'notFound') {
       closeRemove();
       void load.reload();
@@ -429,6 +441,7 @@ function IssueDetail(props: { issueKey: string }) {
     if (result.ok) {
       setUploads((current) => current.filter((u) => u.id !== id));
       await load.reload();
+      setHistoryVersion((n) => n + 1);
       return;
     }
     if (result.failure.kind === 'unauthenticated') {
@@ -483,6 +496,7 @@ function IssueDetail(props: { issueKey: string }) {
     setDeleteTarget(null);
     if (result.ok || result.failure.kind === 'notFound') {
       await load.reload();
+      setHistoryVersion((n) => n + 1);
       if (result.ok) toast('첨부를 지웠습니다');
       return;
     }
@@ -497,6 +511,7 @@ function IssueDetail(props: { issueKey: string }) {
     uploaderAvatar: { kind: 'person', photoUrl: photoUrl(a.uploadedBy.accountId, a.uploadedBy.photoUpdatedAt) },
     createdAt: a.createdAt,
     internal: a.internal,
+    inline: a.inline,
     deleted: a.deleted,
     canDelete: !a.deleted && (isAdmin || a.uploadedBy.accountId === me?.id),
     deleting: deleting === a.id,
@@ -504,6 +519,8 @@ function IssueDetail(props: { issueKey: string }) {
   }));
 
   const comments = byTime(detail.comments);
+  // A content image is read from this issue's attachments (S5-AC-50).
+  const imageSrc = (id: string) => attachmentHref(key, id);
   const internal = visibility === 'internal';
   // The second sentence of the question: only for files of the comment itself that are still there.
   const removeFiles = removing !== null && detail.attachments.some((a) => a.commentId === removing.id && !a.deleted);
@@ -678,7 +695,7 @@ function IssueDetail(props: { issueKey: string }) {
         />
       ) : (
         <article className="pd-detail-body" aria-label="문의 내용">
-          <MarkdownView source={issue.content} />
+          <MarkdownView source={issue.content} imageSrc={imageSrc} />
         </article>
       )}
 
@@ -701,6 +718,7 @@ function IssueDetail(props: { issueKey: string }) {
           deleteLabel="지우기"
           deletedLabel="지워진 첨부"
           internalLabel="내부"
+          inlineLabel={IMAGE_TEXT.inline}
           onDelete={(id) => {
             setDeleteTarget(detail.attachments.find((a) => a.id === id) ?? null);
           }}
@@ -768,6 +786,7 @@ function IssueDetail(props: { issueKey: string }) {
                   visibility={c.internal ? 'internal' : 'public'}
                   createdAt={c.createdAt}
                   body={c.content}
+                  imageSrc={imageSrc}
                   internalLabel="내부 메모"
                   deleted={c.deleted}
                   deletedLabel={t('comment.deleted')}
@@ -844,7 +863,7 @@ function IssueDetail(props: { issueKey: string }) {
         )}
       </section>
 
-      <IssueHistory issueKey={key} onBehalf={issue.createdBy !== null} version={historyVersion} />
+      <IssueHistory issueKey={key} onBehalf={issue.createdBy !== null} version={historyVersion} attachments={detail.attachments} />
 
       {closed ? (
         <div className="pd-detail-closed">
@@ -871,7 +890,7 @@ function IssueDetail(props: { issueKey: string }) {
             }}
             renderAdornment={(o) => (o.value === 'internal' ? <LockIcon size={14} /> : null)}
           />
-          <SaveFailure failure={sendFailure} known={{ ISSUE_CLOSED: ISSUE_CLOSED_TEXT }} />
+          <SaveFailure failure={sendFailure} known={{ ISSUE_CLOSED: ISSUE_CLOSED_TEXT, ...IMAGE_SAVE_TEXT }} />
           <RateLimitBand {...cooldown} />
           <MarkdownEditor
             ref={editorRef}
@@ -886,6 +905,7 @@ function IssueDetail(props: { issueKey: string }) {
             internal={internal}
             placeholder={internal ? '상담 쪽만 보는 메모를 남깁니다.' : '고객에게 보낼 답변을 씁니다.'}
             helpText="Ctrl+Enter(맥은 Cmd+Enter)로 보냅니다."
+            {...images.editor}
             onSubmitShortcut={() => {
               void send();
             }}
@@ -898,7 +918,7 @@ function IssueDetail(props: { issueKey: string }) {
               variant={internal ? 'internal' : 'primary'}
               pending={sending}
               pendingLabel={TEXT.sending}
-              blocked={cooldown.active}
+              blocked={cooldown.active || images.busy}
             >
               {internal ? '내부 메모 남기기' : '고객에게 답변 보내기'}
             </Button>
