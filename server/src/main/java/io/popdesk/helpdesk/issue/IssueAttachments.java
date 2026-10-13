@@ -21,20 +21,24 @@ public interface IssueAttachments {
      * among the IDs, one that is no ID too, is 400 {@code TEMPORARY_IMAGE_INVALID}, one answer whatever
      * is wrong and with whichever ID (S5-AC-21). Then the public attachments of the issue must not pass
      * 50 MB with them: 400 {@code ISSUE_ATTACHMENTS_TOO_LARGE} (S5-AC-23). The caller's transaction is
-     * rolled back by either.
+     * rolled back by either. Each image leaves an entry in the issue's history (S5-AC-40), but while the
+     * issue is being filed: its {@code CREATED} entry stands for what it was filed with (S5-AC-42).
      *
      * @param issueId the issue, whose row the caller locked, or the ID of the issue it is filing
      * @param commentId the comment the images belong to, which may be inserted after this call in the
      *     same transaction; null for images of the issue's content
      * @param internal whether that comment is internal: its images do not count toward the 50 MB
+     * @param filing whether the issue is being filed in this transaction
      */
-    void attachImages(long uploadedBy, UUID issueId, Long commentId, boolean internal, ImageIds images, Instant now);
+    void attachImages(long uploadedBy, UUID issueId, Long commentId, boolean internal, boolean filing,
+            ImageIds images, Instant now);
 
     /**
      * Every stored attachment of a comment that is being deleted becomes {@code purging}, in ID order,
-     * with the trace a deleted attachment leaves (S4-AC-14). Returns their IDs for {@link #removeFiles}.
+     * with the trace a deleted attachment leaves (S4-AC-14) and an entry each in the history of the
+     * issue (S5-AC-41). Returns their IDs for {@link #removeFiles}.
      */
-    List<UUID> purgeOfComment(long commentId, long deletedBy, Instant at);
+    List<UUID> purgeOfComment(UUID issueId, long commentId, long deletedBy, Instant at);
 
     /**
      * The rest of a delete, after the {@code purging} rows are committed and never inside a transaction:

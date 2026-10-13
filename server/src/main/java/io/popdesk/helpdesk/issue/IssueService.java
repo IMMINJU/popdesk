@@ -318,7 +318,7 @@ public class IssueService {
                 throw ApiException.invalid(List.of(unknownReporter()));
             }
             storeAttachments.run();
-            attachments.attachImages(viewer.accountId(), draft.id(), null, false, draft.images(), now);
+            attachments.attachImages(viewer.accountId(), draft.id(), null, false, true, draft.images(), now);
             IdempotencyKey key = draft.key();
             if (key != null && !keys.insert(viewer.accountId(), key.value(), key.requestHash(), draft.id(), now,
                     now.minus(IdempotencyKey.KEPT))) {
@@ -484,7 +484,7 @@ public class IssueService {
             boolean contentChanged = !content.equals(issue.content());
             boolean priorityChanged = priority != issue.priority();
             Instant now = now();
-            attachments.attachImages(viewer.accountId(), issue.id(), null, false, images, now);
+            attachments.attachImages(viewer.accountId(), issue.id(), null, false, false, images, now);
             if (!titleChanged && !contentChanged && !priorityChanged) {
                 return issue;
             }

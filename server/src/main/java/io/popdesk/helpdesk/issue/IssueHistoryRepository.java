@@ -29,7 +29,13 @@ public class IssueHistoryRepository {
         ASSIGNEE,
         TITLE,
         CONTENT,
-        PRIORITY
+        PRIORITY,
+        /**
+         * An attachment was added to the issue or deleted (ATT-8): its ID is the new value when it was
+         * added and the old value when it was deleted, the other one null. Never its file name, which a
+         * deleted attachment gives up (S5-AC-43).
+         */
+        ATTACHMENT
     }
 
     /** An account as a history entry names it, by its name today. */

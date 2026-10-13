@@ -122,7 +122,7 @@ public class CommentService {
             }
             Instant now = now();
             long id = comments.nextId();
-            attachments.attachImages(viewer.accountId(), issue.id(), id, internal, images, now);
+            attachments.attachImages(viewer.accountId(), issue.id(), id, internal, false, images, now);
             comments.insert(id, issue.id(), viewer.accountId(), internal, text, now);
             comments.insertMentions(id, mentioned, now);
             if (viewer.customer()) {
@@ -193,7 +193,8 @@ public class CommentService {
             boolean contentChanged = !text.equals(comment.content());
             MentionChange change = mentioned == null ? MentionChange.NONE : mentionChange(mentionedNow, mentioned);
             Instant now = now();
-            attachments.attachImages(viewer.accountId(), issue.id(), commentId, comment.internal(), images, now);
+            attachments.attachImages(viewer.accountId(), issue.id(), commentId, comment.internal(), false, images,
+                    now);
             if (!contentChanged && change.empty()) {
                 return comment;
             }
@@ -235,7 +236,7 @@ public class CommentService {
                 return List.<UUID>of();
             }
             Instant now = now();
-            List<UUID> purging = attachments.purgeOfComment(commentId, viewer.accountId(), now);
+            List<UUID> purging = attachments.purgeOfComment(issue.id(), commentId, viewer.accountId(), now);
             comments.updateDeleted(commentId, viewer.accountId(), now);
             notifications.commentDeleted(commentId);
             return purging;

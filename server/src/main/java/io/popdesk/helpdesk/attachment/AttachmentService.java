@@ -17,6 +17,8 @@ import io.popdesk.helpdesk.comment.CommentRepository.CommentRow;
 import io.popdesk.helpdesk.company.CompanyRepository;
 import io.popdesk.helpdesk.issue.ImageIds;
 import io.popdesk.helpdesk.issue.IssueAttachments;
+import io.popdesk.helpdesk.issue.IssueHistoryRepository;
+import io.popdesk.helpdesk.issue.IssueHistoryRepository.Field;
 import io.popdesk.helpdesk.issue.IssueKey;
 import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
@@ -57,6 +59,10 @@ import org.springframework.web.multipart.MultipartFile;
  * row and no contents (tasks.md section 7). A failure after ① leaves the row {@code pending} for the
  * cleanup.
  *
+ * <p>An attachment that is added to an issue that is already there, or deleted, leaves an entry in the
+ * issue's history, written in the transaction that adds or deletes it (ATT-8, S5-AC-45). The entry
+ * holds the attachment's ID and never its name.
+ *
  * <p>A temporary image (ATT-6, ATT-7) is uploaded the same way without an issue, and until a save
  * attaches it only the account that uploaded it reads it, here and nowhere else.
  */
@@ -78,7 +84,7 @@ public class AttachmentService implements IssueAttachments {
     static final int CONTENT_TYPE_MAX = 255;
 
     /** How long a temporary image is read and can be attached, from its upload (ATT-7). */
-    static final Duration IMAGE_LIFETIME = Duration.ofHours(24);
+    public static final Duration IMAGE_LIFETIME = Duration.ofHours(24);
 
     /** The most temporary images one account has at a time, and their bytes (ATT-7): 20 and 50 MB. */
     static final int MAX_TEMPORARY_IMAGES = 20;
@@ -95,6 +101,7 @@ public class AttachmentService implements IssueAttachments {
 
     private final AttachmentRepository attachments;
     private final IssueRepository issues;
+    private final IssueHistoryRepository history;
     private final CommentRepository comments;
     private final CompanyRepository companies;
     private final AttachmentStorage storage;
@@ -104,11 +111,12 @@ public class AttachmentService implements IssueAttachments {
     private final Clock clock;
     private final long quota;
 
-    AttachmentService(AttachmentRepository attachments, IssueRepository issues, CommentRepository comments,
-            CompanyRepository companies, AttachmentStorage storage, AccountRateLimit rateLimit,
+    AttachmentService(AttachmentRepository attachments, IssueRepository issues, IssueHistoryRepository history,
+            CommentRepository comments, CompanyRepository companies, AttachmentStorage storage, AccountRateLimit rateLimit,
             Transactions transactions, OpsAlerts alerts, Clock clock, Environment environment) {
         this.attachments = attachments;
         this.issues = issues;
+        this.history = history;
         this.comments = comments;
         this.companies = companies;
         this.storage = storage;
@@ -170,6 +178,7 @@ public class AttachmentService implements IssueAttachments {
             if (attachments.updateStored(id, locked.id()) != 1) {
                 return null;
             }
+            history.insertChanged(locked.id(), Field.ATTACHMENT, null, id.toString(), viewer.accountId(), now());
             return attachments.find(viewer, locked.id(), id).orElseThrow();
         });
         if (stored == null) {
@@ -223,7 +232,7 @@ public class AttachmentService implements IssueAttachments {
     /**
      * Step ③ for the files of a new issue, inside the filing transaction after nothing but the lock
      * order's step 1: the pending rows become stored on the issue, in ID order (architecture.md
-     * "Concurrency and lock order", step 2).
+     * "Concurrency and lock order", step 2). They leave no history entry of their own (S5-AC-42).
      */
     public void storeFiled(List<UUID> ids, UUID issueId) {
         for (UUID id : ids.stream().sorted().toList()) {
@@ -298,8 +307,8 @@ public class AttachmentService implements IssueAttachments {
      * the caller's lock on the issue row, the images of this request among them (S5-AC-23).
      */
     @Override
-    public void attachImages(long uploadedBy, UUID issueId, Long commentId, boolean internal, ImageIds images,
-            Instant now) {
+    public void attachImages(long uploadedBy, UUID issueId, Long commentId, boolean internal, boolean filing,
+            ImageIds images, Instant now) {
         if (images.isEmpty()) {
             return;
         }
@@ -314,6 +323,11 @@ public class AttachmentService implements IssueAttachments {
         }
         if (!internal && attachments.publicBytes(issueId) > MAX_PUBLIC_PER_ISSUE) {
             throw issueAttachmentsTooLarge();
+        }
+        if (!filing) {
+            for (UUID id : ids) {
+                history.insertChanged(issueId, Field.ATTACHMENT, null, id.toString(), uploadedBy, now);
+            }
         }
     }
 
@@ -395,9 +409,9 @@ public class AttachmentService implements IssueAttachments {
     /**
      * Deletes an attachment (S0-AC-61): the uploader or an admin. A customer deletes only while they
      * still belong to the issue's company, like comments and uploads (S1A-AC-54). The row becomes
-     * {@code purging} and is committed, then the file goes and the row becomes {@code purged}. When
-     * removing the file fails the delete still succeeds; the row stays {@code purging} and the cleanup
-     * finishes it.
+     * {@code purging} and its history entry is written with it (S5-AC-41), without a lock on the issue
+     * row; that is committed, then the file goes and the row becomes {@code purged}. When removing the
+     * file fails the delete still succeeds; the row stays {@code purging} and the cleanup finishes it.
      */
     public void delete(Viewer viewer, String key, String attachmentId) {
         UUID id = attachmentId(attachmentId).orElseThrow(ApiException::notFound);
@@ -409,9 +423,13 @@ public class AttachmentService implements IssueAttachments {
         if (viewer.customer() && companies.findByCode(viewer, issue.companyCode()).isEmpty()) {
             throw ApiException.forbidden();
         }
-        if (attachments.updatePurging(id, viewer.accountId(), now()) != 1) {
-            throw ApiException.notFound();
-        }
+        Instant now = now();
+        transactions.run(() -> {
+            if (attachments.updatePurging(id, viewer.accountId(), now) != 1) {
+                throw ApiException.notFound();
+            }
+            history.insertChanged(issue.id(), Field.ATTACHMENT, id.toString(), null, viewer.accountId(), now);
+        });
         removeFiles(List.of(id));
     }
 
@@ -419,15 +437,19 @@ public class AttachmentService implements IssueAttachments {
      * The first step of {@link #delete} for every stored attachment of a comment that is being deleted
      * (S4-AC-14), inside the caller's transaction and after it locked the issue row: the rows become
      * {@code purging} in ID order (architecture.md "Concurrency and lock order", step 2), with the trace
-     * a deleted attachment leaves. Returns their IDs for {@link #removeFiles}.
+     * a deleted attachment leaves and an entry each in the issue's history (S5-AC-41). Returns their IDs
+     * for {@link #removeFiles}.
      */
     @Override
-    public List<UUID> purgeOfComment(long commentId, long deletedBy, Instant at) {
+    public List<UUID> purgeOfComment(UUID issueId, long commentId, long deletedBy, Instant at) {
         List<UUID> purging = new ArrayList<>();
         for (UUID id : attachments.storedOfComment(commentId)) {
             if (attachments.updatePurging(id, deletedBy, at) == 1) {
                 purging.add(id);
             }
+        }
+        for (UUID id : purging) {
+            history.insertChanged(issueId, Field.ATTACHMENT, id.toString(), null, deletedBy, at);
         }
         return purging;
     }
