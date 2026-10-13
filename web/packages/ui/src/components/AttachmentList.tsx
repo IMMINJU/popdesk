@@ -24,6 +24,8 @@ export interface AttachmentItem {
   createdAt: string;
   /** 내부 표시: attachment of an internal comment (C-4). */
   internal?: boolean;
+  /** 본문 이미지 표시 (slice 5): a content image, shown in the text of the issue or a comment. */
+  inline?: boolean;
   /** 지워진 흔적 (ATT-5, COM-7). */
   deleted?: boolean;
   /** Show the delete button (own uploads; admins see it on all in C-4). */
@@ -43,6 +45,8 @@ export interface AttachmentListProps {
   deleteLabel?: string;
   deletedLabel?: string;
   internalLabel?: string;
+  /** Default "본문 이미지". */
+  inlineLabel?: string;
   /**
    * Called when a download link is clicked. The screen may stop the default
    * and ask the server first (`HEAD`, screens.md P-5 내려받기).
@@ -52,7 +56,7 @@ export interface AttachmentListProps {
   headingLevel?: 2 | 3;
 }
 
-/** 데이터, 비어 있음, 지워진 흔적, 내부 표시, 지우는 중. */
+/** 데이터, 비어 있음, 지워진 흔적, 내부 표시, 본문 이미지 표시, 지우는 중. */
 export function AttachmentList(props: AttachmentListProps) {
   const id = useId();
   const headingId = `${id}-title`;
@@ -100,6 +104,7 @@ export function AttachmentList(props: AttachmentListProps) {
                   </span>
                   <span className="pd-attachment-meta">
                     {item.internal && <Badge tone="internal">{props.internalLabel ?? 'Internal'}</Badge>}
+                    {item.inline && <Badge tone="neutral">{props.inlineLabel ?? '본문 이미지'}</Badge>}
                     <span>{formatBytes(item.size)}</span>
                     {item.uploaderAvatar ? (
                       <span className="pd-attachment-uploader">

@@ -3,6 +3,7 @@
 // was typed and shows what the issue holds now. The PATCH is the app's own call.
 import { Alert, Button, ConfirmDialog, MarkdownEditor, PriorityLabel, PriorityPicker, StatusBadge, TextField, type Audience, type IssueStatus, type Priority } from '@popdesk/ui';
 import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react';
+import { IMAGE_SAVE_TEXT, useEditorImages, type ImageIds, type ImagePaths } from './bodyImages';
 import { FieldSummary, SaveFailure } from './bands';
 import { Disclosure } from './Disclosure';
 import { useFieldErrors, useLive } from './hooks';
@@ -22,7 +23,7 @@ export interface EditedIssue {
 }
 
 /** What a save sends: the version that was read and only the fields that differ from it. */
-export interface IssueEditBody {
+export interface IssueEditBody extends ImageIds {
   version: number;
   title?: string;
   content?: string;
@@ -38,6 +39,8 @@ export interface IssueEditProps<I extends EditedIssue> {
   save: (key: string, body: IssueEditBody) => Promise<Result<unknown>>;
   /** Whose words the status under "지금 내용" is in. */
   audience: Audience;
+  /** Slice 5: with it the content editor takes images. They are drawn from these paths. */
+  images?: ImagePaths;
   onSaved: () => void;
   /** Back to reading, nothing saved. */
   onCancel: () => void;
@@ -62,6 +65,7 @@ export function IssueEdit<I extends EditedIssue>(props: IssueEditProps<I>) {
   const [closed, setClosed] = useState(false);
   const [asking, setAsking] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
+  const images = useEditorImages(props.images);
   const fields = useFieldErrors({
     title: { id: 'edit-title', limits: { min: 1, max: 200 } },
     content: { id: 'edit-content', limits: { max: 10000 } },
@@ -79,14 +83,15 @@ export function IssueEdit<I extends EditedIssue>(props: IssueEditProps<I>) {
 
   const submit = async (e: SubmitEvent) => {
     e.preventDefault();
-    if (pending || !dirty || closed) return;
+    // An image on its way would land in a text already saved: the save waits for it.
+    if (pending || !dirty || closed || images.busy) return;
     setPending(true);
     setFailure(null);
     fields.clear();
     const result = await props.save(props.issue.key, {
       version,
       ...(title === base.title ? {} : { title }),
-      ...(content === base.content ? {} : { content }),
+      ...(content === base.content ? {} : { content, ...images.idsFor(content) }),
       ...(priority === base.priority ? {} : { priority }),
     });
     if (!live()) return;
@@ -127,7 +132,7 @@ export function IssueEdit<I extends EditedIssue>(props: IssueEditProps<I>) {
     >
       <FieldSummary summary={fields.summary} />
       {closed && <Alert tone="error">{t('issueEdit.closed')}</Alert>}
-      {failure?.kind === 'rateLimited' ? <Alert tone="error">{rateLimitedText(failure.seconds)}</Alert> : <SaveFailure failure={failure} />}
+      {failure?.kind === 'rateLimited' ? <Alert tone="error">{rateLimitedText(failure.seconds)}</Alert> : <SaveFailure failure={failure} known={IMAGE_SAVE_TEXT} />}
       {conflict && (
         <>
           <Alert tone="error">{t('issueEdit.conflict')}</Alert>
@@ -176,6 +181,7 @@ export function IssueEdit<I extends EditedIssue>(props: IssueEditProps<I>) {
         minHeight={240}
         maxLength={10000}
         showCount
+        {...images.editor}
         {...(fields.errors.content ? { error: fields.errors.content } : {})}
       />
       <div id="edit-priority">
@@ -191,7 +197,7 @@ export function IssueEdit<I extends EditedIssue>(props: IssueEditProps<I>) {
         >
           {TEXT.cancel}
         </Button>
-        <Button type="submit" disabled={!dirty} blocked={closed} pending={pending} pendingLabel={TEXT.sending}>
+        <Button type="submit" disabled={!dirty} blocked={closed || images.busy} pending={pending} pendingLabel={TEXT.sending}>
           {t('issueEdit.save')}
         </Button>
       </div>

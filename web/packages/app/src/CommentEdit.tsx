@@ -3,6 +3,7 @@
 // "알릴 사람") is drawn as `children` and joins through `alsoDirty` and `takeFields`.
 import { Button, MarkdownEditor } from '@popdesk/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SubmitEvent } from 'react';
+import { IMAGE_SAVE_TEXT, useEditorImages, type ImageIds, type ImagePaths } from './bodyImages';
 import { RateLimitBand, SaveFailure } from './bands';
 import { useCooldown, useFieldErrors, useLive } from './hooks';
 import { t } from './locale';
@@ -15,8 +16,13 @@ export type EditGone = 'closed' | 'deleted' | 'notFound';
 export interface CommentEditProps {
   /** The comment as it is. An internal one keeps the internal look. */
   comment: { id: number; content: string; internal?: boolean };
-  /** The app's own PATCH of the comment. `content` is the text as typed, changed or not. */
-  save: (content: string) => Promise<Result<unknown>>;
+  /**
+   * The app's own PATCH of the comment. `content` is the text as typed, changed or not;
+   * `images` holds the `imageIds` of this edit, to spread into the body.
+   */
+  save: (content: string, images: ImageIds) => Promise<Result<unknown>>;
+  /** Slice 5: with it the editor takes images. They are drawn from these paths. */
+  images?: ImagePaths;
   /** Something besides the text differs from the comment. */
   alsoDirty?: boolean;
   /** Takes the field errors of a 400 that are not about the text and gives back the rest. */
@@ -45,6 +51,7 @@ export function CommentEdit(props: CommentEditProps) {
   const cooldown = useCooldown();
   const fields = useFieldErrors({ content: { id: EDITOR_ID, limits: { min: 1, max: 4000 } } });
   const editor = useRef<HTMLTextAreaElement>(null);
+  const images = useEditorImages(props.images);
 
   const contentChanged = draft !== comment.content;
   const dirty = contentChanged || props.alsoDirty === true;
@@ -57,7 +64,8 @@ export function CommentEdit(props: CommentEditProps) {
   }, []);
 
   const save = async () => {
-    if (sending || cooldown.active) return;
+    // An image on its way would land in a text already sent: the save waits, by the button and by Ctrl+Enter.
+    if (sending || cooldown.active || images.busy) return;
     setFailure(null);
     cooldown.clearEnded();
     fields.clear();
@@ -70,7 +78,7 @@ export function CommentEdit(props: CommentEditProps) {
       return;
     }
     setSending(true);
-    const result = await props.save(draft);
+    const result = await props.save(draft, images.idsFor(draft));
     // The screen has gone: no toast, nothing read again (S4-AC-69).
     if (!live()) return;
     setSending(false);
@@ -102,7 +110,7 @@ export function CommentEdit(props: CommentEditProps) {
 
   return (
     <form className="pd-comment-edit" aria-label={t('comment.edit')} noValidate onSubmit={onSubmit}>
-      <SaveFailure failure={failure} />
+      <SaveFailure failure={failure} known={IMAGE_SAVE_TEXT} />
       <RateLimitBand {...cooldown} />
       <MarkdownEditor
         ref={editor}
@@ -121,6 +129,7 @@ export function CommentEdit(props: CommentEditProps) {
         onSubmitShortcut={() => {
           void save();
         }}
+        {...images.editor}
         {...(fields.errors.content ? { error: fields.errors.content } : {})}
       />
       {props.children}
@@ -128,7 +137,7 @@ export function CommentEdit(props: CommentEditProps) {
         <Button variant="secondary" size="sm" onClick={props.onCancel}>
           {t('comment.cancelEdit')}
         </Button>
-        <Button type="submit" size="sm" variant={comment.internal === true ? 'internal' : 'primary'} pending={sending} pendingLabel={TEXT.sending} blocked={cooldown.active}>
+        <Button type="submit" size="sm" variant={comment.internal === true ? 'internal' : 'primary'} pending={sending} pendingLabel={TEXT.sending} blocked={cooldown.active || images.busy}>
           {t('comment.saveEdit')}
         </Button>
       </div>
