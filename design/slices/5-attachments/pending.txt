@@ -16,3 +16,9 @@ server io/popdesk/attachment/ImageCleanupTest.java
 server io/popdesk/attachment/AttachmentHistoryTest.java
 server io/popdesk/attachment/AttachmentHistoryQuietTest.java
 server io/popdesk/project/NoStoreTest.java
+web src/components/MarkdownView.images.test.tsx
+web src/components/MarkdownEditor.images.test.tsx
+web src/screens/P4IssueCreate.5.test.tsx
+web src/screens/P5IssueDetail.5.test.tsx
+web src/screens/C19IssueCreate.5.test.tsx
+web src/screens/C4IssueDetail.5.test.tsx

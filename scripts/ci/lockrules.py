@@ -19,6 +19,7 @@ TEST_GLOBS = [
     "web/**/__tests__/**",
     "web/**/test-setup.ts",
     "web/**/e2e/**",
+    "web/packages/api/src/testing/**",
     "**/__snapshots__/**",
     "**/__screenshots__/**",
 ]
