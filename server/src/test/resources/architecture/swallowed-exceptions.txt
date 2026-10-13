@@ -1,0 +1,9 @@
+# Swallowed exceptions in production code that existed on 2026-10-13 (SwallowedExceptionsTest).
+# One line for a class and a form: `class | empty catch`, `class | catch (Exception)`,
+# `class | catch (Throwable)`. Lines are only removed from this file.
+
+# MappedEndpoint.matches: wraps what RequestMappingHandlerMapping.getHandler declares and throws it on.
+io.popdesk.helpdesk.account.SecurityConfiguration | catch (Exception)
+
+# A row whose stored JSON does not parse is left to the integrity check; the block holds a comment only.
+io.popdesk.helpdesk.web.console.ConsoleAuditController | empty catch
