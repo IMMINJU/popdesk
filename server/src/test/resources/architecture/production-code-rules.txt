@@ -4,3 +4,8 @@
 
 # The `popdesk` command line reads the database settings from the environment before any Spring context.
 io.popdesk.helpdesk.system.PopdeskCommand | calls System.getenv
+
+# Added 2026-10-14 by the maintainer (5b, design/slices/5b-storage/design.md section 9): the command line
+# has no Spring context, and `popdesk attachments check` ends with 2 when a file is missing. A JVM
+# ends with 0 or 1 by itself, so the entry point sets the exit code.
+io.popdesk.helpdesk.system.PopdeskCommand | calls System.exit
