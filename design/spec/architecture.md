@@ -120,13 +120,13 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 
 | 일 | 1 행 잠금 | 2 첨부 | 3 넣기와 그 밖의 쓰기 | 4 순번과 그 뒤 | 잠그지 않고 읽는 것 |
 |---|---|---|---|---|---|
-| 문의 등록 | 없음(새 문의의 ID는 앱이 먼저 정한다) | `pending` → `stored`, ID순 | 등록 키 행 → 웹훅 대기 행 | 순번 → 문의 행 → `CREATED` 이력 | 팀 총량 한도 |
+| 문의 등록 | 없음(새 문의의 ID는 앱이 먼저 정한다) | `pending` → `stored`, ID순 → 묶는 이미지(ID순으로 잠근 뒤 UPDATE 한 문장) | 등록 키 행 → 웹훅 대기 행 | 순번 → 문의 행 → `CREATED` 이력(딸린 첨부와 이미지의 이력은 없다) | 팀 총량 한도 |
 | 대리 등록 | 없음 | 위와 같다 | 등록 키 행 → 웹훅 대기 행 → 메일 대기 행 → `notification` 하나 | 위와 같다 | 고객의 자격 |
-| 댓글 달기 | 문의 행 | | `comment` → `comment_mention`(계정 ID순) → 웹훅 대기 행 → 받는 사람마다 `notification`, `outbox` → 첫 응답 UPDATE | | 멘션 후보(계정 행, 배정 행), 받는 사람의 계정과 범위 |
-| 댓글 고치기 | 문의 행 | | `comment` UPDATE → `comment_mention` DELETE(빠진 사람)와 INSERT(더한 사람, 계정 ID순) → 더한 사람의 `notification`·`outbox` INSERT, 빠진 사람의 안 읽은 `notification` DELETE(계정 ID순) | | 댓글, 멘션 후보, 지금 멘션 |
-| 댓글 지우기 | 문의 행 | 그 댓글의 `stored` → `purging`, ID순 | `comment` UPDATE(조건 `deleted_at IS NULL`) → 그 댓글의 `notification` DELETE. 커밋 뒤 트랜잭션 밖에서 파일을 지운다 | | |
+| 댓글 달기 | 문의 행 | 댓글 ID를 시퀀스에서 먼저 받는다(잠금 없음) → 묶는 이미지, ID순 | 이미지마다 이력 → `comment`(받아 둔 ID) → `comment_mention`(계정 ID순) → 웹훅 대기 행 → 받는 사람마다 `notification`, `outbox` → 첫 응답 UPDATE | | 멘션 후보(계정 행, 배정 행), 받는 사람의 계정과 범위 |
+| 댓글 고치기 | 문의 행 | 묶는 이미지, ID순 | 이미지마다 이력 → `comment` UPDATE → `comment_mention` DELETE(빠진 사람)와 INSERT(더한 사람, 계정 ID순) → 더한 사람의 `notification`·`outbox` INSERT, 빠진 사람의 안 읽은 `notification` DELETE(계정 ID순) | | 댓글, 멘션 후보, 지금 멘션 |
+| 댓글 지우기 | 문의 행 | 그 댓글의 `stored` → `purging`, ID순 | 지운 첨부마다 이력 → `comment` UPDATE(조건 `deleted_at IS NULL`) → 그 댓글의 `notification` DELETE. 커밋 뒤 트랜잭션 밖에서 파일을 지운다 | | |
 | 상태 변경(전이, 종료, 해결 확인, 재오픈) | 먼저 잠그지 않는다. 조건부 UPDATE로 하고, 세 번 지면 문의 행을 잠근다 | | UPDATE가 행을 바꾼 뒤에만: 이력 → 웹훅 대기 행 → `notification`·`outbox` | | 범위, 권한, 지금 상태 |
-| 문의 고치기 | 문의 행 | | 이력(S3-AC-66) | | |
+| 문의 고치기 | 문의 행 | 묶는 이미지, ID순 | 이미지마다 이력 → 문의 UPDATE → 칸마다 이력(S3-AC-66) | | |
 | 담당자 쓰기 | 문의 행 | | 이력 → 웹훅 대기 행 → `notification`·`outbox` | | 계정 행, 배정 행 |
 | 배정 빼기의 담당 비우기 | 문의 행을 하나씩 잠그지 않는다. `UPDATE … RETURNING` 한 문장 | | 돌아온 문의마다 이력 | | |
 | 정지의 담당 비우기 | 계정 행들을 ID순으로 → 위의 UPDATE 한 문장 | | 돌아온 문의마다 이력 | | |
@@ -137,7 +137,10 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 | 소속 요청 승인과 거절 | 요청 행 `FOR NO KEY UPDATE` → 상태를 본다 | | | | |
 | 콘솔의 소속 더하기 | 그 계정의 걸린 요청 행 `FOR NO KEY UPDATE` | | | | |
 | 알림 읽음, 모두 읽음 | `notification` 행만 | | | | |
-| 첨부 지우기만 하는 요청 | 문의 행을 잠그지 않는다 | 조건부 UPDATE. 두 요청이 같은 첨부를 지우면 하나만 바꾼다 | | | |
+| 첨부 지우기만 하는 요청 | 문의 행을 잠그지 않는다 | 조건부 UPDATE. 두 요청이 같은 첨부를 지우면 하나만 바꾼다 | 이력 하나(문의 행에 `FOR KEY SHARE`만 건다). UPDATE와 한 트랜잭션이다 | | |
+| 첨부 올리기(문의 아래) | 문의 행 | `pending` → `stored` | 이력 하나 | | 팀 총량 한도 |
+| 임시 이미지 올리기 | 문의가 없다 | `pending` → `stored`는 조건부 UPDATE 한 문장이고 트랜잭션이 없다 | | | 사람마다의 20개·50MB, 팀 총량 한도 |
+| 임시 이미지 정리(10분마다) | 문의 행을 잠그지 않는다 | 이미지마다 트랜잭션 하나: 그 행을 조건(본문 이미지, 문의 없음, 만료)과 함께 `FOR NO KEY UPDATE` → 파일 지우기 → 행 DELETE. 묶기와 겨루면 하나만 이긴다 | | | |
 
 문의 행을 잠근다는 것은 `FOR NO KEY UPDATE`다. 표의 차례에 붙는 까닭과 남는 틈은 아래와 같다.
 

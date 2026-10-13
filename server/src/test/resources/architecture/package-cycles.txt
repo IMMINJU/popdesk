@@ -4,7 +4,3 @@
 # account, company
 io.popdesk.helpdesk.account -> io.popdesk.helpdesk.company
 io.popdesk.helpdesk.company -> io.popdesk.helpdesk.account
-
-# attachment, comment
-io.popdesk.helpdesk.attachment -> io.popdesk.helpdesk.comment
-io.popdesk.helpdesk.comment -> io.popdesk.helpdesk.attachment
