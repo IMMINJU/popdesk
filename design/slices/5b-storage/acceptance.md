@@ -72,7 +72,7 @@
 |---|---|
 | S5B-AC-40 | When 운영자가 `popdesk attachments check`를 돌리면, the system shall `stored`인 행마다 행에 적힌 저장소에 파일이 있고 크기가 행과 같은지 보고, 저장소 자리마다 본 수, 없는 수, 크기가 다른 수를 적는다. (`design/premortem.md` 6절) |
 | S5B-AC-41 | The system shall 없는 것과 크기가 다른 것의 첨부 ID를 한 줄에 하나씩 적는다. 파일 이름, 올린 사람, 문의의 제목은 적지 않는다. |
-| S5B-AC-42 | The system shall 모두 맞으면 끝 코드 0, 하나라도 없거나 다르면 1, 저장소나 DB에 닿지 못하면 다른 명령이 실패할 때 쓰는 코드로 끝낸다. |
+| S5B-AC-42 | The system shall 모두 맞으면 끝 코드 0, 끝까지 보았고 하나라도 없거나 다르면 2, 저장소나 DB에 닿지 못해 끝까지 보지 못했으면 다른 명령이 실패할 때처럼 1로 끝낸다. (`design.md` 8절) |
 | S5B-AC-43 | The system shall 이 명령에서 행도 파일도 바꾸지 않는다. 앱이 도는 동안 돌릴 수 있다. |
 
 ### 2.6 배포와 문서
