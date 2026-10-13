@@ -9,10 +9,10 @@ import io.popdesk.Transactions;
 import io.popdesk.helpdesk.AccountRateLimit;
 import io.popdesk.helpdesk.IssueStatus;
 import io.popdesk.helpdesk.Viewer;
-import io.popdesk.helpdesk.attachment.AttachmentService;
 import io.popdesk.helpdesk.comment.CommentRepository.CommentRow;
 import io.popdesk.helpdesk.company.CompanyRepository;
 import io.popdesk.helpdesk.company.CompanyRepository.StaffRow;
+import io.popdesk.helpdesk.issue.IssueAttachments;
 import io.popdesk.helpdesk.issue.IssueKey;
 import io.popdesk.helpdesk.issue.IssueNotifications;
 import io.popdesk.helpdesk.issue.IssueRepository;
@@ -62,7 +62,7 @@ public class CommentService {
     private final IssueRepository issues;
     private final ReporterAccess reporters;
     private final CompanyRepository companies;
-    private final AttachmentService attachments;
+    private final IssueAttachments attachments;
     private final IssueNotifications notifications;
     private final WebhookQueue webhooks;
     private final AccountRateLimit rateLimit;
@@ -70,7 +70,7 @@ public class CommentService {
     private final Clock clock;
 
     CommentService(CommentRepository comments, IssueRepository issues, ReporterAccess reporters,
-            CompanyRepository companies, AttachmentService attachments, IssueNotifications notifications,
+            CompanyRepository companies, IssueAttachments attachments, IssueNotifications notifications,
             WebhookQueue webhooks, AccountRateLimit rateLimit, Transactions transactions, Clock clock) {
         this.comments = comments;
         this.issues = issues;

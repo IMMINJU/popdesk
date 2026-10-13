@@ -15,6 +15,7 @@ import io.popdesk.helpdesk.attachment.storage.AttachmentStorage;
 import io.popdesk.helpdesk.comment.CommentRepository;
 import io.popdesk.helpdesk.comment.CommentRepository.CommentRow;
 import io.popdesk.helpdesk.company.CompanyRepository;
+import io.popdesk.helpdesk.issue.IssueAttachments;
 import io.popdesk.helpdesk.issue.IssueKey;
 import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
@@ -52,7 +53,7 @@ import org.springframework.web.multipart.MultipartFile;
  * cleanup.
  */
 @Service
-public class AttachmentService {
+public class AttachmentService implements IssueAttachments {
 
     private static final Logger log = LoggerFactory.getLogger(AttachmentService.class);
 
@@ -324,6 +325,7 @@ public class AttachmentService {
      * {@code purging} in ID order (architecture.md "Concurrency and lock order", step 2), with the trace
      * a deleted attachment leaves. Returns their IDs for {@link #removeFiles}.
      */
+    @Override
     public List<UUID> purgeOfComment(long commentId, long deletedBy, Instant at) {
         List<UUID> purging = new ArrayList<>();
         for (UUID id : attachments.storedOfComment(commentId)) {
@@ -339,6 +341,7 @@ public class AttachmentService {
      * the files go and the rows become {@code purged}. When removing a file fails the delete still
      * succeeds; the row stays {@code purging} and the cleanup finishes it.
      */
+    @Override
     public void removeFiles(List<UUID> ids) {
         for (UUID id : ids) {
             try {
