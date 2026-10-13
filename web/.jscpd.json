@@ -9,7 +9,7 @@
   ],
   "minLines": 8,
   "minTokens": 70,
-  "threshold": 10.5,
+  "threshold": 9,
   "reporters": [
     "console"
   ],
