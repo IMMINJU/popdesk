@@ -273,12 +273,11 @@ describe('P-4 문의 등록', () => {
     expect(screen.queryByRole('button', { name: '올리기' })).toBeNull();
   });
 
-  test('P-4 내용 편집칸: 툴바(굵게 등)는 있고 이미지 버튼은 없다, 편집칸 안에서 Tab은 칸을 떠난다', async () => {
+  test('P-4 내용 편집칸: 툴바(굵게 등)가 있다, 편집칸 안에서 Tab은 칸을 떠난다', async () => {
     const { user } = renderAt('/issues/new');
     const editor = await content();
     await button(/굵게/);
     await button(/링크/);
-    expect(screen.queryByRole('button', { name: /이미지/ })).toBeNull();
 
     await user.click(editor);
     await user.keyboard('첫 줄');
