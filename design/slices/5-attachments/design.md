@@ -23,7 +23,9 @@
 - 20개·50MB(S5-AC-05)는 잠그지 않고 센다. 한 사람이 동시에 올려 한두 개 넘는 것은 받아들인다(팀 총량과 같은 태도 [소스: `architecture.md` 잠금 순서 절]).
 - 읽기 쿼리의 조건: `id = ? AND uploaded_by = 호출한 사람 AND inline AND issue_id IS NULL AND state = 'stored' AND created_at > 지금 - 24시간`. 하나라도 어긋나면 같은 404다.
 - 첨부 정리 작업(하루 한 번)의 "1시간 지난 `pending`"은 임시 이미지의 `pending`도 치운다 [추론: 지금 쿼리가 `inline`을 모르니 그대로 걸린다. 구현 탭이 확인한다].
-- 동시 16건 필터가 새 경로도 세게 한다 [소스: `TransferLimitFilter`가 경로를 꼴로 고른다].
+- 동시 16건 필터는 지금 `/issues/{key}/attachments`만 고른다 [소스: `TransferLimitFilter`의 정규식 둘, 계약 탭 보고 6절]. 구현이 `/images`를 더한다. HEAD는 지금도 세지 않는다.
+- 임시 이미지 읽기는 쿼리가 따로다: 있는 조회는 `join issue`라 문의 없는 행을 못 읽는다 [소스: `AttachmentRepository.SELECT`].
+- 형식 가르기는 새 클래스로 둔다. 프로필 사진의 `PhotoHeader`는 GIF가 없고, 크기 머리글까지 읽고, 파일 전체를 `byte[]`로 받는다 [소스: 계약 탭 보고 5.4].
 
 ## 2. 묶기
 
