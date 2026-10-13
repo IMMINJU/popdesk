@@ -1,0 +1,6 @@
+# Forbidden constructs in production code that existed on 2026-10-13 (ProductionCodeRulesTest).
+# One line for a top-level class and a form: `class | calls System.exit`, `class | @Profile`,
+# `class | name isTest`, `class | mentions org.junit`. Lines are only removed from this file.
+
+# The `popdesk` command line reads the database settings from the environment before any Spring context.
+io.popdesk.helpdesk.system.PopdeskCommand | calls System.getenv
