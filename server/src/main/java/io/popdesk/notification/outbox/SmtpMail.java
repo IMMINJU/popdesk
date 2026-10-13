@@ -243,7 +243,8 @@ class SmtpMail {
             text = replaceIgnoringCase(text, secret, REDACTED);
         }
         text = replaceIgnoringCase(text, to, MailSender.masked(to));
-        text = text.replace("\r\n", "\n").replaceAll("[\\p{Cntrl}&&[^\n]]", "").strip();
+        // \p{Cc}, not \p{Cntrl}: the second is ASCII only and would leave U+0080 to U+009F.
+        text = text.replace("\r\n", "\n").replaceAll("[\\p{Cc}&&[^\n]]", "").strip();
         return text.length() > REPLY_MAX ? text.substring(0, REPLY_MAX) : text;
     }
 
