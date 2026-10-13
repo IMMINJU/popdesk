@@ -63,6 +63,10 @@ export interface CommentItemProps {
   deletedByLabel?: string;
   /** ISO 8601 of the deletion. Drawn at the end of the trace when `deleted`. Absent or `null`: nothing. */
   deletedAt?: string | null;
+  /** 이미지 (slice 5): handed to the MarkdownView of the body. Absent: image syntax stays text. */
+  imageSrc?: ((id: string) => string | null) | undefined;
+  /** Handed to the MarkdownView of the body. */
+  unreadableImageText?: string | undefined;
   /** `tabIndex={-1}` target after sending (screens.md P-5). */
   ref?: Ref<HTMLElement>;
 }
@@ -132,7 +136,7 @@ export function CommentItem({ ref, ...props }: CommentItemProps) {
         <div className="pd-comment-editing">{props.editing}</div>
       ) : (
         <div className="pd-comment-body">
-          <MarkdownView source={props.body} />
+          <MarkdownView source={props.body} imageSrc={props.imageSrc} unreadableImageText={props.unreadableImageText} />
         </div>
       )}
       {!props.deleted && props.mentions !== undefined && props.mentions.length > 0 && (

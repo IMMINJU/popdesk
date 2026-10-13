@@ -5,9 +5,21 @@
 // Blocks: paragraphs (a line break is a <br>), headings, fenced and indented
 // code, quotes, bullet and numbered lists, rules.
 // Inline: code spans, **strong**, *em*, ~~del~~, [links](url), <autolinks>,
-// bare http(s) URLs, backslash escapes.
-import { Fragment, type ReactNode } from 'react';
+// bare http(s) URLs, backslash escapes, and images of one kind:
+// `![alt](attachment:{uuid})`, drawn only when the caller gives an address for the id (D-59).
+import { Fragment, useState, type ReactNode } from 'react';
 
+export interface MarkdownOptions {
+  /**
+   * The address of an uploaded image, by its id (a lower-case UUID). `null`: not drawn.
+   * Without it no image is drawn at all.
+   */
+  imageSrc?: ((id: string) => string | null) | undefined;
+  /** Shown in place of an image that could not be read. */
+  unreadableImageText?: string | undefined;
+}
+
+const PUNCT = /[!-/:-@[-`{-~]/;
 const SAFE_URL = /^(https?:\/\/|mailto:)/i;
 
 function safeHref(url: string): string | null {
@@ -62,6 +74,49 @@ function urlPart(target: string): string {
   return target.slice(0, end);
 }
 
+/**
+ * The whole target of an image: `attachment:` and a lower-case UUID, nothing before or after.
+ * Only the id leaves the source text. The address is never built from it here.
+ */
+const IMAGE_TARGET = /^attachment:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+
+/** Takes the backslash escapes out of an image description. */
+function altText(label: string): string {
+  let out = '';
+  for (let i = 0; i < label.length; i += 1) {
+    if (label[i] === '\\' && PUNCT.test(label[i + 1] ?? '')) i += 1;
+    out += label[i] ?? '';
+  }
+  return out;
+}
+
+/** An uploaded image. When it cannot be read, one line takes its place: the description and `unreadableText`. */
+function MarkdownImage(props: { src: string; alt: string; unreadableText: string }) {
+  const [failed, setFailed] = useState<string | null>(null);
+  if (failed === props.src) {
+    return (
+      <span className="pd-markdown-noimage">
+        {props.alt !== '' && (
+          <>
+            <span className="pd-markdown-noimage-alt">{props.alt}</span>{' '}
+          </>
+        )}
+        <span>{props.unreadableText}</span>
+      </span>
+    );
+  }
+  return (
+    <img
+      src={props.src}
+      alt={props.alt}
+      loading="lazy"
+      onError={() => {
+        setFailed(props.src);
+      }}
+    />
+  );
+}
+
 const TRAILING_PUNCT = `.,;:!?)]'"`;
 
 /** Drops punctuation that ends a bare URL. A loop, not a `[...]+$` regex, which is quadratic on long runs. */
@@ -71,10 +126,9 @@ function trimUrlEnd(url: string): string {
   return url.slice(0, end);
 }
 
-const PUNCT = /[!-/:-@[-`{-~]/;
 const WORD = /[\p{L}\p{N}]/u;
 
-function inline(text: string, key: string, inLink = false): ReactNode[] {
+function inline(text: string, key: string, options: MarkdownOptions, inLink = false): ReactNode[] {
   const out: ReactNode[] = [];
   let plain = '';
   let n = 0;
@@ -118,6 +172,20 @@ function inline(text: string, key: string, inLink = false): ReactNode[] {
       continue;
     }
 
+    if (c === '!' && text[i + 1] === '[' && options.imageSrc) {
+      const close = closingBracket(text, i + 2);
+      const end = close > 0 && text[close + 1] === '(' ? closingParen(text, close + 2) : -1;
+      const id = end > 0 ? IMAGE_TARGET.exec(text.slice(close + 2, end))?.[1] : undefined;
+      const src = id === undefined ? null : options.imageSrc(id);
+      if (src !== null) {
+        const alt = altText(text.slice(i + 2, close));
+        push(<MarkdownImage key={k()} src={src} alt={alt} unreadableText={options.unreadableImageText ?? '이미지를 볼 수 없습니다'} />);
+        i = end + 1;
+        continue;
+      }
+      // Anything else stays what it was: the "!" and whatever the link branch makes of the rest.
+    }
+
     if (c === '[' && !inLink) {
       const close = closingBracket(text, i + 1);
       if (close > 0 && text[close + 1] === '(') {
@@ -125,7 +193,7 @@ function inline(text: string, key: string, inLink = false): ReactNode[] {
         if (end > 0) {
           const label = text.slice(i + 1, close);
           const href = safeHref(urlPart(text.slice(close + 2, end)));
-          const children = inline(label, k(), true);
+          const children = inline(label, k(), options, true);
           push(href ? link(href, children, k()) : <Fragment key={k()}>{children}</Fragment>);
           i = end + 1;
           continue;
@@ -156,7 +224,7 @@ function inline(text: string, key: string, inLink = false): ReactNode[] {
     if (pair) {
       const end = text.indexOf(pair, i + 2);
       if (end > i + 2 && text[i + 2] !== ' ') {
-        const inner = inline(text.slice(i + 2, end), k(), inLink);
+        const inner = inline(text.slice(i + 2, end), k(), options, inLink);
         push(pair === '~~' ? <del key={k()}>{inner}</del> : <strong key={k()}>{inner}</strong>);
         i = end + 2;
         continue;
@@ -169,7 +237,7 @@ function inline(text: string, key: string, inLink = false): ReactNode[] {
       let end = opens ? text.indexOf(c, i + 1) : -1;
       while (end > 0 && (text[end - 1] === ' ' || (c === '_' && WORD.test(text[end + 1] ?? '')))) end = text.indexOf(c, end + 1);
       if (end > i + 1) {
-        push(<em key={k()}>{inline(text.slice(i + 1, end), k(), inLink)}</em>);
+        push(<em key={k()}>{inline(text.slice(i + 1, end), k(), options, inLink)}</em>);
         i = end + 1;
         continue;
       }
@@ -227,7 +295,7 @@ function headingTag(level: number): 'h3' | 'h4' | 'h5' | 'h6' {
   return `h${String(shifted)}` as 'h3' | 'h4' | 'h5' | 'h6';
 }
 
-function blocks(lines: string[], key: string, depth = 0): ReactNode[] {
+function blocks(lines: string[], key: string, options: MarkdownOptions, depth = 0): ReactNode[] {
   const out: ReactNode[] = [];
   const quotes = depth < MAX_QUOTE_DEPTH;
   let i = 0;
@@ -279,7 +347,7 @@ function blocks(lines: string[], key: string, depth = 0): ReactNode[] {
     if (head) {
       const Tag = headingTag(head.level);
       const id = k();
-      out.push(<Tag key={id}>{inline(head.text, id)}</Tag>);
+      out.push(<Tag key={id}>{inline(head.text, id, options)}</Tag>);
       i += 1;
       continue;
     }
@@ -297,7 +365,7 @@ function blocks(lines: string[], key: string, depth = 0): ReactNode[] {
         i += 1;
       }
       const id = k();
-      out.push(<blockquote key={id}>{blocks(body, id, depth + 1)}</blockquote>);
+      out.push(<blockquote key={id}>{blocks(body, id, options, depth + 1)}</blockquote>);
       continue;
     }
 
@@ -317,7 +385,7 @@ function blocks(lines: string[], key: string, depth = 0): ReactNode[] {
         i += 1;
       }
       const id = k();
-      const lis = items.map((item, j) => <li key={`${id}-${String(j)}`}>{inline(item.join('\n'), `${id}-${String(j)}`)}</li>);
+      const lis = items.map((item, j) => <li key={`${id}-${String(j)}`}>{inline(item.join('\n'), `${id}-${String(j)}`, options)}</li>);
       const start = ordered ? Number(ordered[1]) : 1;
       out.push(
         ordered ? (
@@ -337,11 +405,11 @@ function blocks(lines: string[], key: string, depth = 0): ReactNode[] {
       i += 1;
     }
     const id = k();
-    out.push(<p key={id}>{inline(paragraph.join('\n'), id)}</p>);
+    out.push(<p key={id}>{inline(paragraph.join('\n'), id, options)}</p>);
   }
   return out;
 }
 
-export function renderMarkdown(source: string): ReactNode[] {
-  return blocks(source.replace(/\r\n?/g, '\n').split('\n'), 'md');
+export function renderMarkdown(source: string, options: MarkdownOptions = {}): ReactNode[] {
+  return blocks(source.replace(/\r\n?/g, '\n').split('\n'), 'md', options);
 }

@@ -1627,6 +1627,31 @@ textarea {
   border-top: 1px solid var(--border);
 }
 
+/* An uploaded image never gets wider than the text around it; the height follows. */
+.pd-markdown img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: bottom;
+  border-radius: var(--radius-sm);
+}
+
+.pd-markdown-noimage {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  max-width: 100%;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+}
+
+.pd-markdown-noimage-alt {
+  color: var(--text);
+}
+
 /* Markdown editor ------------------------------------------------------- */
 
 .pd-editor-frame {
