@@ -134,3 +134,141 @@
 - `io.popdesk.attachment.ImageUploadTest.formatDecidesTheContentType(Format)[3]`
 - `io.popdesk.attachment.ImageUploadTest.formatDecidesTheContentType(Format)[4]`
 - `io.popdesk.attachment.ImageUploadTest.formatDecidesTheContentType(Format)[5]`
+
+# 실패 확인 (웹)
+
+> 점검(C-7) 뒤 고친 것까지의 결과다. 무작위 순서로 세 번 돌렸고 세 번의 실패 목록이 같았다. 계약 검증 도움의 테스트 74개는 처음부터 통과한다(검증기 자체의 테스트이고 구현할 것이 없다).
+
+- 단언 실패 128, 통과 0, 허용한 통과 0, 오류 0, 건너뜀 0
+- 판정: 통과
+
+## 단언에서 실패한 테스트
+
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 단추 > S5-AC-54 MarkdownEditor 이미지 단추: onImageUpload가 있으면 툴바 끝에 "이미지"가 열째로 오고, 없으면 아홉 단추 그대로다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 단추 > S5-AC-54 MarkdownEditor 이미지 단추와 tools: tools 뒤에 붙고, tools가 비면 툴바도 이미지 단추도 없다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 단추 > S5-AC-54 MarkdownEditor 이미지 단추 이름: imageLabel을 주면 그 이름이다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 단추 > S5-AC-54 MarkdownEditor 이미지 단추 키보드: 화살표·Home·End의 줄에 들고 Tab 자리는 여전히 하나다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 단추 > S5-AC-54 MarkdownEditor 이미지 단추 누름: 이어진 파일 입력(PNG, JPEG, GIF, WebP)을 연다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 올리기 > S5-AC-54 MarkdownEditor 파일 고르기: 고른 파일로 onImageUpload를 부르고, 올리는 중에는 role="status" 한 줄에 파일 이름과 onImageBusyChange(true), 편집칸은 계속 쓸 수 있다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 올리기 > S5-AC-54 MarkdownEditor 올라감: 올리기를 시작한 커서 자리에 ![파일 이름](attachment:{id})와 줄 바꿈이 든 값으로 onChange`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 올리기 > S5-AC-54 MarkdownEditor 올라감: 파일 이름의 [와 ]는 빼고 설명에 넣는다(a[1].png는 ![a1.png](attachment:{id}))`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 올리기 > S5-AC-54 MarkdownEditor 올라감: 올리는 사이 앞쪽에 글을 더 썼으면 그만큼 민 자리에, 뒤쪽에 썼으면 그 자리에 넣는다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 올리기 > S5-AC-54 MarkdownEditor 붙여 넣기: 글자만이면 가로채지 않고 지금처럼 붙고, 이미지 파일이 있으면 가로채 올린다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 올리기 > S5-AC-54 MarkdownEditor 끌어다 놓기: 끌어 오는 동안 "여기에 놓으면 이미지를 넣습니다", 놓으면 그 파일로 onImageUpload를 부른다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 올리기 > S5-AC-54 MarkdownEditor 끌어다 놓기: 끌다가 나가면 안내가 사라진다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 올리기 > S5-AC-54 MarkdownEditor 끌어다 놓기: 이미지가 아닌 파일은 올리지 않고 안내하며, 함께 놓은 이미지는 올린다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 올리기 > S5-AC-55 MarkdownEditor 실패: onChange를 부르지 않고 role="alert"에 받은 글을 보인다. 다음 올리기를 시작하면 그 글이 사라진다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 올리기 > S5-AC-54 MarkdownEditor 여러 파일: 차례로 하나씩 올리고(앞의 것이 끝나기 전에 다음을 부르지 않는다) 하나가 실패해도 나머지는 올린다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 올리기 > S5-AC-54 MarkdownEditor 막힘: 이미지 단추가 막히고 붙여 넣은 이미지와 놓은 파일을 받지 않는다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 올리기 > S5-AC-54 MarkdownEditor 떠난 뒤 온 답: 편집기가 사라진 뒤 올라간 이미지는 버린다(onChange를 부르지 않는다)`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 미리 보기 > S5-AC-56 MarkdownEditor 미리 보기: imageSrc로 이미지를 그리고, imageSrc가 없으면 글자다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 미리 보기 > S5-AC-56 MarkdownEditor 미리 보기: 방금 올려 넣은 이미지를 미리 보기 탭에서 그린다`
+- `src/components/MarkdownEditor.images.test.tsx.MarkdownEditor 이미지 axe > S5-AC-54 MarkdownEditor 이미지 axe: 이미지 단추, 올리는 중, 실패 줄에 접근성 위반이 없다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: imageSrc를 주면 ![설명](attachment:{UUID})가 img가 된다. 이름은 설명, src는 함수가 준 주소, loading="lazy"`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: 한 줄에 둘이면 둘 다 그리고 사이의 글자는 그대로다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: 설명이 비면 이름 없는 img(alt="")다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: 함수가 null을 주면 그 이미지만 글자로 남는다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: imageSrc가 없으면 지금처럼 글자다(같은 글을 imageSrc와 함께 그리면 이미지다)`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: 짧다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: 대문자가 섞였다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: 뒤에 글자가 더 있다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: 뒤에 경로가 더 있다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: 뒤에 쿼리가 더 있다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: 줄표가 없다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: 앞에 빈칸이 있다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: attachment: 뒤가 주소다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: attachment: 뒤가 javascript:다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: 비었다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: 36자이지만 ../로 채운 경로다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: 36자이지만 줄표 자리가 틀렸다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: 36자이지만 16진수가 아닌 g가 들었다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: attachment: 뒤가 UUID 꼴이 아니면 글자다: 36자이지만 %2f가 들었다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-51 MarkdownView 이미지: imageSrc가 있어도 http 주소의 이미지 문법은 img를 만들지 않는다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-51 MarkdownView 이미지: imageSrc가 있어도 https 주소의 이미지 문법은 img를 만들지 않는다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-51 MarkdownView 이미지: imageSrc가 있어도 data: 주소의 이미지 문법은 img를 만들지 않는다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-51 MarkdownView 이미지: imageSrc가 있어도 프로토콜 없는 주소의 이미지 문법은 img를 만들지 않는다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-51 MarkdownView 이미지: imageSrc가 있어도 같은 서버의 경로를 적은 이미지 문법은 img를 만들지 않는다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-51 MarkdownView 이미지: imageSrc가 있어도 날 <img>은 img를 만들지 않는다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-51 MarkdownView 이미지: imageSrc가 있어도 날 <img>의 attachment: 주소은 img를 만들지 않는다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-51 MarkdownView 이미지: imageSrc가 있어도 날 <img onerror>은 img를 만들지 않는다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-51 MarkdownView 이미지: 바깥 주소의 이미지 문법은 글자로 남고 그 주소로 가는 요소가 없다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-52 MarkdownView 이미지: 읽지 못하면(error) img가 사라지고 설명과 "이미지를 볼 수 없습니다"가 보인다. 다른 이미지는 그대로다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-52 MarkdownView 이미지: 설명 없는 이미지를 읽지 못하면 "이미지를 볼 수 없습니다"만 보인다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: 링크 안의 이미지는 링크 안에 그린다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: 코드 안의 이미지 문법은 글자 그대로다(코드 조각과 코드 블록)`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지: 역슬래시로 막은 느낌표 문법(\![…])은 이미지가 아니다`
+- `src/components/MarkdownView.images.test.tsx.MarkdownView 이미지 > S5-AC-50 MarkdownView 이미지 axe: 읽힌 이미지와 읽지 못한 이미지에 접근성 위반이 없다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-54 P-4 "내용" 편집기에 "이미지" 단추가 있고 이미지 파일을 고르는 입력과 이어져 있다. 고르면 POST /api/portal/images에 multipart의 file로 올리고 올라가면 본문에 ![파일 이름](attachment:ID)와 줄 바꿈을 넣는다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-54 P-4 올리는 동안: role="status"로 "이미지 올리는 중"과 파일 이름을 알리고 "올리기"가 눌리지 않는다. 편집칸은 계속 쓸 수 있고, 올라가면 "올리기"가 풀린다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-57 P-4 저장: 둘을 올리고 하나를 본문에서 지운 뒤 올리면 imageIds는 본문에 남은 것뿐이다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-57 P-4 저장: 본문에 이 편집에서 올리지 않은 attachment:ID가 있어도(다른 문의에서 복사한 글) imageIds는 여기서 올린 것 하나뿐이다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-55 P-4 올리기 실패(FILE_NOT_IMAGE): role="alert"로 "PNG, JPEG, GIF, WebP 이미지만 본문에 넣을 수 있습니다"를 보이고 본문은 그대로다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-55 P-4 올리기 실패(FILE_TOO_LARGE): role="alert"로 "파일 하나는 10MB까지입니다."를 보이고 본문은 그대로다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-55 P-4 올리기 실패(FILE_EMPTY): role="alert"로 "빈 파일은 올릴 수 없습니다."를 보이고 본문은 그대로다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-55 P-4 올리기 실패(TEMPORARY_IMAGE_LIMIT_EXCEEDED): role="alert"로 "저장하지 않은 이미지가 너무 많습니다. 글을 저장한 뒤 다시 올리세요"를 보이고 본문은 그대로다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-55 P-4 올리기 실패(ATTACHMENT_QUOTA_EXCEEDED): role="alert"로 "팀의 첨부 용량이 모자랍니다. 관리자에게 알려 주세요."를 보이고 본문은 그대로다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-55 P-4 올리기 실패(413(앞단의 답)): role="alert"로 "파일이 서버 앞단의 크기 상한에 걸렸습니다"를 보이고 본문은 그대로다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-55 P-4 올리기 실패(429): role="alert"로 "요청이 많습니다. 30초 뒤 다시 하세요."를 보이고 본문은 그대로다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-55 P-4 올리기 실패(연결 끊김): role="alert"로 "서버에 연결하지 못했습니다. 잠시 뒤 다시 하세요."를 보이고 본문은 그대로다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-58 P-4 저장이 400 TEMPORARY_IMAGE_INVALID: 쓴 글을 지우지 않고 화면에 머물며 "이미지를 다시 올린 뒤 저장하세요"를 알린다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-56 S5-AC-63 P-4 미리 보기: 방금 올린 이미지를 포털의 임시 주소(/api/portal/images/ID)로 그린다`
+- `src/screens/P4IssueCreate.5.test.tsx.P-4 문의 등록: 본문 이미지 > S5-AC-54 P-4 axe: "이미지" 단추와 올리기 실패 줄이 있는 등록 화면에 접근성 위반이 없다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-50 S5-AC-63 P-5 그리기: 문의 본문과 댓글의 ![설명](attachment:ID)가 그 문의의 첨부 주소(/api/portal/issues/ACME-7/attachments/ID)에서 읽는 이미지가 되고 설명이 이름이다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-52 P-5 읽지 못한 이미지: 깨진 그림 대신 설명과 "이미지를 볼 수 없습니다"를 보인다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-50 P-5 axe: 이미지가 그려진 상세 화면에 접근성 위반이 없다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-54 S5-AC-57 P-5 댓글 쓰기: 편집기의 "이미지" 단추로 올리면 POST /api/portal/images가 나가고 글에 문법이 들어간다. 올리는 동안 "보내기"가 눌리지 않는다. 저장하면 imageIds는 방금 올린 것뿐이다(글에 있던 이미지의 ID는 보내지 않는다)`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-54 S5-AC-57 P-5 댓글 고치기: 편집기의 "이미지" 단추로 올리면 POST /api/portal/images가 나가고 글에 문법이 들어간다. 올리는 동안 "고친 댓글 저장"가 눌리지 않는다. 저장하면 imageIds는 방금 올린 것뿐이다(글에 있던 이미지의 ID는 보내지 않는다)`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-54 S5-AC-57 P-5 문의 고치기: 편집기의 "이미지" 단추로 올리면 POST /api/portal/images가 나가고 글에 문법이 들어간다. 올리는 동안 "저장"가 눌리지 않는다. 저장하면 imageIds는 방금 올린 것뿐이다(글에 있던 이미지의 ID는 보내지 않는다)`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-54 P-5 댓글 쓰기, 올리는 중의 Ctrl+Enter: 편집칸에서 눌러도 저장 요청이 나가지 않고 쓰던 글이 남는다. 올라간 뒤에 누르면 나간다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-54 P-5 댓글 고치기, 올리는 중의 Ctrl+Enter: 편집칸에서 눌러도 저장 요청이 나가지 않고 쓰던 글이 남는다. 올라간 뒤에 누르면 나간다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-57 P-5 댓글 쓰기: 올린 이미지를 글에서 뺀 뒤 보내면 그 ID를 보내지 않는다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-56 S5-AC-63 P-5 미리 보기(댓글 쓰기): 방금 올린 이미지는 임시 주소(/api/portal/images/ID)로, 있던 이미지는 문의의 첨부 주소로 그린다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-56 S5-AC-63 P-5 미리 보기(댓글 고치기): 방금 올린 이미지는 임시 주소(/api/portal/images/ID)로, 있던 이미지는 문의의 첨부 주소로 그린다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-56 S5-AC-63 P-5 미리 보기(문의 고치기): 방금 올린 이미지는 임시 주소(/api/portal/images/ID)로, 있던 이미지는 문의의 첨부 주소로 그린다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-58 P-5 댓글 쓰기, 저장이 400 TEMPORARY_IMAGE_INVALID: 쓴 글이 남고 "이미지를 다시 올린 뒤 저장하세요"를 알린다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-58 P-5 댓글 고치기, 저장이 400 TEMPORARY_IMAGE_INVALID: 쓴 글이 남고 "이미지를 다시 올린 뒤 저장하세요"를 알린다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-58 P-5 문의 고치기, 저장이 400 TEMPORARY_IMAGE_INVALID: 쓴 글이 남고 "이미지를 다시 올린 뒤 저장하세요"를 알린다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-57 P-5 댓글 고치기, 저장한 뒤: 올린 이미지는 묶인 것이 된다. 댓글에서는 첨부 주소로 그리고, 다시 고쳐 저장할 때 그 ID를 또 보내지 않는다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-57 P-5 문의 고치기: version과 바뀐 내용, imageIds만 보낸다. 이미지를 올리지 않고 글만 고치면 있던 이미지의 ID를 보내지 않는다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-57 P-5 문의 고치기, 저장한 뒤: 올린 이미지는 묶인 것이 된다. 다시 열어 글만 고쳐 저장하면 둘째 요청에 imageIds 칸이 없다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-54 P-5 댓글 고치기를 그만둔 뒤 온 올리기 답: 아무것도 바꾸지 않는다. 다시 고치기를 열면 원래 글이다`
+- `src/screens/P5IssueDetail.5.test.tsx.P-5 문의 상세: 본문 이미지 > S5-AC-59 P-5 첨부 목록: inline인 줄에만 "본문 이미지" 표시가 있다. 내려받기 링크는 다른 첨부와 같고 "지우기"로 지우면 흔적 줄이 된다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-54 C-19 "내용" 편집기에 "이미지" 단추가 있고 이미지 파일을 고르는 입력과 이어져 있다. 고르면 POST /api/console/images에 multipart의 file로 올리고 올라가면 본문에 ![파일 이름](attachment:ID)와 줄 바꿈을 넣는다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-54 C-19 올리는 동안: role="status"로 "이미지 올리는 중"과 파일 이름을 알리고 "등록"이 눌리지 않는다. 편집칸은 계속 쓸 수 있고, 올라가면 "등록"이 풀린다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-57 C-19 저장: 둘을 올리고 하나를 본문에서 지운 뒤 등록하면 imageIds는 본문에 남은 것뿐이다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-57 C-19 저장: 본문에 이 편집에서 올리지 않은 attachment:ID가 있어도(다른 문의에서 복사한 글) imageIds는 여기서 올린 것 하나뿐이다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-55 C-19 올리기 실패(FILE_NOT_IMAGE): role="alert"로 "PNG, JPEG, GIF, WebP 이미지만 본문에 넣을 수 있습니다"를 보이고 본문은 그대로다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-55 C-19 올리기 실패(FILE_TOO_LARGE): role="alert"로 "파일 하나는 10MB까지입니다."를 보이고 본문은 그대로다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-55 C-19 올리기 실패(FILE_EMPTY): role="alert"로 "빈 파일은 올릴 수 없습니다."를 보이고 본문은 그대로다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-55 C-19 올리기 실패(TEMPORARY_IMAGE_LIMIT_EXCEEDED): role="alert"로 "저장하지 않은 이미지가 너무 많습니다. 글을 저장한 뒤 다시 올리세요"를 보이고 본문은 그대로다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-55 C-19 올리기 실패(ATTACHMENT_QUOTA_EXCEEDED): role="alert"로 "팀의 첨부 용량이 모자랍니다. 관리자에게 알려 주세요."를 보이고 본문은 그대로다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-55 C-19 올리기 실패(413(앞단의 답)): role="alert"로 "파일이 서버 앞단의 크기 상한에 걸렸습니다"를 보이고 본문은 그대로다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-55 C-19 올리기 실패(429): role="alert"로 "요청이 많습니다. 30초 뒤 다시 하세요."를 보이고 본문은 그대로다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-55 C-19 올리기 실패(연결 끊김): role="alert"로 "서버에 연결하지 못했습니다. 잠시 뒤 다시 하세요."를 보이고 본문은 그대로다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-58 C-19 저장이 400 TEMPORARY_IMAGE_INVALID: 쓴 글을 지우지 않고 화면에 머물며 "이미지를 다시 올린 뒤 저장하세요"를 알린다`
+- `src/screens/C19IssueCreate.5.test.tsx.C-19 대리 등록: 본문 이미지 > S5-AC-54 C-19 axe: "이미지" 단추가 있는 등록 화면에 접근성 위반이 없다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-50 C-4 그리기: 문의 본문, 공개 댓글, 내부 댓글의 ![설명](attachment:ID)가 그 문의의 첨부 주소에서 읽는 이미지가 되고 설명이 이름이다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-50 C-4 axe: 이미지가 그려진 상세 화면에 접근성 위반이 없다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-54 S5-AC-57 C-4 댓글 쓰기(공개 답변): 편집기의 "이미지" 단추로 올리면 POST /api/console/images가 나가고 글에 문법이 들어간다. 보내면 imageIds에 그 ID가 간다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-54 S5-AC-57 C-4 댓글 쓰기(내부 메모): 편집기의 "이미지" 단추로 올리면 POST /api/console/images가 나가고 글에 문법이 들어간다. 보내면 imageIds에 그 ID가 간다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-54 C-4 댓글 쓰기, 올리는 동안: "이미지 올리는 중"과 파일 이름을 알리고 보내기 단추가 눌리지 않는다. 올라가면 풀린다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-54 C-4 댓글 쓰기, 올리는 중의 Ctrl+Enter: 편집칸에서 눌러도 저장 요청이 나가지 않고 쓰던 글이 남는다. 올라간 뒤에 누르면 나간다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-54 C-4 내부 메모 쓰기, 올리는 동안: "내부 메모 남기기"가 막히고 올라가면 풀린다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-54 C-4 댓글 고치기, 올리는 동안: "고친 댓글 저장"가 막히고 올라가면 풀린다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-54 C-4 문의 고치기, 올리는 동안: "저장"가 막히고 올라가면 풀린다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-57 C-4 댓글 쓰기: 글에 이 편집에서 올리지 않은 attachment:ID(문의에 있던 이미지)가 있어도 imageIds는 여기서 올린 것 하나뿐이다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-58 C-4 댓글 쓰기, 저장이 400 TEMPORARY_IMAGE_INVALID: 쓴 글이 남고 "이미지를 다시 올린 뒤 저장하세요"를 알린다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-57 C-4 댓글 고치기: 본문에 있던 이미지는 두고 새로 하나 올려 저장하면 imageIds는 새 것뿐이다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-57 C-4 문의 고치기: 본문에 있던 이미지는 두고 새로 하나 올려 저장하면 imageIds는 새 것뿐이고 version이 함께 간다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-57 C-4 댓글 고치기, 저장한 뒤: 올린 이미지는 묶인 것이 된다. 다시 열어 글만 고쳐 저장하면 둘째 요청에 imageIds 칸이 없다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-57 C-4 문의 고치기, 저장한 뒤: 올린 이미지는 묶인 것이 된다. 다시 열어 글만 고쳐 저장하면 둘째 요청에 imageIds 칸이 없다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-56 C-4 댓글 고치기의 미리 보기: 방금 올린 이미지는 임시 주소(/api/console/images/ID)로, 있던 이미지는 문의의 첨부 주소로 그린다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-56 C-4 문의 고치기의 미리 보기: 방금 올린 이미지는 임시 주소로, 있던 이미지는 문의의 첨부 주소로 그린다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-54 C-4 댓글 고치기를 그만둔 뒤 온 올리기 답: 아무것도 바꾸지 않는다. 다시 고치기를 열면 원래 글이다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-59 C-4 첨부 목록: inline인 줄에만 "본문 이미지" 표시가 있다. 내려받기 링크와 "지우기"는 다른 첨부와 같다`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-59 C-4 이력의 첨부 줄(붙임): [ '이상담', '첨부를 붙임', 'trace.log' ]`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-59 C-4 이력의 첨부 줄(고객이 본문 이미지를 붙임): [ '김고객', '(고객)', '첨부를 붙임', 'old.png' ]`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-59 C-4 이력의 첨부 줄(붙였지만 지금은 지워져 이름이 null): [ '이상담', '첨부를 붙임', '지워진 파일' ]`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-59 C-4 이력의 첨부 줄(지움, 목록에 흔적이 있고 이름이 null): [ '이상담', '첨부를 지움', '지워진 파일' ]`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-59 C-4 이력의 첨부 줄(지움, 목록에 없음): [ '이상담', '첨부를 지움', '지워진 파일' ]`
+- `src/screens/C4IssueDetail.5.test.tsx.C-4 문의 상세: 본문 이미지 > S5-AC-54 C-4 편집기 셋(댓글 쓰기, 댓글 고치기, 문의 고치기)에 "이미지" 단추가 있다`
