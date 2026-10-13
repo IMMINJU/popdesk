@@ -9,11 +9,11 @@ import io.popdesk.TextInput;
 import io.popdesk.Transactions;
 import io.popdesk.helpdesk.AccountRateLimit;
 import io.popdesk.helpdesk.AccountStatus;
+import io.popdesk.helpdesk.OpenAssignments;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
 import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
-import io.popdesk.helpdesk.issue.AssigneeClearing;
 import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Instant;
@@ -52,14 +52,14 @@ public class AccountService {
     private final AccountRepository accounts;
     private final Sessions sessions;
     private final PasswordResetService resets;
-    private final AssigneeClearing assignments;
+    private final OpenAssignments assignments;
     private final AccountRateLimit rateLimit;
     private final AuditLog audit;
     private final Transactions transactions;
     private final Clock clock;
 
     AccountService(AccountRepository accounts, Sessions sessions, PasswordResetService resets,
-            AssigneeClearing assignments, AccountRateLimit rateLimit, AuditLog audit, Transactions transactions,
+            OpenAssignments assignments, AccountRateLimit rateLimit, AuditLog audit, Transactions transactions,
             Clock clock) {
         this.rateLimit = rateLimit;
         this.accounts = accounts;

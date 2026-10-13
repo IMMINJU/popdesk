@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.issue;
 
+import io.popdesk.helpdesk.OpenAssignments;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository.Field;
 import java.time.Clock;
@@ -19,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
  * an issue changed in between.
  */
 @Service
-public class AssigneeClearing {
+public class AssigneeClearing implements OpenAssignments {
 
     private final IssueRepository issues;
     private final IssueHistoryRepository history;
@@ -35,6 +36,7 @@ public class AssigneeClearing {
      * How many open issues the account is the assignee of, among those the viewer, an admin, sees; with
      * {@code companyId}, in that company only (S3-AC-68).
      */
+    @Override
     public long count(Viewer viewer, long accountId, Long companyId) {
         return issues.countOpenAssignments(viewer, accountId, companyId);
     }
@@ -50,6 +52,7 @@ public class AssigneeClearing {
      *
      * @return how many issues were cleared
      */
+    @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public int clear(long accountId, Long companyId, long actorId) {
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);

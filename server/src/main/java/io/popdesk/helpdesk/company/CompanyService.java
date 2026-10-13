@@ -9,6 +9,7 @@ import io.popdesk.TextInput;
 import io.popdesk.Transactions;
 import io.popdesk.helpdesk.AccountRateLimit;
 import io.popdesk.helpdesk.CompanyStatus;
+import io.popdesk.helpdesk.OpenAssignments;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.account.AccountRepository;
@@ -20,7 +21,6 @@ import io.popdesk.helpdesk.company.CompanyRepository.MemberRow;
 import io.popdesk.helpdesk.company.CompanyRepository.StaffRow;
 import io.popdesk.helpdesk.company.MembershipRequestRepository.RequestRow;
 import io.popdesk.helpdesk.company.MembershipRequestRepository.State;
-import io.popdesk.helpdesk.issue.AssigneeClearing;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -57,14 +57,14 @@ public class CompanyService {
     private final CompanyRepository companies;
     private final MembershipRequestRepository requests;
     private final AccountRepository accounts;
-    private final AssigneeClearing assignments;
+    private final OpenAssignments assignments;
     private final AccountRateLimit rateLimit;
     private final AuditLog audit;
     private final Transactions transactions;
     private final Clock clock;
 
     CompanyService(CompanyRepository companies, MembershipRequestRepository requests, AccountRepository accounts,
-            AssigneeClearing assignments, AccountRateLimit rateLimit, AuditLog audit, Transactions transactions,
+            OpenAssignments assignments, AccountRateLimit rateLimit, AuditLog audit, Transactions transactions,
             Clock clock) {
         this.rateLimit = rateLimit;
         this.companies = companies;
