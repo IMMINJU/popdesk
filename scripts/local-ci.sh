@@ -145,7 +145,7 @@ for step in "${STEPS[@]}"; do
   ( run_step "$step" ) > "$OUT/$step.log" 2>&1
   code=$?
   seconds=$(( $(date +%s) - start ))
-  tests="$(grep -E '^\[(INFO|ERROR|WARNING)\] Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$' "$OUT/$step.log" | tail -1)"
+  tests="$(tr -d '\r' < "$OUT/$step.log" | grep -aE '^\[(INFO|ERROR|WARNING)\] Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$' | tail -1)"
   if [ $code -eq 0 ]; then result=ok; else result="FAILED($code)"; failed=1; fi
   line="$(date +%F' '%T) $step $result ${seconds}s $(git -C "$ROOT" rev-parse --short HEAD) ${tests#*] }"
   echo "$line" | tee -a "$SUMMARY"
