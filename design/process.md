@@ -53,7 +53,7 @@
 
 숨긴 E2E는 레포 밖 로컬 git 저장소(`C:\Users\minju\popdesk-holdout\`, 원격 없음)에 둔다. 같은 레포의 다른 브랜치는 탭 worktree가 `.git`을 같이 써서 `git log --all`로 보이므로 쓰지 않는다. C-10에서 메인이 합친 `main` 위에서 돌리고, 통과하면 레포로 옮겨 커밋한다. 그 뒤로는 보통 회귀 테스트다. 브라우저 없이 HTTP로만 도는 것(첫 묶음의 빈 설치 E2E)은 `server/src/test/java/io/popdesk/e2e/`에 `deploy` 태그로 두어 CI 이미지 잡이 돌리고, 브라우저로 도는 것은 `web/e2e/`에 둔다.
 
-코드가 생기면 운영 코드 쪽 정적 검사를 붙인다(`.github/workflows/ci.yml` 주석 목록). 예외 삼키기, 쓰지 않는 코드, 새 중복, 인가 검사가 빠진 컨트롤러, 서비스 밖 `@Transactional`, 운영 코드의 `System.exit`·호출 스택 검사·`Thread.sleep`·테스트 프로필 빈 같은 것을 잡는다. 거짓 완료를 막는 Stop 훅(바뀐 모듈 테스트와 `trace.py`가 실패하면 끝내지 못하게)도 빌드 명령이 정해지면 구현 탭에 더한다.
+운영 코드 쪽 검사는 여섯을 붙였다(D-58, 2026-10-13): `ApiPathPrefixTest`, `boundary.AdminOnlyContractTest`, `ProductionCodeRulesTest`, `SwallowedExceptionsTest`, `TransactionalPlacementTest`, ESLint `no-console`. 서버의 것은 서버 테스트로, 웹의 것은 린트로 돈다. 앱을 띄우지 않는 넷과 `PackageCyclesTest`는 `scripts/local-ci.sh gates`가 먼저 돈다(40초쯤). 구현 쪽 합치기 전에 메인이 이 단계를 돌린다. 기준선은 구현 쪽에 잠겨 있다. 구현 탭이 새 위반으로 실패하면 코드를 고치고, 일부러 두어야 하는 것이면 멈춰 보고한다(메인이 기준선에 넣을지 정한다). 계약의 403 설명이 바뀌는 묶음은 C-4 뒤에 `AdminOnlyContractTest`를 한 번 돈다. 아직 없는 것: 쓰지 않는 코드, 서버의 새 중복, 의존성 취약점의 관문(osv-scanner는 `local-ci.sh deps`로 묶음을 닫을 때 돌려 건수만 적는다). 거짓 완료를 막는 Stop 훅(바뀐 모듈 테스트와 `trace.py`가 실패하면 끝내지 못하게)도 빌드 명령이 정해지면 구현 탭에 더한다.
 
 ### 단계마다 지킬 것
 
