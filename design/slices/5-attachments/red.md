@@ -1,0 +1,136 @@
+# 실패 확인 (서버)
+
+> 테스트 탭이 남긴 결과 파일을 그대로 읽었다(C-6). 실패한 테스트는 이름만 적었다. 숨긴 E2E는 여기 없다(레포 밖).
+> 점검(C-7) 뒤 고친 것까지의 결과다. 무작위 순서로 세 번 돌렸고 세 번의 실패 목록이 같았다.
+
+- 단언 실패 126, 통과 0, 허용한 통과 0, 오류 0, 건너뜀 0
+- 판정: 통과
+
+## 단언에서 실패한 테스트
+
+- `io.popdesk.attachment.AttachmentHistoryQuietTest.attachmentsAreToldToNobody`
+- `io.popdesk.attachment.AttachmentHistoryTest.eachImageHasItsOwnEntry`
+- `io.popdesk.attachment.AttachmentHistoryTest.refusedRequestsLeaveNoEntry`
+- `io.popdesk.attachment.AttachmentHistoryTest.deletingAnAttachmentLeavesOneEntry`
+- `io.popdesk.attachment.AttachmentHistoryTest.deletingACommentLeavesAnEntryPerAttachment`
+- `io.popdesk.attachment.AttachmentHistoryTest.attachingLeavesOneEntry(Way)[1]`
+- `io.popdesk.attachment.AttachmentHistoryTest.attachingLeavesOneEntry(Way)[2]`
+- `io.popdesk.attachment.AttachmentHistoryTest.attachingLeavesOneEntry(Way)[3]`
+- `io.popdesk.attachment.AttachmentHistoryTest.attachingLeavesOneEntry(Way)[4]`
+- `io.popdesk.attachment.AttachmentHistoryTest.attachingLeavesOneEntry(Way)[5]`
+- `io.popdesk.attachment.AttachmentHistoryTest.attachingLeavesOneEntry(Way)[6]`
+- `io.popdesk.attachment.AttachmentHistoryTest.filingLeavesOnlyCreated(Write)[1]`
+- `io.popdesk.attachment.AttachmentHistoryTest.filingLeavesOnlyCreated(Write)[2]`
+- `io.popdesk.attachment.AttachmentHistoryTest.filingLeavesOnlyCreated(Write)[3]`
+- `io.popdesk.attachment.ImageBindLimitTest.closedIssueTakesNoImages(Write)[1]`
+- `io.popdesk.attachment.ImageBindLimitTest.closedIssueTakesNoImages(Write)[2]`
+- `io.popdesk.attachment.ImageBindLimitTest.closedIssueTakesNoImages(Write)[3]`
+- `io.popdesk.attachment.ImageBindLimitTest.closedIssueTakesNoImages(Write)[4]`
+- `io.popdesk.attachment.ImageBindLimitTest.closedIssueTakesNoImages(Write)[5]`
+- `io.popdesk.attachment.ImageBindLimitTest.closedIssueTakesNoImages(Write)[6]`
+- `io.popdesk.attachment.ImageBindLimitTest.twoImagesTogetherAndAnIssueEdit`
+- `io.popdesk.attachment.ImageBindLimitTest.fiftyMegabytesOfPublicAttachments`
+- `io.popdesk.attachment.ImageBindRaceTest.closingAndAWriteWithAnImage`
+- `io.popdesk.attachment.ImageBindRaceTest.twoWritesWantTheSameImage`
+- `io.popdesk.attachment.ImageBindRaceTest.cleanupAndAWriteWantTheSameImage`
+- `io.popdesk.attachment.ImageBindRefusalTest.twentyOneIdsAreInvalidInput`
+- `io.popdesk.attachment.ImageBindRefusalTest.valueThatIsNoTextIsInvalidInput(String, Object)[1]`
+- `io.popdesk.attachment.ImageBindRefusalTest.valueThatIsNoTextIsInvalidInput(String, Object)[2]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyCaseAnswersLikeAnUnknownId(Unattachable)[1]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyCaseAnswersLikeAnUnknownId(Unattachable)[2]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyCaseAnswersLikeAnUnknownId(Unattachable)[3]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyCaseAnswersLikeAnUnknownId(Unattachable)[4]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyCaseAnswersLikeAnUnknownId(Unattachable)[5]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyCaseAnswersLikeAnUnknownId(Unattachable)[6]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyCaseAnswersLikeAnUnknownId(Unattachable)[7]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyCaseAnswersLikeAnUnknownId(Unattachable)[8]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyCaseAnswersLikeAnUnknownId(Unattachable)[9]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyCaseAnswersLikeAnUnknownId(Unattachable)[10]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyCaseAnswersLikeAnUnknownId(Unattachable)[11]`
+- `io.popdesk.attachment.ImageBindRefusalTest.expiredImageIsRefused`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyWriteRefusesWithoutSaving(Write)[1]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyWriteRefusesWithoutSaving(Write)[2]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyWriteRefusesWithoutSaving(Write)[3]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyWriteRefusesWithoutSaving(Write)[4]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyWriteRefusesWithoutSaving(Write)[5]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyWriteRefusesWithoutSaving(Write)[6]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyWriteRefusesWithoutSaving(Write)[7]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyWriteRefusesWithoutSaving(Write)[8]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyWriteRefusesWithoutSaving(Write)[9]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyWriteRefusesWithoutSaving(Write)[10]`
+- `io.popdesk.attachment.ImageBindRefusalTest.everyWriteRefusesWithoutSaving(Write)[11]`
+- `io.popdesk.attachment.ImageBindTest.commentEditWithImagesOnlyIsNoEdit`
+- `io.popdesk.attachment.ImageBindTest.deletingACommentDeletesItsImages`
+- `io.popdesk.attachment.ImageBindTest.publicImageFollowsTheIssue`
+- `io.popdesk.attachment.ImageBindTest.twentyImagesAndAnIdTwice`
+- `io.popdesk.attachment.ImageBindTest.issueEditWithImagesOnlyKeepsTheVersion`
+- `io.popdesk.attachment.ImageBindTest.internalImageIsHiddenFromCustomers(Write)[1]`
+- `io.popdesk.attachment.ImageBindTest.internalImageIsHiddenFromCustomers(Write)[2]`
+- `io.popdesk.attachment.ImageBindTest.onlySentIdsAreAttached`
+- `io.popdesk.attachment.ImageBindTest.filingSentAgainWithOtherImages(Write)[1]`
+- `io.popdesk.attachment.ImageBindTest.filingSentAgainWithOtherImages(Write)[2]`
+- `io.popdesk.attachment.ImageBindTest.filingSentAgainWithOtherImages(Write)[3]`
+- `io.popdesk.attachment.ImageBindTest.imageTakenOutOfTheContentStays`
+- `io.popdesk.attachment.ImageBindTest.filingSentAgainWithItsKey(Write)[1]`
+- `io.popdesk.attachment.ImageBindTest.filingSentAgainWithItsKey(Write)[2]`
+- `io.popdesk.attachment.ImageBindTest.filingSentAgainWithItsKey(Write)[3]`
+- `io.popdesk.attachment.ImageBindTest.everyWriteAttachesItsImages(Write)[1]`
+- `io.popdesk.attachment.ImageBindTest.everyWriteAttachesItsImages(Write)[2]`
+- `io.popdesk.attachment.ImageBindTest.everyWriteAttachesItsImages(Write)[3]`
+- `io.popdesk.attachment.ImageBindTest.everyWriteAttachesItsImages(Write)[4]`
+- `io.popdesk.attachment.ImageBindTest.everyWriteAttachesItsImages(Write)[5]`
+- `io.popdesk.attachment.ImageBindTest.everyWriteAttachesItsImages(Write)[6]`
+- `io.popdesk.attachment.ImageBindTest.everyWriteAttachesItsImages(Write)[7]`
+- `io.popdesk.attachment.ImageBindTest.everyWriteAttachesItsImages(Write)[8]`
+- `io.popdesk.attachment.ImageBindTest.everyWriteAttachesItsImages(Write)[9]`
+- `io.popdesk.attachment.ImageBindTest.everyWriteAttachesItsImages(Write)[10]`
+- `io.popdesk.attachment.ImageBindTest.everyWriteAttachesItsImages(Write)[11]`
+- `io.popdesk.attachment.ImageCleanupTest.imageLeftPendingIsDeleted`
+- `io.popdesk.attachment.ImageCleanupTest.fileThatCannotBeRemovedIsTriedAgain`
+- `io.popdesk.attachment.ImageCleanupTest.expiredImagesAreDeleted`
+- `io.popdesk.attachment.ImageLimitTest.twentyFirstImageIsRefused`
+- `io.popdesk.attachment.ImageLimitTest.fiftyMegabytes`
+- `io.popdesk.attachment.ImageLimitTest.expiredImagesAreNotCounted`
+- `io.popdesk.attachment.ImageQuotaTest.temporaryImagesCountAgainstTheQuota`
+- `io.popdesk.attachment.ImageRateLimitTest.imageUploadsShareTheUploadLimit`
+- `io.popdesk.attachment.ImageRateLimitTest.imageUploadsShareTheSixteen`
+- `io.popdesk.attachment.ImageReadTest.uploaderReads(String)[1]`
+- `io.popdesk.attachment.ImageReadTest.uploaderReads(String)[2]`
+- `io.popdesk.attachment.ImageReadTest.attachedImageLeavesTheTemporaryPath`
+- `io.popdesk.attachment.ImageReadTest.othersGetTheUnknownIdAnswer(Reader)[1]`
+- `io.popdesk.attachment.ImageReadTest.othersGetTheUnknownIdAnswer(Reader)[2]`
+- `io.popdesk.attachment.ImageReadTest.othersGetTheUnknownIdAnswer(Reader)[3]`
+- `io.popdesk.attachment.ImageReadTest.othersGetTheUnknownIdAnswer(Reader)[4]`
+- `io.popdesk.attachment.ImageReadTest.expiredImageIsNotRead`
+- `io.popdesk.attachment.ImageReadTest.pathOfTheOtherApp`
+- `io.popdesk.attachment.ImageReadTest.idThatIsNoUuid(String)[1]`
+- `io.popdesk.attachment.ImageReadTest.idThatIsNoUuid(String)[2]`
+- `io.popdesk.attachment.ImageReadTest.idThatIsNoUuid(String)[3]`
+- `io.popdesk.attachment.ImageReadTest.idThatIsNoUuid(String)[4]`
+- `io.popdesk.attachment.ImageUploadTest.notAnImage(String, String, String, byte[])[1]`
+- `io.popdesk.attachment.ImageUploadTest.notAnImage(String, String, String, byte[])[2]`
+- `io.popdesk.attachment.ImageUploadTest.notAnImage(String, String, String, byte[])[3]`
+- `io.popdesk.attachment.ImageUploadTest.notAnImage(String, String, String, byte[])[4]`
+- `io.popdesk.attachment.ImageUploadTest.notAnImage(String, String, String, byte[])[5]`
+- `io.popdesk.attachment.ImageUploadTest.notAnImage(String, String, String, byte[])[6]`
+- `io.popdesk.attachment.ImageUploadTest.notAnImage(String, String, String, byte[])[7]`
+- `io.popdesk.attachment.ImageUploadTest.notAnImage(String, String, String, byte[])[8]`
+- `io.popdesk.attachment.ImageUploadTest.notAnImage(String, String, String, byte[])[9]`
+- `io.popdesk.attachment.ImageUploadTest.notAnImage(String, String, String, byte[])[10]`
+- `io.popdesk.attachment.ImageUploadTest.notAnImage(String, String, String, byte[])[11]`
+- `io.popdesk.attachment.ImageUploadTest.notAnImage(String, String, String, byte[])[12]`
+- `io.popdesk.attachment.ImageUploadTest.onlyTheFirstBytesAreRead(Format)[1]`
+- `io.popdesk.attachment.ImageUploadTest.onlyTheFirstBytesAreRead(Format)[2]`
+- `io.popdesk.attachment.ImageUploadTest.onlyTheFirstBytesAreRead(Format)[3]`
+- `io.popdesk.attachment.ImageUploadTest.onlyTheFirstBytesAreRead(Format)[4]`
+- `io.popdesk.attachment.ImageUploadTest.onlyTheFirstBytesAreRead(Format)[5]`
+- `io.popdesk.attachment.ImageUploadTest.fileLimitsOfAnAttachment(String, String, byte[], String, String)[1]`
+- `io.popdesk.attachment.ImageUploadTest.fileLimitsOfAnAttachment(String, String, byte[], String, String)[2]`
+- `io.popdesk.attachment.ImageUploadTest.fileLimitsOfAnAttachment(String, String, byte[], String, String)[3]`
+- `io.popdesk.attachment.ImageUploadTest.fileLimitsOfAnAttachment(String, String, byte[], String, String)[4]`
+- `io.popdesk.attachment.ImageUploadTest.uploadsOnBothAppsGiveUuids`
+- `io.popdesk.attachment.ImageUploadTest.formatDecidesTheContentType(Format)[1]`
+- `io.popdesk.attachment.ImageUploadTest.formatDecidesTheContentType(Format)[2]`
+- `io.popdesk.attachment.ImageUploadTest.formatDecidesTheContentType(Format)[3]`
+- `io.popdesk.attachment.ImageUploadTest.formatDecidesTheContentType(Format)[4]`
+- `io.popdesk.attachment.ImageUploadTest.formatDecidesTheContentType(Format)[5]`
