@@ -34,8 +34,11 @@ class TransferLimitFilter extends OncePerRequestFilter implements Ordered {
     /** Seconds a refused client waits before it tries again. */
     static final String RETRY_AFTER = "1";
 
-    private static final Pattern UPLOAD = Pattern.compile("^/api/(portal|console)/issues/[^/]+/attachments/?$");
-    private static final Pattern DOWNLOAD = Pattern.compile("^/api/(portal|console)/issues/[^/]+/attachments/[^/]+$");
+    // Temporary images are uploads and downloads like attachments, in the same places (S5-AC-07).
+    private static final Pattern UPLOAD = Pattern.compile(
+            "^/api/(portal|console)/(issues/[^/]+/attachments|images)/?$");
+    private static final Pattern DOWNLOAD = Pattern.compile(
+            "^/api/(portal|console)/(issues/[^/]+/attachments|images)/[^/]+$");
     private static final String FILING = "/api/portal/issues";
 
     private final Semaphore uploads = new Semaphore(RUNNING);

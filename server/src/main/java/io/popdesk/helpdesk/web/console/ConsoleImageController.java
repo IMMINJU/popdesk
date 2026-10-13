@@ -1,6 +1,9 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.attachment.AttachmentHeaders;
+import io.popdesk.helpdesk.attachment.AttachmentRepository.AttachmentRow;
+import io.popdesk.helpdesk.attachment.AttachmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -33,6 +36,12 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/console/images")
 class ConsoleImageController {
+
+    private final AttachmentService attachments;
+
+    ConsoleImageController(AttachmentService attachments) {
+        this.attachments = attachments;
+    }
 
     static final String NOT_FOUND = "`NOT_FOUND`: one identical response for an unknown ID, an image another "
             + "account uploaded, and an image that is attached already, over 24 hours old, deleted, or still "
@@ -77,7 +86,7 @@ class ConsoleImageController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     TemporaryImage uploadImage(@RequestPart("file") MultipartFile file) {
-        throw new NotImplementedException();
+        return new TemporaryImage(attachments.uploadImage(CurrentAccount.get().viewer(), file));
     }
 
     @Operation(operationId = "downloadImage", summary = "Read a temporary image",
@@ -99,7 +108,8 @@ class ConsoleImageController {
     ResponseEntity<Resource> downloadImage(
             @Parameter(schema = @Schema(type = "string", format = "uuid")) @PathVariable String id,
             @RequestHeader(name = HttpHeaders.RANGE, required = false) @Nullable String range) {
-        throw new NotImplementedException();
+        AttachmentService.Download download = attachments.downloadTemporaryImage(CurrentAccount.get().viewer(), id);
+        return ResponseEntity.ok().headers(AttachmentHeaders.of(download.attachment())).body(download.contents());
     }
 
     @Operation(operationId = "headImage", summary = "Headers of a temporary image",
@@ -110,6 +120,7 @@ class ConsoleImageController {
     @RequestMapping(path = "/{id}", method = RequestMethod.HEAD)
     ResponseEntity<Void> headImage(
             @Parameter(schema = @Schema(type = "string", format = "uuid")) @PathVariable String id) {
-        throw new NotImplementedException();
+        AttachmentRow image = attachments.temporaryImage(CurrentAccount.get().viewer(), id);
+        return ResponseEntity.ok().headers(AttachmentHeaders.of(image)).contentLength(image.size()).build();
     }
 }

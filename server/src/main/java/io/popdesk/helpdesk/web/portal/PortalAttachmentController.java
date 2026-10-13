@@ -51,8 +51,7 @@ class PortalAttachmentController {
     }
 
     static Attachment attachment(AttachmentRow row) {
-        // Slice 5: `inline` is in the contract, not read yet.
-        return new Attachment(row.id(), row.fileName(), row.size(), row.contentType(), row.commentId(), false,
+        return new Attachment(row.id(), row.fileName(), row.size(), row.contentType(), row.commentId(), row.inline(),
                 PortalIssueController.person(row.uploadedById(), row.uploadedByName(), row.uploadedByRole(),
                         row.uploadedByPhotoUpdatedAt()),
                 PortalIssueController.utc(row.createdAt()), row.deleted(),

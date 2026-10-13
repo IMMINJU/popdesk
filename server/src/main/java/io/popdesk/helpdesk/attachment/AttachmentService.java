@@ -21,8 +21,10 @@ import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.notification.OpsAlerts;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -51,6 +53,9 @@ import org.springframework.web.multipart.MultipartFile;
  * (rate limit, scope, permission, input, limits) is checked before ①, so a refused upload leaves no
  * row and no contents (tasks.md section 7). A failure after ① leaves the row {@code pending} for the
  * cleanup.
+ *
+ * <p>A temporary image (ATT-6, ATT-7) is uploaded the same way without an issue, and until a save
+ * attaches it only the account that uploaded it reads it, here and nowhere else.
  */
 @Service
 public class AttachmentService implements IssueAttachments {
@@ -68,6 +73,13 @@ public class AttachmentService implements IssueAttachments {
 
     static final int NAME_MAX = 255;
     static final int CONTENT_TYPE_MAX = 255;
+
+    /** How long a temporary image is read and can be attached, from its upload (ATT-7). */
+    static final Duration IMAGE_LIFETIME = Duration.ofHours(24);
+
+    /** The most temporary images one account has at a time, and their bytes (ATT-7): 20 and 50 MB. */
+    static final int MAX_TEMPORARY_IMAGES = 20;
+    static final long MAX_TEMPORARY_BYTES = DataSize.ofMegabytes(50).toBytes();
 
     /** The setting with the team's limit (ATT-3). */
     static final String QUOTA_KEY = "POPDESK_ATTACHMENT_QUOTA";
@@ -146,7 +158,7 @@ public class AttachmentService implements IssueAttachments {
         long before = attachments.storedBytes();
         checkQuota(before + file.getSize());
 
-        UUID id = writePending(viewer, issue.id(), commentId, List.of(received)).getFirst();
+        UUID id = writePending(viewer, issue.id(), commentId, false, List.of(received)).getFirst();
         AttachmentRow stored = transactions.run(() -> {
             IssueRow locked = issues.lockByKey(viewer, issueKey).orElseThrow(ApiException::notFound);
             if (locked.status() == IssueStatus.CLOSED) {
@@ -202,7 +214,7 @@ public class AttachmentService implements IssueAttachments {
             throw issueAttachmentsTooLarge();
         }
         checkQuota(attachments.storedBytes() + total);
-        return writePending(viewer, null, null, received);
+        return writePending(viewer, null, null, false, received);
     }
 
     /**
@@ -236,6 +248,44 @@ public class AttachmentService implements IssueAttachments {
                 log.warn("Removing the file of a failed filing failed ({}).", e.getClass().getSimpleName());
             }
         }
+    }
+
+    /**
+     * Stores an image as a temporary image of the caller, before there is an issue or a comment to put
+     * it on (S5-AC-01), and returns its ID. Checks in the order of {@link #upload}: the rate limit, which
+     * is the one of attachment uploads (S5-AC-07), the file's name, its size, then what only an image
+     * has: the format, read from the first bytes and nothing else (S5-AC-02), and the caller's 20 images
+     * and 50 MB (S5-AC-05), counted without a lock like the team limit, which comes last (S5-AC-06).
+     *
+     * <p>The three steps of an upload, with a step ③ that locks nothing: there is no issue. The content
+     * type stored is the one of the format, whatever the request said (S5-AC-03).
+     */
+    public UUID uploadImage(Viewer viewer, MultipartFile file) {
+        rateLimit.count(AccountRateLimit.Action.ATTACHMENT, viewer.accountId());
+        List<ApiError.FieldError> errors = new ArrayList<>();
+        Received received = received("file", file, errors);
+        if (!errors.isEmpty()) {
+            throw ApiException.invalid(errors);
+        }
+        checkSize(file);
+        ImageFormat format = ImageFormat.of(head(file)).orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST,
+                "FILE_NOT_IMAGE", "The file is not a PNG, JPEG, GIF, or WebP image."));
+        AttachmentRepository.TemporaryUsage usage = attachments.temporaryUsage(viewer.accountId(), imagesExpired());
+        if (usage.images() + 1 > MAX_TEMPORARY_IMAGES || usage.bytes() + file.getSize() > MAX_TEMPORARY_BYTES) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "TEMPORARY_IMAGE_LIMIT_EXCEEDED",
+                    "Too many images are waiting to be saved with an issue or a comment.");
+        }
+        checkQuota(attachments.storedBytes() + file.getSize());
+
+        UUID id = writePending(viewer, null, null, true,
+                List.of(new Received(file, received.name(), format.contentType()))).getFirst();
+        if (attachments.updateStoredTemporary(id) != 1) {
+            // The cleanup ended the pending row while step ② ran; the contents written since go too.
+            storage.delete(id);
+            throw new IllegalStateException("The image was ended before it was stored");
+        }
+        reviewQuota();
+        return id;
     }
 
     /**
@@ -292,6 +342,23 @@ public class AttachmentService implements IssueAttachments {
         AttachmentRow attachment = get(viewer, key, id);
         return new Download(attachment, new AttachmentContents(attachment.size(),
                 (offset, length) -> storage.read(attachment.id(), offset, length)));
+    }
+
+    /**
+     * The temporary image, for the account that uploaded it; else 404, one answer for an ID nobody has,
+     * another account's image, and an image that is attached, expired, or not stored yet (S5-AC-11,
+     * S5-AC-12). An attached image is read under its issue, with {@link #get}.
+     */
+    public AttachmentRow temporaryImage(Viewer viewer, String id) {
+        UUID imageId = attachmentId(id).orElseThrow(ApiException::notFound);
+        return attachments.findTemporary(viewer, imageId, imagesExpired()).orElseThrow(ApiException::notFound);
+    }
+
+    /** The temporary image and its contents after the check of {@link #temporaryImage} (S5-AC-10). */
+    public Download downloadTemporaryImage(Viewer viewer, String id) {
+        AttachmentRow image = temporaryImage(viewer, id);
+        return new Download(image, new AttachmentContents(image.size(),
+                (offset, length) -> storage.read(image.id(), offset, length)));
     }
 
     // Deleting
@@ -360,13 +427,15 @@ public class AttachmentService implements IssueAttachments {
     // Steps and checks
 
     /** Steps ① (one transaction for all rows) and ② (one statement per file). Returns the new IDs. */
-    private List<UUID> writePending(Viewer viewer, UUID issueId, Long commentId, List<Received> files) {
+    private List<UUID> writePending(Viewer viewer, UUID issueId, Long commentId, boolean inline,
+            List<Received> files) {
         Instant now = now();
         List<PendingAttachment> rows = files.stream()
                 .map(f -> {
                     UUID id = UUID.randomUUID();
                     return new PendingAttachment(id, issueId, commentId, f.name(), f.file().getSize(),
-                            f.contentType(), storage.kind(), storage.location(id), viewer.accountId(), now);
+                            f.contentType(), storage.kind(), storage.location(id), viewer.accountId(), now,
+                            inline);
                 })
                 .toList();
         transactions.run(() -> rows.forEach(attachments::persistPending));
@@ -405,6 +474,20 @@ public class AttachmentService implements IssueAttachments {
         } catch (InvalidMediaTypeException e) {
             return MediaType.APPLICATION_OCTET_STREAM_VALUE;
         }
+    }
+
+    /** The first bytes of the file, as many as tell an image's format. */
+    private static byte[] head(MultipartFile file) {
+        try (InputStream in = file.getInputStream()) {
+            return in.readNBytes(ImageFormat.HEAD_LENGTH);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /** A temporary image created at this time or before is expired now (S5-AC-30). */
+    private Instant imagesExpired() {
+        return now().minus(IMAGE_LIFETIME);
     }
 
     private static void checkSize(MultipartFile file) {

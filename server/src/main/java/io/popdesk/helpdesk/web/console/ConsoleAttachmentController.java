@@ -50,9 +50,8 @@ class ConsoleAttachmentController {
     }
 
     static Attachment attachment(AttachmentRow row) {
-        // Slice 5: `inline` is in the contract, not read yet.
         return new Attachment(row.id(), row.fileName(), row.size(), row.contentType(), row.commentId(),
-                row.internal(), false, ConsoleIssueController.person(row.uploadedById(), row.uploadedByName(),
+                row.internal(), row.inline(), ConsoleIssueController.person(row.uploadedById(), row.uploadedByName(),
                         row.uploadedByRole(), row.uploadedByPhotoUpdatedAt()),
                 ConsoleIssueController.utc(row.createdAt()), row.deleted(),
                 row.deletedAt() == null ? null : ConsoleIssueController.utc(row.deletedAt()),

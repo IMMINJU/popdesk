@@ -41,10 +41,14 @@ class PendingAttachment {
 
     private Instant createdAt;
 
+    /** True for an image uploaded for a content (ATT-6): a temporary image until a save attaches it. */
+    private boolean inline;
+
     protected PendingAttachment() {}
 
     PendingAttachment(UUID id, UUID issueId, Long commentId, String fileName, long size, String contentType,
-            String storage, String storageLocation, long uploadedBy, Instant createdAt) {
+            String storage, String storageLocation, long uploadedBy, Instant createdAt, boolean inline) {
+        this.inline = inline;
         this.id = id;
         this.tenantId = 1;
         this.issueId = issueId;
