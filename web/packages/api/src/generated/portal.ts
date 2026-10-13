@@ -85,6 +85,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/portal/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload an image for an issue's content or a comment
+         * @description Stores a PNG, JPEG, GIF, or WebP file as a temporary image of the caller and answers its ID, before there is an issue or a comment to put it on (S5-AC-01). Write it into the Markdown as `![description](attachment:{id})` and send the ID in `imageIds` of the request that saves the issue or the comment; that attaches it. The format is judged by the first bytes of the file, never by its name or the `Content-Type` sent, and decides the `Content-Type` the image is served with (S5-AC-02, S5-AC-03). A temporary image not attached within 24 hours is deleted (S5-AC-30). A caller has at most 20 temporary images and 50 MB of them at once; attached and expired ones do not count (S5-AC-05). Temporary images count against the team quota (S5-AC-06).
+         */
+        post: operations["uploadImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portal/images/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a temporary image
+         * @description The contents of a temporary image, for the caller who uploaded it and nobody else, a colleague neither (S5-AC-10, S5-AC-11): the preview of a content that is not saved yet. The headers are those of `downloadAttachment`, `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`; a browser shows it in an `<img>` all the same. Takes `Range` requests. Once a save attached the image, read it with `downloadAttachment` of its issue; this path answers 404 from then on (S5-AC-12).
+         */
+        get: operations["downloadImage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        /**
+         * Headers of a temporary image
+         * @description The headers `downloadImage` would send, without the body.
+         */
+        head: operations["headImage"];
+        patch?: never;
+        trace?: never;
+    };
     "/api/portal/issues": {
         parameters: {
             query?: never;
@@ -596,6 +640,8 @@ export interface components {
              * @description Hard to guess, but not a permission check (ATT-7).
              */
             id: string;
+            /** @description A content image: uploaded with `uploadImage` and attached through `imageIds` of a save, to be shown in the content as `![…](attachment:{id})`. Listed, downloaded, and deleted like every other attachment (S5-AC-24). */
+            inline: boolean;
             /**
              * Format: int64
              * @description Bytes.
@@ -637,12 +683,16 @@ export interface components {
         CreateCommentRequest: {
             /** @description Markdown, 1 to 4,000 characters. */
             content: string;
+            /** @description IDs of temporary images the caller uploaded with `uploadImage`, up to 20. The save attaches them to the issue, and to the comment when it writes one, or attaches none of them and saves nothing (S5-AC-20). Only these IDs are attached: the server does not look for `attachment:{id}` in the content, and an ID the content does not name is attached too (S5-AC-25). An ID given twice counts once. Left out, `null`, or empty: nothing is attached. */
+            imageIds?: string[];
         };
         CreateIssueRequest: {
             /** @description Code of an active company the caller belongs to. */
             companyCode: string;
             /** @description Markdown, up to 10,000 characters. Empty when left out. */
             content?: string;
+            /** @description IDs of temporary images the caller uploaded with `uploadImage`, up to 20. The save attaches them to the issue, and to the comment when it writes one, or attaches none of them and saves nothing (S5-AC-20). Only these IDs are attached: the server does not look for `attachment:{id}` in the content, and an ID the content does not name is attached too (S5-AC-25). An ID given twice counts once. Left out, `null`, or empty: nothing is attached. */
+            imageIds?: string[];
             /**
              * @description `NORMAL` when left out.
              * @enum {string}
@@ -941,6 +991,13 @@ export interface components {
             email: string;
             password: string;
         };
+        TemporaryImage: {
+            /**
+             * Format: uuid
+             * @description The ID to write as `attachment:{id}` and to send in `imageIds`. Hard to guess, but not a permission check (ATT-7). It stays the attachment's ID once the image is attached.
+             */
+            id: string;
+        };
         UnreadCount: {
             /** Format: int64 */
             count: number;
@@ -948,10 +1005,14 @@ export interface components {
         UpdateCommentRequest: {
             /** @description Markdown, 1 to 4,000 characters. `null` is refused. */
             content?: string;
+            /** @description IDs of temporary images the caller uploaded with `uploadImage`, up to 20. The save attaches them to the issue, and to the comment when it writes one, or attaches none of them and saves nothing (S5-AC-20). Only these IDs are attached: the server does not look for `attachment:{id}` in the content, and an ID the content does not name is attached too (S5-AC-25). An ID given twice counts once. Left out, `null`, or empty: nothing is attached. */
+            imageIds?: string[];
         };
         UpdateIssueRequest: {
             /** @description Markdown, up to 10,000 characters. `null` clears it. */
             content?: string;
+            /** @description IDs of temporary images the caller uploaded with `uploadImage`, up to 20. The save attaches them to the issue, and to the comment when it writes one, or attaches none of them and saves nothing (S5-AC-20). Only these IDs are attached: the server does not look for `attachment:{id}` in the content, and an ID the content does not name is attached too (S5-AC-25). An ID given twice counts once. Left out, `null`, or empty: nothing is attached. */
+            imageIds?: string[];
             /**
              * @description `null` is refused.
              * @enum {string}
@@ -1292,6 +1353,185 @@ export interface operations {
             };
         };
     };
+    uploadImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Stored. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemporaryImage"];
+                };
+            };
+            /** @description `FILE_NOT_IMAGE`: not one of the four formats. `FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `TEMPORARY_IMAGE_LIMIT_EXCEEDED` (the caller's temporary images would pass 20 or 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), `INVALID_INPUT` (field `file` `REQUIRED`: no `file` part or no file name; `TOO_LONG`: name over 255) (S5-AC-04). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: the request is over the upload limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 30 uploads in 60 seconds, counted together with `uploadAttachment` (S5-AC-07). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `SERVER_BUSY`: 16 uploads are running, attachments and images together; try again after `Retry-After` (S5-AC-07). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    downloadImage: {
+        parameters: {
+            query?: never;
+            header?: {
+                Range?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The image. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Part of the image, for a `Range` request. */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: one identical response for an unknown ID, an image another account uploaded, and an image that is attached already, over 24 hours old, deleted, or still being written (S5-AC-11, S5-AC-12). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `SERVER_BUSY`: 16 downloads are running, attachments and images together; try again after `Retry-After` (S5-AC-07). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    headImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The image exists and the caller may read it. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: one identical response for an unknown ID, an image another account uploaded, and an image that is attached already, over 24 hours old, deleted, or still being written (S5-AC-11, S5-AC-12). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listIssues: {
         parameters: {
             query?: {
@@ -1381,7 +1621,7 @@ export interface operations {
                     "application/json": components["schemas"]["Issue"];
                 };
             };
-            /** @description `INVALID_INPUT`: `title` empty or over 200, `content` over 10,000, `priority` unknown; `fields` lists all (S0-AC-42). `COMPANY_NOT_ACTIVE`: the company is not `ACTIVE`. `INVALID_INPUT` with field `Idempotency-Key` (`INVALID_FORMAT`, `TOO_LONG`): the key is not 1 to 100 visible ASCII characters (S3-AC-45). With files: `FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `ISSUE_ATTACHMENTS_TOO_LARGE` (public attachments of the issue over 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), and `INVALID_INPUT` with field `files` `TOO_LONG` (file name over 255) (S0-AC-57, S0-AC-58). Nothing is created then (S0-AC-63). */
+            /** @description `INVALID_INPUT`: `title` empty or over 200, `content` over 10,000, `priority` unknown; `fields` lists all (S0-AC-42). `COMPANY_NOT_ACTIVE`: the company is not `ACTIVE`. `INVALID_INPUT` with field `Idempotency-Key` (`INVALID_FORMAT`, `TOO_LONG`): the key is not 1 to 100 visible ASCII characters (S3-AC-45). With files: `FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `ISSUE_ATTACHMENTS_TOO_LARGE` (public attachments of the issue over 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), and `INVALID_INPUT` with field `files` `TOO_LONG` (file name over 255) (S0-AC-57, S0-AC-58). Nothing is created then (S0-AC-63). With `imageIds`: `TEMPORARY_IMAGE_INVALID` (an ID is not a temporary image the caller uploaded, or the image is attached already or over 24 hours old; one answer whatever the reason and whichever ID, S5-AC-21), `ISSUE_ATTACHMENTS_TOO_LARGE` (with the images, the public attachments of the issue would pass 50 MB, S5-AC-23), and `INVALID_INPUT` with field `imageIds` `TOO_MANY` (over 20) or `INVALID_FORMAT` (not a list of strings). Nothing is saved then. The 50 MB counts the files and the images of the filing together. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1519,7 +1759,7 @@ export interface operations {
                     "application/json": components["schemas"]["Issue"];
                 };
             };
-            /** @description `INVALID_INPUT`: `version` missing (`REQUIRED`), `title` empty, over 200, or `null`, `content` over 10,000, `priority` unknown or `null`; `fields` lists all. `ISSUE_CLOSED`: the issue is `CLOSED` (S3-AC-21). */
+            /** @description `INVALID_INPUT`: `version` missing (`REQUIRED`), `title` empty, over 200, or `null`, `content` over 10,000, `priority` unknown or `null`; `fields` lists all. `ISSUE_CLOSED`: the issue is `CLOSED` (S3-AC-21). With `imageIds`: `TEMPORARY_IMAGE_INVALID` (an ID is not a temporary image the caller uploaded, or the image is attached already or over 24 hours old; one answer whatever the reason and whichever ID, S5-AC-21), `ISSUE_ATTACHMENTS_TOO_LARGE` (with the images, the public attachments of the issue would pass 50 MB, S5-AC-23), and `INVALID_INPUT` with field `imageIds` `TOO_MANY` (over 20) or `INVALID_FORMAT` (not a list of strings). Nothing is saved then. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2001,7 +2241,7 @@ export interface operations {
                     "application/json": components["schemas"]["Comment"];
                 };
             };
-            /** @description `INVALID_INPUT`: `content` empty or over 4,000, or not text (`INVALID_FORMAT`). `ISSUE_CLOSED`: the issue is closed. */
+            /** @description `INVALID_INPUT`: `content` empty or over 4,000, or not text (`INVALID_FORMAT`). `ISSUE_CLOSED`: the issue is closed. With `imageIds`: `TEMPORARY_IMAGE_INVALID` (an ID is not a temporary image the caller uploaded, or the image is attached already or over 24 hours old; one answer whatever the reason and whichever ID, S5-AC-21), `ISSUE_ATTACHMENTS_TOO_LARGE` (with the images, the public attachments of the issue would pass 50 MB, S5-AC-23), and `INVALID_INPUT` with field `imageIds` `TOO_MANY` (over 20) or `INVALID_FORMAT` (not a list of strings). Nothing is saved then. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2121,7 +2361,7 @@ export interface operations {
                     "application/json": components["schemas"]["Comment"];
                 };
             };
-            /** @description `INVALID_INPUT`: `content` empty, over 4,000, or `null`, or not text (`INVALID_FORMAT`). `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` (S4-AC-04). */
+            /** @description `INVALID_INPUT`: `content` empty, over 4,000, or `null`, or not text (`INVALID_FORMAT`). `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` (S4-AC-04). With `imageIds`: `TEMPORARY_IMAGE_INVALID` (an ID is not a temporary image the caller uploaded, or the image is attached already or over 24 hours old; one answer whatever the reason and whichever ID, S5-AC-21), `ISSUE_ATTACHMENTS_TOO_LARGE` (with the images, the public attachments of the issue would pass 50 MB, S5-AC-23), and `INVALID_INPUT` with field `imageIds` `TOO_MANY` (over 20) or `INVALID_FORMAT` (not a list of strings). Nothing is saved then. */
             400: {
                 headers: {
                     [name: string]: unknown;

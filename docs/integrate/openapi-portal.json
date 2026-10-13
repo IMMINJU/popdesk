@@ -73,6 +73,10 @@
             "format" : "uuid",
             "type" : "string"
           },
+          "inline" : {
+            "description" : "A content image: uploaded with `uploadImage` and attached through `imageIds` of a save, to be shown in the content as `![…](attachment:{id})`. Listed, downloaded, and deleted like every other attachment (S5-AC-24).",
+            "type" : "boolean"
+          },
           "size" : {
             "description" : "Bytes.",
             "format" : "int64",
@@ -82,7 +86,7 @@
             "$ref" : "#/components/schemas/Person"
           }
         },
-        "required" : [ "commentId", "contentType", "createdAt", "deleted", "deletedAt", "deletedBy", "fileName", "id", "size", "uploadedBy" ],
+        "required" : [ "commentId", "contentType", "createdAt", "deleted", "deletedAt", "deletedBy", "fileName", "id", "inline", "size", "uploadedBy" ],
         "type" : "object"
       },
       "ChangePasswordRequest" : {
@@ -157,6 +161,14 @@
           "content" : {
             "description" : "Markdown, 1 to 4,000 characters.",
             "type" : "string"
+          },
+          "imageIds" : {
+            "description" : "IDs of temporary images the caller uploaded with `uploadImage`, up to 20. The save attaches them to the issue, and to the comment when it writes one, or attaches none of them and saves nothing (S5-AC-20). Only these IDs are attached: the server does not look for `attachment:{id}` in the content, and an ID the content does not name is attached too (S5-AC-25). An ID given twice counts once. Left out, `null`, or empty: nothing is attached.",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
           }
         },
         "required" : [ "content" ],
@@ -171,6 +183,14 @@
           "content" : {
             "description" : "Markdown, up to 10,000 characters. Empty when left out.",
             "type" : "string"
+          },
+          "imageIds" : {
+            "description" : "IDs of temporary images the caller uploaded with `uploadImage`, up to 20. The save attaches them to the issue, and to the comment when it writes one, or attaches none of them and saves nothing (S5-AC-20). Only these IDs are attached: the server does not look for `attachment:{id}` in the content, and an ID the content does not name is attached too (S5-AC-25). An ID given twice counts once. Left out, `null`, or empty: nothing is attached.",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "priority" : {
             "description" : "`NORMAL` when left out.",
@@ -716,6 +736,17 @@
         "required" : [ "email", "password" ],
         "type" : "object"
       },
+      "TemporaryImage" : {
+        "properties" : {
+          "id" : {
+            "description" : "The ID to write as `attachment:{id}` and to send in `imageIds`. Hard to guess, but not a permission check (ATT-7). It stays the attachment's ID once the image is attached.",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "id" ],
+        "type" : "object"
+      },
       "UnreadCount" : {
         "properties" : {
           "count" : {
@@ -731,6 +762,14 @@
           "content" : {
             "description" : "Markdown, 1 to 4,000 characters. `null` is refused.",
             "type" : "string"
+          },
+          "imageIds" : {
+            "description" : "IDs of temporary images the caller uploaded with `uploadImage`, up to 20. The save attaches them to the issue, and to the comment when it writes one, or attaches none of them and saves nothing (S5-AC-20). Only these IDs are attached: the server does not look for `attachment:{id}` in the content, and an ID the content does not name is attached too (S5-AC-25). An ID given twice counts once. Left out, `null`, or empty: nothing is attached.",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -740,6 +779,14 @@
           "content" : {
             "description" : "Markdown, up to 10,000 characters. `null` clears it.",
             "type" : "string"
+          },
+          "imageIds" : {
+            "description" : "IDs of temporary images the caller uploaded with `uploadImage`, up to 20. The save attaches them to the issue, and to the comment when it writes one, or attaches none of them and saves nothing (S5-AC-20). Only these IDs are attached: the server does not look for `attachment:{id}` in the content, and an ID the content does not name is attached too (S5-AC-25). An ID given twice counts once. Left out, `null`, or empty: nothing is attached.",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "priority" : {
             "description" : "`null` is refused.",
@@ -1172,6 +1219,220 @@
         "tags" : [ "Company members" ]
       }
     },
+    "/api/portal/images" : {
+      "post" : {
+        "description" : "Stores a PNG, JPEG, GIF, or WebP file as a temporary image of the caller and answers its ID, before there is an issue or a comment to put it on (S5-AC-01). Write it into the Markdown as `![description](attachment:{id})` and send the ID in `imageIds` of the request that saves the issue or the comment; that attaches it. The format is judged by the first bytes of the file, never by its name or the `Content-Type` sent, and decides the `Content-Type` the image is served with (S5-AC-02, S5-AC-03). A temporary image not attached within 24 hours is deleted (S5-AC-30). A caller has at most 20 temporary images and 50 MB of them at once; attached and expired ones do not count (S5-AC-05). Temporary images count against the team quota (S5-AC-06).",
+        "operationId" : "uploadImage",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TemporaryImage"
+                }
+              }
+            },
+            "description" : "Stored."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FILE_NOT_IMAGE`: not one of the four formats. `FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `TEMPORARY_IMAGE_LIMIT_EXCEEDED` (the caller's temporary images would pass 20 or 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), `INVALID_INPUT` (field `file` `REQUIRED`: no `file` part or no file name; `TOO_LONG`: name over 255) (S5-AC-04)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`CSRF_TOKEN_INVALID`."
+          },
+          "413" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`PAYLOAD_TOO_LARGE`: the request is over the upload limit."
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RATE_LIMITED`: more than 30 uploads in 60 seconds, counted together with `uploadAttachment` (S5-AC-07)."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`SERVER_BUSY`: 16 uploads are running, attachments and images together; try again after `Retry-After` (S5-AC-07)."
+          }
+        },
+        "summary" : "Upload an image for an issue's content or a comment",
+        "tags" : [ "Attachments" ]
+      }
+    },
+    "/api/portal/images/{id}" : {
+      "get" : {
+        "description" : "The contents of a temporary image, for the caller who uploaded it and nobody else, a colleague neither (S5-AC-10, S5-AC-11): the preview of a content that is not saved yet. The headers are those of `downloadAttachment`, `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`; a browser shows it in an `<img>` all the same. Takes `Range` requests. Once a save attached the image, read it with `downloadAttachment` of its issue; this path answers 404 from then on (S5-AC-12).",
+        "operationId" : "downloadImage",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Range",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/octet-stream" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "The image."
+          },
+          "206" : {
+            "content" : {
+              "application/octet-stream" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Part of the image, for a `Range` request."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: one identical response for an unknown ID, an image another account uploaded, and an image that is attached already, over 24 hours old, deleted, or still being written (S5-AC-11, S5-AC-12)."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`SERVER_BUSY`: 16 downloads are running, attachments and images together; try again after `Retry-After` (S5-AC-07)."
+          }
+        },
+        "summary" : "Read a temporary image",
+        "tags" : [ "Attachments" ]
+      },
+      "head" : {
+        "description" : "The headers `downloadImage` would send, without the body.",
+        "operationId" : "headImage",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The image exists and the caller may read it."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: one identical response for an unknown ID, an image another account uploaded, and an image that is attached already, over 24 hours old, deleted, or still being written (S5-AC-11, S5-AC-12)."
+          }
+        },
+        "summary" : "Headers of a temporary image",
+        "tags" : [ "Attachments" ]
+      }
+    },
     "/api/portal/issues" : {
       "get" : {
         "description" : "Public issues of the caller's companies and every issue the caller reported, newest first (S0-AC-47). The filters narrow that and never widen it: with several, an issue must match all of them (S3-AC-08, S3-AC-10).",
@@ -1337,7 +1598,7 @@
                 }
               }
             },
-            "description" : "`INVALID_INPUT`: `title` empty or over 200, `content` over 10,000, `priority` unknown; `fields` lists all (S0-AC-42). `COMPANY_NOT_ACTIVE`: the company is not `ACTIVE`. `INVALID_INPUT` with field `Idempotency-Key` (`INVALID_FORMAT`, `TOO_LONG`): the key is not 1 to 100 visible ASCII characters (S3-AC-45). With files: `FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `ISSUE_ATTACHMENTS_TOO_LARGE` (public attachments of the issue over 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), and `INVALID_INPUT` with field `files` `TOO_LONG` (file name over 255) (S0-AC-57, S0-AC-58). Nothing is created then (S0-AC-63)."
+            "description" : "`INVALID_INPUT`: `title` empty or over 200, `content` over 10,000, `priority` unknown; `fields` lists all (S0-AC-42). `COMPANY_NOT_ACTIVE`: the company is not `ACTIVE`. `INVALID_INPUT` with field `Idempotency-Key` (`INVALID_FORMAT`, `TOO_LONG`): the key is not 1 to 100 visible ASCII characters (S3-AC-45). With files: `FILE_EMPTY`, `FILE_TOO_LARGE` (over 10 MB), `ISSUE_ATTACHMENTS_TOO_LARGE` (public attachments of the issue over 50 MB), `ATTACHMENT_QUOTA_EXCEEDED` (team quota), and `INVALID_INPUT` with field `files` `TOO_LONG` (file name over 255) (S0-AC-57, S0-AC-58). Nothing is created then (S0-AC-63). With `imageIds`: `TEMPORARY_IMAGE_INVALID` (an ID is not a temporary image the caller uploaded, or the image is attached already or over 24 hours old; one answer whatever the reason and whichever ID, S5-AC-21), `ISSUE_ATTACHMENTS_TOO_LARGE` (with the images, the public attachments of the issue would pass 50 MB, S5-AC-23), and `INVALID_INPUT` with field `imageIds` `TOO_MANY` (over 20) or `INVALID_FORMAT` (not a list of strings). Nothing is saved then. The 50 MB counts the files and the images of the filing together."
           },
           "401" : {
             "content" : {
@@ -1500,7 +1761,7 @@
                 }
               }
             },
-            "description" : "`INVALID_INPUT`: `version` missing (`REQUIRED`), `title` empty, over 200, or `null`, `content` over 10,000, `priority` unknown or `null`; `fields` lists all. `ISSUE_CLOSED`: the issue is `CLOSED` (S3-AC-21)."
+            "description" : "`INVALID_INPUT`: `version` missing (`REQUIRED`), `title` empty, over 200, or `null`, `content` over 10,000, `priority` unknown or `null`; `fields` lists all. `ISSUE_CLOSED`: the issue is `CLOSED` (S3-AC-21). With `imageIds`: `TEMPORARY_IMAGE_INVALID` (an ID is not a temporary image the caller uploaded, or the image is attached already or over 24 hours old; one answer whatever the reason and whichever ID, S5-AC-21), `ISSUE_ATTACHMENTS_TOO_LARGE` (with the images, the public attachments of the issue would pass 50 MB, S5-AC-23), and `INVALID_INPUT` with field `imageIds` `TOO_MANY` (over 20) or `INVALID_FORMAT` (not a list of strings). Nothing is saved then."
           },
           "401" : {
             "content" : {
@@ -2116,7 +2377,7 @@
                 }
               }
             },
-            "description" : "`INVALID_INPUT`: `content` empty or over 4,000, or not text (`INVALID_FORMAT`). `ISSUE_CLOSED`: the issue is closed."
+            "description" : "`INVALID_INPUT`: `content` empty or over 4,000, or not text (`INVALID_FORMAT`). `ISSUE_CLOSED`: the issue is closed. With `imageIds`: `TEMPORARY_IMAGE_INVALID` (an ID is not a temporary image the caller uploaded, or the image is attached already or over 24 hours old; one answer whatever the reason and whichever ID, S5-AC-21), `ISSUE_ATTACHMENTS_TOO_LARGE` (with the images, the public attachments of the issue would pass 50 MB, S5-AC-23), and `INVALID_INPUT` with field `imageIds` `TOO_MANY` (over 20) or `INVALID_FORMAT` (not a list of strings). Nothing is saved then."
           },
           "401" : {
             "content" : {
@@ -2269,7 +2530,7 @@
                 }
               }
             },
-            "description" : "`INVALID_INPUT`: `content` empty, over 4,000, or `null`, or not text (`INVALID_FORMAT`). `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` (S4-AC-04)."
+            "description" : "`INVALID_INPUT`: `content` empty, over 4,000, or `null`, or not text (`INVALID_FORMAT`). `COMMENT_DELETED`: the comment is deleted (S4-AC-08). `ISSUE_CLOSED`: the issue is `CLOSED` (S4-AC-04). With `imageIds`: `TEMPORARY_IMAGE_INVALID` (an ID is not a temporary image the caller uploaded, or the image is attached already or over 24 hours old; one answer whatever the reason and whichever ID, S5-AC-21), `ISSUE_ATTACHMENTS_TOO_LARGE` (with the images, the public attachments of the issue would pass 50 MB, S5-AC-23), and `INVALID_INPUT` with field `imageIds` `TOO_MANY` (over 20) or `INVALID_FORMAT` (not a list of strings). Nothing is saved then."
           },
           "401" : {
             "content" : {
