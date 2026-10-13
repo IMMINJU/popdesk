@@ -234,6 +234,10 @@ A copy of your real database, started with your real settings, would email your 
 - The portal and the console send an `Idempotency-Key` with each new issue, so a filing sent twice makes one issue. popdesk keeps each key for 24 hours (table `issue_idempotency`: the account, the key, a hash of the fields, the issue); the hourly job `idempotency-key-cleanup` deletes older ones and shows in the cleanup metrics (`popdesk_cleanup_last_run_seconds`, `popdesk_cleanup_deleted`, label `job`). There is no setting for it.
 - The metric `popdesk_attachments_bytes` is the total that `POPDESK_ATTACHMENT_QUOTA` limits.
 - A new issue carries at most 20 files; with more the request gets 413. Each file of a new issue counts toward the account's 30 uploads in 60 seconds.
+- An image in the content of an issue or a comment (PNG, JPEG, GIF, or WebP) is uploaded first, as a temporary image, and becomes an attachment of the issue when the content is saved. Until then only the account that uploaded it can read it. A temporary image that is not saved with a content within 24 hours is deleted, file and row, without a trace. One account has at most 20 temporary images and 50 MB of them at a time. There is no setting for these numbers.
+- Temporary images count against `POPDESK_ATTACHMENT_QUOTA` like every other file, and their uploads and downloads share the 16 places and the 30 uploads in 60 seconds with attachments. Once saved, an image counts toward the 50 MB of its issue unless it is on an internal comment.
+- The job `temporary-image-cleanup` runs every 10 minutes and deletes temporary images older than 24 hours. It shows in the system status and in the cleanup metrics like the other jobs. When a file cannot be removed, its row stays and the next run tries again; nobody reads the image in between.
+- The history of an issue records each attachment that is added to it or deleted, by ID and without the file name.
 
 ## Profile photos
 
