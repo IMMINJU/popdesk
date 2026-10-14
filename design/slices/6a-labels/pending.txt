@@ -18,6 +18,7 @@ server io/popdesk/label/HiddenFromCustomerTest.java
 server io/popdesk/label/LabelQuietTest.java
 server io/popdesk/boundary/LabelBoundaryTest.java
 server io/popdesk/issue/LabelCloseRaceTest.java
+server io/popdesk/label/LabelRaceTest.java
 server io/popdesk/project/NoStoreTest.java#everyReadSucceedsWithNoStore
 
 # 웹 구현 탭
