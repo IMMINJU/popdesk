@@ -4,6 +4,7 @@
 // the head, the action row, 고치기, and the folded history.
 // Slice 4 (4-talk screens.md 2절) adds 댓글 고치기·댓글 지우기, the mention line and "알릴 사람",
 // the trace of a deleted comment, and the `#comment-ID` of the address.
+// Slice 6a (6a-labels screens.md 1절) adds the 라벨 and 마감일 lines after 담당자.
 import {
   Alert,
   AttachmentList,
@@ -52,6 +53,7 @@ import { IssueAssigneeDialog } from '../app/IssueAssigneeDialog';
 import { IssueEdit } from '../app/IssueEdit';
 import { issuesHref, type IssueStatus } from '../app/issueFilters';
 import { IssueHistory } from '../app/IssueHistory';
+import { IssueDueLine, IssueLabelsLine } from '../app/IssueLabels';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
 import { t, tf } from '../app/locale';
 import { MentionPicker } from '../app/MentionPicker';
@@ -193,6 +195,8 @@ function IssueDetail(props: { issueKey: string }) {
   const [editing, setEditing] = useState(false);
   const [editDirty, setEditDirty] = useState(false);
   const [historyVersion, setHistoryVersion] = useState(0);
+  // Slice 6a: the issue a label or due date change answered with, newer than the one loaded.
+  const [answered, setAnswered] = useState<Issue | null>(null);
   const blocker = useLeaveGuard(draft.trim() !== '' || (editing && editDirty) || (editingComment !== null && commentDirty));
 
   // Attachments
@@ -275,9 +279,18 @@ function IssueDetail(props: { issueKey: string }) {
     );
   }
 
-  const { issue } = detail;
+  const issue = answered !== null && answered.version >= detail.issue.version ? answered : detail.issue;
   const closed = issue.status === 'CLOSED';
   const isAdmin = me?.role === 'ADMIN';
+
+  // Labels and due date: the answer is drawn when it is the newest the screen has seen.
+  const onIssueAnswer = (next: Issue) => {
+    setAnswered((before) => (before === null || next.version >= before.version ? next : before));
+    setHistoryVersion((n) => n + 1);
+  };
+  const onIssueStale = () => {
+    void load.reload();
+  };
 
   // Status ---------------------------------------------------------------
   const act = async (target: IssueStatus | 'reopen') => {
@@ -611,6 +624,8 @@ function IssueDetail(props: { issueKey: string }) {
               </Button>
             </dd>
           </div>
+          <IssueLabelsLine issue={issue} canChange={!closed} isAdmin={isAdmin} onAnswer={onIssueAnswer} onStale={onIssueStale} />
+          <IssueDueLine issue={issue} canChange={!closed} onAnswer={onIssueAnswer} onStale={onIssueStale} />
           <div>
             <dt>고객사</dt>
             <dd>{issue.companyName}</dd>

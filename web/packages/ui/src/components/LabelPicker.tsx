@@ -96,6 +96,12 @@ function LabelPickerList(props: LabelPickerProps & { listId: string }) {
   const full = props.limit !== undefined && props.selected.length >= props.limit;
   const needle = filter.trim().toLocaleLowerCase();
   const rows = needle === '' ? props.labels : props.labels.filter((l) => l.name.toLocaleLowerCase().includes(needle));
+  // In the group with the rows it is about, so it is read with them.
+  const error = props.error !== undefined && props.error !== '' && (
+    <p className="pd-popover-error" role="alert">
+      {props.error}
+    </p>
+  );
   return (
     <div id={props.listId} className="pd-popover pd-label-picker-list">
       {props.labels.length === 0 ? (
@@ -139,15 +145,12 @@ function LabelPickerList(props: LabelPickerProps & { listId: string }) {
               })}
             </div>
             {rows.length === 0 && <p className="pd-popover-state">{props.noMatchText}</p>}
+            {full && props.limitText !== undefined && <p className="pd-popover-state">{props.limitText}</p>}
+            {error}
           </fieldset>
-          {full && props.limitText !== undefined && <p className="pd-popover-state">{props.limitText}</p>}
         </>
       )}
-      {props.error !== undefined && props.error !== '' && (
-        <p className="pd-popover-error" role="alert">
-          {props.error}
-        </p>
-      )}
+      {props.labels.length === 0 && error}
     </div>
   );
 }
