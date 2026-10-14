@@ -187,6 +187,21 @@
   white-space: nowrap;
 }
 
+/* C-4 라벨, 마감일: the value and "바꾸기" share a baseline, also while the picker under the button is open. */
+.pd-meta dd:has(> .pd-label-picker, > .pd-due-date-picker) {
+  align-items: baseline;
+}
+
+/* C-3 마감일: the date and "지남" stay on one line. */
+.pd-issues .pd-due-cell {
+  flex-wrap: nowrap;
+}
+
+/* C-9 라벨: "문의 3건" stays on one line; the table scrolls sideways when it must. */
+.pd-company-labels .pd-table td:nth-child(2) {
+  white-space: nowrap;
+}
+
 .pd-views {
   display: flex;
   flex-wrap: wrap;

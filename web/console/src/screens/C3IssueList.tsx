@@ -98,7 +98,7 @@ const columns: DataTableColumn<IssueSummary>[] = [
     header: '마감일',
     cell: (i) =>
       i.dueDate === null ? null : (
-        <span className="pd-inline">
+        <span className="pd-inline pd-due-cell">
           <time dateTime={i.dueDate}>{shortDate(i.dueDate)}</time>
           {i.overdue && <Badge tone="warning">지남</Badge>}
         </span>

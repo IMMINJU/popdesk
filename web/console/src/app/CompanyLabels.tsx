@@ -275,7 +275,7 @@ export function CompanyLabels(props: { code: string; archived: boolean }) {
   ];
 
   return (
-    <section id="labels" className="pd-section" aria-labelledby="labels-title">
+    <section id="labels" className="pd-section pd-company-labels" aria-labelledby="labels-title">
       <div className="pd-section-head">
         <h2 id="labels-title" className="pd-section-title">
           라벨
