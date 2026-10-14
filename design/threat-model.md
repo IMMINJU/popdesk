@@ -66,7 +66,7 @@
 | 앱 ↔ Postgres | compose 내부망에서는 평문. DB를 밖에 두면 JDBC `sslmode=verify-full` | 설치처 (D-40) |
 | 앱 ↔ SMTP·IMAP | 포트가 465(SMTP)·993(IMAP)이면 암묵적 TLS, 그 밖이면 STARTTLS를 요구하고 서버가 지원하지 않으면 연결하지 않는다. 평문은 `SMTP_ALLOW_PLAINTEXT`·`IMAP_ALLOW_PLAINTEXT`를 켤 때만 쓰고, 켜져 있으면 시작할 때 경고 로그 (D-51) | popdesk 설정 |
 | 앱 ↔ 웹훅·감사 사본 주소 | 주소가 `https`면 TLS. `http`도 받되 시작할 때 경고 로그(주소는 빼고) (D-51) | 설치처가 주소를 정한다 |
-| 앱 ↔ S3 | https | S3 SDK 기본 |
+| 앱 ↔ S3 | `S3_ENDPOINT`가 없으면 AWS의 https. `S3_ENDPOINT`가 `https`면 TLS. `http`도 받되 시작할 때 경고 로그 (D-51) | 설치처가 주소를 정한다 |
 | 앱 ↔ OIDC 제공자 | https (OIDC 규격) | Spring Security |
 
 ### 저장 구간
