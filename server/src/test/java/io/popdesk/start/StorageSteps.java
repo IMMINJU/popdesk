@@ -732,9 +732,16 @@ final class StorageSteps {
          * Copies one direction of a connection on a platform thread. On a virtual thread, a 9 MB
          * upload through the gate never ended on this machine (Windows, JDK 25.0.4, 2026-10-14): the
          * thread that wrote to the storage stayed parked. Smaller bodies went through.
+         *
+         * <p>A direction that ends in order (the sender closed) is passed on as an orderly end, and
+         * only a failure or a cut resets. When both were reset, the reset threw away an answer the
+         * app had not read yet: of 50 reads of the last 20,000 bytes of an object through the gate in
+         * {@link Mode#PASS}, 46 ended with "Connection reset", and none of 50 without the gate
+         * (2026-10-14).
          */
         private void pump(Socket from, Socket to, boolean answers) {
             Thread.ofPlatform().daemon().name("s3-gate-pump").start(() -> {
+                boolean inOrder = false;
                 try {
                     InputStream in = from.getInputStream();
                     OutputStream out = to.getOutputStream();
@@ -747,15 +754,35 @@ final class StorageSteps {
                             return;
                         }
                     }
+                    // The sender ended in order: tell the receiver so, after what was written.
+                    to.shutdownOutput();
+                    inOrder = true;
                 } catch (IOException e) {
-                    // One side ended; both end below.
+                    // One side failed, or the gate ended the connection; both end below.
                 } finally {
-                    end(from);
-                    end(to);
-                    open.remove(from);
-                    open.remove(to);
+                    if (!inOrder) {
+                        end(from);
+                        end(to);
+                        open.remove(from);
+                        open.remove(to);
+                    } else if (from.isOutputShutdown()) {
+                        // The other direction ended in order too.
+                        close(from);
+                        close(to);
+                        open.remove(from);
+                        open.remove(to);
+                    }
                 }
             });
+        }
+
+        /** Closes in order; for a connection whose two directions both ended in order. */
+        private static void close(Socket socket) {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                // Already closed.
+            }
         }
 
         /** Closes with a reset, so the other side sees a failure and not an orderly end. */
