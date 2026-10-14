@@ -60,7 +60,7 @@
 
 ## 7. 라벨과 마감일 (LBL, DUE)
 
-→ `../slices/6a-labels/rules.md`로 옮김(6a 묶음).
+→ `../archive/6a-labels/rules.md`로 옮김(6a 묶음).
 
 ## 8. 작업 (TASK)
 
