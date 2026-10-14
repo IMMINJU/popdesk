@@ -25,6 +25,7 @@ import { api, type Schemas } from '../api';
 import { AccountFinder } from '../app/AccountFinder';
 import { FieldSummary, SaveFailure } from '../app/bands';
 import { ClearAssignments } from '../app/ClearAssignments';
+import { CompanyLabels } from '../app/CompanyLabels';
 import { useMainBusy } from '../app/busy';
 import { useFieldErrors, useFocusWhenReady, useLive, useLoad } from '../app/hooks';
 import { InviteDialog } from '../app/InviteDialog';
@@ -1011,6 +1012,8 @@ function CompanyDetail(props: { code: string }) {
           empty={<EmptyState title="배정된 상담원이 없습니다. 관리자만 이 고객사의 문의를 봅니다." headingLevel={3} />}
         />
       </section>
+
+      <CompanyLabels code={company.code} archived={archived} />
 
       <AssignDialog
         open={assigning}
