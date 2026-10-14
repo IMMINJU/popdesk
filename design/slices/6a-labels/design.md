@@ -1,0 +1,128 @@
+# 6a 묶음 설계
+
+> 수용 기준은 같은 폴더 `acceptance.md`, 사고와 막는 것은 `premortem.md`, 화면은 `screens.md`다.
+> 지금 코드에 대한 문장은 2026-10-14 `13a4ded`에서 읽은 것이다. [소스]는 그 파일을 읽고 적었다는 표시다.
+> 상태: **메인이 정함, 사용자 확인 전**(2026-10-14).
+
+## 0. 메인이 정한 것
+
+`acceptance.md` 5절의 열넷이다. 아래는 그것을 코드에 옮길 때 정한 것이다.
+
+| # | 정한 것 | 까닭 |
+|---|---|---|
+| 1 | 라벨 이름의 "대소문자 무시"는 `name_key` 칸(이름을 NFC로 맞추고 `toLowerCase(Locale.ROOT)`)과 `(company_id, name_key)` 유니크 색인으로 지킨다 | DB 정렬 규칙(collation)에 따라 `lower()`가 달라지는 것을 피한다. 409는 유니크 위반에서 낸다(먼저 세고 넣으면 같은 때 온 둘이 다 들어간다) |
+| 2 | 라벨 ID는 `bigint`다. 계약에는 문자열로 내지 않고 정수로 낸다 | 라벨은 상담 쪽만 보고, ID를 추측해도 경계 검사가 막는다(S6A-AC-11, 12, 22). 첨부와 달리 추측할 수 없는 값일 까닭이 없다 |
+| 3 | `issue_label`은 `ON DELETE CASCADE`로 라벨에 묶는다 | 라벨 지우기(LBL-3)가 한 문장으로 끝나고, 붙이기와 같은 때 와도 남는 행이 없다(S6A-AC-25) |
+| 4 | 붙이기는 문의 행을 잠근 뒤 `INSERT … SELECT … FROM label WHERE id = ? AND company_id = 문의의 고객사 ON CONFLICT DO NOTHING`이다. 넣은 행이 0이면 라벨이 그 고객사에 있는지 한 번 더 보아, 없으면 400, 있으면 이미 붙은 것이다 | 고객사 조건이 넣는 문장 안에 있다(S6A-AC-22). 지우기와 겹쳐도 외래 키 오류가 나지 않는다 |
+| 5 | 마감일은 `issue.due_date date`다. 정하기·지우기는 `version`을 올리지 않는다 | 담당자 바꾸기도 `version`을 올리지 않는다 [소스: `IssueService.assign`]. `version`은 제목·내용·우선순위의 덮어쓰기를 막는 값이다 |
+| 6 | "오늘"은 `InstallationZone`(새, `io.popdesk`)이 정한다. `Clock` 빈은 그대로 UTC이고, `LocalDate.now(clock.withZone(zone))`으로 셈한다 | `InstallationLocale`과 같은 꼴이다 [소스: `InstallationLocale.java`]. `Clock`을 바꾸면 UTC 시각을 쓰는 앞 묶음의 모든 곳이 흔들린다 |
+
+## 1. 표 (V14)
+
+```
+label(id bigint generated always as identity primary key,
+      tenant_id bigint not null default 1,
+      company_id bigint not null references company(id),
+      name text not null, name_key text not null,
+      color char(7) not null default '#808080' check (color ~ '^#[0-9A-F]{6}$'),
+      created_at timestamptz not null, updated_at timestamptz not null,
+      unique (company_id, name_key))
+
+issue_label(issue_id uuid not null references issue(id) on delete cascade,
+            label_id bigint not null references label(id) on delete cascade,
+            tenant_id bigint not null default 1,
+            created_at timestamptz not null,
+            primary key (issue_id, label_id))
+create index issue_label_label_idx on issue_label(label_id, issue_id);
+
+alter table issue add column due_date date;
+```
+
+- `company.id`의 타입과 `tenant_id`의 기본값은 구현 탭이 V2를 보고 맞춘다. 위의 칸 이름과 제약이 계약이다.
+- 이름 길이(1~30자)는 앱이 본다(COM-1의 글자 수는 DB의 `length`와 다르다).
+- `deploy/upgrade/make-sample.py`가 라벨 둘, 붙인 것 하나, 마감일 하나를 채운다(AGENTS.md).
+- 목록의 색인은 4절에서 재고 정한다. 미리 넣지 않는다.
+
+## 2. 라벨
+
+경로는 계약 탭이 `conventions.md`의 꼴과 견줘 정한다. 메인의 초안:
+
+| 하는 일 | 초안 | 누가 |
+|---|---|---|
+| 목록 | `GET /api/console/companies/{code}/labels` | 상담 쪽(상담원은 배정된 고객사만) |
+| 만들기 | `POST /api/console/companies/{code}/labels` | 관리자 |
+| 고치기 | `PATCH /api/console/companies/{code}/labels/{id}` | 관리자 |
+| 지우기 | `DELETE /api/console/companies/{code}/labels/{id}` | 관리자 |
+| 붙이기 | `PUT /api/console/issues/{key}/labels/{id}` | 상담 쪽 |
+| 떼기 | `DELETE /api/console/issues/{key}/labels/{id}` | 상담 쪽 |
+| 마감일 | `PUT /api/console/issues/{key}/due-date`(본문 `{"dueDate": "2026-10-20"}`), `DELETE` 같은 경로 | 상담 쪽 |
+
+- 상담원이 배정되지 않은 고객사의 라벨 목록은 고객사 상세가 이미 하듯 404다. 고객사 보기 범위는 고객사 패키지에 있는 것을 쓴다(새로 짜지 않는다).
+- 관리자 전용 셋은 `SecurityConfiguration.adminOnly()`의 경로 목록과 403 설명 `"`FORBIDDEN`: admins only."` 둘 다에 넣는다 [소스: `SecurityConfiguration.java:125-137`, `ConsoleAccountController.java:40`].
+- 붙이기와 떼기, 마감일은 문의 아래의 쓰기다: 문의 행을 잠그고(`lockByKey`) `CLOSED`를 다시 본다(STATUS-7) [소스: `IssueRepository`].
+- 붙이기·떼기·마감일의 응답은 문의 상세와 같은 타입이다(화면이 한 번에 다시 그린다). 계약 탭이 정한다.
+- 라벨 수 200, 문의의 라벨 수 20은 잠근 행 안에서 센다(라벨 수는 고객사 행을 잠근다).
+
+## 3. 마감일과 시간대
+
+- `InstallationZone`(새): `POPDESK_TIMEZONE`을 읽어 `ZoneId`를 준다. `parse(String)`은 `null`이면 UTC, 앞뒤 공백을 자른 값이 `UTC`거나 `ZoneId.getAvailableZoneIds()` 가운데 `/`가 든 지역 이름이면 그 시간대, 그 밖(빈 값, `+09:00`, `GMT+9`, `EST`)은 비움이다. `valid()`, `zone()`, `today(Clock)`.
+- 틀린 값이면 `FirstAdminSetup`이 `POPDESK_LOCALE`에 하듯 첫 단계를 마치지 않아 요청을 받지 않는다 [소스: `FirstAdminSetup.java:27-79`]. 로그에는 설정 이름과 받는 값의 설명을 적는다.
+- `TestMail.zone()`은 `InstallationZone`을 쓰게 바꾼다(같은 값을 두 곳이 따로 읽지 않는다) [소스: `TestMail.java:60-74`].
+- `overdue`는 응답을 만들 때 `due_date < today`로 셈한다. 저장하지 않는다.
+
+## 4. 목록
+
+- 지금 검색 없는 목록은 범위로 거른 뒤 전부 정렬하고 쪽을 자른다. 검색이 있는 목록은 `MATERIALIZED` CTE로 좁힌 뒤 정렬한다 [소스: `IssueRepository.java:144-185`]. 3번 묶음이 "검색과 같은 꼴로 쓰면 140 ms였다"고 적었다 [소스: `archive/3-issues/verify.md` 8절].
+- 구현 탭은 먼저 10만 건 견본(3번 묶음의 생성기, `archive/3-issues/design.md` 실험 4)으로 지금 시간을 재고, 쿼리를 고친 뒤 다시 잰다. 색인을 더하면 그 까닭과 숫자를 보고에 적는다. 150 ms에 못 미치면 멈추고 숫자를 보고한다.
+- `label` 필터는 `exists (select 1 from issue_label where issue_id = i.id and label_id = any(?))`다. 보기 범위의 조건과 같은 `WHERE`에 둔다(범위 밖 문의가 나오지 않게, S6A-AC-52).
+- `sort=dueDate`의 차례: `due_date asc nulls last, created_at desc, number desc, id`. 마지막 `id`가 쪽 경계에서 빠짐과 겹침을 막는다(S6A-AC-54).
+- 응답 항목의 라벨은 쪽의 문의 ID로 한 번 더 읽어 붙인다(행마다 묻지 않는다).
+
+## 5. 이력
+
+- `IssueHistoryRepository.Field`에 `LABEL`, `DUE_DATE`를 더한다. `field` 칸에는 CHECK가 없어 마이그레이션이 필요 없다 [소스: `V9…sql:35`].
+- 콘솔 화면은 모르는 `field`를 "문의를 바꿨습니다"로 보인다 [소스: `IssueHistory.tsx:81-83`]. 이 묶음에서 두 `field`의 문장을 더한다(`screens.md` 3절).
+- 붙이기·떼기·마감일이 바뀌지 않으면(이미 그 값) 이력을 남기지 않는다.
+
+## 6. 패키지
+
+- 라벨은 `helpdesk/label`(새)에 둔다. 문의 쪽에서 쓰는 것은 붙이기·떼기와 목록에 붙일 라벨 읽기뿐이다. `helpdesk/issue` → `helpdesk/label` 한 방향만 둔다(`PackageCyclesTest`).
+- 고객사 보기 범위는 `helpdesk/company`의 것을 쓴다.
+
+## 7. 웹
+
+- 콘솔만 바뀐다. 포털은 바뀌지 않는다(S6A-AC-40은 서버 응답으로 본다).
+- 새 공용 컴포넌트(`@popdesk/ui`): `LabelChip`(이름과 색, 글자색은 `labelTextColor(hex)`로), `LabelPicker`(체크 목록, 고객사의 라벨에서 고른다), `DateField`(날짜 입력. 있는 입력 컴포넌트에 같은 것이 있으면 그것을 쓴다). 컴포넌트 API는 공용 컴포넌트라 계약 단계(C-4)에서 props와 story 껍데기를 먼저 만든다.
+- C-4, C-3, C-9의 바뀜은 `screens.md`다. 필터 상태는 `issueFilters.ts`에 더한다 [소스].
+
+## 8. Storybook 실행기
+
+- `@storybook/addon-vitest`(Storybook 10.6.1에 맞는 판)와 vitest의 브라우저 모드, Playwright 제공자를 `@popdesk/ui`에 붙인다. 브라우저는 이미 깔린 `ms-playwright`의 Chromium을 쓴다(`web/e2e`가 `@playwright/test` 1.64.0으로 받아 둔 것) [소스: `pnpm-workspace.yaml`, `%LOCALAPPDATA%\ms-playwright`].
+- 스크립트 이름은 `test-storybook`으로 하고 `local-ci.sh web`의 테스트 다음에 돈다. CI의 web 잡도 같은 명령을 돈다(Chromium을 받는 단계를 더한다).
+- 계약 단계 뒤 한 번 돌려 시간을 잰다. 5분을 넘으면 메인이 다시 정한다(`acceptance.md` 5절 13).
+- 처음 돌 때 앞 묶음의 story가 실패하면(243개 가운데 브라우저로 연 것은 9개뿐이다), 그 story를 고치는 것은 테스트 쪽 일이다. 운영 컴포넌트가 틀렸으면 구현 탭에 넘긴다.
+
+## 9. 순수 계산 클래스 (C-5의 단위 테스트, C-10의 변이 테스트)
+
+| 클래스 | 메서드 | 받는 값 |
+|---|---|---|
+| `InstallationZone`(서버) | `parse(String)`, `today(Clock)` | `null`, 빈 값, 공백, `UTC`, 지역 이름, 오프셋, 짧은 이름(`EST`) |
+| `LabelName`(서버, 이름은 구현 탭이 정함) | 다듬은 이름과 `name_key` | 앞뒤 공백, NFC, 30자 경계, 대소문자, 터키어 `İ` 같은 `Locale.ROOT` 경우 |
+| `LabelColor`(서버) | `parse(String)` | `null`(기본값), 소문자, `#` 없음, 길이, 16진 아닌 글자 |
+| `labelTextColor`(웹, `@popdesk/ui`) | 바탕색 → 검정·흰색 | 경계 밝기, 소문자, 틀린 값 |
+
+구현 탭 지시서에는 "공개 메서드 주석에 받는 값의 범위와 돌려주는 값을 적는다"를 넣는다(`process.md`).
+
+## 10. 계약 앞에 볼 것
+
+- 앞 묶음의 모든 operation을 훑는 테스트 넷(`NoStoreTest`, `CheckOrderTest`, `EndpointMappingsTest`, `BoundaryListTest`)과 `AdminOnlyContractTest`를 계약 뒤 한 번 돈다(`process.md` C-4).
+- 문의 응답 타입에 칸이 늘어난다(`labels`, `dueDate`, `overdue`). 콘솔 문의 응답을 견본으로 고정한 잠긴 테스트가 있으면 같은 푸시에서 테스트 탭이 맞춘다. 웹의 가짜 서버(`console.ts`)의 문의 견본에도 칸을 더한다.
+- `docs/operate/configuration.md`의 `POPDESK_TIMEZONE` 줄, `docs/use/permissions.md`의 라벨 줄(이미 있다. 한도와 `ARCHIVED`를 더한다), `docs/integrate/conventions.md`의 `sort` 매개변수 설명.
+
+## 11. 일하는 차례
+
+1. 계약(C-4): 서버 껍데기와 계약 파일, 웹 클라이언트, 공용 컴포넌트 props·story 껍데기, Storybook 실행기를 붙이고 한 번 돌려 재기.
+2. 테스트(C-5): 서버 탭(라벨, 마감일, 목록, 이력, 시간대, 경계), 웹 탭(C-3, C-4, C-9, 컴포넌트), 숨긴 E2E 하나(관리자가 라벨을 만들고 상담원이 붙이고 목록에서 거르고 마감일을 정하고, 고객은 아무것도 못 본다).
+3. 실패 확인, 점검(C-7, 3절의 틀린 구현), 잠금.
+4. 구현(C-9): 서버 탭 하나 → 웹 탭 하나. 서버 탭은 목록 성능을 잰 숫자를 보고에 넣는다.
+5. 검증(C-10): `local-ci.sh` 전체와 이미지·deploy, 숨긴 E2E, 10만 건 목록 재기, 변이 테스트(9절), 브라우저(세 화면, 세 폭).
