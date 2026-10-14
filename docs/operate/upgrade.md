@@ -68,6 +68,16 @@ It also adds the search of issues, their assignee and history, and the keys that
 - **New inbox items for admins**: `MAIL_STALLED`, `WEBHOOK_STALLED`, and `AUDIT_FORWARD_STALLED`, when a channel has only failed for over an hour. An installation whose queue holds only messages that were given up gets none.
 - **New kinds of audit entry**: `DELIVERY_RESENT` and `TEST_MAIL_SENT` ([audit-log.md](audit-log.md#sending-again-and-test-emails-in-the-log)). A receiver of the audit copy or of exports that lists the kinds it knows needs these two.
 
+## Upgrading to the next version
+
+The next version stores attachment files in a folder (`POPDESK_STORAGE=disk`) or in an S3 bucket (`POPDESK_STORAGE=s3`) as well as in the database. Until now popdesk did not start with either value.
+
+- **No migration and no new setting.** The eight storage settings have been in [configuration.md](configuration.md#environment-variables) since 0.1.0; the release Compose file now passes the `S3_` keys to the app when you set them.
+- **Nothing has to be set.** An installation that stores in the database starts as before and touches no folder and no bucket.
+- **Changing `POPDESK_STORAGE` moves no file.** New files go to the new place; files that are there stay and are read where they are. Read [Attachment storage](configuration.md#attachment-storage) before you change it: the marker, the volume, the start check, and what a backup has to hold from then on.
+- **New command**: `popdesk attachments check` ([configuration.md](configuration.md#check-the-attachment-files)).
+- **A download whose file is missing or cannot be read answers 500 `INTERNAL_ERROR`**, with every storage.
+
 ## A migration failed
 
 popdesk stops and logs a line like this:

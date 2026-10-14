@@ -18,9 +18,10 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `SMTP_ALLOW_PLAINTEXT` | `true` allows an unencrypted SMTP connection when the server does not offer STARTTLS. popdesk logs a warning at startup while it is on. Use it only for local test servers such as Mailpit | `false` |
 | `NOTIFY_WEBHOOK_URL` | Team notification webhook | None. Without it, no webhook is sent. Also off while `POPDESK_SANDBOX=true` |
 | `POPDESK_ATTACHMENT_QUOTA` | Total size limit for all attachments, internal ones included (`MB` and `GB` are 2^20 and 2^30 bytes). Over 80%, popdesk logs a warning naming this setting and puts an alert in every admin's inbox | `10GB` |
-| `POPDESK_STORAGE` | Where attachment files are stored: `db`, `disk`, or `s3`. This version stores in `db` only; with `disk` or `s3` popdesk does not start, so that files do not land somewhere a backup of the folder or bucket would miss | `db` |
-| `POPDESK_STORAGE_DIR` | Folder for attachments when `POPDESK_STORAGE=disk` (mount a volume here) | `/data/attachments` |
-| `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | S3-compatible storage when `POPDESK_STORAGE=s3` | None |
+| `POPDESK_STORAGE` | Where new attachment files are stored: `db` (the database), `disk` (a folder), or `s3` (a bucket). With any other value popdesk does not start. See [Attachment storage](#attachment-storage) | `db` |
+| `POPDESK_STORAGE_DIR` | Folder for attachments when `POPDESK_STORAGE=disk`: an absolute path, with a volume mounted there. With a relative path popdesk does not start | `/data/attachments` |
+| `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | The bucket and the key pair when `POPDESK_STORAGE=s3`. All three are required then; the key pair is also required while any attachment is still stored in S3. popdesk takes its credentials from these two keys only, never from `AWS_` variables, a profile file, or an instance role | None |
+| `S3_ENDPOINT`, `S3_REGION` | Where the bucket is. With `S3_ENDPOINT` (an S3-compatible server) requests go to that address in path style, `https://host/bucket/key`, and `S3_REGION` is optional (`us-east-1` is used to sign). Without `S3_ENDPOINT` requests go to AWS in the region `S3_REGION`. One of the two is required. An `http` address is taken, with a warning in the log at start: the files and the signed requests then travel unencrypted | None |
 | `POPDESK_AUDIT_RETENTION` | How long audit log entries are kept: an ISO-8601 duration of days and time, such as `P365D` or `PT720H` (no years or months), at least `P30D`. Older entries are deleted once a day, and only from the start of the log as far as old entries follow one another ([audit-log.md](audit-log.md#how-long-entries-are-kept)) | `P365D` when the variable is not set. With a shorter value, an empty value, or one that is not such a duration, popdesk does not serve requests and deletes no entry, as with a missing first admin: the process keeps running, logs the name of the setting, and its health check stays unhealthy |
 | `POPDESK_ISSUE_RETENTION` | How long after closing an issue it is moved to the trash. At least `P90D`; a shorter value stops startup | None (off) |
 | `AUDIT_FORWARD_URL` | Address that receives a copy of every audit log entry written from then on, as an HTTP `POST` ([audit-log.md](audit-log.md#a-copy-outside-popdesk)) | None (off). Also off while `POPDESK_SANDBOX=true` |
@@ -37,7 +38,7 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `POPDESK_SANDBOX` | `true` for a copy of a real installation ([A sandbox](#a-sandbox)): the webhook and the audit copy are off, and email goes to `POPDESK_SANDBOX_MAIL_TO` only, or nowhere without it. Only the value `true` counts, in any case and with spaces around it; `1`, `yes`, and an empty value are not a sandbox. Incoming email is not turned off | `false` |
 | `POPDESK_SANDBOX_MAIL_TO` | The one address that receives every email while `POPDESK_SANDBOX=true`. Read only in a sandbox | None. A sandbox without it, or with an empty value, sends no email at all. With a value that is not one email address (two addresses with a comma between them are not), a sandbox does not start, and the log names this setting without its value |
 
-Changing the attachment storage does not move existing files. Each attachment records where it is stored, and popdesk keeps reading old files from there.
+Changing the attachment storage does not move existing files, and there is no tool that moves them. Each attachment records where it is stored, and popdesk keeps reading and removing old files there ([Attachment storage](#attachment-storage)).
 
 The first admin is created only when the database has no admin. After that you can remove `POPDESK_ADMIN_PASSWORD`.
 
@@ -239,19 +240,53 @@ A copy of your real database, started with your real settings, would email your 
 - The job `temporary-image-cleanup` runs every 10 minutes and deletes temporary images older than 24 hours. It shows in the system status and in the cleanup metrics like the other jobs. When a file cannot be removed, its row stays and the next run tries again; nobody reads the image in between.
 - The history of an issue records each attachment that is added to it or deleted, by ID and without the file name.
 
+### Attachment storage
+
+`POPDESK_STORAGE` says where new files go. Whatever it is, the app itself serves every download after its permission checks; it never sends a client to the folder or the bucket and makes no signed URL.
+
+| Storage | Where a file is | What the attachment records |
+|---|---|---|
+| `db` | The table `attachment_content` | `db` |
+| `disk` | `POPDESK_STORAGE_DIR/{first two characters of the ID}/{ID}` | `disk` and the folder's absolute path |
+| `s3` | The object `popdesk/{ID}` in `S3_BUCKET` | `s3` and `{bucket}/popdesk` (not the address: the same bucket reached at another `S3_ENDPOINT` is still read) |
+
+A file's path or key is made of the attachment's ID only, never of the name it was uploaded with.
+
+- **Mount a volume at the folder.** The release Compose file mounts `popdesk-attachments` at `/data/attachments`. If you set another `POPDESK_STORAGE_DIR`, mount a volume there yourself: files written into the container's own file system are gone when the container is made again. The folder must be writable by the user the app runs as (ID `10001` in the image).
+- **Keep the bucket private.** popdesk checks who may read a file; the bucket does not. Encryption at rest and the bucket's policy are yours to set.
+- **The marker.** When popdesk first uses a folder or a bucket that no attachment is stored in yet, it leaves a small file there: `.popdesk-storage` in the folder, `popdesk/.popdesk-storage` in the bucket. Do not remove it.
+- **After you change the storage** (the kind, the folder, or the bucket), new files go to the new place and old files stay where they are. Keep the old folder mounted, and keep the S3 keys set, for as long as attachments are stored there.
+- **Backups.** `popdesk backup` holds the files only when they are in `db`. For `disk` and `s3`, back up the folder or the bucket, each time after the database dump, marker included.
+
+At every start popdesk checks the storage, and does not start when the check fails. The process ends, the log says why (setting keys, the storage kind, the place, and how many attachments are stored there; never a key's value), and Compose starts it again until the cause is gone:
+
+| What popdesk finds | What it means |
+|---|---|
+| `POPDESK_STORAGE` is not `db`, `disk`, or `s3`; the folder is not an absolute path; `s3` without `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, or without both `S3_REGION` and `S3_ENDPOINT` | The settings cannot be used. The log names the keys |
+| Attachments are stored in `s3` and the S3 keys are not set, also when new files now go to `db` or `disk` | Old files could not be read. Set the keys again |
+| Attachments are stored in a folder or a bucket that has no marker | The volume is not attached, another bucket is set, or the files are gone |
+| The storage of new files cannot be written or reached: the folder belongs to another user or is read-only, the key pair is wrong, the bucket does not exist (popdesk does not make one), or the storage does not answer | For a folder the log names the user ID popdesk runs as. This also stops a start while S3 is down for a moment |
+
+An installation whose settings and attachments are all `db` touches no folder and opens no connection to S3.
+
+If the files of a place are lost for good and you want popdesk to start anyway, put the marker back by hand (an empty file with that name is enough). Downloads of the lost files then answer 500, and `popdesk attachments check` lists them.
+
+While it runs, popdesk answers 500 `INTERNAL_ERROR` to an upload whose file cannot be stored and to a download whose file is missing or cannot be read, and logs the attachment's ID and the storage kind. Every request to S3 has a time limit (5 seconds to connect, 60 seconds for an answer), so a storage that does not answer holds an upload or a download for a minute at most. A cleanup job that cannot reach the storage stops its run and tries again later.
+
 ## Profile photos
 
 A profile photo is a PNG, JPEG, or WebP file of at most 2 MB (2,097,152 bytes), judged by its content and not by its name. popdesk decodes it, scales it to fit 256 px, and keeps only that copy as a PNG in the database (table `account_photo`, a few tens of KB each); the uploaded file and its metadata are not kept. The limits are fixed, there is no setting for them: a PNG or JPEG may have up to 25 million pixels (width times height) and a WebP up to 12 million, read from the file's header before anything is decoded, and an account uploads at most 10 photos in 60 seconds. Decoding is what costs memory. PNG and JPEG are read at a reduced size and need little, but a WebP that is lossless or has transparency is decoded whole first, about 72 MB of heap for one at the limit. So at most 2 photos are decoded at once, which fits the image's 384 MB heap next to the app's other work; a third upload at that moment gets 503 `SERVER_BUSY` with `Retry-After`, and the screens try again. If you lower `-Xmx` below the default, leave room for about 150 MB of photo decoding. Photos are in the database dump, so `popdesk backup` covers them whatever `POPDESK_STORAGE` is.
 
 ## Commands
 
-The `popdesk` command is in the app image. Each one is recorded in the audit log, with popdesk itself (account `0`) as the person. A command that fails changes nothing and ends with a non-zero exit code.
+The `popdesk` command is in the app image. A command that changes data or takes it out (`admin reset-password`, `backup`, `restore`) is recorded in the audit log, with popdesk itself (account `0`) as the person. A command that fails changes nothing and ends with a non-zero exit code.
 
 | Command | What it does |
 |---|---|
 | `popdesk admin reset-password <email>` | Asks twice for a new password for an admin account, without showing it, and sets it. The password must keep the password rules; the command does not ask again. The password is never printed or logged. It also unlocks the account and ends its sessions. It needs a terminal: run it as `docker compose exec app popdesk admin reset-password <email>` (without `-T`); without a terminal it fails. Use it when no admin can sign in |
 | `popdesk backup <file>` | Writes a database dump in `pg_dump`'s custom format, while the app runs. The image's `pg_dump` has the same major version as the `db` image of its release; if the server has another major version, the command stops |
 | `popdesk restore <file>` | Restores a dump into an empty database only, before the app starts serving. If the app is running on the database (it holds the single-instance lock) or the database has any table, it stops |
+| `popdesk attachments check` | Looks at every stored attachment: whether its file is where it was stored and has the recorded size. It changes nothing, is not recorded in the audit log, and can run while the app runs. See [Check the attachment files](#check-the-attachment-files) |
 
 ### Back up
 
@@ -263,7 +298,7 @@ docker compose cp app:/tmp/popdesk.dump ./popdesk-$(date +%F).dump
 docker compose exec app rm /tmp/popdesk.dump
 ```
 
-Keep the dump somewhere other than the Docker host. When `POPDESK_STORAGE` is `disk` or `s3`, back up the attachment folder or bucket after the database dump.
+Keep the dump somewhere other than the Docker host. When attachments are stored in a folder or a bucket (`POPDESK_STORAGE` is `disk` or `s3`, or was), back up that folder or bucket after the database dump: the dump does not hold those files.
 
 ### Restore
 
@@ -279,3 +314,30 @@ docker compose up -d
 ```
 
 Removing the `popdesk-db` volume deletes the current database; take a backup of it first if you may need it. The restore runs in one transaction: if it fails, the database stays empty.
+
+When attachments are stored in a folder or a bucket, restore that folder or bucket as well, from the backup taken after the dump, before you start the app. Then check that every file is there:
+
+```
+docker compose exec -T app popdesk attachments check
+```
+
+### Check the attachment files
+
+`popdesk attachments check` prints one line for each file that is not as the database says, by attachment ID and never by file name, and then one line for each place that holds stored attachments:
+
+```
+wrong-size disk 1c0f6f0a-3a52-4b8e-9d0e-0d6a3f1f5b11
+missing disk 7e2b9a64-55c1-4f0d-8a43-9b1d2c3e4f50
+db attachment_content: checked 12, missing 0, wrong size 0
+disk /data/attachments: checked 340, missing 1, wrong size 1
+```
+
+Without any stored attachment it prints `no stored attachments`.
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Every file is there and has the recorded size |
+| `2` | Every file was looked at, and one or more is missing or has another size |
+| `1` | The check did not finish: the database or a storage could not be reached, a setting is missing, or the command was called with another argument. Standard error has one line with the reason, starting with `popdesk: ` |
+
+The command reads the same settings as the app, so run it in the app container. It asks S3 once for each attachment; ten thousand attachments in a bucket take a few minutes. A missing file means the folder or the bucket is older than the database dump, or is not the one this database was used with: the start check only sees that a place was used by popdesk, not by which installation.
