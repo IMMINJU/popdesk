@@ -1,0 +1,16 @@
+# 구현 전에 통과해도 되는 테스트. `<테스트 이름> | <까닭>`
+io.popdesk.start.TimezoneStartTest.utcIsTaken | UTC는 지금도 받는 값이다. 틀린 값을 막는 구현이 UTC까지 막지 않는지 본다
+io.popdesk.boundary.LabelDocsTest.contractMarksTheLabelWritesAdminsOnly | C-4 계약 껍데기가 관리자 전용 셋에 "admins only"를 이미 적었다
+io.popdesk.boundary.LabelDocsTest.permissionsRowsMatchTheBehavior | C-4 계약 탭이 permissions.md의 라벨·마감일 줄을 이미 고쳤다
+io.popdesk.label.LabelListTest.labelThatIsNotAnId | C-4 계약 껍데기가 label을 int64로 받아 label=bug이 이미 400 INVALID_INPUT이다
+components/Labels6a.overflow.stories.tsx.Label Chip 360 Light | 껍데기 칩이 글자 span이라 지금도 넘치지 않는다. 구현 뒤에도 지켜야 하는 단언이다
+components/Labels6a.overflow.stories.tsx.Label Chip 360 Dark | 껍데기 칩이 글자 span이라 지금도 넘치지 않는다. 구현 뒤에도 지켜야 하는 단언이다
+components/Labels6a.overflow.stories.tsx.Label Chip 820 Light | 껍데기 칩이 글자 span이라 지금도 넘치지 않는다. 구현 뒤에도 지켜야 하는 단언이다
+components/Labels6a.overflow.stories.tsx.Label Chip 820 Dark | 껍데기 칩이 글자 span이라 지금도 넘치지 않는다. 구현 뒤에도 지켜야 하는 단언이다
+components/Labels6a.overflow.stories.tsx.Label Chip 1280 Light | 껍데기 칩이 글자 span이라 지금도 넘치지 않는다. 구현 뒤에도 지켜야 하는 단언이다
+components/Labels6a.overflow.stories.tsx.Label Chip 1280 Dark | 껍데기 칩이 글자 span이라 지금도 넘치지 않는다. 구현 뒤에도 지켜야 하는 단언이다
+src/components/LabelChip.test.tsx.LabelChip > S6A-AC-84 LabelChip 30자 이름: 이름 전체가 글자로 있다. axe 위반이 없다 | C-4 껍데기가 이미 이름을 글자로 그린다
+src/components/LabelChips.test.tsx.LabelChips > S6A-AC-82 LabelChips 0개: 아무것도 그리지 않는다 | C-4 껍데기가 이미 null을 낸다
+src/components/LabelChips.test.tsx.LabelChips > S6A-AC-82 LabelChips 라벨 수 2, max undefined: 앞의 칩 수 2, 넘친 것만 "+n"이 된다 | 넘치지 않는 경우라 껍데기의 "다 그리기"와 같다. 넘치는 경우는 실패한다
+src/components/LabelChips.test.tsx.LabelChips > S6A-AC-82 LabelChips 라벨 수 3, max undefined: 앞의 칩 수 3, 넘친 것만 "+n"이 된다 | 넘치지 않는 경우라 껍데기의 "다 그리기"와 같다
+src/components/LabelChips.test.tsx.LabelChips > S6A-AC-82 LabelChips 라벨 수 3, max 3: 앞의 칩 수 3, 넘친 것만 "+n"이 된다 | 넘치지 않는 경우라 껍데기의 "다 그리기"와 같다

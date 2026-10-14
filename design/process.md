@@ -88,6 +88,7 @@
 - 잠그기 전에 새 테스트를 무작위 순서로 세 번 돈다(2026-10-13 메인이 정함, 5번 묶음부터). 서버는 `-Dsurefire.runOrder=random`, 웹은 `vitest run --sequence.shuffle`. 순서를 바꿨을 때만 결과가 달라지는 테스트는 잠그지 않고 테스트 쪽에 돌려보낸다. 구현 전이라 실패가 정상이므로, 견줄 것은 통과 여부가 아니라 세 번의 실패 목록이 같은가다.
 - 테스트 탭이 남긴 결과 파일(JUnit XML, vitest JSON)을 C-6이 그대로 읽는다(2026-10-13 사람이 정함, 5번 묶음부터). 같은 테스트를 메인이 다시 돌리지 않는다. 탭이 합친 뒤 테스트 파일이 바뀌었으면 그 파일만 다시 돈다.
 - deploy 태그 테스트도 `pending.txt`를 따른다. CI 이미지 잡이 `-Dtest=` 대신 태그로 테스트를 골라 제외 목록이 듣는다.
+- story 실행기(`test-storybook`)의 뿌리는 `web/packages/ui/src`다. 콘솔 화면의 story를 `pending.txt`로 뺄 때는 `web ../../../console/**/X.stories.tsx`로 적는다. `**/X.stories.tsx`는 `..`로 시작하는 경로에 맞지 않아 빠지지 않는다(2026-10-14, 6a에서 확인).
 - `pending.txt`의 `web` 줄은 패키지를 가리지 않아, 같은 이름의 파일이 다른 패키지에 있으면 그것도 빠진다(예: `src/App.test.tsx`). 줄을 쓸 때 `git ls-files | grep`으로 겹치는 이름을 본다.
 
 #### C-7 점검
