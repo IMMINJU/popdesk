@@ -43,6 +43,8 @@ final class BoundaryList {
     private static final String INBOX = "inbox.InboxReadTest#";
     private static final String DELIVERY = "ops.DeliveryAccessTest#";
     private static final String IMAGE = "attachment.ImageReadTest#";
+    private static final String LABEL_OF_B = "boundary.LabelBoundaryTest#";
+    private static final String LABELS = "label.LabelManageTest#";
 
     static final List<Entry> ENTRIES = List.of(
             // Before sign-in, both hosts
@@ -132,7 +134,8 @@ final class BoundaryList {
                     "project.InvitationLinkCopyTest#copyOnlyForPendingByAdmin"),
             tested("GET", "/api/console/issues",
                     BOUNDARY + "agentListHasNothingOfB",
-                    "issue.IssueListTest#agentSeesAssignedCompanies"),
+                    "issue.IssueListTest#agentSeesAssignedCompanies",
+                    "label.LabelListTest#labelOutOfScopeGivesAnEmptyList"),
             tested("GET", STAFF_ISSUE,
                     BOUNDARY + "agentOfASeesNoIssueOfB",
                     "issue.IssueListTest#agentSeesAssignedCompanies"),
@@ -395,5 +398,37 @@ final class BoundaryList {
                     IMAGE + "pathOfTheOtherApp"),
             tested("HEAD", "/api/console/images/{id}",
                     IMAGE + "othersGetTheUnknownIdAnswer",
-                    IMAGE + "pathOfTheOtherApp"));
+                    IMAGE + "pathOfTheOtherApp"),
+
+            // Slice 6a (S6A-AC-92): the 8 operations it adds, all on the console. A label belongs to one customer
+            // company: an agent of A reads, adds, and removes no label of B, a label of B is not added to an issue
+            // of A, and a label of B is not edited or deleted under A's path. Creating, editing, and deleting are
+            // for admins only. The issue writes (labels and due date) are refused for an issue the caller cannot see.
+            tested("GET", "/api/console/companies/{code}/labels",
+                    LABEL_OF_B + "agentOfAGetsNoLabelOfB",
+                    LABEL_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("POST", "/api/console/companies/{code}/labels",
+                    LABELS + "agentsCannotManageLabels",
+                    LABEL_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("PATCH", "/api/console/companies/{code}/labels/{id}",
+                    LABELS + "agentsCannotManageLabels",
+                    LABEL_OF_B + "labelOfAnotherCompanyInThePathIsNotFound",
+                    LABEL_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("DELETE", "/api/console/companies/{code}/labels/{id}",
+                    LABELS + "agentsCannotManageLabels",
+                    LABEL_OF_B + "labelOfAnotherCompanyInThePathIsNotFound",
+                    LABEL_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("PUT", STAFF_ISSUE + "/labels/{id}",
+                    LABEL_OF_B + "agentOfACannotLabelAnIssueOfB",
+                    LABEL_OF_B + "labelOfBIsNotAddedToAnIssueOfA",
+                    LABEL_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("DELETE", STAFF_ISSUE + "/labels/{id}",
+                    LABEL_OF_B + "agentOfACannotLabelAnIssueOfB",
+                    LABEL_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("PUT", STAFF_ISSUE + "/due-date",
+                    LABEL_OF_B + "agentOfACannotLabelAnIssueOfB",
+                    LABEL_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("DELETE", STAFF_ISSUE + "/due-date",
+                    LABEL_OF_B + "agentOfACannotLabelAnIssueOfB",
+                    LABEL_OF_B + "customerGetsTheConsoleAnswer"));
 }
