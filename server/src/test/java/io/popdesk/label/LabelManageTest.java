@@ -207,7 +207,7 @@ class LabelManageTest extends BareAppTest {
     // S6A-AC-05, S6A-AC-62
 
     @Test
-    @DisplayName("S6A-AC-05, S6A-AC-62 an admin edits a label's name and color: the issue it is on shows the new ones, a field left out stays, and the history keeps the old name and gets no entry")
+    @DisplayName("S6A-AC-05, S6A-AC-62 an admin edits a label's name and color: the issue it is on shows the new ones and keeps its version, a field left out stays, and the history keeps the old name and gets no entry")
     void editingShowsOnTheIssueAndNotInTheHistory() {
         Session admin = flow.admin();
         Company company = fixtures.createCompany(admin);
@@ -217,6 +217,7 @@ class LabelManageTest extends BareAppTest {
         JsonNode label = LabelSteps.create(admin, company.code(), oldName, "#111111");
         LabelSteps.add(admin, issue.key(), id(label));
         List<JsonNode> historyBefore = flow.history(admin, issue.key());
+        long version = flow.version(admin, issue.key());
         String newName = name("New");
 
         LabelSteps.update(admin, company.code(), id(label), Map.of("name", newName, "color", "#222222"));
@@ -226,6 +227,7 @@ class LabelManageTest extends BareAppTest {
         List<JsonNode> onIssue = labels(flow.detail(admin, issue.key()));
         assertThat(onIssue.stream().map(LabelManageTest::shape).toList()).as("labels of the issue")
                 .containsExactly(List.of(id(label), newName, "#333333"));
+        assertThat(flow.version(admin, issue.key())).as("version of the issue after the edits").isEqualTo(version);
         List<JsonNode> history = flow.history(admin, issue.key());
         assertThat(history).as("history after the edits").isEqualTo(historyBefore);
         assertThat(history.stream().filter(e -> "LABEL".equals(text(e, "field"))).map(e -> text(e, "newValue")))
@@ -235,7 +237,7 @@ class LabelManageTest extends BareAppTest {
     // S6A-AC-06, S6A-AC-62
 
     @Test
-    @DisplayName("S6A-AC-06, S6A-AC-62 an admin deletes a label: it leaves the list and every issue it was on, and no history entry is added")
+    @DisplayName("S6A-AC-06, S6A-AC-62 an admin deletes a label: it leaves the list and every issue it was on, those issues keep their version, and no history entry is added")
     void deletingRemovesItFromIssuesWithoutHistory() {
         Session admin = flow.admin();
         Company company = fixtures.createCompany(admin);
@@ -250,6 +252,8 @@ class LabelManageTest extends BareAppTest {
         LabelSteps.add(admin, first.key(), id(kept));
         List<JsonNode> firstHistory = flow.history(admin, first.key());
         List<JsonNode> secondHistory = flow.history(admin, second.key());
+        long firstVersion = flow.version(admin, first.key());
+        long secondVersion = flow.version(admin, second.key());
 
         LabelSteps.delete(admin, company.code(), id(doomed));
 
@@ -260,6 +264,8 @@ class LabelManageTest extends BareAppTest {
         assertThat(LabelSteps.labelIds(flow.detail(admin, second.key()))).as("labels of the second issue").isEmpty();
         assertThat(flow.history(admin, first.key())).as("history of the first issue").isEqualTo(firstHistory);
         assertThat(flow.history(admin, second.key())).as("history of the second issue").isEqualTo(secondHistory);
+        assertThat(flow.version(admin, first.key())).as("version of the first issue").isEqualTo(firstVersion);
+        assertThat(flow.version(admin, second.key())).as("version of the second issue").isEqualTo(secondVersion);
     }
 
     // S6A-AC-07

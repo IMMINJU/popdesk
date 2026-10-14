@@ -68,10 +68,10 @@ class LabelListTest extends BareAppTest {
         World w = flow.world();
         Issue labelled = fixtures.fileIssue(w.reporter(), w.code());
         Issue bare = fixtures.fileIssue(w.reporter(), w.code());
-        JsonNode zeta = LabelSteps.create(w.admin(), w.code(), "zeta", "#0000AA");
+        JsonNode beta = LabelSteps.create(w.admin(), w.code(), "beta", "#0000AA");
         JsonNode alpha = LabelSteps.create(w.admin(), w.code(), "Alpha", "#0000BB");
-        JsonNode mu = LabelSteps.create(w.admin(), w.code(), "mu", "#0000CC");
-        for (JsonNode label : List.of(zeta, alpha, mu)) {
+        JsonNode zulu = LabelSteps.create(w.admin(), w.code(), "Zulu", "#0000CC");
+        for (JsonNode label : List.of(beta, alpha, zulu)) {
             LabelSteps.add(w.agent(), labelled.key(), id(label));
         }
 
@@ -80,8 +80,8 @@ class LabelListTest extends BareAppTest {
 
         List<List<Object>> expected = List.of(
                 List.of(id(alpha), "Alpha", "#0000BB"),
-                List.of(id(mu), "mu", "#0000CC"),
-                List.of(id(zeta), "zeta", "#0000AA"));
+                List.of(id(beta), "beta", "#0000AA"),
+                List.of(id(zulu), "Zulu", "#0000CC"));
         assertThat(shapes(item(page, labelled.key()))).as("labels of the list item").isEqualTo(expected);
         assertThat(shapes(detail)).as("labels of the issue").isEqualTo(expected);
         assertThat(labels(item(page, bare.key()))).as("labels of the item without labels").isEmpty();

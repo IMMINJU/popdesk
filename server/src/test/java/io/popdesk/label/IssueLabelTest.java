@@ -65,6 +65,15 @@ class IssueLabelTest extends BareAppTest {
         return value.isString() ? value.stringValue() : null;
     }
 
+    /** {@code version} of an issue in an answer; fails when it is missing. */
+    private static long version(JsonNode issue) {
+        JsonNode version = issue.path("version");
+        if (!version.isIntegralNumber()) {
+            throw new AssertionError("No version in issue " + issue);
+        }
+        return version.asLong();
+    }
+
     private List<JsonNode> labelEntries(Session staff, String key) {
         return flow.history(staff, key).stream().filter(e -> "LABEL".equals(text(e, "field"))).toList();
     }
@@ -72,10 +81,11 @@ class IssueLabelTest extends BareAppTest {
     // S6A-AC-20
 
     @Test
-    @DisplayName("S6A-AC-20 staff add a label of the issue's company: the answer is the issue with that label's ID, name, and color; adding it again is 200 with the same labels and no second history entry")
+    @DisplayName("S6A-AC-20 staff add a label of the issue's company: the answer is the issue with that label's ID, name, and color and version raised by 1; adding it again is 200 with the same labels and version and no second history entry")
     void addingALabel() {
         Scene s = scene();
         JsonNode label = LabelSteps.create(s.admin(), s.code(), LabelSteps.name("Bug"), "#D73A4A");
+        long before = flow.version(s.agent(), s.key());
 
         JsonNode added = LabelSteps.add(s.agent(), s.key(), id(label));
         JsonNode again = LabelSteps.add(s.agent(), s.key(), id(label));
@@ -89,12 +99,15 @@ class IssueLabelTest extends BareAppTest {
         assertThat(labels(again)).as("labels after adding again").isEqualTo(onIssue);
         assertThat(labels(flow.detail(s.agent(), s.key()))).as("labels of the issue read again").isEqualTo(onIssue);
         assertThat(labelEntries(s.agent(), s.key())).as("LABEL entries of the history").hasSize(1);
+        assertThat(version(added)).as("version in the answer of the adding").isEqualTo(before + 1);
+        assertThat(version(again)).as("version in the answer of adding again").isEqualTo(before + 1);
+        assertThat(flow.version(s.agent(), s.key())).as("version of the issue read again").isEqualTo(before + 1);
     }
 
     // S6A-AC-21
 
     @Test
-    @DisplayName("S6A-AC-21 staff remove a label: the answer is the issue without it; removing it again, a label never on the issue, or a deleted one is 200 with no history entry")
+    @DisplayName("S6A-AC-21 staff remove a label: the answer is the issue without it and version raised by 1; removing it again, a label never on the issue, or a deleted one is 200 with the same version and no history entry")
     void removingALabel() {
         Scene s = scene();
         JsonNode removed = LabelSteps.create(s.admin(), s.code());
@@ -105,6 +118,7 @@ class IssueLabelTest extends BareAppTest {
         LabelSteps.add(s.agent(), s.key(), id(kept));
         LabelSteps.add(s.agent(), s.key(), id(deleted));
         LabelSteps.delete(s.admin(), s.code(), id(deleted));
+        long before = flow.version(s.agent(), s.key());
 
         JsonNode answer = LabelSteps.remove(s.agent(), s.key(), id(removed));
         int entries = labelEntries(s.agent(), s.key()).size();
@@ -114,10 +128,14 @@ class IssueLabelTest extends BareAppTest {
                 LabelSteps.remove(s.agent(), s.key(), id(deleted)));
 
         assertThat(labelIds(answer)).as("labels in the answer").containsExactly(id(kept));
+        assertThat(version(answer)).as("version in the answer of the removal").isEqualTo(before + 1);
         for (JsonNode issue : quiet) {
             assertThat(labelIds(issue)).as("labels in the answer of a removal that changes nothing")
                     .containsExactly(id(kept));
+            assertThat(version(issue)).as("version in the answer of a removal that changes nothing")
+                    .isEqualTo(before + 1);
         }
+        assertThat(flow.version(s.agent(), s.key())).as("version of the issue read again").isEqualTo(before + 1);
         assertThat(labelIds(flow.detail(s.agent(), s.key()))).as("labels of the issue read again")
                 .containsExactly(id(kept));
         assertThat(labelEntries(s.agent(), s.key())).as("LABEL entries after the removals that change nothing")
