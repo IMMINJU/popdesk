@@ -146,6 +146,10 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 | 첨부 올리기(문의 아래) | 문의 행 | `pending` → `stored` | 이력 하나 | | 팀 총량 한도 |
 | 임시 이미지 올리기 | 문의가 없다 | `pending` → `stored`는 조건부 UPDATE 한 문장이고 트랜잭션이 없다 | | | 사람마다의 20개·50MB, 팀 총량 한도 |
 | 임시 이미지 정리(10분마다) | 문의 행을 잠그지 않는다 | 이미지마다 트랜잭션 하나: 그 행을 조건(본문 이미지, 문의 없음, 만료)과 함께 `FOR NO KEY UPDATE` → 파일 지우기 → 행 DELETE. 묶기와 겨루면 하나만 이긴다 | | | |
+| 라벨 붙이기(6a) | 문의 행 → 그 문의 고객사의 라벨 행 `FOR KEY SHARE` | | `issue_label` `INSERT … SELECT … ON CONFLICT DO NOTHING` → 문의 UPDATE(`version`) → `LABEL` 이력 | | |
+| 라벨 떼기, 마감일 정하기·지우기(6a) | 문의 행 | | `issue_label` DELETE 또는 문의 UPDATE(`due_date`, `version`) → 이력 | | |
+| 라벨 만들기(6a) | 고객사 행 `FOR NO KEY UPDATE` → 라벨 수를 센다(200) | | `label` INSERT. 같은 이름은 유니크 위반에서 409 | | |
+| 라벨 고치기·지우기(6a) | 잠그지 않는다. `label` UPDATE나 DELETE 한 문장(지우기는 `issue_label`이 CASCADE로 따라간다). 붙이기가 쥔 `FOR KEY SHARE`를 지우기가 기다린다 | | | | |
 
 문의 행을 잠근다는 것은 `FOR NO KEY UPDATE`다. 표의 차례에 붙는 까닭과 남는 틈은 아래와 같다.
 
