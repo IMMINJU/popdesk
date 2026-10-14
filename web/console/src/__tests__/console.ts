@@ -77,6 +77,9 @@ export function issue(over: Partial<Issue> = {}): Issue {
     createdAt: T0,
     updatedAt: T0,
     version: 1,
+    labels: [],
+    dueDate: null,
+    overdue: false,
     ...over,
   };
 }
@@ -96,6 +99,9 @@ export function summary(over: Partial<IssueSummary> = {}): IssueSummary {
     assignee: null,
     assigneeUnavailable: false,
     createdAt,
+    labels: [],
+    dueDate: null,
+    overdue: false,
     ...over,
   };
 }
