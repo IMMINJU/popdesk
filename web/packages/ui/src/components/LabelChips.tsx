@@ -16,7 +16,7 @@ export interface LabelChipsProps {
  * The labels of one issue in a row (slice 6a screens.md 2절 C-3 라벨 칸): the first `max` chips,
  * then "+n" whose `title` and hidden text name the rest.
  *
- * "+n" is drawn for the eye only; the hidden text after it says the same for a screen reader.
+ * "+n" is read too, then the hidden text names what it stands for.
  */
 export function LabelChips(props: LabelChipsProps) {
   if (props.labels.length === 0) return null;
@@ -30,7 +30,7 @@ export function LabelChips(props: LabelChipsProps) {
       ))}
       {hidden.length > 0 && (
         <span className="pd-label-more" title={more}>
-          <span aria-hidden="true">+{hidden.length}</span>
+          <span>+{hidden.length}</span>
           <span className="pd-sr-only">{more}</span>
         </span>
       )}

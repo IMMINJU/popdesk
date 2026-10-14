@@ -1,6 +1,7 @@
 // C-3 문의 목록 (screens.md 4절, 3-issues screens.md 2절). Newest first, 20 a page.
 // 보기 고르기 and the filter row keep their state in the address (app/issueFilters.ts).
-// No label, due date or SLA columns yet.
+// Slice 6a (6a-labels screens.md 2절) adds the 라벨 and 마감일 columns, the 라벨 filter once a company
+// is chosen, and 정렬. No SLA column yet.
 import {
   Alert,
   Badge,
@@ -11,6 +12,7 @@ import {
   EmptyState,
   IconButton,
   InboxIcon,
+  LabelChips,
   ISSUE_STATUS_WORDS,
   LockIcon,
   PriorityLabel,
@@ -28,6 +30,8 @@ import { api, type Schemas } from '../api';
 import { RateLimitBand } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { AssigneeName } from '../app/AssigneeName';
+import { shortDate } from '../app/dueDates';
+import { byName, labelItem, moreLabelsText } from '../app/IssueLabels';
 import { useCooldown, useLoad } from '../app/hooks';
 import {
   filterKey,
@@ -36,6 +40,7 @@ import {
   ISSUE_VIEWS,
   issuesHref,
   readIssueFilters,
+  readIssueSort,
   writeIssueFilters,
   type IssueFilters,
 } from '../app/issueFilters';
@@ -56,6 +61,11 @@ const ASSIGNEE_OPTIONS: SelectOption[] = [
   { value: 'me', label: '나' },
   { value: 'none', label: '담당 없음' },
   { value: 'unavailable', label: '담당자가 볼 수 없음' },
+];
+
+const SORT_OPTIONS: SelectOption[] = [
+  { value: 'createdAt', label: '올린 시각순' },
+  { value: 'dueDate', label: '마감일순' },
 ];
 
 const columns: DataTableColumn<IssueSummary>[] = [
@@ -82,6 +92,18 @@ const columns: DataTableColumn<IssueSummary>[] = [
   { key: 'priority', header: '우선순위', cell: (i) => <PriorityLabel priority={i.priority} /> },
   { key: 'reporter', header: '올린 사람', cell: (i) => i.reporter.name },
   { key: 'assignee', header: '담당자', cell: (i) => <AssigneeName person={i.assignee} unavailable={i.assigneeUnavailable} /> },
+  { key: 'labels', header: '라벨', cell: (i) => <LabelChips labels={byName(i.labels).map(labelItem)} moreText={moreLabelsText} /> },
+  {
+    key: 'due',
+    header: '마감일',
+    cell: (i) =>
+      i.dueDate === null ? null : (
+        <span className="pd-inline">
+          <time dateTime={i.dueDate}>{shortDate(i.dueDate)}</time>
+          {i.overdue && <Badge tone="warning">지남</Badge>}
+        </span>
+      ),
+  },
   { key: 'created', header: '올린 시각', cell: (i) => <RelativeTime dateTime={i.createdAt} focusable={false} />, align: 'end' },
 ];
 
@@ -102,6 +124,22 @@ function useCandidates(companyCode: string): Person[] {
   return answer?.code === companyCode ? answer.items : [];
 }
 
+/** The labels of one company, for the 라벨 filter. An answer for a company left behind is dropped (S6A-AC-86). */
+function useCompanyLabels(companyCode: string): SelectOption[] {
+  const [answer, setAnswer] = useState<{ code: string; items: SelectOption[] } | null>(null);
+  useEffect(() => {
+    if (companyCode === '') return undefined;
+    let current = true;
+    void call(api.GET('/api/console/companies/{code}/labels', { params: { path: { code: companyCode } } })).then((result) => {
+      if (current && result.ok) setAnswer({ code: companyCode, items: byName(result.data.items).map((l) => ({ value: String(l.id), label: l.name })) });
+    });
+    return () => {
+      current = false;
+    };
+  }, [companyCode]);
+  return companyCode !== '' && answer?.code === companyCode ? answer.items : [];
+}
+
 export function C3IssueList() {
   const { me } = useSession();
   const page = usePageParam();
@@ -111,6 +149,7 @@ export function C3IssueList() {
   const cooldown = useCooldown();
 
   const filters = readIssueFilters(params);
+  const sort = readIssueSort(params);
   const key = filterKey(filters);
   const filtered = key !== '';
   const view = ISSUE_VIEWS.find((v) => filterKey(v.filters) === key)?.name ?? null;
@@ -128,15 +167,18 @@ export function C3IssueList() {
               ...(filters.companyCode === '' ? {} : { companyCode: filters.companyCode }),
               ...(filters.assignee === '' ? {} : { assignee: filters.assignee }),
               ...(filters.reporter === null ? {} : { reporter: filters.reporter }),
+              ...(filters.label.length === 0 ? {} : { label: filters.label }),
+              ...(sort === 'createdAt' ? {} : { sort }),
             },
           },
         }),
       ),
-    `${String(page)}\n${key}`,
+    `${String(page)}\n${key}\n${sort}`,
   );
   // The companies the reader sees: the choices of the 고객사 filter, and for an agent whether any is assigned.
   const companies = useLoad(() => call(api.GET('/api/console/companies', { params: { query: { size: 100 } } })), 'companies');
   const candidates = useCandidates(filters.companyCode);
+  const labelOptions = useCompanyLabels(filters.companyCode);
 
   // 429 (the search has its own limit): the band counts down, then the same list is asked again.
   const limited = load.failure?.kind === 'rateLimited' ? load.failure.seconds : null;
@@ -163,7 +205,7 @@ export function C3IssueList() {
 
   const change = (next: IssueFilters, options: { replace?: boolean } = {}) => {
     // Without `page`: a new filter starts on the first page.
-    setParams(writeIssueFilters(next), options);
+    setParams(writeIssueFilters(next, sort), options);
   };
 
   const companyOptions: SelectOption[] = (companies.data?.items ?? []).map((c) => ({ value: c.code, label: c.name }));
@@ -185,7 +227,7 @@ export function C3IssueList() {
 
   let empty: ReactNode;
   if (outOfRange) {
-    empty = <EmptyState title="이 쪽에는 문의가 없습니다" action={<Link to={issuesHref(filters)}>1쪽으로</Link>} />;
+    empty = <EmptyState title="이 쪽에는 문의가 없습니다" action={<Link to={issuesHref(filters, sort)}>1쪽으로</Link>} />;
   } else if (view === '내 담당') {
     empty = (
       <EmptyState
@@ -195,7 +237,7 @@ export function C3IssueList() {
       />
     );
   } else if (filtered) {
-    empty = <EmptyState icon={<SearchOffIcon size={20} />} title={t('issueSearch.none')} action={<Link to="/issues">{t('issueSearch.clear')}</Link>} />;
+    empty = <EmptyState icon={<SearchOffIcon size={20} />} title={t('issueSearch.none')} action={<Link to={issuesHref({}, sort)}>{t('issueSearch.clear')}</Link>} />;
   } else if (me?.role === 'ADMIN') {
     empty = (
       <EmptyState
@@ -257,9 +299,20 @@ export function C3IssueList() {
           value={filters.companyCode}
           onChange={(companyCode) => {
             // A person is a candidate of one company; 나, 담당 없음 and 담당자가 볼 수 없음 stay.
-            change({ ...filters, companyCode, assignee: isPerson(filters.assignee) ? '' : filters.assignee });
+            // Labels belong to one company: another company, or none, clears them.
+            change({ ...filters, companyCode, assignee: isPerson(filters.assignee) ? '' : filters.assignee, label: [] });
           }}
         />
+        {labelOptions.length > 0 && (
+          <CheckboxGroup
+            legend="라벨"
+            options={labelOptions}
+            value={filters.label.map(String)}
+            onChange={(label) => {
+              change({ ...filters, label: label.map(Number) });
+            }}
+          />
+        )}
         <Select
           label="담당자"
           placeholder="전체"
@@ -282,8 +335,16 @@ export function C3IssueList() {
             />
           </span>
         )}
+        <Select
+          label="정렬"
+          options={SORT_OPTIONS}
+          value={sort}
+          onChange={(next) => {
+            setParams(writeIssueFilters(filters, next === 'dueDate' ? 'dueDate' : 'createdAt'));
+          }}
+        />
         {filtered && (
-          <Link className="pd-filters-clear" to="/issues">
+          <Link className="pd-filters-clear" to={issuesHref({}, sort)}>
             {t('issueSearch.clear')}
           </Link>
         )}
