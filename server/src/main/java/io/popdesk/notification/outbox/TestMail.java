@@ -1,6 +1,7 @@
 package io.popdesk.notification.outbox;
 
 import io.popdesk.ApiException;
+import io.popdesk.InstallationZone;
 import io.popdesk.PublicAddress;
 import io.popdesk.PublicAddress.App;
 import io.popdesk.notification.DeliveryAudit;
@@ -9,13 +10,11 @@ import io.popdesk.notification.Recipients.Recipient;
 import io.popdesk.notification.TestMailLimit;
 import io.popdesk.notification.outbox.Attempt.Outcome;
 import java.time.Clock;
-import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 /**
@@ -50,27 +49,15 @@ public class TestMail {
     private final ZoneId zone;
 
     TestMail(TestMailLimit limit, SmtpMail smtp, Recipients recipients, DeliveryAudit audit, PublicAddress address,
-            Clock clock, Environment environment) {
+            Clock clock, InstallationZone zone) {
         this.limit = limit;
         this.smtp = smtp;
         this.recipients = recipients;
         this.audit = audit;
         this.address = address;
         this.clock = clock;
-        this.zone = zone(environment.getProperty("POPDESK_TIMEZONE"));
-    }
-
-    /** The installation's time zone ({@code POPDESK_TIMEZONE}); UTC without it, and for a value that is none. */
-    static ZoneId zone(String configured) {
-        ZoneId utc = ZoneId.of("UTC");
-        if (configured == null || configured.isBlank()) {
-            return utc;
-        }
-        try {
-            return ZoneId.of(configured.strip());
-        } catch (DateTimeException e) {
-            return utc;
-        }
+        // The zone due dates are judged in (S6A-AC-72); a wrong value lets no request through.
+        this.zone = zone.zone();
     }
 
     /** @param accountId the admin who asks; the email goes to this account's address */

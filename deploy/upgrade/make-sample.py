@@ -10,6 +10,7 @@ expects). Exit code 0 when all of this worked; 3 when something failed.
 """
 
 import argparse
+import datetime
 import json
 import random
 import struct
@@ -168,6 +169,13 @@ def fill(project):
     version = customer.json("GET", f"/api/portal/issues/{keys[1]}")["version"]
     customer.json("PATCH", f"/api/portal/issues/{keys[1]}",
                   {"title": "Invoice for March is missing", "priority": "HIGH", "version": version})
+    # What slice 6a added: two labels of ACME (label), one of them on the second issue (issue_label), and
+    # a due date on that issue (issue.due_date), a month after today in UTC, the zone the sample runs in.
+    labels = [admin.json("POST", "/api/console/companies/ACME/labels", body, expect=201)
+              for body in ({"name": "Billing", "color": "#1F6FEB"}, {"name": "Waiting for customer"})]
+    agent.json("PUT", f"/api/console/issues/{keys[1]}/labels/{labels[0]['id']}")
+    due = datetime.datetime.now(datetime.timezone.utc).date() + datetime.timedelta(days=30)
+    agent.json("PUT", f"/api/console/issues/{keys[1]}/due-date", {"dueDate": due.isoformat()})
     # A filing with a key (issue_idempotency), which its reporter then closes.
     once = customer.json("POST", "/api/portal/issues",
                          {"companyCode": "ACME", "title": "Filed once", "content": "Sent with a key."},

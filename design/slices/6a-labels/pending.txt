@@ -3,24 +3,6 @@
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
 
-# 서버 구현 탭
-server io/popdesk/due/DueDateTest.java
-server io/popdesk/due/DueDateListTest.java
-server io/popdesk/due/KiritimatiZoneTest.java
-server io/popdesk/due/PagoPagoZoneTest.java
-server io/popdesk/due/SeoulZoneTest.java
-server io/popdesk/due/DefaultZoneTest.java
-server io/popdesk/start/TimezoneStartTest.java
-server io/popdesk/label/LabelManageTest.java
-server io/popdesk/label/IssueLabelTest.java
-server io/popdesk/label/LabelListTest.java
-server io/popdesk/label/HiddenFromCustomerTest.java
-server io/popdesk/label/LabelQuietTest.java
-server io/popdesk/boundary/LabelBoundaryTest.java
-server io/popdesk/issue/LabelCloseRaceTest.java
-server io/popdesk/label/LabelRaceTest.java
-server io/popdesk/project/NoStoreTest.java#everyReadSucceedsWithNoStore
-
 # 웹 구현 탭
 web **/LabelChip.test.tsx
 web **/LabelChips.test.tsx

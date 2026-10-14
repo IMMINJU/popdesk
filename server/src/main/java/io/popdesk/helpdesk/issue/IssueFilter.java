@@ -13,9 +13,10 @@ import java.util.List;
  * @param assignee who is assigned
  * @param reporterId this account reported the issue
  * @param q the title or the shown content holds this text, searched as it is (COM-5)
+ * @param labelIds the issue has one of these labels; empty leaves this part out (S6A-AC-51)
  */
 public record IssueFilter(List<IssueStatus> statuses, String companyCode, Assignee assignee, Long reporterId,
-        String q) {
+        String q, List<Long> labelIds) {
 
     /** The assignee an issue must have. {@code accountId} is set for {@link Kind#ACCOUNT} only. */
     public record Assignee(Kind kind, Long accountId) {
