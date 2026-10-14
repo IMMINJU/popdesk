@@ -75,7 +75,9 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
     style: { width: c.width, minWidth: c.sticky ? (c.width ?? '8rem') : undefined, left: offsets[i] },
   });
   return (
-    <div className="pd-table-wrap" data-pd="DataTable" data-density={props.density}>
+    // Focusable and named, so a keyboard can scroll a table wider than the window (axe
+    // scrollable-region-focusable). A group, not a region: the page's sections are the regions.
+    <div className="pd-table-wrap" data-pd="DataTable" data-density={props.density} role="group" aria-label={props.caption} tabIndex={0}>
       <table className="pd-table" aria-busy={status === 'loading' ? true : undefined}>
         <caption className={props.captionHidden === false ? 'pd-table-caption' : 'pd-sr-only'}>{props.caption}</caption>
         <thead>

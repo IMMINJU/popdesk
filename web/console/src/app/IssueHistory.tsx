@@ -1,9 +1,11 @@
 // C-4 이력 (3-issues screens.md 2절, S3-AC-80): folded, read when it opens, oldest
 // first, 20 lines at a time. A change of status or assignee reads it again.
+// Slice 6a (6a-labels screens.md 3절) adds the lines of labels and due dates.
 import { Button, ISSUE_STATUS_WORDS, PRIORITY_WORDS, RelativeTime, type IssueStatus, type Priority } from '@popdesk/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, type Schemas } from '../api';
 import { Disclosure } from './Disclosure';
+import { longDate } from './dueDates';
 import { LoadFailed } from './layout';
 import { call } from './result';
 import { useToLogin } from './sessionContext';
@@ -78,6 +80,13 @@ function lineOf(entry: Entry, onBehalf: boolean, fileName: (id: string | null) =
       return entry.newValue !== null
         ? { text: `${who} 첨부를 붙임: ${fileName(entry.newValue)}` }
         : { text: `${who} 첨부를 지움: ${fileName(entry.oldValue)}` };
+    case 'LABEL':
+      // The name the label had then (S6A-AC-05): put on in `newValue`, taken off in `oldValue`.
+      return entry.newValue !== null ? { text: `${who} 라벨을 붙임: ${entry.newValue}` } : { text: `${who} 라벨을 뗌: ${entry.oldValue ?? ''}` };
+    case 'DUE_DATE':
+      if (entry.newValue === null) return { text: `${who} 마감일을 지웠습니다` };
+      if (entry.oldValue === null) return { text: `${who} 마감일을 ${toward(longDate(entry.newValue))} 정했습니다` };
+      return { text: `${who} 마감일을 ${longDate(entry.oldValue)}에서 ${toward(longDate(entry.newValue))} 바꿨습니다` };
     default:
       // A field of a later release.
       return { text: `${who} 문의를 바꿨습니다` };

@@ -771,6 +771,143 @@ textarea {
   color: var(--danger);
 }
 
+/* Labels (slice 6a): the chip, a row of chips, and the two pickers under a button ----- */
+
+/* The label's own colours come inline (LabelChip). The border keeps a chip apart from a background
+   of about its colour. A long name wraps inside the chip rather than push its row wider. */
+.pd-label-chip {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  line-height: 18px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pd-label-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.pd-label-more {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs-line);
+  font-weight: 600;
+}
+
+.pd-label-picker,
+.pd-due-date-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Opens in the flow under its button, so it never runs past a narrow window. */
+.pd-popover {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(22rem, 100%);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+/* The padding keeps the focus ring of a box inside; no side margin, so the group stays its width. */
+.pd-label-picker-group .pd-group-options {
+  max-height: calc(8 * var(--body-line) + 7 * var(--space-2) + 2 * var(--space-1));
+  margin: calc(var(--space-1) * -1) 0;
+  padding: var(--space-1);
+  overflow-y: auto;
+}
+
+.pd-label-picker-group .pd-check {
+  min-width: 0;
+}
+
+.pd-check-input[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+.pd-check-input[aria-disabled='true'] + .pd-check-mark {
+  border-style: dashed;
+  border-color: var(--text-disabled);
+}
+
+.pd-check-input[aria-disabled='true']:checked + .pd-check-mark {
+  border-style: solid;
+  border-color: var(--text-disabled);
+  background: var(--text-disabled);
+}
+
+.pd-popover-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+}
+
+.pd-popover-error {
+  color: var(--danger);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+}
+
+/* Colour swatches of a label (C-9): a radio group; the name of each colour is hidden text. */
+.pd-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.pd-swatch {
+  position: relative;
+  width: var(--button-height-sm);
+  height: var(--button-height-sm);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.pd-swatch-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.pd-swatch:has(.pd-swatch-input:checked) {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.pd-swatch:has(.pd-swatch-input:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.pd-popover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 /* Alert band ------------------------------------------------------------ */
 
 .pd-alert {
@@ -2462,10 +2599,20 @@ a.pd-inbox-row:hover .pd-inbox-text {
   grid-template-columns: 64px minmax(0, 1fr);
 }
 
-.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-nav ul,
+.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-nav ul {
+  display: none;
+}
+
+/* Hidden from the eye only: these names are what name the home link and the user link. */
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-name,
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-user-name {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-top {

@@ -4,6 +4,7 @@
 export type * from './types';
 export * from './icons';
 export { commentActionDescribedBy } from './aria';
+export { labelTextColor } from './color';
 export { codePoints, formatBytes } from './format';
 export { ACCOUNT_STATUS_WORDS, ISSUE_STATUS_WORDS, PRIORITY_WORDS, PROJECT_STATUS_WORDS } from './words';
 

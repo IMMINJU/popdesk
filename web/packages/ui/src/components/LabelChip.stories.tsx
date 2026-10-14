@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { LabelChip } from './LabelChip';
 
 /**
- * 6a 묶음의 껍데기다. 이름을 글자로, 색을 바탕으로만 그린다.
- * 글자색(`labelTextColor`), 테두리, 크기는 C-9가 채운다.
+ * 라벨 하나: 이름을 글자로, 라벨 색을 바탕으로 그린다. 글자색은 `labelTextColor`가 고른
+ * 검정이나 흰색이고, 1px 테두리가 화면 바탕과 비슷한 색의 칩을 가른다.
  */
 const meta = {
   component: LabelChip,

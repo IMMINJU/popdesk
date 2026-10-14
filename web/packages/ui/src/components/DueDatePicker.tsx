@@ -1,3 +1,8 @@
+import { useId, useState } from 'react';
+import { Button } from './Button';
+import { usePopover } from './popover';
+import { TextField } from './TextField';
+
 export interface DueDatePickerProps {
   /** Names the date input when opened, e.g. "마감일". */
   label: string;
@@ -43,15 +48,69 @@ export interface DueDatePickerProps {
  * `aria-expanded`, and under it once opened a `TextField` of `type="date"` with `min`, "정하기",
  * and "지우기" while there is a date. Opens and closes like `LabelPicker`.
  *
- * Contract shell: only the folded button is drawn. Opening, the input, the buttons, `busy`,
- * `error` and closing on Escape or outside come later (C-9).
+ * The form has `noValidate`: a day before `min` is sent as it is and the server's 400 answers it.
+ * While `busy` the buttons are `aria-disabled`, so focus stays on them.
  */
 export function DueDatePicker(props: DueDatePickerProps) {
+  const autoId = useId();
+  const id = props.id ?? autoId;
+  const panelId = `${id}-panel`;
+  const { root, toggle, open, setOpen } = usePopover(props);
   return (
-    <div className="pd-due-date-picker" data-pd="DueDatePicker">
-      <button id={props.id} type="button" className="pd-button" data-variant="secondary" data-size="sm" aria-label={props.toggleName} aria-expanded={false}>
+    <div ref={root} className="pd-due-date-picker" data-pd="DueDatePicker">
+      <button
+        ref={toggle}
+        id={id}
+        type="button"
+        className="pd-button"
+        data-variant="secondary"
+        data-size="sm"
+        aria-label={props.toggleName}
+        aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
+        onClick={() => {
+          setOpen(!open);
+        }}
+      >
         <span className="pd-button-text">{props.toggleLabel}</span>
       </button>
+      {open && <DueDatePanel {...props} id={id} panelId={panelId} />}
     </div>
+  );
+}
+
+function DueDatePanel(props: DueDatePickerProps & { id: string; panelId: string }) {
+  // The input starts from the issue's date each time the part opens.
+  const [date, setDate] = useState(props.value ?? '');
+  const busy = props.busy === true;
+  return (
+    <form
+      id={props.panelId}
+      className="pd-popover pd-due-date-panel"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!busy && date !== '') props.onSubmit(date);
+      }}
+    >
+      <TextField id={`${props.id}-date`} type="date" label={props.label} value={date} onChange={setDate} {...(props.min === undefined ? {} : { min: props.min })} disabled={busy} {...(props.error === undefined ? {} : { error: props.error })} />
+      <div className="pd-popover-actions">
+        <Button type="submit" variant="primary" size="sm" blocked={busy}>
+          {props.submitLabel}
+        </Button>
+        {props.value !== null && props.onClear !== undefined && (
+          <Button
+            variant="secondary"
+            size="sm"
+            blocked={busy}
+            onClick={() => {
+              props.onClear?.();
+            }}
+          >
+            {props.clearLabel}
+          </Button>
+        )}
+      </div>
+    </form>
   );
 }
