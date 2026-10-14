@@ -3,6 +3,7 @@
 09fadbcc97d82156172c681db8bc28634eeed84c86c61eefee8a8c09632deb21  server/src/test/java/io/popdesk/ApiPathPrefixTest.java
 2d07319020ba967adc612de7059e65da28e8b3cead92545388c29d61c1bbb2fb  server/src/test/java/io/popdesk/Baseline.java
 45af478527eba0e8179d6982f2d2e4cb3524a7a3caec6d64afe35cbcf1d7fca0  server/src/test/java/io/popdesk/InstallationLocaleTest.java
+bd26677ef1ce5a20c24425b810accf3306393b159164d6e5f873b48ced2b3285  server/src/test/java/io/popdesk/InstallationZoneTest.java
 246e4f66d9e6a5e294082a061379d3c2b6a5ed1a75ba12ad7f2245a7aa05ca8e  server/src/test/java/io/popdesk/ModulesTest.java
 9bcbeea8c05904d81b9d5445179481cd35bfad97b901bf552d7c308d8c6ad4c1  server/src/test/java/io/popdesk/OpenApiFilesTest.java
 5c750712a36e0908ac35a81d806dc2576d9dbdb455a51696a191d509f9512075  server/src/test/java/io/popdesk/PackageCyclesTest.java
@@ -206,6 +207,8 @@ e1d08cbd94d049b3b2dd74c30da15a37399e6dd68318d84dd59cb2e5f8f3c503  server/src/tes
 f4de80d0f25bd2de23c99b4cc5050ce86d54d7590e14d59e8731712c3008e420  server/src/test/java/io/popdesk/helpdesk/audit/AuditValuesTest.java
 5564884d48fbbba93be3f96f3ed8d37e747c61712f190224898a2d28bbdc32c8  server/src/test/java/io/popdesk/helpdesk/audit/AuditVerifyScriptTest.java
 e500e9a5f26f41aa893e3ae74fdcde2f6785680ff7144ed2017f83874a2470a9  server/src/test/java/io/popdesk/helpdesk/issue/SearchTextTest.java
+52d1f2750a273e4e0d538ae61bae4c11de51becfba3f233e8d88ce9a7e982267  server/src/test/java/io/popdesk/helpdesk/label/LabelColorTest.java
+368e1964e9dafb3d64699ec55549a4b9371b4d074807fe84da67bcb34b642338  server/src/test/java/io/popdesk/helpdesk/label/LabelNameTest.java
 2fff15b4c150c092c5f4c0fce02261cb3546c5201ef56d9973d781732c5aa250  server/src/test/java/io/popdesk/helpdesk/photo/PhotoImagesTest.java
 21517e5a550060bf6467bdbe7e0823c7da7dfba5622a031d6da86004134b712c  server/src/test/java/io/popdesk/inbox/AdminInboxItemsTest.java
 f806cc9aa56b94df0d3a098c1cdcaec96a163687873a307a10d525fc2a01bc52  server/src/test/java/io/popdesk/inbox/InboxReadTest.java
