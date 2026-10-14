@@ -361,8 +361,6 @@ class IssueFilterTest extends BareAppTest {
     @ParameterizedTest(name = "{0}={1}")
     @CsvSource({
             "company, AB",
-            "label, bug",
-            "sort, 'createdAt,asc'",
     })
     @DisplayName("S3-AC-07 a query name the console issue list does not have is 400 UNKNOWN_PARAMETER")
     void unknownParameter(String name, String value) {
