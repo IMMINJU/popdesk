@@ -108,9 +108,10 @@ public class CompanyRepository {
 
     /**
      * The company with this code, if the viewer may see it, locked until the end of the transaction. A
-     * change of its names or status takes this lock before it reads them.
+     * change of its names or status takes this lock before it reads them, and so does the creation of
+     * a label, which counts the company's labels under it (slice 6a design section 2).
      */
-    Optional<CompanyRow> lockByCode(Viewer viewer, String code) {
+    public Optional<CompanyRow> lockByCode(Viewer viewer, String code) {
         return jdbc.sql("select " + COLUMNS + " from company c where c.code = ? and " + SCOPE
                         + " for no key update of c")
                 .params(with(new Object[] {code}, scope(viewer)))

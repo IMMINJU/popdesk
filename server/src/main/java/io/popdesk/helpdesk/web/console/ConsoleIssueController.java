@@ -2,7 +2,6 @@ package io.popdesk.helpdesk.web.console;
 
 import io.popdesk.ApiError;
 import io.popdesk.ApiException;
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.IssueStatus;
@@ -14,11 +13,14 @@ import io.popdesk.helpdesk.issue.IssueHistoryRepository.HistoryRow;
 import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.helpdesk.issue.IssueService;
+import io.popdesk.helpdesk.label.LabelRepository.IssueLabel;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.Set;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -58,24 +60,30 @@ class ConsoleIssueController {
 
     /**
      * The issue with what its status allows now: the transitions of staff and reopening (S3-AC-59). Staff
-     * see who filed it for the reporter and who is assigned (S3-AC-28, S3-AC-36).
+     * see who filed it for the reporter and who is assigned (S3-AC-28, S3-AC-36), its labels, and its due
+     * date with whether it has passed (S6A-AC-50).
      */
     private Issue issue(IssueRow row) {
+        List<LabelRef> labels = labels(issues.labels(List.of(row.id())), row.id());
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
                 person(row.createdBy()), IssueChannel.valueOf(row.channel()), person(row.assignee()),
-                // Labels, due date, and overdue are fixed values until slice 6a builds them (C-4 shell).
-                row.assigneeUnavailable(), List.of(), null, false, row.status().next(), issues.reopenable(row),
-                utc(row.firstResponseAt()), utc(row.resolvedAt()), utc(row.closedAt()), row.version(),
-                utc(row.createdAt()), utc(row.updatedAt()));
+                row.assigneeUnavailable(), labels, row.dueDate(), issues.overdue(row), row.status().next(),
+                issues.reopenable(row), utc(row.firstResponseAt()), utc(row.resolvedAt()), utc(row.closedAt()),
+                row.version(), utc(row.createdAt()), utc(row.updatedAt()));
     }
 
-    static IssueSummary summary(IssueRow row) {
+    private IssueSummary summary(IssueRow row, Map<UUID, List<IssueLabel>> labels) {
         return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
-                // Labels, due date, and overdue are fixed values until slice 6a builds them (C-4 shell).
-                row.createdBy() != null, person(row.assignee()), row.assigneeUnavailable(), List.of(), null, false,
-                utc(row.createdAt()));
+                row.createdBy() != null, person(row.assignee()), row.assigneeUnavailable(), labels(labels, row.id()),
+                row.dueDate(), issues.overdue(row), utc(row.createdAt()));
+    }
+
+    /** The labels of one issue, in the name order they were read in; empty without labels. */
+    private static List<LabelRef> labels(Map<UUID, List<IssueLabel>> labels, UUID issueId) {
+        return labels.getOrDefault(issueId, List.of()).stream()
+                .map(l -> new LabelRef(l.id(), l.name(), l.color())).toList();
     }
 
     /** Staff see every person by name, with the time of the profile photo for the photo's address. */
@@ -152,16 +160,17 @@ class ConsoleIssueController {
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size,
             HttpServletRequest request) {
-        // label and sort are taken and not used yet (slice 6a C-4 shell).
         List<ApiError.FieldError> unknown = request.getParameterMap().keySet().stream()
                 .filter(name -> !LIST_PARAMETERS.contains(name)).sorted()
                 .map(name -> new ApiError.FieldError(name, "UNKNOWN_PARAMETER")).toList();
         if (!unknown.isEmpty()) {
             throw ApiException.invalid(unknown);
         }
-        return issues.list(CurrentAccount.get().viewer(),
-                        new IssueService.Filters(status, companyCode, assignee, reporter, q), page, size)
-                .map(ConsoleIssueController::summary);
+        Paged<IssueRow> rows = issues.list(CurrentAccount.get().viewer(),
+                new IssueService.Filters(status, companyCode, assignee, reporter, q, label, sort), page, size);
+        // The labels of the whole page in one read, not one for each issue (slice 6a design section 4).
+        Map<UUID, List<IssueLabel>> labels = issues.labels(rows.items().stream().map(IssueRow::id).toList());
+        return rows.map(row -> summary(row, labels));
     }
 
     @Operation(operationId = "createIssue", summary = "File an issue on behalf of a customer",
@@ -306,7 +315,7 @@ class ConsoleIssueController {
     @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
     @PutMapping("/{key}/labels/{id}")
     Issue addIssueLabel(@PathVariable String key, @PathVariable long id) {
-        throw new NotImplementedException();
+        return issue(issues.addLabel(CurrentAccount.get().viewer(), key, id));
     }
 
     @Operation(operationId = "removeIssueLabel", summary = "Take a label off an issue",
@@ -320,7 +329,7 @@ class ConsoleIssueController {
     @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
     @DeleteMapping("/{key}/labels/{id}")
     Issue removeIssueLabel(@PathVariable String key, @PathVariable long id) {
-        throw new NotImplementedException();
+        return issue(issues.removeLabel(CurrentAccount.get().viewer(), key, id));
     }
 
     @Operation(operationId = "setIssueDueDate", summary = "Set an issue's due date",
@@ -338,7 +347,7 @@ class ConsoleIssueController {
     @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
     @PutMapping("/{key}/due-date")
     Issue setIssueDueDate(@PathVariable String key, @RequestBody SetDueDateRequest request) {
-        throw new NotImplementedException();
+        return issue(issues.setDueDate(CurrentAccount.get().viewer(), key, request.dueDate()));
     }
 
     @Operation(operationId = "clearIssueDueDate", summary = "Clear an issue's due date",
@@ -351,7 +360,7 @@ class ConsoleIssueController {
     @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
     @DeleteMapping("/{key}/due-date")
     Issue clearIssueDueDate(@PathVariable String key) {
-        throw new NotImplementedException();
+        return issue(issues.clearDueDate(CurrentAccount.get().viewer(), key));
     }
 
     @Operation(operationId = "listIssueHistory", summary = "History of an issue",

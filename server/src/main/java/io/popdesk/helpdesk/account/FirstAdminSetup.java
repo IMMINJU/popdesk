@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.account;
 
 import io.popdesk.InstallationLocale;
+import io.popdesk.InstallationZone;
 import io.popdesk.helpdesk.audit.AuditRetention;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,8 @@ import org.springframework.transaction.TransactionException;
  *
  * <p>A {@code POPDESK_LOCALE} that is not a language popdesk has ({@link InstallationLocale}) ends the
  * same way, whether the database has an admin or not: accounts and messages would get a language no
- * text exists for. So does a {@code POPDESK_AUDIT_RETENTION} that is not a period of 30 days or more
+ * text exists for. So does a {@code POPDESK_TIMEZONE} that is not a zone popdesk takes
+ * ({@link InstallationZone}, S6A-AC-70): due dates would be judged a day off. So does a {@code POPDESK_AUDIT_RETENTION} that is not a period of 30 days or more
  * ({@link AuditRetention}, S1B-AC-20): a typo there must not delete audit entries.
  */
 @Component
@@ -44,16 +46,18 @@ public class FirstAdminSetup implements SmartInitializingSingleton {
     private final PasswordEncoder passwords;
     private final Environment environment;
     private final InstallationLocale locale;
+    private final InstallationZone zone;
     private final AuditRetention retention;
 
     private volatile boolean setupRequired = true;
 
     FirstAdminSetup(FirstAdminService service, PasswordEncoder passwords, Environment environment,
-            InstallationLocale locale, AuditRetention retention) {
+            InstallationLocale locale, InstallationZone zone, AuditRetention retention) {
         this.service = service;
         this.passwords = passwords;
         this.environment = environment;
         this.locale = locale;
+        this.zone = zone;
         this.retention = retention;
     }
 
@@ -78,12 +82,17 @@ public class FirstAdminSetup implements SmartInitializingSingleton {
                     + "popdesk takes no requests and its readiness stays down until this is set and popdesk is "
                     + "restarted.", InstallationLocale.KEY);
         }
+        if (!zone.valid()) {
+            log.error("{} is empty or not a time zone popdesk takes: set it to {}, or leave it out for UTC. "
+                    + "popdesk takes no requests and its readiness stays down until this is set and popdesk is "
+                    + "restarted.", InstallationZone.KEY, InstallationZone.TAKES);
+        }
         if (!retention.valid()) {
             log.error("{} is not a period popdesk takes: it must be an ISO-8601 duration of days and time, such as "
                     + "P365D, and at least P30D. Leave it out for P365D. popdesk takes no requests and its readiness "
                     + "stays down until this is set and popdesk is restarted.", AuditRetention.KEY);
         }
-        if (!locale.valid() || !retention.valid()) {
+        if (!locale.valid() || !zone.valid() || !retention.valid()) {
             return;
         }
         if (adminExists) {

@@ -5,8 +5,8 @@ import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
 /**
- * Down while the app waits for a first admin, a valid {@code POPDESK_LOCALE}, or a valid
- * {@code POPDESK_AUDIT_RETENTION} (S0-AC-02, S1B-AC-20). Part of the readiness group
+ * Down while the app waits for a first admin, a valid {@code POPDESK_LOCALE} or {@code POPDESK_TIMEZONE},
+ * or a valid {@code POPDESK_AUDIT_RETENTION} (S0-AC-02, S1B-AC-20, S6A-AC-70). Part of the readiness group
  * (application.yml), not of liveness: the process is alive and should not be restarted.
  */
 @Component

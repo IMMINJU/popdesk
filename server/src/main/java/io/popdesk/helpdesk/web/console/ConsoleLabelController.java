@@ -1,6 +1,9 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.PatchText;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.label.LabelRepository.LabelRow;
+import io.popdesk.helpdesk.label.LabelService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,6 +32,16 @@ class ConsoleLabelController {
     static final String NAME_TAKEN = "`LABEL_NAME_TAKEN`: the company has a label of this name, whatever the case "
             + "(S6A-AC-03).";
 
+    private final LabelService labels;
+
+    ConsoleLabelController(LabelService labels) {
+        this.labels = labels;
+    }
+
+    private static Label label(LabelRow row) {
+        return new Label(row.id(), row.name(), row.color(), row.issueCount());
+    }
+
     @Operation(operationId = "listCompanyLabels", summary = "Labels of a company",
             description = "Every label of the company, at most 200, in name order whatever the case, each with "
                     + "the number of issues that have it (S6A-AC-10). All at once, without pages: the list fills "
@@ -39,7 +52,8 @@ class ConsoleLabelController {
             + "assigned to the company gets this too (S6A-AC-11).")
     @GetMapping
     CompanyLabels listCompanyLabels(@PathVariable String code) {
-        throw new NotImplementedException();
+        return new CompanyLabels(labels.list(CurrentAccount.get().viewer(), code).stream()
+                .map(ConsoleLabelController::label).toList());
     }
 
     @Operation(operationId = "createLabel", summary = "Create a label in a company",
@@ -58,7 +72,7 @@ class ConsoleLabelController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     Label createLabel(@PathVariable String code, @RequestBody CreateLabelRequest request) {
-        throw new NotImplementedException();
+        return label(labels.create(CurrentAccount.get().viewer(), code, request.name(), request.color()));
     }
 
     @Operation(operationId = "updateLabel", summary = "Change a label's name or color",
@@ -76,7 +90,8 @@ class ConsoleLabelController {
             + "is not this.")
     @PatchMapping("/{id}")
     Label updateLabel(@PathVariable String code, @PathVariable long id, @RequestBody UpdateLabelRequest request) {
-        throw new NotImplementedException();
+        return label(labels.update(CurrentAccount.get().viewer(), code, id, PatchText.of("name", request.name()),
+                PatchText.of("color", request.color())));
     }
 
     @Operation(operationId = "deleteLabel", summary = "Delete a label",
@@ -88,6 +103,6 @@ class ConsoleLabelController {
     @ApiResponse(responseCode = "404", description = LABEL_NOT_FOUND)
     @DeleteMapping("/{id}")
     void deleteLabel(@PathVariable String code, @PathVariable long id) {
-        throw new NotImplementedException();
+        labels.delete(CurrentAccount.get().viewer(), code, id);
     }
 }
