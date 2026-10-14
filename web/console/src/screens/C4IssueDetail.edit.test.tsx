@@ -239,7 +239,7 @@ describe('C-4 이력', () => {
       says: /김고객 ?\(고객\) 님이 제목을 고쳤습니다.*옛 제목입니다.*새 제목입니다/,
     },
     { what: '내용', issue: {}, entry: history({ field: 'CONTENT', oldValue: '옛 내용', newValue: '새 내용' }), says: /이상담 님이 내용을 고쳤습니다.*전 내용 보기/ },
-    { what: '모르는 칸', issue: {}, entry: history({ field: 'DUE_DATE', oldValue: null, newValue: '2026-11-01' }), says: /이상담 님이 문의를 바꿨습니다/ },
+    { what: '모르는 칸', issue: {}, entry: history({ field: 'SOMETHING_LATER', oldValue: null, newValue: '2026-11-01' }), says: /이상담 님이 문의를 바꿨습니다/ },
   ])('S3-AC-80 C-4 이력의 글($what): $says', async ({ issue, entry, says }) => {
     state.issue = issueIn('RECEIVED', issue);
     const at = '2026-10-09T01:02:03Z';
