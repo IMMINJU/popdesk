@@ -97,10 +97,11 @@ alter table issue add column due_date date;
 
 ## 8. Storybook 실행기
 
-- `@storybook/addon-vitest`(Storybook 10.6.1에 맞는 판)와 vitest의 브라우저 모드, Playwright 제공자를 `@popdesk/ui`에 붙인다. 브라우저는 이미 깔린 `ms-playwright`의 Chromium을 쓴다(`web/e2e`가 `@playwright/test` 1.64.0으로 받아 둔 것) [소스: `pnpm-workspace.yaml`, `%LOCALAPPDATA%\ms-playwright`].
-- 스크립트 이름은 `test-storybook`으로 하고 `local-ci.sh web`의 테스트 다음에 돈다. CI의 web 잡도 같은 명령을 돈다(Chromium을 받는 단계를 더한다).
-- 계약 단계 뒤 한 번 돌려 시간을 잰다. 5분을 넘으면 메인이 다시 정한다(`acceptance.md` 5절 13).
-- 처음 돌 때 앞 묶음의 story가 실패하면(243개 가운데 브라우저로 연 것은 9개뿐이다), 그 story를 고치는 것은 테스트 쪽 일이다. 운영 컴포넌트가 틀렸으면 구현 탭에 넘긴다.
+- `@storybook/addon-vitest` 10.6.1, `@vitest/browser-playwright` 5.0.3, `playwright` 1.64.0을 `@popdesk/ui`에 붙였다(2026-10-14, 메인). 설정은 `web/packages/ui/vitest.config.storybook.ts`(잠긴 설정 꼴 `vitest.config.*`), 스크립트는 `test-storybook`이다. `src/storybook/main.ts`의 story 목록(ui 컴포넌트와 콘솔 화면)을 그대로 돈다.
+- 설계 때 "이미 깔린 Chromium을 쓴다"고 적었으나 틀렸다. 깔려 있던 것은 옛 판(1243)이고 Playwright 1.64.0은 1248을 찾는다. `playwright install --only-shell chromium`으로 헤드리스 셸만 받았다(278MB). `web/e2e`도 같은 판을 쓴다.
+- `local-ci.sh web`은 단위 테스트 다음에, CI의 web 잡은 브라우저를 받은 뒤 같은 명령을 돈다. 둘 다 `pending.py web`의 제외를 넘긴다(구현 전 story를 `pending.txt`에 `web **/X.stories.tsx`로 적는다). CI는 어느 웹 패키지가 바뀌든 돈다(콘솔 화면의 story도 ui 패키지가 돌린다).
+- 처음 잰 결과: story 243개 모두 통과, 11초(vitest가 잰 시간, 명령 전체 15초). 5분 문턱(`acceptance.md` 5절 13)보다 한참 짧다. 그리다 던지는 story와 넘침 단언이 실패하는 `play`를 하나씩 넣어 실패로 잡히는 것을 보고 지웠다.
+- story가 그려지는 틀의 폭은 1200px였다(넘침 시험에서 본 `clientWidth`). 360·820 폭에서 넘침을 보는 꼴은 C-5 웹 탭이 정한다.
 
 ## 9. 순수 계산 클래스 (C-5의 단위 테스트, C-10의 변이 테스트)
 

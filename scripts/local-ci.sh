@@ -118,6 +118,7 @@ run_step() {
       pnpm -r run typecheck &&
       pnpm -r run lint &&
       heavy web sh -c 'pnpm -r --workspace-concurrency=1 run test $(python ../scripts/ci/pending.py web)' &&
+      heavy web sh -c 'pnpm --filter @popdesk/ui run test-storybook $(python ../scripts/ci/pending.py web)' &&
       pnpm -r run build &&
       pnpm dup &&
       python ../scripts/ci/check-portal-bundle.py portal/dist

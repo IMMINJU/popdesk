@@ -162,6 +162,11 @@ jobs:
       - run: pnpm -r ${{ steps.scope.outputs.filter }} run typecheck
       - run: pnpm -r ${{ steps.scope.outputs.filter }} run lint
       - run: pnpm -r --workspace-concurrency=1 ${{ steps.scope.outputs.filter }} run test $(python3 ../scripts/ci/pending.py web)
+      # Every story, console screens included, so it runs whatever part of web changed (S6A-AC-90).
+      - name: Stories render and their play functions pass
+        run: |
+          pnpm --filter @popdesk/ui exec playwright install --with-deps --only-shell chromium
+          pnpm --filter @popdesk/ui run test-storybook $(python3 ../scripts/ci/pending.py web)
       - run: pnpm -r ${{ steps.scope.outputs.filter }} run build
       - name: Duplicated code stays under the limit in web/.jscpd.json
         run: pnpm dup

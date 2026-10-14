@@ -6,6 +6,7 @@ const config: StorybookConfig = {
   framework: '@storybook/react-vite',
   // The console keeps the states of a screen's parts next to the screen.
   stories: ['../components/*.stories.tsx', '../../../../console/src/screens/*.stories.tsx'],
+  addons: ['@storybook/addon-vitest'],
   core: { disableTelemetry: true },
 };
 
