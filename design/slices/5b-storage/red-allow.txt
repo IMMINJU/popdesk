@@ -1,8 +1,4 @@
 # 구현 전에 통과해도 되는 테스트. `<테스트 이름> | <까닭>`
 io.popdesk.attachment.StorageClientRuleTest.onlyTheStoragePackageUsesTheS3Client | 구조 규칙이다. S3 클라이언트를 쓰는 운영 코드가 아직 없어 어기는 곳도 없다. 구현이 저장소 패키지 밖에서 쓰면 실패한다
-io.popdesk.start.StorageStartCheckTest.aFileInTheFoldersPlaceStopsTheStart | 지금은 disk면 까닭과 상관없이 뜨지 않는다. 단언은 "뜨지 않는다"와 "그 파일이 그대로다"뿐이라 통과한다. 구현 뒤에는 폴더 검사가 이 단언을 지킨다
 io.popdesk.start.StorageStartCheckTest.dbOnlyTouchesNoOtherStorage | db만 쓰는 설치는 지금도 다른 저장소에 닿지 않는다(S5B-AC-27은 지금 동작을 지키는 기준이다)
-io.popdesk.start.StorageStartCheckTest.unusableS3StopsTheStart(String)[1] | 지금은 s3면 까닭과 상관없이 뜨지 않고 저장소에 닿지 않는다. 단언은 "뜨지 않는다", "비밀값이 없다", "버킷에 쓴 것이 없다"라 통과한다. 구현 뒤에는 뜰 때의 써 보기가 지킨다
-io.popdesk.start.StorageStartCheckTest.unusableS3StopsTheStart(String)[2] | 위와 같다(없는 버킷)
-io.popdesk.start.StorageStartCheckTest.unusableS3StopsTheStart(String)[3] | 위와 같다(아무도 듣지 않는 주소)
 io.popdesk.start.StorageStartCheckTest.badShapeStopsTheStart(String)[1] | `POPDESK_STORAGE=file`은 지금의 설정 검사가 이미 키 이름을 대며 막는다
