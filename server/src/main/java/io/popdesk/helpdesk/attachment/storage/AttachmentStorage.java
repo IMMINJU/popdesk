@@ -31,4 +31,16 @@ interface AttachmentStorage {
 
     /** How many bytes of contents the attachment has here, or empty when it has none. Reads no contents. */
     OptionalLong size(UUID attachmentId);
+
+    /**
+     * Whether this place has the marker popdesk left when it first used it ({@link StoragePaths#MARKER}).
+     * Only that it is there counts, not what it holds. The database has no marker and always says yes.
+     */
+    boolean hasMarker();
+
+    /** Leaves the marker in a place that has none. Makes the folder of {@code disk}; never makes a bucket. */
+    void writeMarker();
+
+    /** Writes something small that is no attachment and removes it again (S5B-AC-24). */
+    void checkWritable();
 }

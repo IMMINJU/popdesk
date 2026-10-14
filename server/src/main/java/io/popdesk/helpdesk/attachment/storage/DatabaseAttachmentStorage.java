@@ -62,4 +62,20 @@ final class DatabaseAttachmentStorage implements AttachmentStorage {
                 rs -> rs.next() ? (Long) rs.getLong(1) : null, attachmentId);
         return size == null ? OptionalLong.empty() : OptionalLong.of(size);
     }
+
+    /** The table comes with the migrations: there is no marker to lose. */
+    @Override
+    public boolean hasMarker() {
+        return true;
+    }
+
+    @Override
+    public void writeMarker() {
+        // Nothing to leave: see hasMarker.
+    }
+
+    @Override
+    public void checkWritable() {
+        // The start already wrote to this database when it took the instance lock and migrated.
+    }
 }
