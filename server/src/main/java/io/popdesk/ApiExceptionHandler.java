@@ -1,5 +1,6 @@
 package io.popdesk;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -103,11 +104,20 @@ class ApiExceptionHandler {
                 ApiErrors.NOT_IMPLEMENTED_MESSAGE));
     }
 
-    /** Anything else, a database error included: 500 without retry, logged by class and SQL state only. */
+    /**
+     * Anything else, a database error included: 500 without retry, logged by class and SQL state only.
+     *
+     * <p>When part of the response is out already (a download whose storage failed half way), no error
+     * body can follow it. The exception is thrown on instead, and the container ends the connection: the
+     * client sees a download that broke off, not the part as the whole file (S5B-AC-32).
+     */
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ApiError> unexpected(Exception e) {
+    ResponseEntity<ApiError> unexpected(Exception e, HttpServletResponse response) throws Exception {
         log.error("Request failed: {}{}", e.getClass().getName(),
                 SqlStates.of(e).map(state -> " (SQL state " + state + ")").orElse(""));
+        if (response.isCommitted()) {
+            throw e;
+        }
         return respond(new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrors.INTERNAL_ERROR,
                 ApiErrors.INTERNAL_ERROR_MESSAGE));
     }
