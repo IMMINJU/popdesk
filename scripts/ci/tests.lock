@@ -412,7 +412,7 @@ fafcac25ff2e4ad1bd87a30094fe6e3ca5241bceed53e1178eb9645a57e44f72  server/src/tes
 828c242b5c337f503d51190b92573143f48a5eed1c45694442bcd8cb7e5a2950  server/src/test/java/io/popdesk/start/StorageClock.java
 c7c854c14be474699e4a24d9894e1f2e490738bf890f1d9feb9114dadc368cc8  server/src/test/java/io/popdesk/start/StorageContract.java
 c2fae799a60c322c57366ad1fafbe93434babe3ef279e98752862b2ad1150d52  server/src/test/java/io/popdesk/start/StorageStartCheckTest.java
-4ad227919a0ffe914799a8683780f35f91d598d008e7fa0184f5ee28553d53bd  server/src/test/java/io/popdesk/start/StorageSteps.java
+0b408a23096178f4727f51c522904f9cf29d21ce81f47e19275b58099287912d  server/src/test/java/io/popdesk/start/StorageSteps.java
 3385e76a82940ee06ca45b6b918ec787f9d11aed1505df9f532efad639d91fe3  server/src/test/java/io/popdesk/start/StorageSwitchTest.java
 d372828d2cd524e12493347217dd41507b85146811849f59d78a58de9e9bd4df  server/src/test/java/io/popdesk/start/TenantIdGateTest.java
 a9ccfa8a3e0c0db3aec3f0235df71a3180019483cb7a396b38d2c70da8e1c9ff  server/src/test/java/io/popdesk/start/TenantIdRule.java
