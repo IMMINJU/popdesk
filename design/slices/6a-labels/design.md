@@ -14,8 +14,9 @@
 | 2 | 라벨 ID는 `bigint`다. 계약에는 문자열로 내지 않고 정수로 낸다 | 라벨은 상담 쪽만 보고, ID를 추측해도 경계 검사가 막는다(S6A-AC-11, 12, 22). 첨부와 달리 추측할 수 없는 값일 까닭이 없다 |
 | 3 | `issue_label`은 `ON DELETE CASCADE`로 라벨에 묶는다 | 라벨 지우기(LBL-3)가 한 문장으로 끝나고, 붙이기와 같은 때 와도 남는 행이 없다(S6A-AC-25) |
 | 4 | 붙이기는 문의 행을 잠근 뒤 `INSERT … SELECT … FROM label WHERE id = ? AND company_id = 문의의 고객사 ON CONFLICT DO NOTHING`이다. 넣은 행이 0이면 라벨이 그 고객사에 있는지 한 번 더 보아, 없으면 400, 있으면 이미 붙은 것이다 | 고객사 조건이 넣는 문장 안에 있다(S6A-AC-22). 지우기와 겹쳐도 외래 키 오류가 나지 않는다 |
-| 5 | 마감일은 `issue.due_date date`다. 정하기·지우기는 `version`을 올리지 않는다 | 담당자 바꾸기도 `version`을 올리지 않는다 [소스: `IssueService.assign`]. `version`은 제목·내용·우선순위의 덮어쓰기를 막는 값이다 |
+| 5 | 마감일은 `issue.due_date date`다. 마감일 정하기·지우기와 라벨 붙이기·떼기는 바뀐 것이 있으면 `version`을 1 올린다. 이미 그 값이라 바뀐 것이 없으면 올리지 않는다 | 계약의 `Issue.version`은 "문의가 바뀔 때마다 1 오른다"(S0-AC-45)이고, 담당자 바꾸기도 올린다 [소스: `IssueRepository.updateAssignee` 259~265줄]. 처음에 "담당자 바꾸기는 올리지 않는다"고 적은 것은 틀렸다(C-4 서버 탭이 찾음). 라벨 색이나 이름을 고치는 것은 문의 행을 바꾸지 않으므로 올리지 않는다 |
 | 6 | "오늘"은 `InstallationZone`(새, `io.popdesk`)이 정한다. `Clock` 빈은 그대로 UTC이고, `LocalDate.now(clock.withZone(zone))`으로 셈한다 | `InstallationLocale`과 같은 꼴이다 [소스: `InstallationLocale.java`]. `Clock`을 바꾸면 UTC 시각을 쓰는 앞 묶음의 모든 곳이 흔들린다 |
+| 7 | 라벨 만들기에서 `color`가 빠지거나 `null`이면 기본 회색 `#808080`이다. 고치기에서 `null`은 400 `REQUIRED`다 | 만들기는 빠진 것과 `null`을 같게 본다(C-4 서버 탭이 정함). 고치기는 `UpdateCompanyRequest`처럼 빠진 칸(그대로)과 `null`을 가른다 |
 
 ## 1. 표 (V14)
 
@@ -66,7 +67,7 @@ alter table issue add column due_date date;
 ## 3. 마감일과 시간대
 
 - `InstallationZone`(새): `POPDESK_TIMEZONE`을 읽어 `ZoneId`를 준다. `parse(String)`은 `null`이면 UTC, 앞뒤 공백을 자른 값이 `UTC`거나 `ZoneId.getAvailableZoneIds()` 가운데 `/`가 든 지역 이름이면 그 시간대, 그 밖(빈 값, `+09:00`, `GMT+9`, `EST`)은 비움이다. `valid()`, `zone()`, `today(Clock)`.
-- 틀린 값이면 `FirstAdminSetup`이 `POPDESK_LOCALE`에 하듯 첫 단계를 마치지 않아 요청을 받지 않는다 [소스: `FirstAdminSetup.java:27-79`]. 로그에는 설정 이름과 받는 값의 설명을 적는다.
+- 틀린 값이면 `FirstAdminSetup`이 `POPDESK_LOCALE`에 하듯 첫 단계를 마치지 않아 요청을 받지 않는다 [소스: `FirstAdminSetup.java:27-88`, 언어 검사 로그 76~80줄, 요청을 막는 `return` 86~88줄]. 로그에는 설정 이름과 받는 값의 설명을 적는다.
 - `TestMail.zone()`은 `InstallationZone`을 쓰게 바꾼다(같은 값을 두 곳이 따로 읽지 않는다) [소스: `TestMail.java:60-74`].
 - `overdue`는 응답을 만들 때 `due_date < today`로 셈한다. 저장하지 않는다.
 

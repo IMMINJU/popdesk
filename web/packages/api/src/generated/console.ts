@@ -402,6 +402,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/console/companies/{code}/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Labels of a company
+         * @description Every label of the company, at most 200, in name order whatever the case, each with the number of issues that have it (S6A-AC-10). All at once, without pages: the list fills a picker. Also for an `ARCHIVED` company.
+         */
+        get: operations["listCompanyLabels"];
+        put?: never;
+        /**
+         * Create a label in a company
+         * @description A company has at most 200 labels (S6A-AC-09). Nothing can be added to an `ARCHIVED` company (S6A-AC-08).
+         */
+        post: operations["createLabel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/companies/{code}/labels/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a label
+         * @description Also takes it off every issue that has it; this leaves no history entry on those issues (S6A-AC-06, LBL-3). Works for an `ARCHIVED` company too (S6A-AC-08).
+         */
+        delete: operations["deleteLabel"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a label's name or color
+         * @description A field left out keeps its value. Issues that have the label show the new name and color; their history keeps the name the label had then, and the change itself leaves no history entry (S6A-AC-05). Works for an `ARCHIVED` company too (S6A-AC-08).
+         */
+        patch: operations["updateLabel"];
+        trace?: never;
+    };
     "/api/console/companies/{code}/reporters": {
         parameters: {
             query?: never;
@@ -579,7 +627,7 @@ export interface paths {
         };
         /**
          * Issues the caller can see
-         * @description All issues of assigned companies for agents, all issues for admins, newest first (S0-AC-47). The filters narrow that and never widen it: with several, an issue must match all of them (S3-AC-06).
+         * @description All issues of assigned companies for agents, all issues for admins, newest first (S0-AC-47). The filters narrow that and never widen it: with several, an issue must match all of them (S3-AC-06). `sort` changes the order and nothing else (S6A-AC-54).
          */
         get: operations["listIssues"];
         put?: never;
@@ -739,6 +787,30 @@ export interface paths {
         patch: operations["updateComment"];
         trace?: never;
     };
+    "/api/console/issues/{key}/due-date": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set an issue's due date
+         * @description A date, today or later in the installation time zone (`POPDESK_TIMEZONE`, S6A-AC-30, S6A-AC-34). The date the issue has already is 200 too and leaves no history entry (S6A-AC-36); otherwise the issue gets a `CHANGED` entry of the field `DUE_DATE` (S6A-AC-61). Customers never see due dates (DUE-1).
+         */
+        put: operations["setIssueDueDate"];
+        post?: never;
+        /**
+         * Clear an issue's due date
+         * @description An issue without a due date is 200 too and leaves no history entry (S6A-AC-32); otherwise the issue gets a `CHANGED` entry of the field `DUE_DATE` (S6A-AC-61).
+         */
+        delete: operations["clearIssueDueDate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/console/issues/{key}/history": {
         parameters: {
             query?: never;
@@ -754,6 +826,30 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/issues/{key}/labels/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put a label on an issue
+         * @description A label of the issue's company (LBL-2). A label the issue has already is 200 too and leaves no history entry (S6A-AC-20); otherwise the issue gets a `CHANGED` entry of the field `LABEL` (S6A-AC-60). An issue has at most 20 labels (S6A-AC-24). Customers never see labels (LBL-4).
+         */
+        put: operations["addIssueLabel"];
+        post?: never;
+        /**
+         * Take a label off an issue
+         * @description A label the issue does not have, a deleted one included, is 200 too and leaves no history entry (S6A-AC-21); otherwise the issue gets a `CHANGED` entry of the field `LABEL` (S6A-AC-60).
+         */
+        delete: operations["removeIssueLabel"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1476,6 +1572,9 @@ export interface components {
             /** @enum {string} */
             status: "ACTIVE" | "SUSPENDED" | "ARCHIVED";
         };
+        CompanyLabels: {
+            items: components["schemas"]["Label"][];
+        };
         CompanyMember: {
             /** Format: int64 */
             accountId: number;
@@ -1561,6 +1660,12 @@ export interface components {
             /** @description 1 to 200 characters after trimming. */
             title: string;
         };
+        CreateLabelRequest: {
+            /** @description `#` and six hexadecimal digits; small letters are stored as capitals (S6A-AC-04). Left out or `null`: `#808080`. */
+            color?: string | null;
+            /** @description 1 to 30 characters after the whitespace around it is removed and the text is put in Unicode NFC. Unique in the company whatever the case (S6A-AC-02, S6A-AC-03). */
+            name: string;
+        };
         FailedDelivery: {
             /**
              * Format: int64
@@ -1618,14 +1723,23 @@ export interface components {
             /** @description The staff member who filed the issue for the reporter; null when the reporter filed it (S3-AC-36). */
             createdBy: components["schemas"]["Person"] | null;
             /**
+             * Format: date
+             * @description `YYYY-MM-DD`; null without a due date (DUE-1).
+             */
+            dueDate: string | null;
+            /**
              * Format: date-time
              * @description When staff first commented publicly (S0-AC-46).
              */
             firstResponseAt: string | null;
             /** @description `{company code}-{number}`, for example `ACME-7`. */
             key: string;
+            /** @description Labels of the issue, at most 20, in name order whatever the case (S6A-AC-50). Empty without labels. */
+            labels: components["schemas"]["LabelRef"][];
             /** @description The statuses `changeIssueStatus` takes now (STATUS-1). Empty for a `CLOSED` issue. */
             nextStatuses: ("RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED")[];
+            /** @description The due date is before today in the installation time zone (`POPDESK_TIMEZONE`, S6A-AC-35). `false` without a due date. Judged by the server when it answers; show this instead of comparing with the browser's date. */
+            overdue: boolean;
             /** @enum {string} */
             priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
             private: boolean;
@@ -1671,7 +1785,7 @@ export interface components {
             actor: components["schemas"]["IssueHistoryActor"];
             /** Format: date-time */
             createdAt: string;
-            /** @description The field that changed: `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, `PRIORITY`, or `ATTACHMENT` (a file or content image was attached to the issue or one of its comments, or deleted; one entry for each attachment, S5-AC-40, S5-AC-41). Later releases add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `CREATED`. */
+            /** @description The field that changed: `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, `PRIORITY`, or `ATTACHMENT` (a file or content image was attached to the issue or one of its comments, or deleted; one entry for each attachment, S5-AC-40, S5-AC-41), `LABEL` (a label was put on or taken off; one entry for each label, S6A-AC-60), or `DUE_DATE` (the due date was set, changed, or cleared, S6A-AC-61). Later releases add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `CREATED`. */
             field: string | null;
             /**
              * Format: int64
@@ -1682,11 +1796,11 @@ export interface components {
             kind: "CREATED" | "CHANGED";
             /** @description For `ASSIGNEE`: the assignee after the change; null when it was cleared. Null for every other field. */
             newPerson: components["schemas"]["Person"] | null;
-            /** @description The value after the change, like `oldValue`. For `ATTACHMENT`: the ID of the attachment that was attached; null when one was deleted. */
+            /** @description The value after the change, like `oldValue`. For `ATTACHMENT`: the ID of the attachment that was attached; null when one was deleted. For `LABEL`: the name of the label that was put on; null when one was taken off. For `DUE_DATE`: the date after, `YYYY-MM-DD`; null when it was cleared. */
             newValue: string | null;
             /** @description For `ASSIGNEE`: the assignee before the change, by the account's current name; null when there was none. Null for every other field. */
             oldPerson: components["schemas"]["Person"] | null;
-            /** @description The value before the change: the name of the status or priority, or the title or content as it was. For `ATTACHMENT`: the ID of the attachment that was deleted, never its file name (S5-AC-43); null when one was attached. Null for `CREATED`, for `ASSIGNEE`, and when there was no value. */
+            /** @description The value before the change: the name of the status or priority, or the title or content as it was. For `ATTACHMENT`: the ID of the attachment that was deleted, never its file name (S5-AC-43); null when one was attached. For `LABEL`: the name the label had when it was taken off, not changed by a later rename (S6A-AC-05); null when one was put on. For `DUE_DATE`: the date before, `YYYY-MM-DD`; null when there was none. Null for `CREATED`, for `ASSIGNEE`, and when there was no value. */
             oldValue: string | null;
         };
         IssueSummary: {
@@ -1698,10 +1812,19 @@ export interface components {
             companyName: string;
             /** Format: date-time */
             createdAt: string;
+            /**
+             * Format: date
+             * @description `YYYY-MM-DD`; null without a due date (DUE-1).
+             */
+            dueDate: string | null;
             /** @description Staff filed the issue for the reporter (ISSUE-9). */
             filedOnBehalf: boolean;
             /** @description `{company code}-{number}`, for example `ACME-7`. */
             key: string;
+            /** @description Labels of the issue, in name order whatever the case (S6A-AC-50). Empty without labels. */
+            labels: components["schemas"]["LabelRef"][];
+            /** @description The due date is before today in the installation time zone (S6A-AC-35). `false` without a due date. */
+            overdue: boolean;
             /** @enum {string} */
             priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
             private: boolean;
@@ -1709,6 +1832,26 @@ export interface components {
             /** @enum {string} */
             status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
             title: string;
+        };
+        Label: {
+            /** @description `#RRGGBB` in capital letters, for example `#808080`. */
+            color: string;
+            /** Format: int64 */
+            id: number;
+            /**
+             * Format: int64
+             * @description Issues of the company that have this label now (S6A-AC-10).
+             */
+            issueCount: number;
+            /** @description 1 to 30 characters, unique in the company whatever the case. */
+            name: string;
+        };
+        LabelRef: {
+            /** @description `#RRGGBB` in capital letters. */
+            color: string;
+            /** Format: int64 */
+            id: number;
+            name: string;
         };
         Me: {
             /** @description The companies an agent is assigned to, in code order; `[]` for an admin, who sees every company. */
@@ -2086,6 +2229,13 @@ export interface components {
              */
             accountId: number;
         };
+        SetDueDateRequest: {
+            /**
+             * Format: date
+             * @description `YYYY-MM-DD`, today or later in the installation time zone (`POPDESK_TIMEZONE`, S6A-AC-30, S6A-AC-34). A time, an offset, or a day that does not exist (`2026-02-30`) is not taken (S6A-AC-31).
+             */
+            dueDate: string;
+        };
         SignInRequest: {
             /** @description Leading and trailing whitespace and case are ignored. */
             email: string;
@@ -2175,6 +2325,12 @@ export interface components {
              * @description The `version` of the issue as the caller read it (S3-AC-19).
              */
             version: number;
+        };
+        UpdateLabelRequest: {
+            /** @description `#` and six hexadecimal digits, as for `createLabel`. */
+            color?: string;
+            /** @description 1 to 30 characters, as for `createLabel`. Changing only the case of the label's own name works (S6A-AC-03). */
+            name?: string;
         };
         UpdateMeRequest: {
             /**
@@ -3630,6 +3786,237 @@ export interface operations {
             };
         };
     };
+    listCompanyLabels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The labels. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyLabels"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the caller cannot see it. An agent who is not assigned to the company gets this too (S6A-AC-11). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLabelRequest"];
+            };
+        };
+        responses: {
+            /** @description Created, with `issueCount` 0. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Label"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `name` missing (`REQUIRED`), only whitespace (`BLANK`), or over 30 characters (`TOO_LONG`); `color` not `#` and six hexadecimal digits (`INVALID_FORMAT`); `fields` lists all (S6A-AC-02, S6A-AC-04). `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S6A-AC-08). `LABEL_LIMIT_EXCEEDED`: the company has 200 labels already (S6A-AC-09). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or the caller cannot see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `LABEL_NAME_TAKEN`: the company has a label of this name, whatever the case (S6A-AC-03). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or no such label in this company: a label of another company is answered like one that does not exist (S6A-AC-12). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLabelRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Label"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `name` only whitespace (`BLANK`), over 30 characters (`TOO_LONG`), or `null` (`REQUIRED`); `color` not `#` and six hexadecimal digits (`INVALID_FORMAT`) or `null` (`REQUIRED`); `fields` lists all (S6A-AC-02, S6A-AC-04). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only (S0-AC-30). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company, or no such label in this company: a label of another company is answered like one that does not exist (S6A-AC-12). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `LABEL_NAME_TAKEN`: the company has a label of this name, whatever the case (S6A-AC-03). Changing only the case of the label's own name is not this. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listCompanyReporters: {
         parameters: {
             query?: {
@@ -4224,6 +4611,10 @@ export interface operations {
                 reporter?: number;
                 /** @description Only issues whose title or content, as shown, holds this text, 1 to 100 characters. Case is ignored; `%` and `_` are ordinary characters (COM-5). */
                 q?: string;
+                /** @description Only issues that have one of these labels: label IDs, given once for each label. Works with or without `companyCode`. An ID that does not exist, or a label of a company the caller cannot see, matches nothing, so with only such IDs the page is empty (S6A-AC-51, S6A-AC-52). */
+                label?: number[];
+                /** @description `createdAt` (the default): newest first. `dueDate`: earliest due date first, issues without one last, and issues with the same due date newest first (S6A-AC-53). Works with `q`. */
+                sort?: "createdAt" | "dueDate";
                 /** @description Page number, from 1. */
                 page?: number;
                 /** @description 1 to 100. */
@@ -4244,7 +4635,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedIssueSummary"];
                 };
             };
-            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `status` or `assignee` (`UNKNOWN_VALUE`), `reporter` not a number (`INVALID_FORMAT`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14) or with a character that cannot be stored (`INVALID_FORMAT`), or a parameter this list does not take (`UNKNOWN_PARAMETER`, S3-AC-07). */
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `status`, `assignee`, or `sort` (`UNKNOWN_VALUE`), `reporter` or a `label` not a number (`INVALID_FORMAT`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14) or with a character that cannot be stored (`INVALID_FORMAT`), or a parameter this list does not take (`UNKNOWN_PARAMETER`, S3-AC-07). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -5129,6 +5520,126 @@ export interface operations {
             };
         };
     };
+    setIssueDueDate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDueDateRequest"];
+            };
+        };
+        responses: {
+            /** @description The issue with its due date. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `dueDate` missing (`REQUIRED`), not a date `YYYY-MM-DD` (`INVALID_FORMAT`: a time or an offset, or a day that does not exist), or before today (`OUT_OF_RANGE`), also when it is the date an overdue issue has already (S6A-AC-31, S6A-AC-35). `ISSUE_CLOSED`: the issue is `CLOSED`; nothing changed (STATUS-7, S6A-AC-33). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    clearIssueDueDate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The issue without a due date. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `ISSUE_CLOSED`: the issue is `CLOSED`; nothing changed (STATUS-7, S6A-AC-33). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listIssueHistory: {
         parameters: {
             query?: {
@@ -5165,6 +5676,124 @@ export interface operations {
             };
             /** @description `UNAUTHENTICATED`. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    addIssueLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The issue with its labels. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `INVALID_INPUT`: the path's `id` is not a label of the issue's company (field `id` `UNKNOWN_VALUE`); one answer for a label of another company and an ID that does not exist (S6A-AC-22). `ISSUE_LABEL_LIMIT_EXCEEDED`: the issue has 20 labels already (S6A-AC-24). `ISSUE_CLOSED`: the issue is `CLOSED`; nothing changed (STATUS-7, S6A-AC-23). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    removeIssueLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The issue with its labels. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `ISSUE_CLOSED`: the issue is `CLOSED`; nothing changed (STATUS-7, S6A-AC-23). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
