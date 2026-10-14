@@ -59,4 +59,4 @@ export const Full: Story = { args: { open: true, labels: many, selected: many.sl
 /** 요청 중: 그 줄을 막는다. 껍데기라 아직 접힌 단추만 보인다. */
 export const Busy: Story = { args: { open: true, selected: ['1', '2'], busyIds: ['2'] } };
 /** 실패: 그 줄을 되돌리고 목록 아래에 오류 줄. 껍데기라 아직 접힌 단추만 보인다. */
-export const Failed: Story = { args: { open: true, error: '라벨을 붙이지 못했습니다. 다시 해 보세요.' } };
+export const Failed: Story = { args: { open: true, error: '라벨을 바꾸지 못했습니다. 다시 해 보세요.' } };

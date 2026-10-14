@@ -36,7 +36,7 @@ export interface LabelPickerProps {
   emptyText?: string;
   /** After `emptyText`, e.g. the admin's link "고객사 설정에서 만들기". */
   emptyAction?: ReactNode;
-  /** One line under the list after a failed request, e.g. "라벨을 붙이지 못했습니다. 다시 해 보세요." */
+  /** One line under the list after a failed request, e.g. "라벨을 바꾸지 못했습니다. 다시 해 보세요." */
   error?: string;
   /** `id` of the button; the opened part gets `{id}-list`. */
   id?: string;

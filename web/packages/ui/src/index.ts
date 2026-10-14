@@ -20,6 +20,7 @@ export { ConfirmDialog, type ConfirmDialogProps } from './components/ConfirmDial
 export { CopyField, type CopyFieldProps } from './components/CopyField';
 export { DataTable, type DataTableColumn, type DataTableProps } from './components/DataTable';
 export { Dialog, type DialogProps } from './components/Dialog';
+export { DueDatePicker, type DueDatePickerProps } from './components/DueDatePicker';
 export { EmptyState, type EmptyStateProps } from './components/EmptyState';
 export {
   FileUpload,
@@ -33,6 +34,7 @@ export { IconButton, type IconButtonProps } from './components/IconButton';
 export { InboxList, type InboxListItem, type InboxListLink, type InboxListProps } from './components/InboxList';
 export { IssueList, type IssueListItem, type IssueListProps } from './components/IssueList';
 export { LabelChip, type LabelChipProps } from './components/LabelChip';
+export { LabelChips, type LabelChipsProps } from './components/LabelChips';
 export { LabelPicker, type LabelPickerProps } from './components/LabelPicker';
 export { MarkdownEditor, type ImageUploadResult, type MarkdownEditorProps, type MarkdownTool } from './components/MarkdownEditor';
 export { MarkdownView, type MarkdownViewProps } from './components/MarkdownView';
