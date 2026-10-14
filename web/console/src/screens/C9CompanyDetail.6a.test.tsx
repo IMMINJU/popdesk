@@ -1,14 +1,15 @@
 // 6a 묶음 screens.md 4절 C-9 고객사 상세의 "라벨" 구역(관리자): 이름순 목록(칩, "문의 {n}건", 고치기,
 // 지우기), 빈 상태, 만들기·고치기 대화상자(이름 글자 수, 색 견본 라디오 그룹, #RRGGBB 입력, 미리 보기,
-// 409 문구), 붙은 수가 든 지우기 확인, 200개 한도, 보관한 고객사. 닫히거나 떠난 뒤 온 답은 버린다
-// (S6A-AC-83, S6A-AC-86).
-import { HttpResponse } from 'msw/http';
+// 409 문구), 붙은 수가 든 지우기 확인, 200개 한도, 보관한 고객사. 다른 고객사로 옮긴 뒤 온 답은 버리고,
+// 대화상자가 닫힌 뒤 온 실패는 버리고 성공은 목록을 다시 그린다(S6A-AC-83, S6A-AC-86).
+import { HttpResponse, http } from 'msw/http';
 import { describe, expect, test } from 'vitest';
 import {
   ACME,
   BETA,
   company,
   dialog,
+  errors,
   eventually,
   expectFieldError,
   expectNoAxeViolations,
@@ -20,6 +21,7 @@ import {
   renderAt,
   screen,
   sent,
+  server,
   state,
   text,
   within,
@@ -28,9 +30,12 @@ import { answered, closed, confirmButton, region, rowAction, rowActions, settle 
 import {
   ACME_LABELS,
   BETA_LABELS,
+  BILLING,
+  MOBILE,
   SWATCHES,
   URGENT,
   bodyOf,
+  chipIn,
   companyLabelPath,
   contract,
   label,
@@ -39,6 +44,7 @@ import {
   labelRegion,
   manyLabels,
   rejectedWith,
+  rgbText,
   s6a,
 } from '../__tests__/console6a';
 
@@ -67,6 +73,66 @@ async function openCreate(user: User): Promise<HTMLElement> {
   await user.click(await found(makeButton, '"라벨 만들기"'));
   return dialog();
 }
+
+/** Goes to another company as a person would: the menu "고객사", then its link in the list. */
+async function goToCompany(user: User, name: RegExp, code: string): Promise<void> {
+  await user.click(await found(() => screen.queryAllByRole('link', { name: '고객사' }).find((a) => a.closest('nav') !== null), '메뉴 "고객사"'));
+  await user.click(await found(() => screen.queryByRole('link', { name }), `${code} 링크`));
+  await eventually(() => {
+    expect(window.location.pathname).toBe(`/companies/${code}`);
+  });
+}
+
+/** The texts of the `role="alert"` bands that say something. */
+const alertsShown = () => screen.queryAllByRole('alert').map(text).filter((t) => t !== '');
+
+/** The three label dialogs: how to open one, fill it, send it, and the list after its success. */
+const LATE: {
+  what: string;
+  method: 'post' | 'patch' | 'delete';
+  path: string;
+  open: (user: User) => Promise<HTMLElement>;
+  fill: (user: User, box: HTMLElement) => Promise<void>;
+  go: (box: HTMLElement) => HTMLElement;
+  after: { shown: string[]; gone: string[] };
+}[] = [
+  {
+    what: '만들기',
+    method: 'post',
+    path: ACME_LABELS,
+    open: openCreate,
+    fill: (user, box) => user.type(nameField(box), '환불'),
+    go: confirmButton,
+    after: { shown: ['환불', '긴급'], gone: [] },
+  },
+  {
+    what: '고치기',
+    method: 'patch',
+    path: companyLabelPath(URGENT.id),
+    open: async (user) => {
+      await user.click(await rowAction(user, await lineOf('긴급'), '고치기'));
+      return dialog();
+    },
+    fill: async (user, box) => {
+      await user.clear(nameField(box));
+      await user.type(nameField(box), '아주 급함');
+    },
+    go: confirmButton,
+    after: { shown: ['아주 급함'], gone: ['긴급'] },
+  },
+  {
+    what: '지우기',
+    method: 'delete',
+    path: companyLabelPath(URGENT.id),
+    open: async (user) => {
+      await user.click(await rowAction(user, await lineOf('긴급'), '지우기'));
+      return dialog();
+    },
+    fill: () => Promise.resolve(),
+    go: (box) => within(box).getByRole('button', { name: '지우기' }),
+    after: { shown: ['결제'], gone: ['긴급'] },
+  },
+];
 
 describe('C-9 고객사 상세 라벨 구역 (6a 묶음)', () => {
   test('S6A-AC-83 C-9 라벨 목록: "배정 상담원" 다음에 "라벨" 구역이 있고 줄마다 이름, "문의 {n}건", "고치기", "지우기"다. 이름순이다', async () => {
@@ -220,8 +286,7 @@ describe('C-9 고객사 상세 라벨 구역 (6a 묶음)', () => {
     await user.click(confirmButton(box));
     await sent('POST', ACME_LABELS);
 
-    await user.click(await found(() => screen.queryAllByRole('link', { name: '고객사' }).find((a) => a.closest('nav') !== null), '메뉴 "고객사"'));
-    await user.click(await found(() => screen.queryByRole('link', { name: /베타상사/ }), 'BETA 링크'));
+    await goToCompany(user, /베타상사/, 'BETA');
     await sent('GET', BETA_LABELS);
     await lineOf('베타전용');
     const done = answered('POST', ACME_LABELS);
@@ -233,6 +298,107 @@ describe('C-9 고객사 상세 라벨 구역 (6a 묶음)', () => {
     expect(labelLine('환불'), 'BETA 목록의 ACME 라벨').toBeNull();
     expect(openDialog(), '대화상자').toBeNull();
     expect(screen.queryAllByRole('alert').map(text).join(' ')).not.toContain('라벨');
+  });
+
+  test.each([
+    { what: '409', answer: () => rejectedWith('createLabel', 'LABEL_NAME_TAKEN', 409) },
+    { what: '500', answer: () => errors.internal() },
+  ])('S6A-AC-86 C-9 다른 고객사로 옮긴 뒤 온 만들기 실패($what)는 버린다: 새 고객사에 오류 띠도 대화상자도 없다', async ({ answer }) => {
+    state.companies = [ACME, BETA];
+    const release = gate();
+    on('post', ACME_LABELS, async () => {
+      await release.opened;
+      return answer();
+    });
+    const { user } = renderAt(URL_ACME);
+    const box = await openCreate(user);
+    await user.type(nameField(box), '긴급');
+    await user.click(confirmButton(box));
+    await sent('POST', ACME_LABELS);
+
+    await goToCompany(user, /베타상사/, 'BETA');
+    await sent('GET', BETA_LABELS);
+    await lineOf('베타전용');
+    const done = answered('POST', ACME_LABELS);
+    release.open();
+    await done;
+    await settle();
+
+    expect(window.location.pathname).toBe('/companies/BETA');
+    expect(openDialog(), '대화상자').toBeNull();
+    expect(alertsShown(), '오류 띠').toEqual([]);
+    const again = await openCreate(user);
+    expect(within(again).queryByText(TAKEN_TEXT), 'BETA 대화상자의 409 문구').toBeNull();
+    expect(within(again).queryAllByRole('alert').filter((el) => text(el) !== ''), 'BETA 대화상자의 오류').toEqual([]);
+  });
+
+  test.each(LATE)('S6A-AC-86 C-9 $what 대화상자를 닫은 뒤 온 성공은 목록을 서버의 값으로 다시 그린다', async (late) => {
+    const release = gate();
+    // The gated handler returns nothing, so the request goes on to the fake server, which changes the list.
+    server.use(
+      http[late.method](`*${late.path}`, async () => {
+        await release.opened;
+      }),
+    );
+    const { user } = renderAt(URL_ACME);
+    const box = await late.open(user);
+    await late.fill(user, box);
+    await user.click(late.go(box));
+    await sent(late.method.toUpperCase(), late.path);
+
+    await user.keyboard('{Escape}');
+    await closed();
+    const done = answered(late.method.toUpperCase(), late.path);
+    release.open();
+    await done;
+    await settle();
+
+    await eventually(() => {
+      for (const name of late.after.shown) expect(labelLine(name), `"${name}" 줄`).not.toBeNull();
+      for (const name of late.after.gone) expect(labelLine(name), `"${name}" 줄`).toBeNull();
+    });
+    expect(openDialog(), '닫힌 대화상자').toBeNull();
+  });
+
+  test.each(LATE.filter((late) => late.method !== 'post'))(
+    'S6A-AC-86 C-9 $what 대화상자를 닫은 뒤 온 실패(500)는 버린다: 오류 띠가 없고 다시 연 대화상자에 오류가 없다',
+    async (late) => {
+      const release = gate();
+      server.use(
+        http[late.method](`*${late.path}`, async () => {
+          await release.opened;
+          return errors.internal();
+        }),
+      );
+      const { user } = renderAt(URL_ACME);
+      const box = await late.open(user);
+      await late.fill(user, box);
+      await user.click(late.go(box));
+      await sent(late.method.toUpperCase(), late.path);
+
+      await user.keyboard('{Escape}');
+      await closed();
+      const done = answered(late.method.toUpperCase(), late.path);
+      release.open();
+      await done;
+      await settle();
+
+      expect(alertsShown(), '닫힌 뒤 온 실패의 오류 띠').toEqual([]);
+      expect(labelLine('긴급'), '그대로인 줄').not.toBeNull();
+      const again = await late.open(user);
+      expect(within(again).queryAllByRole('alert').filter((el) => text(el) !== ''), '다시 연 대화상자의 오류').toEqual([]);
+      expect(isBlocked(late.go(again)), '다시 연 대화상자의 단추').toBe(false);
+    },
+  );
+
+  test('S6A-AC-83 C-9 목록 줄의 색 견본: 줄마다 그 라벨의 이름이 든 칩이 있고 바탕이 라벨 색이다', async () => {
+    renderAt(URL_ACME);
+
+    for (const l of [URGENT, BILLING, MOBILE]) {
+      const line = await lineOf(l.name);
+      const chip = await found(() => chipIn(line, l.name), `"${l.name}" 줄의 칩`);
+      expect(chip.style.backgroundColor, `"${l.name}" 칩의 바탕`).toBe(rgbText(l.color));
+    }
   });
 
   test('S6A-AC-86 C-9 닫은 뒤 온 409는 버린다: 다시 연 대화상자에 오류가 없다', async () => {

@@ -87,8 +87,13 @@ export function label(id: number, name: string, color: string, issueCount = 0): 
 /** Thirty characters: the longest name a label takes. */
 export const LONG_NAME = '고객사 결제 모듈 장애 대응 우선 처리 필요한 건 모음';
 
-/** Labels of every swatch plus long names: the widest lists the screens draw. */
-export const WIDE_LABELS: Label[] = [
+/** Name order whatever the case, as the contract gives labels (S6A-AC-10, S6A-AC-50). */
+export function byName<T extends { name: string }>(items: readonly T[]): T[] {
+  return [...items].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+}
+
+/** Labels of every swatch plus long names, in name order: the widest lists the screens draw. */
+export const WIDE_LABELS: Label[] = byName([
   label(61, '긴급', '#C0262D', 3),
   label(62, '결제', '#245FB0', 1),
   label(63, '모바일', '#F2C14E', 0),
@@ -99,7 +104,12 @@ export const WIDE_LABELS: Label[] = [
   label(68, '기본 회색', '#808080', 0),
   label(69, LONG_NAME.slice(0, 30), '#245FB0', 7),
   label(70, `${LONG_NAME.slice(0, 27)} 둘`, '#C0262D', 1),
-];
+]);
+
+/** `n` labels, the long ones first, in name order: a company at the limit of 200. */
+export function manyLabels(n: number): Label[] {
+  return byName(Array.from({ length: n }, (_, i) => label(1000 + i, `${LONG_NAME.slice(0, 25)} ${String(i + 1).padStart(3, '0')}`, '#245FB0', i % 13)));
+}
 
 export function scenario(over: Partial<Scenario> = {}): Scenario {
   const one = issue();
@@ -135,7 +145,7 @@ function answer(method: string, path: string): Response {
   const issueMatch = /^\/api\/console\/issues\/([^/]+)$/.exec(path);
   if (issueMatch) return decodeURIComponent(issueMatch[1] ?? '') === s.issue.key ? json(s.issue) : notFound();
   const labels = /^\/api\/console\/companies\/([^/]+)\/labels$/.exec(path);
-  if (labels) return json({ items: s.labels[decodeURIComponent(labels[1] ?? '')] ?? [] });
+  if (labels) return json({ items: byName(s.labels[decodeURIComponent(labels[1] ?? '')] ?? []) });
   const companyMatch = /^\/api\/console\/companies\/([^/]+)$/.exec(path);
   if (companyMatch) {
     const found = s.companies.find((c) => c.code === decodeURIComponent(companyMatch[1] ?? ''));

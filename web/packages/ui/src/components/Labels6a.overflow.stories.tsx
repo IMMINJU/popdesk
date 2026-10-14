@@ -1,9 +1,9 @@
 // 6a 묶음의 공용 컴포넌트 넷을 360·820·1280 폭, 밝게·어둡게에서 그리고, play에서 페이지와 부품이
-// 가로로 넘치지 않는지 본다(screens.md 5·6절, S6A-AC-85, S6A-AC-91). 가장 넓은 꼴로 그린다:
-// 30자 이름, 견본 여덟, 열린 고르기(거르기 입력, 한도, 오류).
+// 가로로 넘치지 않는지, 테마가 그것인지, axe(대비 포함) 위반이 없는지 본다(screens.md 5·6절, S6A-AC-85,
+// S6A-AC-91). 가장 넓은 꼴로 그린다: 30자 이름, 견본 여덟, 열린 고르기(거르기 입력, 한도, 오류).
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
-import { at, expectFits, expectPageFits, namedPart, settled, textOf, waitFor, type Theme, type Width } from '../__tests__/overflow';
+import { at, expectDrawnRight, moreIn, namedPart, textOf, waitFor, type Theme, type Width } from '../__tests__/overflow';
 import type { LabelItem } from '../types';
 import { DueDatePicker } from './DueDatePicker';
 import { LabelChip } from './LabelChip';
@@ -90,7 +90,7 @@ const chipParts: Part = async (canvas) => {
 };
 
 const chipsParts: Part = async (canvas) => {
-  const more = await waitFor(() => canvas.querySelector('[title]'), '"+n"');
+  const more = await waitFor(() => moreIn(canvas), '"+n"');
   return [{ el: more.parentElement ?? more, what: '칩 줄' }];
 };
 
@@ -109,10 +109,7 @@ function story(width: Width, theme: Theme, render: () => ReactElement, parts: Pa
     ...at(width, theme),
     render,
     play: async ({ canvasElement }) => {
-      const found = await parts(canvasElement);
-      await settled();
-      expectPageFits(width);
-      for (const { el, what } of found) expectFits(el, what);
+      await expectDrawnRight(width, theme, await parts(canvasElement));
     },
   };
 }

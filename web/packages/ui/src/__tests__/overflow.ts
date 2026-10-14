@@ -12,6 +12,10 @@
 //
 // No `storybook/test` here: the console has no Storybook packages, so its stories import this file
 // and fail by throwing.
+//
+// After the widths, `play` checks the theme (`<html data-theme>`) and runs axe with the contrast
+// rule on (`expectDrawnRight`).
+import axe from 'axe-core';
 
 export const WIDTHS = [360, 820, 1280] as const;
 export type Width = (typeof WIDTHS)[number];
@@ -69,6 +73,32 @@ export function expectPageFits(width: Width): void {
   expectFits(document.documentElement, `${String(width)} 폭의 페이지`);
 }
 
+/** Throws unless `<html data-theme>` is `theme`: the story really drew in that theme. */
+export function expectTheme(theme: Theme): void {
+  const now = document.documentElement.dataset['theme'];
+  if (now !== theme) throw new Error(`테마가 ${theme}이 아니다 (data-theme ${String(now)})`);
+}
+
+/**
+ * axe on the whole page in the real browser, with the contrast rule on (S6A-AC-85): the jsdom
+ * tests turn it off. The `region` rule (content inside landmarks) is off: a component story
+ * draws its part outside a page, and the screen tests keep the rule in jsdom.
+ */
+export async function expectNoAxeViolations(): Promise<void> {
+  const result = await axe.run(document, { rules: { 'color-contrast': { enabled: true }, region: { enabled: false } } });
+  const found = result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
+  if (found.length > 0) throw new Error(`axe 위반 ${String(found.length)}건: ${found.join(' / ')}`);
+}
+
+/** The play of every overflow story: the theme, then the width and the parts, then axe. */
+export async function expectDrawnRight(width: Width, theme: Theme, parts: readonly { el: Element; what: string }[]): Promise<void> {
+  expectTheme(theme);
+  await settled();
+  expectPageFits(width);
+  for (const { el, what } of parts) expectFits(el, what);
+  await expectNoAxeViolations();
+}
+
 /** Waits a frame twice, so a layout that changes after the first paint has settled. */
 export async function settled(): Promise<void> {
   await nextFrame();
@@ -86,9 +116,21 @@ export function termValue(root: ParentNode, term: string): HTMLElement | null {
   return dt?.nextElementSibling instanceof HTMLElement ? dt.nextElementSibling : null;
 }
 
-/** A button whose text or `aria-label` is `name`, inside `root`. */
+/** The name of an element from `aria-labelledby`, `aria-label`, or its text, in that order. */
+export function nameOf(el: Element): string {
+  const by = el.getAttribute('aria-labelledby');
+  if (by !== null) return by.split(/\s+/).map((id) => textOf(document.getElementById(id))).join(' ');
+  return el.getAttribute('aria-label') ?? textOf(el);
+}
+
+/** A button named `name` (see `nameOf`), inside `root`. */
 export function buttonNamed(root: ParentNode, name: string): HTMLButtonElement | null {
-  return Array.from(root.querySelectorAll('button')).find((b) => (b.getAttribute('aria-label') ?? textOf(b)) === name) ?? null;
+  return Array.from(root.querySelectorAll('button')).find((b) => nameOf(b) === name) ?? null;
+}
+
+/** The "+n" of a `LabelChips` inside `root`: an element with a `title` whose text starts with "+". */
+export function moreIn(root: ParentNode): HTMLElement | null {
+  return Array.from(root.querySelectorAll<HTMLElement>('[title]')).find((el) => textOf(el).startsWith('+')) ?? null;
 }
 
 /** A `fieldset` or `role="group"` / `role="region"` whose name (legend, aria-label, or labelling heading) is `name`. */

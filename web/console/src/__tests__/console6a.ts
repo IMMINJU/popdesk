@@ -271,10 +271,21 @@ export function metaValueNow(term: string): HTMLElement | null {
   return dt?.nextElementSibling instanceof HTMLElement ? dt.nextElementSibling : null;
 }
 
-/** The "바꾸기" button inside the `dd` of `term`, or null. */
+/**
+ * The "바꾸기" button inside the `dd` of `term`, or null. Its accessible name is "라벨 바꾸기" or
+ * "마감일 바꾸기" (screens.md 1절): the locked slice 3 tests want one button named "바꾸기" or
+ * "담당자 바꾸기" on the page, so the 담당자 one keeps either name.
+ */
 export function changeButtonOf(term: string): HTMLElement | null {
   const dd = metaValueNow(term);
-  return dd ? within(dd).queryByRole('button', { name: '바꾸기' }) : null;
+  const name = term === '담당자' ? /^(담당자 )?바꾸기$/ : `${term} 바꾸기`;
+  return dd ? within(dd).queryByRole('button', { name }) : null;
+}
+
+/** Every button of the `dd` of `term` whose name holds "바꾸기", whatever the rest of the name. */
+export function anyChangeButtonOf(term: string): HTMLElement[] {
+  const dd = metaValueNow(term);
+  return dd ? within(dd).queryAllByRole('button', { name: /바꾸기/ }) : [];
 }
 
 /** The terms of the C-4 value list, in order. */
@@ -310,6 +321,26 @@ export function labelLineNames(names: readonly string[]): string[] {
     .filter((x) => x.at >= 0)
     .sort((a, b) => a.at - b.at)
     .map((x) => x.n);
+}
+
+/** `#RRGGBB` as jsdom writes a colour set in `style`: `rgb(r, g, b)`. */
+export function rgbText(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return `rgb(${String(r)}, ${String(g)}, ${String(b)})`;
+}
+
+/**
+ * The chip of `name` inside `root`: an element whose whole text is the name and that, or an
+ * element above it inside `root`, carries the background colour in `style` (the chip colour
+ * is set on the chip itself, LabelChip.test.tsx). Returns the element with the colour; null when there is none.
+ */
+export function chipIn(root: HTMLElement, name: string): HTMLElement | null {
+  for (const el of within(root).queryAllByText(name, { exact: true })) {
+    for (let at: HTMLElement | null = el; at && at !== root.parentElement; at = at.parentElement) {
+      if (at.style.backgroundColor !== '') return at;
+    }
+  }
+  return null;
 }
 
 /** A due date the browser shows in C-4: `2026년 10월 20일`. */

@@ -462,6 +462,9 @@ const defaultHandlers = [
     const denied = requireSession() ?? unknownCompany(params.code) ?? requireAdmin();
     return denied ?? HttpResponse.json(paged(state.agents));
   }),
+  // C-3 (with a company chosen), C-4 and C-9 ask for a company's labels (slice 6a): none, so the
+  // earlier screen tests see an empty label part and no error band. console6a.ts answers with labels.
+  http.get('*/api/console/companies/:code/labels', () => requireSession() ?? HttpResponse.json<Schemas['CompanyLabels']>({ items: [] })),
   http.put('*/api/console/companies/:code/agents/:accountId', ({ params }) => {
     const denied = requireSession() ?? unknownCompany(params.code) ?? requireAdmin();
     if (denied) return denied;

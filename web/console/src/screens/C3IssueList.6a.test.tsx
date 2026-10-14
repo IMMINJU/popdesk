@@ -1,33 +1,30 @@
 // 6a 묶음 screens.md 2절 C-3 문의 목록: "라벨", "마감일" 열, 고객사를 고른 뒤의 "라벨" 필터(label 여러 번),
-// "정렬"의 "마감일순"(sort=dueDate), 주소에 남는 label과 sort. 고객사를 바꾼 뒤 온 옛 라벨 목록은 버린다
-// (S6A-AC-82, S6A-AC-86).
+// "정렬"의 "마감일순"(sort=dueDate), 주소에 남는 label과 sort와 그 경계(정렬은 필터가 아니다). 고객사를
+// 바꾸거나 지운 뒤 온 옛 라벨 목록은 버린다(S6A-AC-82, S6A-AC-86).
 import { HttpResponse } from 'msw/http';
 import { describe, expect, test } from 'vitest';
-import { ACME, BETA, eventually, expectNoAxeViolations, found, gate, on, renderAt, screen, sent, state, summary, text, within } from '../__tests__/console';
+import { ACME, BETA, callsTo, eventually, expectNoAxeViolations, found, gate, on, pageText, renderAt, screen, sent, state, summary, text, within } from '../__tests__/console';
 import { answered, settle } from '../__tests__/console1a';
 import { ISSUES, addressQuery, cellText, chosen, issueRow, lastList, optionLabels, select } from '../__tests__/console3';
-import { ACME_LABELS, BETA_LABELS, BETA_ONLY, BILLING, MOBILE, URGENT, boxIn, contract, labelParams, refOf, s6a } from '../__tests__/console6a';
-
-type User = ReturnType<typeof renderAt>['user'];
+import { ACME_LABELS, BETA_LABELS, BETA_ONLY, BILLING, MOBILE, URGENT, boxIn, byName, contract, labelParams, refOf, s6a } from '../__tests__/console6a';
 
 const URL_ALL = '/issues';
 const URL_ACME = '/issues?companyCode=ACME';
 const THIS_YEAR = new Date().getFullYear();
 
+/** The 라벨 filter: a group of boxes named 라벨, drawn like the 상태 filter (screens.md 2절). */
 const labelGroup = () => screen.queryByRole('group', { name: '라벨' });
-/** A folded control that opens the 라벨 filter, if it is drawn folded. */
-const labelOpener = () =>
-  screen.queryAllByRole('button').find((b) => b.getAttribute('aria-expanded') === 'false' && /라벨/.test(b.getAttribute('aria-label') ?? text(b))) ?? null;
 
-/** The boxes of the 라벨 filter, opened if it is folded. */
-async function labelFilter(user: User): Promise<HTMLElement> {
-  await eventually(() => {
-    expect(labelGroup() ?? labelOpener(), '"라벨" 필터').not.toBeNull();
-  });
-  const opener = labelGroup() ? null : labelOpener();
-  if (opener) await user.click(opener);
-  return found(labelGroup, '"라벨" 필터의 상자들');
+/** The 라벨 filter with its boxes, waited for. */
+function labelFilter(): Promise<HTMLElement> {
+  return found(() => {
+    const group = labelGroup();
+    return group && within(group).queryAllByRole('checkbox').length > 0 ? group : null;
+  }, '"라벨" 필터의 상자들');
 }
+
+/** The "필터 지우기" links and buttons on the page. */
+const clearFilters = () => [...screen.queryAllByRole('link', { name: '필터 지우기' }), ...screen.queryAllByRole('button', { name: '필터 지우기' })];
 
 function filterBox(group: HTMLElement, name: string): HTMLInputElement {
   const one = boxIn(group, name);
@@ -60,9 +57,11 @@ describe('C-3 문의 목록 라벨과 마감일 (6a 묶음)', () => {
     const cell = cellText(row, '라벨');
     for (const name of ['결제', '긴급', '모바일']) expect(cell).toContain(name);
     expect(cell, '가린 이름의 화면 읽기 글자').toContain('보안');
-    const plus = within(row).queryAllByTitle(/보안/);
-    expect(plus, '"+1"의 title').toHaveLength(1);
+    // The "+n" is the element with a title whose text starts with "+": a cut chip may carry its full name as a title too.
+    const plus = Array.from(row.querySelectorAll<HTMLElement>('[title]')).filter((el) => text(el).startsWith('+'));
+    expect(plus, '"+1"').toHaveLength(1);
     expect(text(plus[0])).toContain('+1');
+    expect(plus[0]?.getAttribute('title'), '"+1"의 title').toContain('보안');
 
     const one = await issueRow('ACME-8');
     expect(cellText(one, '라벨')).toContain('긴급');
@@ -102,17 +101,16 @@ describe('C-3 문의 목록 라벨과 마감일 (6a 묶음)', () => {
     await issueRow('ACME-7');
     await select('고객사');
     expect(labelGroup(), '고객사를 고르기 전의 라벨 필터').toBeNull();
-    expect(labelOpener(), '고객사를 고르기 전의 라벨 필터').toBeNull();
 
     await user.selectOptions(await select('고객사'), 'ACME');
     await sent('GET', ACME_LABELS);
-    let group = await labelFilter(user);
+    let group = await labelFilter();
     expect(boxIn(group, BETA_ONLY.name), '다른 고객사의 라벨').toBeNull();
     await user.click(filterBox(group, '긴급'));
     await eventually(() => {
       expect(labelParams()).toEqual(['61']);
     });
-    group = await labelFilter(user);
+    group = await labelFilter();
     await user.click(filterBox(group, '모바일'));
 
     await eventually(() => {
@@ -159,7 +157,7 @@ describe('C-3 문의 목록 라벨과 마감일 (6a 묶음)', () => {
   });
 
   test('S6A-AC-82 C-3 주소로 열기: label과 sort가 든 주소로 열면 첫 요청부터 그대로이고 고른 상태로 보인다', async () => {
-    const { user } = renderAt(`${URL_ACME}&label=61&label=63&sort=dueDate`);
+    renderAt(`${URL_ACME}&label=61&label=63&sort=dueDate`);
 
     const first = new URL((await sent('GET', ISSUES))[0]?.url ?? 'http://x/').searchParams;
     expect(sorted(first.getAll('label')), '첫 요청의 label').toEqual(['61', '63']);
@@ -169,7 +167,7 @@ describe('C-3 문의 목록 라벨과 마감일 (6a 묶음)', () => {
     await eventually(() => {
       expect(chosen(sort)).toBe('마감일순');
     });
-    const group = await labelFilter(user);
+    const group = await labelFilter();
     await eventually(() => {
       expect(filterBox(group, '긴급')).toBeChecked();
     });
@@ -183,23 +181,101 @@ describe('C-3 문의 목록 라벨과 마감일 (6a 묶음)', () => {
     const release = gate();
     on('get', ACME_LABELS, async () => {
       await release.opened;
-      return HttpResponse.json(contract('listCompanyLabels', 200, { items: s6a.labels['ACME'] ?? [] }));
+      return HttpResponse.json(contract('listCompanyLabels', 200, { items: byName(s6a.labels['ACME'] ?? []) }));
     });
     const { user } = renderAt(URL_ACME);
     await sent('GET', ACME_LABELS);
 
     await user.selectOptions(await select('고객사'), 'BETA');
     await sent('GET', BETA_LABELS);
-    const group = await labelFilter(user);
+    const group = await labelFilter();
     await found(() => boxIn(group, BETA_ONLY.name), `라벨 필터의 "${BETA_ONLY.name}"`);
     const done = answered('GET', ACME_LABELS);
     release.open();
     await done;
     await settle();
 
-    const now = await labelFilter(user);
+    const now = await labelFilter();
     expect(boxIn(now, BETA_ONLY.name), '새 고객사의 라벨').not.toBeNull();
     expect(boxIn(now, '긴급'), '옛 고객사의 라벨').toBeNull();
     expect(boxIn(now, '결제'), '옛 고객사의 라벨').toBeNull();
+  });
+
+  test('S6A-AC-86 C-3 고객사를 지운 뒤 온 옛 라벨 목록은 버린다: 라벨 필터가 생기지 않고, 다시 고른 고객사의 라벨만 있다', async () => {
+    state.companies = [ACME, BETA];
+    const release = gate();
+    on('get', ACME_LABELS, async () => {
+      await release.opened;
+      return HttpResponse.json(contract('listCompanyLabels', 200, { items: byName(s6a.labels['ACME'] ?? []) }));
+    });
+    const { user } = renderAt(URL_ACME);
+    await sent('GET', ACME_LABELS);
+
+    await user.selectOptions(await select('고객사'), '');
+    await eventually(() => {
+      expect(lastList().get('companyCode')).toBeNull();
+    });
+    const done = answered('GET', ACME_LABELS);
+    release.open();
+    await done;
+    await settle();
+
+    expect(labelGroup(), '고객사를 지운 뒤의 라벨 필터').toBeNull();
+    await user.selectOptions(await select('고객사'), 'BETA');
+    await sent('GET', BETA_LABELS);
+    const group = await labelFilter();
+    await found(() => boxIn(group, BETA_ONLY.name), `라벨 필터의 "${BETA_ONLY.name}"`);
+    for (const old of [URGENT, BILLING, MOBILE]) expect(boxIn(group, old.name), `옛 고객사의 라벨 "${old.name}"`).toBeNull();
+  });
+
+  test.each([
+    { what: 'companyCode 없는 label', path: '/issues?label=61' },
+    { what: '모르는 sort', path: '/issues?sort=priority' },
+    { what: 'companyCode 없는 label과 모르는 sort', path: '/issues?label=61&label=63&sort=bogus' },
+  ])('S6A-AC-82 C-3 주소의 경계($what): 버리고 기본값으로 연다. 요청에 label이 없고 "정렬"은 "올린 시각순"이다', async ({ path }) => {
+    renderAt(path);
+
+    const first = new URL((await sent('GET', ISSUES))[0]?.url ?? 'http://x/').searchParams;
+    expect(first.getAll('label'), '첫 요청의 label').toEqual([]);
+    expect([null, 'createdAt'], '첫 요청의 sort').toContain(first.get('sort'));
+    const sort = await select('정렬');
+    expect(chosen(sort)).toBe('올린 시각순');
+    await issueRow('ACME-7');
+    expect(lastList().getAll('label'), '마지막 요청의 label').toEqual([]);
+    expect([null, 'createdAt'], '마지막 요청의 sort').toContain(lastList().get('sort'));
+    expect(labelGroup(), '고객사 없이 보이는 라벨 필터').toBeNull();
+    expect(clearFilters(), '버린 값으로 생긴 "필터 지우기"').toEqual([]);
+  });
+
+  test('S6A-AC-82 C-3 정렬은 필터가 아니다: 정렬만 바꾼 빈 목록에는 "조건에 맞는 문의가 없습니다"와 "필터 지우기"가 없다', async () => {
+    state.issues = [];
+    renderAt('/issues?sort=dueDate');
+
+    const sort = await select('정렬');
+    await eventually(() => {
+      expect(chosen(sort)).toBe('마감일순');
+      expect(lastList().get('sort')).toBe('dueDate');
+    });
+    await settle();
+    expect(pageText()).not.toContain('조건에 맞는 문의가 없습니다');
+    expect(clearFilters(), '"필터 지우기"').toEqual([]);
+  });
+
+  test('S6A-AC-82 C-3 "필터 지우기"는 정렬을 그대로 둔다: 요청과 주소에 sort=dueDate가 남고 "정렬"은 "마감일순"이다', async () => {
+    const { user } = renderAt('/issues?status=RECEIVED&sort=dueDate');
+    await eventually(() => {
+      expect(lastList().get('sort')).toBe('dueDate');
+    });
+    const before = callsTo('GET', ISSUES).length;
+
+    await user.click(await found(() => clearFilters()[0], '"필터 지우기"'));
+
+    await eventually(() => {
+      expect(callsTo('GET', ISSUES).length, '지운 뒤의 목록 요청').toBeGreaterThan(before);
+      expect(lastList().getAll('status'), '지운 뒤 요청의 status').toEqual([]);
+      expect(lastList().get('sort'), '지운 뒤 요청의 sort').toBe('dueDate');
+    });
+    expect(addressQuery().get('sort'), '주소의 sort').toBe('dueDate');
+    expect(chosen(await select('정렬'))).toBe('마감일순');
   });
 });

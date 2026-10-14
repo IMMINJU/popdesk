@@ -20,8 +20,11 @@ const moreText = (hidden: readonly LabelItem[]) => `라벨 ${String(hidden.lengt
 /** Names drawn as a chip of their own: an element whose whole text is the name. */
 const chipsShown = (names: readonly string[]) => names.filter((n) => screen.queryAllByText(n, { exact: true }).length > 0);
 
-/** The "+n": the element that carries a `title`. */
-const more = () => document.querySelector<HTMLElement>('[title]');
+/**
+ * The "+n": an element with a `title` whose text starts with "+". A chip that cuts a long name
+ * may carry the full name as its own `title`; that one is not the "+n".
+ */
+const more = () => Array.from(document.querySelectorAll<HTMLElement>('[title]')).find((el) => text(el).startsWith('+')) ?? null;
 
 describe('LabelChips', () => {
   test('S6A-AC-82 LabelChips 0개: 아무것도 그리지 않는다', () => {

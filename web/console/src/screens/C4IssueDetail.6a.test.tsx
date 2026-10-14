@@ -1,10 +1,12 @@
 // 6a 묶음 screens.md 1절 C-4 문의 상세의 "라벨", "마감일" 칸과 두 고르기, 3절 이력의 문장.
 // 라벨은 한 번에 하나씩 붙이고 떼며 답의 문의로 다시 그린다. "지남"은 서버의 overdue만 본다.
-// 고르기가 닫히거나 다른 문의로 바뀐 뒤 온 답은 버린다(S6A-AC-80, 81, 86).
+// 다른 문의로 바뀐 뒤 온 답은 버린다. 고르기가 닫힌 뒤 온 실패는 버리고 성공은 칸을 다시 그린다(S6A-AC-80, 81, 86).
 import { HttpResponse } from 'msw/http';
 import { describe, expect, test } from 'vitest';
 import {
+  ACME,
   AGENT,
+  BETA,
   callsTo,
   errors,
   eventually,
@@ -27,13 +29,16 @@ import { answered, settle } from '../__tests__/console1a';
 import { history, issueIn, opener, s3 } from '../__tests__/console3';
 import {
   ACME_LABELS,
+  BETA_LABELS,
   BETA_ONLY,
   BILLING,
   DUE_DATE_7,
   MOBILE,
   URGENT,
+  anyChangeButtonOf,
   bodyOf,
   boxIn,
+  byName,
   changeButtonOf,
   contract,
   issueLabelPath,
@@ -67,14 +72,32 @@ async function opened(): Promise<void> {
 
 async function openLabels(user: User): Promise<HTMLElement> {
   await opened();
-  await user.click(await found(() => changeButtonOf('라벨'), '"라벨" 칸의 "바꾸기"'));
+  await user.click(await found(() => changeButtonOf('라벨'), '"라벨" 칸의 "라벨 바꾸기"'));
   return found(labelGroup, '라벨 고르기(group "라벨")');
 }
 
 async function openDue(user: User): Promise<HTMLInputElement> {
   await opened();
-  await user.click(await found(() => changeButtonOf('마감일'), '"마감일" 칸의 "바꾸기"'));
+  await user.click(await found(() => changeButtonOf('마감일'), '"마감일" 칸의 "마감일 바꾸기"'));
   return found(dueInput, '날짜 입력 "마감일"');
+}
+
+/**
+ * Opens the picker of `term` unless it is open already: after moving to another issue the
+ * screen may keep it open or close it.
+ */
+async function reopen(user: User, term: '라벨' | '마감일'): Promise<void> {
+  const toggle = await found(() => changeButtonOf(term), `"${term}" 칸의 "${term} 바꾸기"`);
+  if (toggle.getAttribute('aria-expanded') !== 'true') await user.click(toggle);
+}
+
+/** Goes to another issue as a person would: the menu "문의", then its link in the list. */
+async function goToIssue(user: User, title: RegExp, key: string): Promise<void> {
+  await user.click(await found(() => screen.queryAllByRole('link', { name: '문의' }).find((a) => a.closest('nav') !== null), '메뉴 "문의"'));
+  await user.click(await found(() => screen.queryByRole('link', { name: title }), `${key} 링크`));
+  await eventually(() => {
+    expect(window.location.pathname).toBe(`/issues/${key}`);
+  });
 }
 
 function box(name: string): HTMLInputElement {
@@ -147,15 +170,20 @@ describe('C-4 문의 상세 라벨과 마감일 (6a 묶음)', () => {
     await opened();
     await metaValue('라벨');
     expect(changeButtonOf('담당자'), '담당자 "바꾸기"').not.toBeNull();
-    expect(changeButtonOf('라벨'), 'CLOSED의 라벨 "바꾸기"').toBeNull();
-    expect(changeButtonOf('마감일'), 'CLOSED의 마감일 "바꾸기"').toBeNull();
+    expect(anyChangeButtonOf('라벨'), 'CLOSED의 라벨 "바꾸기"(이름이 무엇이든)').toEqual([]);
+    expect(anyChangeButtonOf('마감일'), 'CLOSED의 마감일 "바꾸기"(이름이 무엇이든)').toEqual([]);
     unmount();
 
     state.issue = issueIn('RESOLVED', { labels: [refOf(URGENT)], dueDate: '2026-10-20' });
     renderAt(URL_7);
-    await found(() => changeButtonOf('라벨'), '열린 문의의 라벨 "바꾸기"');
-    expect(changeButtonOf('마감일'), '열린 문의의 마감일 "바꾸기"').not.toBeNull();
+    await found(() => changeButtonOf('라벨'), '열린 문의의 라벨 "라벨 바꾸기"');
+    expect(changeButtonOf('마감일'), '열린 문의의 마감일 "마감일 바꾸기"').not.toBeNull();
     expect(changeButtonOf('담당자')).not.toBeNull();
+    // The words on the buttons are "바꾸기"; the accessible names hold them (screens.md 1절).
+    expect(text(changeButtonOf('라벨'))).toContain('바꾸기');
+    expect(text(changeButtonOf('마감일'))).toContain('바꾸기');
+    // The locked slice 3 tests find the 담당자 button as the one button named "바꾸기" or "담당자 바꾸기".
+    expect(screen.queryAllByRole('button', { name: /^(담당자 )?바꾸기$/ }), '이름이 "바꾸기"나 "담당자 바꾸기"인 단추').toHaveLength(1);
   });
 
   test('S6A-AC-80 C-4 라벨 고르기: 그 고객사의 라벨만 체크 목록에 있고 붙은 것이 체크되어 있다', async () => {
@@ -263,7 +291,7 @@ describe('C-4 문의 상세 라벨과 마감일 (6a 묶음)', () => {
     state.issue = issueIn('IN_PROGRESS');
     const { user } = renderAt(URL_7);
     await opened();
-    await user.click(await found(() => changeButtonOf('라벨'), '"라벨" 칸의 "바꾸기"'));
+    await user.click(await found(() => changeButtonOf('라벨'), '"라벨" 칸의 "라벨 바꾸기"'));
 
     await found(() => screen.queryByText(EMPTY_TEXT), `"${EMPTY_TEXT}"`);
     const make = screen.queryByRole('link', { name: '고객사 설정에서 만들기' });
@@ -308,7 +336,9 @@ describe('C-4 문의 상세 라벨과 마감일 (6a 묶음)', () => {
     expect(text(metaValueNow('마감일'))).not.toContain('2099');
   });
 
-  test('S6A-AC-80 C-4 지난 날짜: 서버의 400(OUT_OF_RANGE)은 날짜 입력 아래 "오늘이나 그 뒤의 날짜를 고르세요."다. 칸은 그대로다', async () => {
+  // The screen does not hold back a date before min: min is a hint and the server decides
+  // (screens.md 1절 마감일 고르기), so a past date is sent and the 400 shown.
+  test('S6A-AC-80 C-4 지난 날짜(화면은 막지 않고 보낸다): 서버의 400(OUT_OF_RANGE)은 날짜 입력 아래 "오늘이나 그 뒤의 날짜를 고르세요."다. 칸은 그대로다', async () => {
     state.issue = issueIn('IN_PROGRESS');
     on('put', DUE_DATE_7, () => pastDate());
     const { user } = renderAt(URL_7);
@@ -345,7 +375,7 @@ describe('C-4 문의 상세 라벨과 마감일 (6a 묶음)', () => {
     await settle();
 
     expect(screen.queryByText(FAILED_TEXT), '닫힌 뒤 온 실패').toBeNull();
-    await user.click(await found(() => changeButtonOf('라벨'), '"라벨" 칸의 "바꾸기"'));
+    await user.click(await found(() => changeButtonOf('라벨'), '"라벨" 칸의 "라벨 바꾸기"'));
     await found(labelGroup, '다시 연 라벨 고르기');
     expect(screen.queryByText(FAILED_TEXT), '다시 연 고르기의 오류 줄').toBeNull();
     expect(isBlocked(box('결제')), '다시 연 고르기의 줄').toBe(false);
@@ -393,11 +423,7 @@ describe('C-4 문의 상세 라벨과 마감일 (6a 묶음)', () => {
     await sent('PUT', issueLabelPath(BILLING.id));
 
     state.issue = issue({ key: 'ACME-8', title: '다른 문의입니다', status: 'IN_PROGRESS', labels: [refOf(MOBILE)] });
-    await user.click(await found(() => screen.queryAllByRole('link', { name: '문의' }).find((a) => a.closest('nav') !== null), '메뉴 "문의"'));
-    await user.click(await found(() => screen.queryByRole('link', { name: /다른 문의입니다/ }), 'ACME-8 링크'));
-    await eventually(() => {
-      expect(window.location.pathname).toBe('/issues/ACME-8');
-    });
+    await goToIssue(user, /다른 문의입니다/, 'ACME-8');
     await eventually(() => {
       expect(labelNamesShown(['모바일', '결제'])).toEqual(['모바일']);
     });
@@ -408,6 +434,175 @@ describe('C-4 문의 상세 라벨과 마감일 (6a 묶음)', () => {
 
     expect(labelNamesShown(['모바일', '결제']), 'ACME-8의 라벨 칸').toEqual(['모바일']);
     expect(screen.queryAllByRole('heading', { level: 1 }).map(text).join(' ')).toContain('다른 문의입니다');
+  });
+
+  test('S6A-AC-86 C-4 라벨 고르기를 닫은 뒤 온 성공은 칸을 다시 그린다: 답의 문의(서버의 라벨)로 칸이 바뀐다', async () => {
+    state.issue = issueIn('IN_PROGRESS');
+    const release = gate();
+    on('put', issueLabelPath(BILLING.id), async () => {
+      await release.opened;
+      // Someone else put 모바일 on meanwhile: the answer, not the box pressed, is what the 칸 shows.
+      state.issue = { ...state.issue, labels: [refOf(BILLING), refOf(MOBILE)], version: state.issue.version + 1 };
+      return HttpResponse.json(contract('addIssueLabel', 200, state.issue));
+    });
+    const { user } = renderAt(URL_7);
+    await openLabels(user);
+    await user.click(box('결제'));
+    await sent('PUT', issueLabelPath(BILLING.id));
+
+    await user.keyboard('{Escape}');
+    await eventually(() => {
+      expect(labelGroup(), '닫힌 고르기').toBeNull();
+    });
+    const done = answered('PUT', issueLabelPath(BILLING.id));
+    release.open();
+    await done;
+    await settle();
+
+    await eventually(() => {
+      expect(labelNamesShown(['결제', '모바일']), '닫힌 뒤 온 성공으로 다시 그린 칸').toEqual(['결제', '모바일']);
+    });
+    expect(screen.queryByText(FAILED_TEXT)).toBeNull();
+  });
+
+  test('S6A-AC-86 C-4 마감일 고르기를 닫은 뒤 온 성공은 칸을 다시 그린다: 답의 날짜가 칸에 보인다', async () => {
+    state.issue = issueIn('IN_PROGRESS');
+    const release = gate();
+    on('put', DUE_DATE_7, async () => {
+      await release.opened;
+      state.issue = { ...state.issue, dueDate: '2099-12-01', version: state.issue.version + 1 };
+      return HttpResponse.json(contract('setIssueDueDate', 200, state.issue));
+    });
+    const { user } = renderAt(URL_7);
+    const input = await openDue(user);
+    await user.type(input, '2099-12-01');
+    await user.click(await found(() => screen.queryByRole('button', { name: '정하기' }), '"정하기"'));
+    await sent('PUT', DUE_DATE_7);
+
+    await user.keyboard('{Escape}');
+    await eventually(() => {
+      expect(dueInput(), '닫힌 고르기').toBeNull();
+    });
+    const done = answered('PUT', DUE_DATE_7);
+    release.open();
+    await done;
+    await settle();
+
+    await eventually(() => {
+      expect(text(metaValueNow('마감일')), '닫힌 뒤 온 성공으로 다시 그린 칸').toContain('2099년 12월 1일');
+    });
+  });
+
+  test('S6A-AC-86 C-4 다른 문의로 옮긴 뒤 온 라벨 실패는 버린다: 새 문의에 오류 줄이 없고 줄이 막히지 않는다', async () => {
+    state.issue = issueIn('IN_PROGRESS');
+    state.issues = [summary({ key: 'ACME-8', title: '다른 문의입니다' })];
+    const release = gate();
+    on('put', issueLabelPath(BILLING.id), async () => {
+      await release.opened;
+      return errors.internal();
+    });
+    const { user } = renderAt(URL_7);
+    await openLabels(user);
+    await user.click(box('결제'));
+    await sent('PUT', issueLabelPath(BILLING.id));
+
+    state.issue = issue({ key: 'ACME-8', title: '다른 문의입니다', status: 'IN_PROGRESS' });
+    await goToIssue(user, /다른 문의입니다/, 'ACME-8');
+    await metaValue('라벨');
+    const done = answered('PUT', issueLabelPath(BILLING.id));
+    release.open();
+    await done;
+    await settle();
+
+    expect(screen.queryByText(FAILED_TEXT), '옮긴 뒤 온 실패').toBeNull();
+    await reopen(user, '라벨');
+    await found(labelGroup, 'ACME-8의 라벨 고르기');
+    await eventually(() => {
+      expect(box('결제'), 'ACME-8의 "결제"').not.toBeChecked();
+    });
+    expect(screen.queryByText(FAILED_TEXT), 'ACME-8 고르기의 오류 줄').toBeNull();
+    expect(isBlocked(box('결제')), 'ACME-8 고르기의 줄').toBe(false);
+  });
+
+  test.each([
+    { what: '성공', answer: () => HttpResponse.json(contract('setIssueDueDate', 200, issueIn('IN_PROGRESS', { dueDate: '2099-12-01', version: 2 }))) },
+    { what: '400', answer: () => pastDate() },
+  ])('S6A-AC-86 C-4 다른 문의로 옮긴 뒤 온 마감일 답($what)은 버린다: 새 문의의 칸과 고르기가 그대로다', async ({ answer }) => {
+    state.issue = issueIn('IN_PROGRESS');
+    state.issues = [summary({ key: 'ACME-8', title: '다른 문의입니다' })];
+    const release = gate();
+    on('put', DUE_DATE_7, async () => {
+      await release.opened;
+      return answer();
+    });
+    const { user } = renderAt(URL_7);
+    const input = await openDue(user);
+    await user.type(input, '2099-12-01');
+    await user.click(await found(() => screen.queryByRole('button', { name: '정하기' }), '"정하기"'));
+    await sent('PUT', DUE_DATE_7);
+
+    state.issue = issue({ key: 'ACME-8', title: '다른 문의입니다', status: 'IN_PROGRESS', dueDate: '2099-05-05' });
+    await goToIssue(user, /다른 문의입니다/, 'ACME-8');
+    await eventually(() => {
+      expect(text(metaValueNow('마감일'))).toContain('2099년 5월 5일');
+    });
+    const done = answered('PUT', DUE_DATE_7);
+    release.open();
+    await done;
+    await settle();
+
+    expect(text(metaValueNow('마감일')), 'ACME-8의 마감일 칸').toContain('2099년 5월 5일');
+    expect(text(metaValueNow('마감일')), 'ACME-7의 답').not.toContain('2099년 12월 1일');
+    expect(screen.queryByText(PAST_TEXT), '옮긴 뒤 온 400').toBeNull();
+    await reopen(user, '마감일');
+    const now = await found(dueInput, 'ACME-8의 날짜 입력');
+    expect(now.value, 'ACME-8의 날짜 입력').toBe('2099-05-05');
+    expect(screen.queryByText(PAST_TEXT), 'ACME-8 고르기의 오류').toBeNull();
+  });
+
+  test('S6A-AC-86 C-4 고르기가 연 라벨 목록이 다른 문의로 옮긴 뒤 오면 버린다: 새 문의 고객사의 라벨만 있다', async () => {
+    state.companies = [ACME, BETA];
+    state.issue = issueIn('IN_PROGRESS');
+    state.issues = [summary({ key: 'BETA-3', title: '베타의 문의입니다', companyCode: BETA.code, companyName: BETA.name })];
+    const release = gate();
+    on('get', ACME_LABELS, async () => {
+      await release.opened;
+      return HttpResponse.json(contract('listCompanyLabels', 200, { items: byName(s6a.labels['ACME'] ?? []) }));
+    });
+    const { user } = renderAt(URL_7);
+    await opened();
+    await user.click(await found(() => changeButtonOf('라벨'), '"라벨" 칸의 "라벨 바꾸기"'));
+    await sent('GET', ACME_LABELS);
+
+    state.issue = issue({ key: 'BETA-3', title: '베타의 문의입니다', status: 'IN_PROGRESS', companyCode: BETA.code, companyName: BETA.name });
+    await goToIssue(user, /베타의 문의입니다/, 'BETA-3');
+    await metaValue('라벨');
+    await reopen(user, '라벨');
+    await sent('GET', BETA_LABELS);
+    const group = await found(labelGroup, 'BETA-3의 라벨 고르기');
+    await found(() => boxIn(group, BETA_ONLY.name), `상자 "${BETA_ONLY.name}"`);
+    const done = answered('GET', ACME_LABELS);
+    release.open();
+    await done;
+    await settle();
+
+    const now = await found(labelGroup, 'BETA-3의 라벨 고르기');
+    expect(boxIn(now, BETA_ONLY.name), '새 고객사의 라벨').not.toBeNull();
+    for (const old of [URGENT, BILLING, MOBILE]) expect(boxIn(now, old.name), `옛 고객사의 라벨 "${old.name}"`).toBeNull();
+  });
+
+  test('S6A-AC-80 C-4 떼기 실패: 그 줄이 체크로 되돌고 목록 아래에 오류 줄이 보인다. 칸은 그대로다', async () => {
+    state.issue = issueIn('IN_PROGRESS', { labels: [refOf(URGENT)] });
+    on('delete', issueLabelPath(URGENT.id), () => errors.internal());
+    const { user } = renderAt(URL_7);
+    const group = await openLabels(user);
+
+    await user.click(box('긴급'));
+    await sent('DELETE', issueLabelPath(URGENT.id));
+
+    await found(() => within(group).queryByText(FAILED_TEXT), `오류 줄 "${FAILED_TEXT}"`);
+    expect(box('긴급'), '되돌린 줄').toBeChecked();
+    expect(labelNamesShown(['긴급'])).toEqual(['긴급']);
   });
 
   test.each([
