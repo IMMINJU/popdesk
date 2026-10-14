@@ -2,6 +2,7 @@ package io.popdesk.helpdesk.issue;
 
 import io.popdesk.ApiError;
 import io.popdesk.ApiException;
+import io.popdesk.InstallationZone;
 import io.popdesk.PageRequest;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
@@ -18,19 +19,27 @@ import io.popdesk.helpdesk.company.CompanyRepository.StaffRow;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository.Field;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository.HistoryRow;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
+import io.popdesk.helpdesk.label.LabelRepository;
+import io.popdesk.helpdesk.label.LabelRepository.IssueLabel;
 import io.popdesk.notification.WebhookKind;
 import io.popdesk.notification.WebhookQueue;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -66,6 +75,19 @@ public class IssueService {
     static final String ASSIGNEE_ME = "me";
     static final String ASSIGNEE_NONE = "none";
     static final String ASSIGNEE_UNAVAILABLE = "unavailable";
+
+    /** How many labels an issue has at most (TM-56, S6A-AC-24). */
+    static final int ISSUE_LABEL_MAX = 20;
+
+    /** The values {@code sort} takes (S6A-AC-53); without it, {@link #SORT_CREATED_AT}. */
+    static final String SORT_CREATED_AT = "createdAt";
+    static final String SORT_DUE_DATE = "dueDate";
+
+    /**
+     * A due date as text: {@code YYYY-MM-DD} and nothing else, no time, no offset, no sign (S6A-AC-31).
+     * Checked before {@link LocalDate#parse}, which then refuses a day that does not exist.
+     */
+    private static final Pattern DATE = Pattern.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}");
 
     /** An account ID as the assignee filter gets it: a positive number that fits a {@code bigint}. */
     private static final Pattern ACCOUNT_ID = Pattern.compile("[1-9][0-9]{0,17}");
@@ -122,10 +144,17 @@ public class IssueService {
     /**
      * The filters of a list request, as received; a null one was not sent (ISSUE-5). {@code assignee}
      * is an account ID or one of the words {@code me}, {@code none}, {@code unavailable}; {@code q} is
-     * the search text.
+     * the search text; {@code labelIds} the labels, any of which an issue must have (S6A-AC-51);
+     * {@code sort} the order as sent (S6A-AC-53).
      */
     public record Filters(List<IssueStatus> statuses, String companyCode, String assignee, Long reporterId,
-            String q) {}
+            String q, List<Long> labelIds, String sort) {
+
+        /** The filters of a list that takes no label and no order: the portal's (S6A-AC-42). */
+        public Filters(List<IssueStatus> statuses, String companyCode, String assignee, Long reporterId, String q) {
+            this(statuses, companyCode, assignee, reporterId, q, null, null);
+        }
+    }
 
     /**
      * What an edit sent (S3-AC-18). A field that was not sent keeps its value; {@code version} is the
@@ -136,6 +165,7 @@ public class IssueService {
 
     private final IssueRepository issues;
     private final IssueHistoryRepository history;
+    private final LabelRepository labels;
     private final IdempotencyKeyRepository keys;
     private final ReporterAccess reporters;
     private final CompanyRepository companies;
@@ -144,14 +174,16 @@ public class IssueService {
     private final IssueNotifications notifications;
     private final AccountRateLimit rateLimit;
     private final Transactions transactions;
+    private final InstallationZone zone;
     private final Clock clock;
 
-    IssueService(IssueRepository issues, IssueHistoryRepository history, IdempotencyKeyRepository keys,
-            ReporterAccess reporters, CompanyRepository companies, IssueAttachments attachments,
-            WebhookQueue webhooks, IssueNotifications notifications, AccountRateLimit rateLimit,
-            Transactions transactions, Clock clock) {
+    IssueService(IssueRepository issues, IssueHistoryRepository history, LabelRepository labels,
+            IdempotencyKeyRepository keys, ReporterAccess reporters, CompanyRepository companies,
+            IssueAttachments attachments, WebhookQueue webhooks, IssueNotifications notifications,
+            AccountRateLimit rateLimit, Transactions transactions, InstallationZone zone, Clock clock) {
         this.issues = issues;
         this.history = history;
+        this.labels = labels;
         this.keys = keys;
         this.reporters = reporters;
         this.companies = companies;
@@ -160,6 +192,7 @@ public class IssueService {
         this.notifications = notifications;
         this.rateLimit = rateLimit;
         this.transactions = transactions;
+        this.zone = zone;
         this.clock = clock;
     }
 
@@ -555,6 +588,151 @@ public class IssueService {
     }
 
     /**
+     * Staff put a label of the issue's company on an issue they see (LBL-2, S6A-AC-20). In one
+     * transaction, retried once on a lock conflict (STATUS-7, slice 6a design section 0, 4): the issue
+     * row {@code FOR NO KEY UPDATE} first, in the caller's scope, so a closing that came first is seen
+     * here and one that comes later waits (S6A-AC-23); then the label under the issue's company, locked
+     * so that its deletion waits for this one (S6A-AC-25). A label of another company and an ID nobody
+     * has are one answer, which does not repeat the ID (S6A-AC-22). Then the status, then the limit of
+     * 20, counted under the issue row (S6A-AC-24). A label the issue has already changes nothing
+     * (S6A-AC-20); otherwise the version goes up by 1 and the history gets a {@code LABEL} entry with the
+     * label's name (S6A-AC-60). Nobody is told (S6A-AC-63).
+     */
+    public IssueRow addLabel(Viewer viewer, String key, long labelId) {
+        IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
+        return transactions.run(() -> {
+            IssueRow issue = issues.lockByKey(viewer, issueKey).orElseThrow(ApiException::notFound);
+            String name = labels.lockName(issue.companyId(), labelId)
+                    .orElseThrow(() -> ApiException.invalid("id", "UNKNOWN_VALUE"));
+            if (issue.status() == IssueStatus.CLOSED) {
+                throw closed();
+            }
+            if (labels.onIssue(issue.id(), labelId)) {
+                return issue;
+            }
+            if (labels.countOnIssue(issue.id()) >= ISSUE_LABEL_MAX) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "ISSUE_LABEL_LIMIT_EXCEEDED",
+                        "The issue has " + ISSUE_LABEL_MAX + " labels already.");
+            }
+            Instant now = now();
+            if (!labels.insertOnIssue(issue.id(), issue.companyId(), labelId, now)) {
+                throw new IllegalStateException("A locked label was not put on a locked issue.");
+            }
+            issues.updateVersion(issue.id(), now);
+            history.insertChanged(issue.id(), Field.LABEL, null, name, viewer.accountId(), now);
+            return issues.findByKey(viewer, issueKey).orElseThrow();
+        });
+    }
+
+    /**
+     * Staff take a label off an issue they see (LBL-2, S6A-AC-21), the issue row locked first as for
+     * {@link #addLabel}. A label the issue does not have, a deleted one included, changes nothing; else
+     * the version goes up by 1 and the history gets a {@code LABEL} entry with the label's name now.
+     */
+    public IssueRow removeLabel(Viewer viewer, String key, long labelId) {
+        IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
+        return transactions.run(() -> {
+            IssueRow issue = issues.lockByKey(viewer, issueKey).orElseThrow(ApiException::notFound);
+            if (issue.status() == IssueStatus.CLOSED) {
+                throw closed();
+            }
+            Optional<String> name = labels.deleteFromIssue(issue.id(), labelId);
+            if (name.isEmpty()) {
+                return issue;
+            }
+            Instant now = now();
+            issues.updateVersion(issue.id(), now);
+            history.insertChanged(issue.id(), Field.LABEL, name.get(), null, viewer.accountId(), now);
+            return issues.findByKey(viewer, issueKey).orElseThrow();
+        });
+    }
+
+    /**
+     * Staff set the due date of an issue they see (DUE-1, S6A-AC-30). The date comes as the text sent
+     * and is read strictly (S6A-AC-31): missing or empty is {@code REQUIRED}; anything but
+     * {@code YYYY-MM-DD} of a day that exists, a time or a number among them, is {@code INVALID_FORMAT};
+     * a date before today in the installation's time zone is {@code OUT_OF_RANGE} (S6A-AC-34), also the
+     * date an overdue issue has already (S6A-AC-35). The date the issue has changes nothing (S6A-AC-36).
+     */
+    public IssueRow setDueDate(Viewer viewer, String key, String dueDate) {
+        return changeDueDate(viewer, key, () -> {
+            if (dueDate == null || dueDate.isEmpty()) {
+                throw ApiException.invalid("dueDate", "REQUIRED");
+            }
+            LocalDate date = date(dueDate);
+            if (date.isBefore(zone.today(clock))) {
+                throw ApiException.invalid("dueDate", "OUT_OF_RANGE");
+            }
+            return date;
+        });
+    }
+
+    /** Staff clear the due date of an issue they see; one without a due date stays as it is (S6A-AC-32). */
+    public IssueRow clearDueDate(Viewer viewer, String key) {
+        return changeDueDate(viewer, key, () -> null);
+    }
+
+    /**
+     * A change of the due date in one transaction, retried once on a lock conflict: the issue row
+     * {@code FOR NO KEY UPDATE} in the caller's scope (404), then {@code dueDate} checks the input (400),
+     * then the status ({@code ISSUE_CLOSED}, S6A-AC-33). A changed date raises the version and gets a
+     * {@code DUE_DATE} entry (S6A-AC-61); nobody is told (S6A-AC-63).
+     *
+     * @param dueDate throws when the input is not a date the issue can have; else the date, or null to clear
+     */
+    private IssueRow changeDueDate(Viewer viewer, String key, Supplier<LocalDate> dueDate) {
+        IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
+        return transactions.run(() -> {
+            IssueRow issue = issues.lockByKey(viewer, issueKey).orElseThrow(ApiException::notFound);
+            LocalDate to = dueDate.get();
+            if (issue.status() == IssueStatus.CLOSED) {
+                throw closed();
+            }
+            if (Objects.equals(issue.dueDate(), to)) {
+                return issue;
+            }
+            Instant now = now();
+            issues.updateDueDate(issue.id(), to, now);
+            history.insertChanged(issue.id(), Field.DUE_DATE, text(issue.dueDate()), text(to), viewer.accountId(),
+                    now);
+            return issues.findByKey(viewer, issueKey).orElseThrow();
+        });
+    }
+
+    /** {@code YYYY-MM-DD} of a day that exists; else 400 {@code INVALID_FORMAT} for {@code dueDate}. */
+    private static LocalDate date(String text) {
+        if (!DATE.matcher(text).matches()) {
+            throw ApiException.invalid("dueDate", "INVALID_FORMAT");
+        }
+        try {
+            return LocalDate.parse(text, DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (DateTimeParseException e) {
+            throw ApiException.invalid("dueDate", "INVALID_FORMAT");
+        }
+    }
+
+    private static String text(LocalDate date) {
+        return date == null ? null : date.toString();
+    }
+
+    /**
+     * Whether the issue's due date is before today in the installation's time zone (S6A-AC-35). Judged
+     * now, never stored; false without a due date.
+     */
+    public boolean overdue(IssueRow issue) {
+        return issue.dueDate() != null && issue.dueDate().isBefore(zone.today(clock));
+    }
+
+    /**
+     * The labels of each of these issues, which the caller read in the viewer's scope, in name order
+     * whatever the case (S6A-AC-50); one read for a whole page. An issue without labels is not in the map.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, List<IssueLabel>> labels(Collection<UUID> issueIds) {
+        return labels.listOnIssues(issueIds);
+    }
+
+    /**
      * Everyone the viewer, who is staff, can mention in a comment on the issue (S4-AC-22): whoever can
      * be its assignee and, for a public comment, its reporter while {@code ACTIVE}; never the viewer.
      * The issue out of the viewer's scope is 404 before {@code internal} is read (S4-AC-23).
@@ -606,19 +784,38 @@ public class IssueService {
         IssueFilter.Assignee assignee = filters.assignee() == null ? null
                 : assignee(viewer, filters.assignee(), errors);
         String q = filters.q() == null ? null : searchText(filters.q(), errors);
+        IssueRepository.Order order = order(filters.sort(), errors);
         if (!errors.isEmpty()) {
             throw ApiException.invalid(errors);
         }
         PageRequest request = PageRequest.of(page, size);
         IssueFilter filter = new IssueFilter(
                 filters.statuses() == null ? List.of() : filters.statuses().stream().filter(Objects::nonNull).toList(),
-                filters.companyCode(), assignee, filters.reporterId(), q);
+                filters.companyCode(), assignee, filters.reporterId(), q,
+                filters.labelIds() == null ? List.of()
+                        : filters.labelIds().stream().filter(Objects::nonNull).distinct().toList());
         if (q == null) {
-            return request.of(issues.list(viewer, filter, request.offset(), request.size()),
+            return request.of(issues.list(viewer, filter, order, request.offset(), request.size()),
                     issues.count(viewer, filter));
         }
-        IssueRepository.Found found = issues.search(viewer, filter, request.offset(), request.size());
+        IssueRepository.Found found = issues.search(viewer, filter, order, request.offset(), request.size());
         return request.of(found.rows(), found.total());
+    }
+
+    /**
+     * The order of a list (S6A-AC-53): none or {@code createdAt} is newest first, {@code dueDate} the
+     * earliest due date first. Any other value, in other case or with a direction, is
+     * {@code UNKNOWN_VALUE} in {@code errors}.
+     */
+    private static IssueRepository.Order order(String sort, List<ApiError.FieldError> errors) {
+        if (sort == null || sort.equals(SORT_CREATED_AT)) {
+            return IssueRepository.Order.CREATED_AT;
+        }
+        if (sort.equals(SORT_DUE_DATE)) {
+            return IssueRepository.Order.DUE_DATE;
+        }
+        errors.add(new ApiError.FieldError("sort", "UNKNOWN_VALUE"));
+        return IssueRepository.Order.CREATED_AT;
     }
 
     /**

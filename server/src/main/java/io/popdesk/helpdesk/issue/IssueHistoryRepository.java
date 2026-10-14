@@ -35,7 +35,16 @@ public class IssueHistoryRepository {
          * added and the old value when it was deleted, the other one null. Never its file name, which a
          * deleted attachment gives up (S5-AC-43).
          */
-        ATTACHMENT
+        ATTACHMENT,
+        /**
+         * A label was put on the issue or taken off (S6A-AC-60): its name at that time is the new value
+         * when it was put on and the old value when it was taken off, the other one null. Never its ID,
+         * which says nothing once the label is deleted. Changing or deleting the label itself leaves no
+         * entry (S6A-AC-62).
+         */
+        LABEL,
+        /** The due date was set, changed, or cleared (S6A-AC-61): {@code YYYY-MM-DD}, null for none. */
+        DUE_DATE
     }
 
     /** An account as a history entry names it, by its name today. */

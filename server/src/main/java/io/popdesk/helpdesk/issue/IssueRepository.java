@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -33,13 +34,15 @@ public class IssueRepository {
      * One issue with its company and reporter; {@code reporterPhotoUpdatedAt} is null without a profile photo.
      * {@code createdBy} is the staff member who filed it for the reporter, null when the reporter filed it
      * (ISSUE-9). {@code assignee} is null when nobody is assigned; {@code assigneeUnavailable} says that
-     * the assignee can no longer see the issue ({@link #ASSIGNEE_UNAVAILABLE}).
+     * the assignee can no longer see the issue ({@link #ASSIGNEE_UNAVAILABLE}). {@code dueDate} is null
+     * without a due date (DUE-1).
      */
     public record IssueRow(UUID id, long companyId, String companyCode, String companyName, int number, String title,
             String content, IssueStatus status, Priority priority, boolean privateIssue, long reporterId,
             String reporterName, Role reporterRole, Instant reporterPhotoUpdatedAt, Staff createdBy, String channel,
             Staff assignee, boolean assigneeUnavailable, Instant firstResponseAt,
-            Instant resolvedAt, Instant closedAt, long version, Instant createdAt, Instant updatedAt) {
+            Instant resolvedAt, Instant closedAt, long version, Instant createdAt, Instant updatedAt,
+            LocalDate dueDate) {
 
         public String key() {
             return companyCode + "-" + number;
@@ -74,7 +77,7 @@ public class IssueRepository {
     private static final String COLUMNS = "i.id, i.company_id, c.code, c.name, i.number, i.title, i.content, "
             + "i.status, i.priority, i.is_private, i.reporter_id, r.name as reporter_name, r.role as reporter_role, "
             + "rp.updated_at as reporter_photo_updated_at, i.channel, i.first_response_at, i.resolved_at, i.closed_at, "
-            + "i.version, i.created_at, i.updated_at, "
+            + "i.version, i.created_at, i.updated_at, i.due_date, "
             + "i.created_by, cb.name as created_by_name, cb.role as created_by_role, "
             + "cbp.updated_at as created_by_photo_updated_at, "
             + "i.assignee_id, asg.name as assignee_name, asg.role as assignee_role, "
@@ -92,6 +95,21 @@ public class IssueRepository {
     private static final String SELECT = "select " + COLUMNS + " from issue i " + JOINS;
 
     private static final String NEWEST_FIRST = " order by i.created_at desc, i.number desc, i.id";
+
+    /**
+     * {@code sort=dueDate} (S6A-AC-53): the earliest due date first and issues without one last, then
+     * newest first as {@link #NEWEST_FIRST}. The ID last makes the order total, so a page boundary
+     * neither repeats nor misses an issue (S6A-AC-54).
+     */
+    private static final String DUE_FIRST = " order by i.due_date asc nulls last, i.created_at desc, i.number desc, i.id";
+
+    /** The order of a list (S6A-AC-53). */
+    public enum Order {
+        /** Newest first, the order without {@code sort}. */
+        CREATED_AT,
+        /** Earliest due date first. */
+        DUE_DATE
+    }
 
     /** One page of a search and how many issues the search found in all. */
     public record Found(List<IssueRow> rows, long total) {}
@@ -141,9 +159,10 @@ public class IssueRepository {
      * One page of the issues the viewer may see that match the filter, newest first. For a filter
      * without a search text; with one, see {@link #search}.
      */
-    public List<IssueRow> list(Viewer viewer, IssueFilter filter, long offset, int limit) {
+    public List<IssueRow> list(Viewer viewer, IssueFilter filter, Order order, long offset, int limit) {
         Condition where = condition(viewer, filter);
-        return jdbc.sql(SELECT + "where " + where.sql() + NEWEST_FIRST + " offset ? limit ?")
+        return jdbc.sql(SELECT + "where " + where.sql() + (order == Order.DUE_DATE ? DUE_FIRST : NEWEST_FIRST)
+                        + " offset ? limit ?")
                 .params(concat(where.params(), offset, limit))
                 .query(IssueRepository::issue).list();
     }
@@ -167,14 +186,16 @@ public class IssueRepository {
      * written join order, and with the issue first it joined every issue to its company and people
      * before it looked at the page (200 ms on 100,000 issues for a page of 10).
      */
-    public Found search(Viewer viewer, IssueFilter filter, long offset, int limit) {
+    public Found search(Viewer viewer, IssueFilter filter, Order order, long offset, int limit) {
         Condition where = condition(viewer, filter);
         long[] total = {0};
-        List<IssueRow> rows = jdbc.sql("with found as materialized (select i.id, i.created_at, i.number from issue i "
-                        + "join company c on c.id = i.company_id where " + where.sql() + "), "
-                        + "page as (select id from found order by created_at desc, number desc, id offset ? limit ?) "
+        boolean due = order == Order.DUE_DATE;
+        List<IssueRow> rows = jdbc.sql("with found as materialized (select i.id, i.created_at, i.number, i.due_date "
+                        + "from issue i join company c on c.id = i.company_id where " + where.sql() + "), "
+                        + "page as (select id from found order by " + (due ? "due_date asc nulls last, " : "")
+                        + "created_at desc, number desc, id offset ? limit ?) "
                         + "select " + COLUMNS + ", (select count(*) from found) as total "
-                        + "from page p join issue i on i.id = p.id " + JOINS + NEWEST_FIRST)
+                        + "from page p join issue i on i.id = p.id " + JOINS + (due ? DUE_FIRST : NEWEST_FIRST))
                 .params(concat(where.params(), offset, limit))
                 .query((rs, n) -> {
                     total[0] = rs.getLong("total");
@@ -189,7 +210,8 @@ public class IssueRepository {
      * scope, and after it each part of the filter with {@code and}. No part stands in for the scope or
      * joins it with {@code or}, so a filter only narrows what the viewer sees (S3-AC-06, S3-AC-10). A
      * company code or an account the viewer cannot see matches nothing, like one that does not exist
-     * (S3-AC-02, S3-AC-05). The search text is a LIKE pattern in which {@code %}, {@code _}, and the
+     * (S3-AC-02, S3-AC-05); so does a label of a company the viewer cannot see, since only issues in
+     * the scope are looked at (S6A-AC-52). The search text is a LIKE pattern in which {@code %}, {@code _}, and the
      * backslash find only themselves (S3-AC-13).
      */
     private static Condition condition(Viewer viewer, IssueFilter filter) {
@@ -220,6 +242,10 @@ public class IssueRepository {
         if (filter.q() != null) {
             sql.append(" and i.search_text ilike ? escape '\\'");
             params.add(AccountRepository.containing(filter.q()));
+        }
+        if (!filter.labelIds().isEmpty()) {
+            sql.append(" and exists (select 1 from issue_label il where il.issue_id = i.id and il.label_id = any(?))");
+            params.add(filter.labelIds().toArray(Long[]::new));
         }
         return new Condition(sql.toString(), params.toArray());
     }
@@ -261,6 +287,26 @@ public class IssueRepository {
     void updateAssignee(UUID id, Long assigneeId, Instant now) {
         jdbc.sql("update issue set assignee_id = ?, updated_at = ?, version = version + 1 where id = ?")
                 .params(assigneeId, Timestamp.from(now), id)
+                .update();
+    }
+
+    /**
+     * Sets the due date, or clears it with null (DUE-1). The caller has locked the issue row and seen that
+     * the date changes. A change to the row raises its version (slice 6a design section 0, 5).
+     */
+    void updateDueDate(UUID id, LocalDate dueDate, Instant now) {
+        jdbc.sql("update issue set due_date = ?, updated_at = ?, version = version + 1 where id = ?")
+                .params(dueDate, Timestamp.from(now), id)
+                .update();
+    }
+
+    /**
+     * Raises the version of an issue whose labels changed (slice 6a design section 0, 5). The caller has
+     * locked the issue row.
+     */
+    void updateVersion(UUID id, Instant now) {
+        jdbc.sql("update issue set updated_at = ?, version = version + 1 where id = ?")
+                .params(Timestamp.from(now), id)
                 .update();
     }
 
@@ -356,7 +402,8 @@ public class IssueRepository {
                 firstResponse == null ? null : firstResponse.toInstant(),
                 resolved == null ? null : resolved.toInstant(), closed == null ? null : closed.toInstant(),
                 rs.getLong("version"),
-                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant());
+                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(),
+                rs.getObject("due_date", LocalDate.class));
     }
 
     /** The account in column {@code id}, with its name, role, and photo time under {@code prefix}; null when empty. */
