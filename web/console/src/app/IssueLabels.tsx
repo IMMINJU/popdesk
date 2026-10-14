@@ -8,6 +8,7 @@ import { useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { api, type Schemas } from '../api';
 import { longDate, todayInBrowser } from './dueDates';
+import { byName, labelItem, moreLabelsText } from './labelItems';
 import { useLive } from './hooks';
 import { failureText } from './messages';
 import { call, type Failure, type Result } from './result';
@@ -21,21 +22,6 @@ const FAILED_TEXT = '라벨을 바꾸지 못했습니다. 다시 해 보세요.'
 const PAST_TEXT = '오늘이나 그 뒤의 날짜를 고르세요.';
 const LOADING_TEXT = '불러오는 중…';
 const LOAD_FAILED_TEXT = '라벨을 불러오지 못했습니다.';
-
-/** "라벨 2개 더: 모바일, 보안": the hidden part of a row of chips (screens.md 5절). */
-export function moreLabelsText(hidden: readonly LabelItem[]): string {
-  return `라벨 ${String(hidden.length)}개 더: ${hidden.map((l) => l.name).join(', ')}`;
-}
-
-/** A label of the API as the components take it. */
-export function labelItem(l: { id: number; name: string; color: string }): LabelItem {
-  return { id: String(l.id), name: l.name, color: l.color };
-}
-
-/** Name order whatever the case (S6A-AC-50). */
-export function byName<T extends { name: string }>(items: readonly T[]): T[] {
-  return [...items].sort((a, b) => a.name.toLocaleLowerCase().localeCompare(b.name.toLocaleLowerCase()));
-}
 
 export interface IssueLineProps {
   issue: Issue;
@@ -104,11 +90,7 @@ export function IssueLabelsLine(props: IssueLineProps & { isAdmin: boolean }) {
     else if (result.failure.kind === 'rejected' && result.failure.code === 'ISSUE_CLOSED') props.onStale();
     // A failure of an earlier opening is dropped: the picker it belonged to is gone.
     if (mine !== opening.current) return;
-    setBusy((b) => {
-      const rest = { ...b };
-      delete rest[id];
-      return rest;
-    });
+    setBusy((b) => Object.fromEntries(Object.entries(b).filter(([k]) => k !== id)));
     if (!result.ok) setError(FAILED_TEXT);
   };
 

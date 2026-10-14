@@ -6,6 +6,7 @@
 import {
   Button,
   ConfirmDialog,
+  codePoints,
   DataTable,
   Dialog,
   EmptyState,
@@ -73,7 +74,7 @@ function LabelDialog(props: { code: string; label: Label | null; onClose: () => 
   const save = async () => {
     if (pending) return;
     const sent = trimmed(name);
-    const nameProblem = sent === '' ? NAME_MISSING_TEXT : [...sent].length > NAME_MAX ? NAME_LONG_TEXT : undefined;
+    const nameProblem = sent === '' ? NAME_MISSING_TEXT : codePoints(sent) > NAME_MAX ? NAME_LONG_TEXT : undefined;
     const colorProblem = labelTextColor(color) === null || !color.trim().startsWith('#') ? COLOR_TEXT : undefined;
     setNameError(nameProblem);
     setColorError(colorProblem);

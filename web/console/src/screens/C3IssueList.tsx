@@ -31,7 +31,7 @@ import { RateLimitBand } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { AssigneeName } from '../app/AssigneeName';
 import { shortDate } from '../app/dueDates';
-import { byName, labelItem, moreLabelsText } from '../app/IssueLabels';
+import { byName, labelItem, moreLabelsText } from '../app/labelItems';
 import { useCooldown, useLoad } from '../app/hooks';
 import {
   filterKey,
