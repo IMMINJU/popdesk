@@ -11,6 +11,11 @@ export interface TextFieldProps {
   name?: string;
   /** Default `text`. `date` takes and gives `YYYY-MM-DD`, or an empty string. */
   type?: 'text' | 'email' | 'url' | 'search' | 'date';
+  /**
+   * With `date`: the earliest day the browser lets one pick, `YYYY-MM-DD` (e.g. today for 마감일).
+   * A hint only; the server decides. Default: none.
+   */
+  min?: string;
   autoComplete?: string;
   placeholder?: string;
   /** 도움말 under the field, joined with `aria-describedby`. */
@@ -55,6 +60,7 @@ export function TextField({ ref, ...props }: TextFieldProps) {
         className="pd-input"
         name={props.name}
         type={props.type ?? 'text'}
+        min={props.min}
         value={props.value}
         onChange={(e) => {
           props.onChange(e.target.value);

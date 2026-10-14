@@ -26,3 +26,11 @@ export const WithCount: Story = {
 export const Date: Story = {
   args: { label: '부터', type: 'date', value: '2026-10-01', autoComplete: 'off' },
 };
+/** 마감일 (6a 묶음): `min`으로 오늘보다 이전 날은 고르지 못하게 한다(힌트, 판정은 서버). */
+export const DueDate: Story = {
+  args: { label: '마감일', type: 'date', value: '2026-10-20', min: '2026-10-14', autoComplete: 'off' },
+};
+/** 마감일 400: 입력 아래 오류. */
+export const DueDatePast: Story = {
+  args: { label: '마감일', type: 'date', value: '2026-10-01', min: '2026-10-14', autoComplete: 'off', error: '오늘이나 그 뒤의 날짜를 고르세요.' },
+};

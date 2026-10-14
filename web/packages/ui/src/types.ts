@@ -27,3 +27,13 @@ export interface Option<T extends string = string> {
   description?: string;
   disabled?: boolean;
 }
+
+/** One label of a company (slice 6a): the chip, the picker row and the list cell take it. */
+export interface LabelItem {
+  /** Label ID as text, like the values of `CheckboxGroup`. */
+  id: string;
+  /** 1~30 characters. */
+  name: string;
+  /** `#RRGGBB`, the background of the chip. */
+  color: string;
+}
