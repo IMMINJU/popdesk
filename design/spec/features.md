@@ -46,7 +46,7 @@
 
 ## 6. 첨부 (ATT)
 
-→ ATT-6~8은 `../archive/5-attachments/rules.md`로, ATT-9는 `../slices/5b-storage/rules.md`로 옮김(5번, 5b 묶음).
+→ ATT-6~8은 `../archive/5-attachments/rules.md`로, ATT-9는 `../archive/5b-storage/rules.md`로 옮김(5번, 5b 묶음).
 
 | ID | 규칙 |
 |---|---|
