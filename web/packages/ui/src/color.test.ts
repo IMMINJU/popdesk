@@ -26,6 +26,13 @@ describe('labelTextColor', () => {
   });
 
   test.each([
+    ['#006DFB', WHITE], // (4.580, 4.585) 경계 밝기 0.179 바로 위
+    ['#0003FD', WHITE], // (2.431, 8.637) G=3은 0.04045 이하라 /12.92 쪽으로 셈한다
+  ])('S6A-AC-84 어두운 채널(0~10)이 낀 경계 근처: %s 위 글자는 %s', (background, expected) => {
+    expect(labelTextColor(background)).toBe(expected);
+  });
+
+  test.each([
     ['#000000', WHITE],
     ['#FFFFFF', BLACK],
     ['#FF0000', BLACK], // (5.25, 4.00)
