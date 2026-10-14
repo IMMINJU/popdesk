@@ -4,16 +4,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.deploy.AppSteps.Person;
 import io.popdesk.support.ApiClient;
+import io.popdesk.support.ApiResponse;
 import io.popdesk.support.Unique;
+import io.popdesk.support.Wait;
+import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import tools.jackson.databind.JsonNode;
 
 /**
  * {@code popdesk attachments check} inside the app container ({@code design.md} 8절 of slice 5b): what
@@ -29,6 +43,8 @@ import org.junit.jupiter.api.Test;
 class AttachmentsCheckCommandTest {
 
     private static final String FOLDER = "/data/attachments";
+
+    private static final Set<String> FILE_STATES = Set.of("pending", "stored", "purging", "purged");
 
     private Stack stack;
 
@@ -94,6 +110,7 @@ class AttachmentsCheckCommandTest {
         stack.exec("app", null, "rm", fileOf(missing)).expectOk("remove a file from the volume");
         stack.exec("app", null, "sh", "-c", "printf x > " + fileOf(wrongSize)).expectOk("shorten a file");
         Map<String, List<String>> rowsBefore = attachmentRows(stack);
+        Map<String, Long> auditBefore = auditRows(stack);
         String filesBefore = files(stack);
 
         Cli.Result broken = check(stack);
@@ -109,6 +126,8 @@ class AttachmentsCheckCommandTest {
         }
         assertThat(attachmentRows(stack)).as("every row of the attachment tables after the command")
                 .isEqualTo(rowsBefore);
+        assertThat(auditRows(stack)).as("rows per audit log table after the command: it leaves no audit entry")
+                .isEqualTo(auditBefore);
         assertThat(files(stack)).as("files of the volume, with their sizes, after the command").isEqualTo(filesBefore);
         assertThat(stack.inspect("app").path("State").path("Running").asBoolean(false)).as("the app still runs")
                 .isTrue();
@@ -143,6 +162,136 @@ class AttachmentsCheckCommandTest {
         assertThat(result.exit()).as("exit code\n%s", result).isEqualTo(1);
         assertThat(result.err()).as("standard error").startsWith("popdesk: ").contains("popdesk attachments check");
         assertThat(result.out().strip()).as("standard output").isEmpty();
+    }
+
+    @Test
+    @DisplayName("S5B-AC-40, S5B-AC-41, S5B-AC-42, S5B-AC-25 with files in s3 the command counts stored rows only, "
+            + "not a pending, a purging, or a purged one (0); with the object of a stored row gone it prints "
+            + "missing s3 and the attachment ID and the summary line of {bucket}/popdesk (2); when it cannot reach "
+            + "the storage, or S3_SECRET_KEY is not set, it ends with 1 and a reason on standard error; no output "
+            + "holds a file name or a key's value")
+    void countsStoredRowsInS3AndEndsWithOneWithoutTheStorage() {
+        String accessKey = "pdcheck" + UUID.randomUUID().toString().replace("-", "").substring(0, 14);
+        String secretKey = "pdcheck" + UUID.randomUUID().toString().replace("-", "");
+        String bucket = "pd-check-" + UUID.randomUUID().toString().substring(0, 8);
+        stack = Stack.release("checks3").withResource("storage-s3.compose.yml")
+                .env("POPDESK_TEST_S3_ACCESS", accessKey).env("POPDESK_TEST_S3_SECRET", secretKey);
+        stack.up("db", "s3");
+        awaitS3(stack, accessKey, secretKey, s3 -> s3.createBucket(b -> b.bucket(bucket)));
+        stack.appEnv("POPDESK_STORAGE", "s3")
+                .appEnv("S3_ENDPOINT", "http://s3:7070")
+                .appEnv("S3_BUCKET", bucket)
+                .appEnv("S3_ACCESS_KEY", accessKey)
+                .appEnv("S3_SECRET_KEY", secretKey);
+        stack.up();
+        stack.awaitHealthy("app", Duration.ofMinutes(2));
+
+        // Two stored files and a purged one; then, with the storage stopped, a pending and a purging one.
+        AppSteps steps = new AppSteps(stack);
+        Person admin = steps.signInAdmin();
+        String company = steps.createCompany(admin);
+        Person customer = steps.join(admin, "CUSTOMER", List.of(company), null);
+        String issue = steps.fileIssue(customer, company);
+        String nameToken = "named" + Unique.number() + "file";
+        List<String> stored = new ArrayList<>();
+        for (int i = 0; i < 2; i++) {
+            stored.add(steps.attach(customer, issue, nameToken + "-stored-" + i + ".bin", bytes(1_000 + i)));
+        }
+        stored.sort(null);
+        String purged = steps.attach(customer, issue, nameToken + "-purged.bin", bytes(700));
+        delete(customer, issue, purged).expectStatus(204);
+        String purging = steps.attach(customer, issue, nameToken + "-purging.bin", bytes(800));
+        stack.command("stop", "s3").expectOk("stop the S3 stand-in");
+        String pendingName = nameToken + "-pending.bin";
+        ApiResponse notWritten = customer.client().post(customer.api() + "/issues/" + issue + "/attachments")
+                .file("file", pendingName, "application/octet-stream", bytes(900)).send();
+        assertThat(notWritten.status()).as("%s %s", notWritten, notWritten.snippet()).isEqualTo(500);
+        delete(customer, issue, purging).expectStatus(204);
+        stack.command("start", "s3").expectOk("start the S3 stand-in again");
+        awaitS3(stack, accessKey, secretKey, s3 -> s3.headBucket(b -> b.bucket(bucket)));
+        assertThat(fileState(stack, purged)).as("state of the deleted file's row").isEqualTo("purged");
+        assertThat(fileState(stack, purging)).as("state of the row whose removal failed").isEqualTo("purging");
+        assertThat(fileState(stack, pendingName)).as("state of the row whose write failed").isEqualTo("pending");
+        for (String id : stored) {
+            assertThat(fileState(stack, id)).as("state of %s", id).isEqualTo("stored");
+        }
+        String place = "s3 " + bucket + "/popdesk";
+
+        Cli.Result whole = check(stack);
+        assertThat(whole.exit()).as("exit code with every stored file in place\n%s", whole).isZero();
+        assertThat(whole.out().strip().lines().toList())
+                .containsExactly(place + ": checked 2, missing 0, wrong size 0");
+
+        String missing = stored.get(1);
+        awaitS3(stack, accessKey, secretKey, s3 -> s3.deleteObject(b -> b.bucket(bucket).key("popdesk/" + missing)));
+        Cli.Result broken = check(stack);
+        assertThat(broken.exit()).as("exit code with the object of a stored row gone\n%s", broken).isEqualTo(2);
+        assertThat(broken.out().strip().lines().toList()).containsExactly("missing s3 " + missing,
+                place + ": checked 2, missing 1, wrong size 0");
+
+        Cli.Result unreachable = stack.command("exec", "-T", "-e", "S3_ENDPOINT=http://s3:1", "app", "popdesk",
+                "attachments", "check");
+        Cli.Result noSecret = stack.exec("app", null, "sh", "-c",
+                "unset S3_SECRET_KEY; exec popdesk attachments check");
+        for (Cli.Result result : List.of(unreachable, noSecret)) {
+            assertThat(result.exit()).as("exit code\n%s", result).isEqualTo(1);
+            assertThat(result.err().strip().lines().toList()).as("standard error\n%s", result)
+                    .anyMatch(line -> line.startsWith("popdesk: "));
+            assertThat(result.err()).as("the reason is not about how to call the command")
+                    .doesNotContain("unknown command").doesNotContain("Usage");
+            // A file that could not be looked at is not a file that is missing.
+            assertThat(result.out().lines().toList()).as("standard output\n%s", result)
+                    .noneMatch(line -> line.startsWith("missing "));
+        }
+        for (Cli.Result result : List.of(whole, broken, unreachable, noSecret)) {
+            assertThat(result.out() + result.err()).as("what the command printed").doesNotContain(nameToken)
+                    .doesNotContain(secretKey).doesNotContain(accessKey);
+        }
+    }
+
+    /**
+     * Does {@code request} on the S3 stand-in through its published port, again until it takes the
+     * request (the port changes when the stand-in is started again).
+     */
+    private static void awaitS3(Stack stack, String accessKey, String secretKey, Consumer<S3Client> request) {
+        Wait.until("the S3 stand-in takes the request", Duration.ofMinutes(1), () -> {
+            try (S3Client s3 = S3Client.builder()
+                    .endpointOverride(URI.create("http://127.0.0.1:" + stack.port("s3", 7070)))
+                    .region(Region.US_EAST_1).forcePathStyle(true)
+                    .credentialsProvider(StaticCredentialsProvider.create(
+                            AwsBasicCredentials.create(accessKey, secretKey)))
+                    .httpClient(UrlConnectionHttpClient.create()).build()) {
+                request.accept(s3);
+                return stack;
+            } catch (SdkException notYet) {
+                return null;
+            }
+        });
+    }
+
+    private static ApiResponse delete(Person person, String issue, String id) {
+        return person.client().delete(person.api() + "/issues/" + issue + "/attachments/" + id).send();
+    }
+
+    /**
+     * The file state of the one row that holds {@code needle} (an attachment ID, or a file name no
+     * other row has) and a {@code state} of a file.
+     */
+    private static String fileState(Stack stack, String needle) {
+        List<String> states = stack.db().rowsContaining(needle).stream().map(row -> row.json().path("state"))
+                .filter(JsonNode::isString).map(JsonNode::stringValue).filter(FILE_STATES::contains).toList();
+        assertThat(states).as("file states of the rows that hold %s", needle).hasSize(1);
+        return states.getFirst();
+    }
+
+    /** Rows per table whose name starts with {@code audit}: the audit log and its chain. */
+    private static Map<String, Long> auditRows(Stack stack) {
+        Map<String, Long> rows = new TreeMap<>(stack.db().counts());
+        rows.keySet().removeIf(table -> !table.startsWith("audit"));
+        assertThat(rows).as("tables whose name starts with audit").isNotEmpty();
+        assertThat(rows.values().stream().mapToLong(Long::longValue).sum()).as("audit rows of the installation")
+                .isPositive();
+        return rows;
     }
 
     /** Every row of the tables whose name starts with {@code attachment}: the rows and the contents in the database. */

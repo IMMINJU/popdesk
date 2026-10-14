@@ -13,6 +13,8 @@ import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.TestClock;
 import io.popdesk.support.Unique;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -37,6 +39,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -490,6 +493,31 @@ final class StorageSteps {
         }
     }
 
+    /**
+     * What an exception of the S3 client says, as the stand-in and SDK 2.55.15 gave it on this machine
+     * (2026-10-14): the end of every service error ({@code (Service: S3, Status Code: 403, Request ID:
+     * ..., Extended Request ID: ...) (SDK Attempt Count: 1)}), the start of every error without an
+     * answer ({@code Unable to execute HTTP request: ...}), the server's sentences, and a stack frame
+     * of the SDK. Not here, because {@code design.md} 2절 lets the app write them: the storage kind,
+     * the place, a status code, an S3 error code such as {@code NoSuchBucket}, and a class name.
+     */
+    static final List<String> SDK_TEXT = List.of("Service: S3", "Request ID", "SDK Attempt Count",
+            "Unable to execute HTTP request", "The request signature we calculated",
+            "The specified bucket does not exist", "The specified key does not exist",
+            "at software.amazon.awssdk.");
+
+    /**
+     * No text of an S3 client exception is in {@code text} (S5B-AC-25, {@code design.md} 9절 5): the
+     * app neither logs such an exception nor passes it on as a cause. Fails first when the text is
+     * too short to be a log or an answer at all.
+     */
+    static void assertHoldsNoSdkText(String text, String what) {
+        assertThat(text).as(what).isNotBlank();
+        for (String told : SDK_TEXT) {
+            assertThat(text).as("%s holds the text of an S3 client exception", what).doesNotContain(told);
+        }
+    }
+
     // The S3 stand-in
 
     /**
@@ -616,6 +644,7 @@ final class StorageSteps {
      * the storage fail and come back while the app keeps its {@code S3_ENDPOINT}: {@link Mode#DROP}
      * ends every connection at once (the storage cannot be reached), {@link Mode#STALL} takes
      * connections and never answers. Changing the mode ends the connections that are open.
+     * {@link #cutAfter} lets a number of bytes of answers through and then turns to {@link Mode#DROP}.
      */
     static final class Gate implements AutoCloseable {
 
@@ -630,6 +659,8 @@ final class StorageSteps {
         private final int port;
         private final AtomicInteger accepted = new AtomicInteger();
         private final Set<Socket> open = ConcurrentHashMap.newKeySet();
+        private final AtomicLong answered = new AtomicLong();
+        private volatile long cutAfter = -1;
         private volatile Mode mode = Mode.PASS;
 
         Gate(String host, int port) {
@@ -648,9 +679,20 @@ final class StorageSteps {
         }
 
         void mode(Mode next) {
+            cutAfter = -1;
             mode = next;
             open.forEach(Gate::end);
             open.clear();
+        }
+
+        /**
+         * Passes on, from now, {@code bytes} bytes of what the storage answers (headers and bodies of
+         * all connections together), then ends every connection and turns to {@link Mode#DROP}: a
+         * storage that fails in the middle of a download. {@link #mode} takes it back.
+         */
+        void cutAfter(long bytes) {
+            answered.set(0);
+            cutAfter = bytes;
         }
 
         /** Connections taken so far, in any mode. */
@@ -679,17 +721,32 @@ final class StorageSteps {
                 Socket upstream = new Socket(host, port);
                 open.add(client);
                 open.add(upstream);
-                pump(client, upstream);
-                pump(upstream, client);
+                pump(client, upstream, false);
+                pump(upstream, client, true);
             } catch (IOException e) {
                 end(client);
             }
         }
 
-        private void pump(Socket from, Socket to) {
-            Thread.ofVirtual().start(() -> {
+        /**
+         * Copies one direction of a connection on a platform thread. On a virtual thread, a 9 MB
+         * upload through the gate never ended on this machine (Windows, JDK 25.0.4, 2026-10-14): the
+         * thread that wrote to the storage stayed parked. Smaller bodies went through.
+         */
+        private void pump(Socket from, Socket to, boolean answers) {
+            Thread.ofPlatform().daemon().name("s3-gate-pump").start(() -> {
                 try {
-                    from.getInputStream().transferTo(to.getOutputStream());
+                    InputStream in = from.getInputStream();
+                    OutputStream out = to.getOutputStream();
+                    byte[] buffer = new byte[16 * 1024];
+                    for (int n = in.read(buffer); n >= 0; n = in.read(buffer)) {
+                        out.write(buffer, 0, n);
+                        long limit = cutAfter;
+                        if (answers && limit >= 0 && answered.addAndGet(n) >= limit) {
+                            mode(Mode.DROP);
+                            return;
+                        }
+                    }
                 } catch (IOException e) {
                     // One side ended; both end below.
                 } finally {

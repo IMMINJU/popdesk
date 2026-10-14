@@ -289,7 +289,8 @@ class StorageStartCheckTest extends OwnStartTest {
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"a wrong S3_SECRET_KEY", "a bucket that does not exist", "an S3_ENDPOINT nothing listens on"})
     @DisplayName("S5B-AC-24, S5B-AC-25 when the s3 storage of new files cannot be written, the app does not start, "
-            + "does not make the bucket, and tells no key's value, plain or percent-encoded")
+            + "does not make the bucket, and tells no key's value, plain or percent-encoded; it says the storage "
+            + "kind and the place in one line, and nothing of what the S3 client's exception says")
     void unusableS3StopsTheStart(String why) {
         Database db = postgres.newDatabase();
         S3 s3 = S3_STAND_IN.get();
@@ -310,14 +311,19 @@ class StorageStartCheckTest extends OwnStartTest {
 
             StorageSteps.assertHoldsNoSecret(told(app), "what the start told", s3.accessKey(), s3.secretKey(),
                     wrongSecret, db.password());
+            // The place of new files, as their rows would name it.
+            String place = locationOf(why.contains("bucket") ? noBucket : bucket);
+            assertThat(linesWith(app, place)).as("lines of what the start told that name the place %s", place)
+                    .anyMatch(line -> line.contains("s3"));
+            StorageSteps.assertHoldsNoSdkText(told(app), "what the start told");
         }
         assertThat(s3.bucketExists(noBucket)).as("the bucket %s exists after the failed start", noBucket).isFalse();
         assertThat(s3.keys(bucket)).as("keys in the bucket the settings did not reach or could not write").isEmpty();
     }
 
     @Test
-    @DisplayName("S5B-AC-24 when POPDESK_STORAGE_DIR is a file, not a folder, the app does not start and leaves the "
-            + "file as it is")
+    @DisplayName("S5B-AC-24 when POPDESK_STORAGE_DIR is a file, not a folder, the app does not start, says the "
+            + "storage kind and the place in one line, and leaves the file as it is")
     void aFileInTheFoldersPlaceStopsTheStart() throws IOException {
         Database db = postgres.newDatabase();
         Path file = newFolder().resolve("not-a-folder");
@@ -325,6 +331,9 @@ class StorageStartCheckTest extends OwnStartTest {
 
         try (Boot app = Boot.start(StorageSteps.disk(db, file))) {
             app.assertDidNotStart("POPDESK_STORAGE_DIR is a file");
+
+            assertThat(linesWith(app, file.toString())).as("lines of what the start told that name the place %s", file)
+                    .anyMatch(line -> line.contains("disk"));
         }
 
         assertThat(file).isRegularFile().hasContent("a file where the folder should be");

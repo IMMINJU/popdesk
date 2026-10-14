@@ -6,6 +6,7 @@ import static io.popdesk.start.StorageSteps.bytes;
 import static io.popdesk.start.StorageSteps.contentRows;
 import static io.popdesk.start.StorageSteps.delete;
 import static io.popdesk.start.StorageSteps.download;
+import static io.popdesk.start.StorageSteps.entry;
 import static io.popdesk.start.StorageSteps.fileIssue;
 import static io.popdesk.start.StorageSteps.keyOf;
 import static io.popdesk.start.StorageSteps.list;
@@ -26,12 +27,14 @@ import io.popdesk.start.StorageSteps.Gate;
 import io.popdesk.start.StorageSteps.S3;
 import io.popdesk.start.StorageSteps.Scene;
 import io.popdesk.start.StorageSteps.Shared;
+import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.TestClock;
 import io.popdesk.support.Unique;
 import io.popdesk.support.Wait;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -353,5 +356,152 @@ class S3StorageTest extends StorageContract {
         } finally {
             b.s3().gate().mode(Gate.Mode.PASS);
         }
+    }
+
+    @Test
+    @DisplayName("S5B-AC-05 the list does not ask the storage: while the storage takes connections and never "
+            + "answers, the list answers 200 with the attachment's name and size at once, and no connection goes "
+            + "to the storage")
+    void listAnswersWhileTheStorageIsSilent() {
+        Bucket b = RUNNING.get();
+        Scene s = scene(b.app());
+        String key = fileIssue(s.customer(), s.code());
+        byte[] content = small();
+        String name = Unique.text("listed-in-silence") + ".bin";
+        String id = uploaded(s.customer(), key, name, content);
+        JsonNode listed;
+        Duration took;
+        int connections;
+        // Turning the gate ends the connections the app keeps open, so asking the storage needs a new one.
+        b.s3().gate().mode(Gate.Mode.STALL);
+        try {
+            int before = b.s3().gate().accepted();
+            long started = System.nanoTime();
+            listed = entry(s.customer(), key, id);
+            took = Duration.ofNanos(System.nanoTime() - started);
+            connections = b.s3().gate().accepted() - before;
+        } finally {
+            b.s3().gate().mode(Gate.Mode.PASS);
+        }
+
+        assertThat(listed).as("the list entry of %s", id).isNotNull();
+        assertThat(listed.path("fileName").asString(null)).isEqualTo(name);
+        assertThat(listed.path("size").asLong()).isEqualTo(content.length);
+        assertThat(took).as("how long the list took while the storage was silent").isLessThan(Duration.ofSeconds(10));
+        assertThat(connections).as("connections to the storage while the list was read").isZero();
+    }
+
+    @Test
+    @DisplayName("S5B-AC-31 while the storage cannot be reached, so that not even the first piece is read, a stored "
+            + "attachment's download and range request are 500 INTERNAL_ERROR, never 200; the log names the "
+            + "attachment ID and s3 and not the file name; when the storage is back the file downloads whole")
+    void aFirstPieceThatCannotBeReadIsAnError() {
+        Bucket b = RUNNING.get();
+        Scene s = scene(b.app());
+        String key = fileIssue(s.customer(), s.code());
+        String token = "unread" + Unique.number() + "name";
+        byte[] content = bytes(MB + 4_321, Unique.number());
+        String id = uploaded(s.customer(), key, token + ".bin", content);
+        int mark = Console.mark();
+        ApiResponse whole;
+        ApiResponse part;
+        b.s3().gate().mode(Gate.Mode.DROP);
+        try {
+            // A 200 whose body is cut gives no answer here at all (ApiRequest.NoResponse), which fails too.
+            whole = download(s.customer(), key, id);
+            part = s.customer().client().get(path(s.customer(), key, id)).header("Range", "bytes=10-99").send();
+        } finally {
+            b.s3().gate().mode(Gate.Mode.PASS);
+        }
+
+        assertThat(whole.status()).as("%s %s", whole, whole.snippet()).isEqualTo(500);
+        assertThat(whole.errorCode()).isEqualTo("INTERNAL_ERROR");
+        assertThat(part.status()).as("%s %s", part, part.snippet()).isEqualTo(500);
+        assertThat(part.errorCode()).isEqualTo("INTERNAL_ERROR");
+        List<String> lines = Wait.until("a log line with the attachment ID " + id, Duration.ofSeconds(10), () -> {
+            List<String> found = Console.linesSince(mark).stream().filter(line -> line.contains(id)).toList();
+            return found.isEmpty() ? null : found;
+        });
+        assertThat(lines).as("log lines with the attachment ID").anyMatch(line -> line.contains("s3"));
+        assertThat(Console.since(mark)).as("the log since the downloads").doesNotContain(token);
+        assertThat(state(b.db(), id)).as("the row stays stored").isEqualTo("stored");
+        assertThat(download(s.customer(), key, id).expectStatus(200).sha256()).as("hash once the storage is back")
+                .isEqualTo(StorageSteps.sha256(content));
+    }
+
+    @Test
+    @DisplayName("S5B-AC-32 when the storage fails in the middle of a download, the app cuts the connection: the "
+            + "download ends without a whole answer, and soon, not after waiting out a time limit; when the "
+            + "storage is back the file downloads whole")
+    void aReadThatFailsMidwayCutsTheConnection() {
+        Bucket b = RUNNING.get();
+        Scene s = scene(b.app());
+        String key = fileIssue(s.customer(), s.code());
+        byte[] content = bytes(9 * MB, Unique.number());
+        String id = uploaded(s.customer(), key, "cut-midway.bin", content);
+        ApiResponse answer = null;
+        ApiRequest.NoResponse cut = null;
+        long started = System.nanoTime();
+        // Half of the file comes through (four whole 1 MB pieces and a part of the fifth), then nothing.
+        b.s3().gate().cutAfter(4 * MB + MB / 2);
+        try {
+            answer = download(s.customer(), key, id);
+        } catch (ApiRequest.NoResponse e) {
+            cut = e;
+        } finally {
+            b.s3().gate().mode(Gate.Mode.PASS);
+        }
+        Duration took = Duration.ofNanos(System.nanoTime() - started);
+
+        assertThat(answer == null ? "no whole answer" : answer + " with " + answer.body().length + " bytes")
+                .as("how the download of %s bytes ended after the storage failed midway", content.length)
+                .isEqualTo("no whole answer");
+        assertThat(cut).as("the failure of the download").isNotNull();
+        assertThat(cut.getCause()).as("why the download got no whole answer")
+                .isNotInstanceOf(HttpTimeoutException.class);
+        assertThat(took).as("how long the download took to end").isLessThan(Duration.ofSeconds(30));
+        assertThat(state(b.db(), id)).as("the row stays stored").isEqualTo("stored");
+        assertThat(download(s.customer(), key, id).expectStatus(200).sha256()).as("hash once the storage is back")
+                .isEqualTo(StorageSteps.sha256(content));
+    }
+
+    @Test
+    @DisplayName("S5B-AC-25 when a write and a read fail because the storage cannot be reached, and when a read "
+            + "finds no object, the answers are 500 INTERNAL_ERROR without the bucket, the storage's address, or "
+            + "what the S3 client's exception says, and the app's log since its start holds none of that text")
+    void storageFailuresTellNothingOfTheClientsException() {
+        Bucket b = RUNNING.get();
+        Scene s = scene(b.app());
+        String key = fileIssue(s.customer(), s.code());
+        String unreachable = uploaded(s.customer(), key, "unreachable.bin", small());
+        String lost = uploaded(s.customer(), key, "lost.bin", small());
+        b.lose(lost);
+        int mark = Console.mark();
+        ApiResponse failedWrite;
+        ApiResponse failedRead;
+        b.s3().gate().mode(Gate.Mode.DROP);
+        try {
+            failedWrite = upload(s.customer(), key, "not-written.bin", small());
+            failedRead = download(s.customer(), key, unreachable);
+        } finally {
+            b.s3().gate().mode(Gate.Mode.PASS);
+        }
+        ApiResponse noObject = download(s.customer(), key, lost);
+
+        for (ApiResponse answer : List.of(failedWrite, failedRead, noObject)) {
+            assertThat(answer.status()).as("%s %s", answer, answer.snippet()).isEqualTo(500);
+            assertThat(answer.errorCode()).isEqualTo("INTERNAL_ERROR");
+            String told = answer.text() + answer.headers();
+            StorageSteps.assertHoldsNoSdkText(told, "the answer of " + answer.request());
+            assertThat(told).as("the answer of %s", answer.request()).doesNotContain(b.bucket())
+                    .doesNotContain(":" + b.s3().gate().port());
+        }
+        // The failed reads are in the log by now (S5B-AC-31), so the failures were logged before the look.
+        for (String id : List.of(unreachable, lost)) {
+            Wait.until("a log line with the attachment ID " + id, Duration.ofSeconds(10),
+                    () -> Console.linesSince(mark).stream().filter(line -> line.contains(id)).findFirst()
+                            .orElse(null));
+        }
+        StorageSteps.assertHoldsNoSdkText(b.app().log(), "the app's log since its start");
     }
 }

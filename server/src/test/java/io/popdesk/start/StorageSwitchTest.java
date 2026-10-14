@@ -132,29 +132,34 @@ class StorageSwitchTest extends OwnStartTest {
     @ParameterizedTest(name = "{0} to {1}")
     @CsvSource({"db,disk", "disk,s3", "s3,db", "folderA,folderB", "bucketA,bucketB"})
     @DisplayName("S5B-AC-10, S5B-AC-11 after the storage settings change, a file uploaded before downloads with the "
-            + "same hash, its row and its file stay where they were, a new file goes to the new place only, and "
-            + "deleting the old file removes it from the old place")
+            + "same hash and a temporary image uploaded before reads with the same bytes, their rows and files stay "
+            + "where they were, a new file goes to the new place only, and deleting the old file removes it from the "
+            + "old place")
     void oldFilesStayWhereTheirRowsSay(String fromName, String toName) {
         Database db = postgres.newDatabase();
         Place from = place(fromName, db);
         Place to = place(toName, db);
         byte[] oldContent = bytes(MB + 20_000, Unique.number());
         byte[] keptContent = small();
+        byte[] oldImage = ImageSteps.png();
         Scene s;
         String key;
         String oldId;
         String keptId;
+        String oldImageId;
         try (Boot app = Boot.start(from.asStorage(Settings.firstInstall(db)))) {
             app.assertStarted();
             s = scene(app);
             key = fileIssue(s.customer(), s.code());
             oldId = uploaded(s.customer(), key, "before-the-change.bin", oldContent);
             keptId = uploaded(s.customer(), key, "kept.bin", keptContent);
+            oldImageId = ImageSteps.uploaded(s.customer(), oldImage);
         }
         String oldStorage = storage(db, oldId);
         String oldLocation = location(db, oldId);
         assertThat(oldStorage).as("storage of the row before the change").isEqualTo(from.kind());
         assertThat(from.holds(oldId)).as("the old file in %s before the change", from).isTrue();
+        assertThat(from.holds(oldImageId)).as("the temporary image in %s before the change", from).isTrue();
 
         try (Boot app = Boot.start(changed(db, from, to))) {
             app.assertStarted();
@@ -164,6 +169,12 @@ class StorageSwitchTest extends OwnStartTest {
             ApiResponse old = download(customer, key, oldId);
             assertThat(old.status()).as("%s %s", old.request(), old.snippet()).isEqualTo(200);
             assertThat(old.sha256()).isEqualTo(sha256(oldContent));
+            // The other way to read: a temporary image that no content has attached yet.
+            ApiResponse image = ImageSteps.read(customer, oldImageId);
+            assertThat(image.status()).as("%s %s", image.request(), image.snippet()).isEqualTo(200);
+            assertThat(image.body()).as("the temporary image uploaded before the change").isEqualTo(oldImage);
+            assertThat(from.holds(oldImageId)).as("the temporary image is still in %s", from).isTrue();
+            assertThat(to.holds(oldImageId)).as("the temporary image was copied to %s", to).isFalse();
             // Not moved.
             assertThat(storage(db, oldId)).as("storage of the old row").isEqualTo(oldStorage);
             assertThat(location(db, oldId)).as("storage_location of the old row").isEqualTo(oldLocation);

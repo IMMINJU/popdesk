@@ -45,8 +45,8 @@ import org.junit.jupiter.api.Test;
  *       A service cannot step around the repository rules with an {@code EntityManager}.
  *   <li>{@value #STORAGE}: the attachment storage (file contents). Outside it, only
  *       {@value #ATTACHMENT_SERVICE} and the system package use it, and only
- *       {@value #ATTACHMENT_SERVICE} calls its methods that are not writes or removals
- *       ({@link #STORAGE_WRITE_PREFIXES}).
+ *       {@value #ATTACHMENT_SERVICE} calls its methods that are not writes, removals, or checks that
+ *       give no content back ({@link #STORAGE_WRITE_PREFIXES}).
  * </ul>
  *
  * Each rule first checks that the classes it is about exist, so it cannot pass on an empty package.
@@ -81,9 +81,14 @@ class ScopedReadRulesTest {
 
     static final String ATTACHMENT_SERVICE = "io.popdesk.helpdesk.attachment.AttachmentService";
 
-    /** Method names of the storage that write or remove contents. Every other method reads. */
+    /**
+     * Method names of the storage that do not read contents: they write or remove them, or, with
+     * {@code check}, only say whether a file is there and whether its size is right, and give no
+     * content back (slice 5b, {@code design.md} 9절 2: {@code popdesk attachments check} runs in the
+     * system package). Every other method reads.
+     */
     static final List<String> STORAGE_WRITE_PREFIXES = List.of("write", "store", "save", "put", "delete", "remove",
-            "purge");
+            "purge", "check");
 
     /** Spring Data methods that read by ID, by example, or read everything, without a scope. */
     static final Set<String> UNSCOPED_READS = Set.of("findById", "findAllById", "getById", "getReferenceById",
