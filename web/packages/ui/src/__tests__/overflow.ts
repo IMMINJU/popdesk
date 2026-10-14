@@ -81,11 +81,19 @@ export function expectTheme(theme: Theme): void {
 
 /**
  * axe on the whole page in the real browser, with the contrast rule on (S6A-AC-85): the jsdom
- * tests turn it off. The `region` rule (content inside landmarks) is off: a component story
- * draws its part outside a page, and the screen tests keep the rule in jsdom.
+ * tests turn it off. The page rules `region` (content inside landmarks), `landmark-one-main` and
+ * `page-has-heading-one` are off: a component story draws its part outside a page, and the screen
+ * tests keep those rules in jsdom.
  */
 export async function expectNoAxeViolations(): Promise<void> {
-  const result = await axe.run(document, { rules: { 'color-contrast': { enabled: true }, region: { enabled: false } } });
+  const result = await axe.run(document, {
+    rules: {
+      'color-contrast': { enabled: true },
+      region: { enabled: false },
+      'landmark-one-main': { enabled: false },
+      'page-has-heading-one': { enabled: false },
+    },
+  });
   const found = result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
   if (found.length > 0) throw new Error(`axe 위반 ${String(found.length)}건: ${found.join(' / ')}`);
 }
@@ -96,7 +104,19 @@ export async function expectDrawnRight(width: Width, theme: Theme, parts: readon
   await settled();
   expectPageFits(width);
   for (const { el, what } of parts) expectFits(el, what);
+  await animationsDone();
   await expectNoAxeViolations();
+}
+
+/**
+ * Waits until the animations and transitions that end have ended (a dialog fades in from
+ * opacity 0, and axe reads contrast from the colors drawn at that moment). Endless ones, such as a
+ * spinner, are not waited for.
+ */
+export async function animationsDone(): Promise<void> {
+  const ending = document.getAnimations().filter((a) => a.effect?.getComputedTiming().endTime !== Infinity);
+  await Promise.all(ending.map((a) => a.finished.catch(() => undefined)));
+  await settled();
 }
 
 /** Waits a frame twice, so a layout that changes after the first paint has settled. */
