@@ -19,8 +19,7 @@ const long: LabelItem[] = [
 ];
 
 /**
- * 6a 묶음의 껍데기다. 칩을 다 그린다.
- * `max`(기본 3)에서 자르기와 "+n"(화면 읽기와 `title`에 가린 이름)은 C-9가 채운다.
+ * 한 문의의 라벨: `max`(기본 3)까지 칩, 넘으면 "+n"(가린 이름은 `title`과 화면 읽기 글자).
  */
 const meta = {
   component: LabelChips,
@@ -39,7 +38,7 @@ export const None: Story = { args: { labels: [] } };
 export const Two: Story = {};
 /** 셋: 한도와 같아 "+n"이 없다. */
 export const Three: Story = { args: { labels: six.slice(0, 3) } };
-/** 여섯: 칩 셋과 "+3". 껍데기라 아직 여섯을 다 보인다. */
+/** 여섯: 칩 셋과 "+3". */
 export const Six: Story = { args: { labels: six } };
-/** 30자 이름 넷: 칩 셋과 "+1". 껍데기라 아직 넷을 다 보인다. */
+/** 30자 이름 넷: 칩 셋과 "+1". */
 export const LongNames: Story = { args: { labels: long } };

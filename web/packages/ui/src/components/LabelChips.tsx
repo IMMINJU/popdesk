@@ -16,15 +16,24 @@ export interface LabelChipsProps {
  * The labels of one issue in a row (slice 6a screens.md 2절 C-3 라벨 칸): the first `max` chips,
  * then "+n" whose `title` and hidden text name the rest.
  *
- * Contract shell: every chip is drawn. Cutting at `max` and the "+n" come later (C-9).
+ * "+n" is drawn for the eye only; the hidden text after it says the same for a screen reader.
  */
 export function LabelChips(props: LabelChipsProps) {
   if (props.labels.length === 0) return null;
+  const shown = props.labels.slice(0, Math.max(0, props.max ?? 3));
+  const hidden = props.labels.slice(shown.length);
+  const more = hidden.length > 0 ? props.moreText(hidden) : '';
   return (
     <span className="pd-label-chips" data-pd="LabelChips">
-      {props.labels.map((l) => (
+      {shown.map((l) => (
         <LabelChip key={l.id} name={l.name} color={l.color} />
       ))}
+      {hidden.length > 0 && (
+        <span className="pd-label-more" title={more}>
+          <span aria-hidden="true">+{hidden.length}</span>
+          <span className="pd-sr-only">{more}</span>
+        </span>
+      )}
     </span>
   );
 }

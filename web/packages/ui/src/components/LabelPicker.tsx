@@ -1,5 +1,12 @@
-import type { ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
+import { CheckIcon } from '../icons';
 import type { LabelItem } from '../types';
+import { LabelChip } from './LabelChip';
+import { usePopover } from './popover';
+import { TextField } from './TextField';
+
+/** Over this many labels a filter input comes first (screens.md 1절). */
+const FILTER_FROM = 9;
 
 export interface LabelPickerProps {
   /** Names the boxes when opened, e.g. "라벨". */
@@ -53,15 +60,94 @@ export interface LabelPickerProps {
  * boxes named `label` with their chips, the limit line and the error line. Each box is one
  * `onToggle` call; a busy row and, at the limit, an unchecked row are held.
  *
- * Contract shell: only the folded button is drawn. Opening, the filter, the boxes, the limit,
- * closing on Escape or outside and the `onToggle` call come later (C-9).
+ * A held row is `aria-disabled`, not `disabled`, so focus stays on it while its request runs.
  */
 export function LabelPicker(props: LabelPickerProps) {
+  const autoId = useId();
+  const id = props.id ?? autoId;
+  const listId = `${id}-list`;
+  const { root, toggle, open, setOpen } = usePopover(props);
   return (
-    <div className="pd-label-picker" data-pd="LabelPicker">
-      <button id={props.id} type="button" className="pd-button" data-variant="secondary" data-size="sm" aria-label={props.toggleName} aria-expanded={false}>
+    <div ref={root} className="pd-label-picker" data-pd="LabelPicker">
+      <button
+        ref={toggle}
+        id={id}
+        type="button"
+        className="pd-button"
+        data-variant="secondary"
+        data-size="sm"
+        aria-label={props.toggleName}
+        aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        onClick={() => {
+          setOpen(!open);
+        }}
+      >
         <span className="pd-button-text">{props.toggleLabel}</span>
       </button>
+      {open && <LabelPickerList {...props} listId={listId} />}
+    </div>
+  );
+}
+
+function LabelPickerList(props: LabelPickerProps & { listId: string }) {
+  const [filter, setFilter] = useState('');
+  const busy = props.busyIds ?? [];
+  const full = props.limit !== undefined && props.selected.length >= props.limit;
+  const needle = filter.trim().toLocaleLowerCase();
+  const rows = needle === '' ? props.labels : props.labels.filter((l) => l.name.toLocaleLowerCase().includes(needle));
+  return (
+    <div id={props.listId} className="pd-popover pd-label-picker-list">
+      {props.labels.length === 0 ? (
+        <div className="pd-popover-state">
+          <p>{props.emptyText}</p>
+          {props.emptyAction}
+        </div>
+      ) : (
+        <>
+          {props.labels.length >= FILTER_FROM && <TextField type="search" label={props.filterLabel ?? ''} value={filter} onChange={setFilter} />}
+          <fieldset className="pd-group pd-label-picker-group">
+            <legend className="pd-label">{props.label}</legend>
+            <div className="pd-group-options">
+              {rows.map((l) => {
+                const on = props.selected.includes(l.id);
+                const held = busy.includes(l.id) || (full && !on);
+                const boxId = `${props.listId}-${l.id}`;
+                return (
+                  <div key={l.id} className="pd-check">
+                    <span className="pd-check-box">
+                      <input
+                        id={boxId}
+                        type="checkbox"
+                        className="pd-check-input"
+                        value={l.id}
+                        checked={on}
+                        aria-disabled={held ? true : undefined}
+                        onChange={(e) => {
+                          if (!held) props.onToggle(l.id, e.target.checked);
+                        }}
+                      />
+                      <span className="pd-check-mark" aria-hidden="true">
+                        <CheckIcon size={14} />
+                      </span>
+                    </span>
+                    <label className="pd-check-label" htmlFor={boxId}>
+                      <LabelChip name={l.name} color={l.color} />
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+            {rows.length === 0 && <p className="pd-popover-state">{props.noMatchText}</p>}
+          </fieldset>
+          {full && props.limitText !== undefined && <p className="pd-popover-state">{props.limitText}</p>}
+        </>
+      )}
+      {props.error !== undefined && props.error !== '' && (
+        <p className="pd-popover-error" role="alert">
+          {props.error}
+        </p>
+      )}
     </div>
   );
 }

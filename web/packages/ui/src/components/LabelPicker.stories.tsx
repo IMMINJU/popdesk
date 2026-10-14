@@ -17,10 +17,8 @@ const nine = Array.from({ length: 9 }, (_, i) => ({ id: String(11 + i), name: `�
 const many = Array.from({ length: 25 }, (_, i) => ({ id: String(101 + i), name: `라벨 ${String(i + 1)}`, color: COLORS[i % COLORS.length] ?? '#808080' }));
 
 /**
- * 6a 묶음의 껍데기다. 접힌 단추 하나만 그리고 아직 동작하지 않는다.
- * 펼치기, 거르기 입력, 체크 목록, 20개 한도에서 막기, 요청 중인 줄 막기, 오류 줄,
- * Esc와 바깥 누르기로 닫기, `onToggle` 부르기는 C-9가 채운다.
- * 그래서 아래 story 가운데 펼친 것들은 지금은 접힌 단추로만 보인다.
+ * 라벨 고르기: 단추 아래에 펼치는 체크 목록. 9개부터 거르기 입력, 한도에 차면 고르지 않은 줄을
+ * 막고, 요청 중인 줄을 막고, 실패하면 목록 아래에 오류 줄. Esc와 바깥 누르기로 닫힌다.
  */
 const meta = {
   component: LabelPicker,
@@ -44,19 +42,19 @@ type Story = StoryObj<typeof meta>;
 
 /** 접힘. */
 export const Folded: Story = {};
-/** 펼침, 셋 가운데 하나 붙음. 껍데기라 아직 접힌 단추만 보인다. */
+/** 펼침, 셋 가운데 하나 붙음. */
 export const Open: Story = { args: { open: true } };
-/** 고객사에 라벨이 없음(상담원). 껍데기라 아직 접힌 단추만 보인다. */
+/** 고객사에 라벨이 없음(상담원). */
 export const Empty: Story = { args: { open: true, labels: [], selected: [] } };
-/** 고객사에 라벨이 없음(관리자): 만들러 가는 링크. 껍데기라 아직 접힌 단추만 보인다. */
+/** 고객사에 라벨이 없음(관리자): 만들러 가는 링크. */
 export const EmptyWithAction: Story = {
   args: { open: true, labels: [], selected: [], emptyAction: <a href="/companies/ACME#labels">고객사 설정에서 만들기</a> },
 };
-/** 아홉: 위에 거르기 입력. 껍데기라 아직 접힌 단추만 보인다. */
+/** 아홉: 위에 거르기 입력. */
 export const WithFilter: Story = { args: { open: true, labels: nine, selected: ['11', '15'] } };
-/** 20개 참: 체크하지 않은 줄을 막고 `limitText`를 보인다. 껍데기라 아직 접힌 단추만 보인다. */
+/** 20개 참: 체크하지 않은 줄을 막고 `limitText`를 보인다. */
 export const Full: Story = { args: { open: true, labels: many, selected: many.slice(0, 20).map((l) => l.id) } };
-/** 요청 중: 그 줄을 막는다. 껍데기라 아직 접힌 단추만 보인다. */
+/** 요청 중: 그 줄을 막는다. */
 export const Busy: Story = { args: { open: true, selected: ['1', '2'], busyIds: ['2'] } };
-/** 실패: 그 줄을 되돌리고 목록 아래에 오류 줄. 껍데기라 아직 접힌 단추만 보인다. */
+/** 실패: 그 줄을 되돌리고 목록 아래에 오류 줄. */
 export const Failed: Story = { args: { open: true, error: '라벨을 바꾸지 못했습니다. 다시 해 보세요.' } };
