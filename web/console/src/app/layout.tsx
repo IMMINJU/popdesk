@@ -140,8 +140,10 @@ export function ConsoleLayout() {
         userName={me.name}
         userPhotoUrl={photoUrl(me.id, me.photoUpdatedAt)}
         renderUserLink={(children) => (
-          <Link className="pd-shell-user-link" to="/me" aria-label={`${me.name}, ${t('myInfo.title')}`}>
+          <Link className="pd-shell-user-link" to="/me">
             {children}
+            {/* The name comes from the content, so it holds the words one sees: "최관리, 내 정보". */}
+            <span className="pd-sr-only">, {t('myInfo.title')}</span>
           </Link>
         )}
         onLogout={() => {

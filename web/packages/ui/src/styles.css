@@ -2599,10 +2599,20 @@ a.pd-inbox-row:hover .pd-inbox-text {
   grid-template-columns: 64px minmax(0, 1fr);
 }
 
-.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-nav ul,
+.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-nav ul {
+  display: none;
+}
+
+/* Hidden from the eye only: these names are what name the home link and the user link. */
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-name,
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-user-name {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-top {
