@@ -98,7 +98,7 @@ class HiddenFromCustomerTest extends ConnectedAppTest {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"label", "sort"})
-    @DisplayName("S6A-AC-42 the portal list answers label and sort with 400 UNKNOWN_PARAMETER")
+    @DisplayName("S6A-AC-42 the portal list answers label and sort with 400 INVALID_INPUT, field code UNKNOWN_PARAMETER")
     void portalListTakesNoLabelOrSort(String parameter) {
         Session admin = flow.admin();
         Company company = fixtures.createCompany(admin);
@@ -108,6 +108,13 @@ class HiddenFromCustomerTest extends ConnectedAppTest {
 
         ApiResponse answer = customer.client().get("/api/portal/issues").query(parameter, value).send();
 
-        assertError(answer, 400, "UNKNOWN_PARAMETER");
+        assertError(answer, 400, "INVALID_INPUT");
+        List<String> codes = new ArrayList<>();
+        for (JsonNode field : answer.json().path("fields")) {
+            if (parameter.equals(field.path("field").asString())) {
+                codes.add(field.path("code").asString());
+            }
+        }
+        assertThat(codes).as(answer.request()).containsExactly("UNKNOWN_PARAMETER");
     }
 }
