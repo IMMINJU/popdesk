@@ -3,6 +3,11 @@ export interface DueDatePickerProps {
   label: string;
   /** The text of the button that opens and closes it, e.g. "바꾸기". */
   toggleLabel: string;
+  /**
+   * Accessible name of that button when the visible text alone is not enough, e.g. "라벨 바꾸기"
+   * beside the visible "바꾸기" (it must contain the visible text). Default: the visible text.
+   */
+  toggleName?: string;
   /** The issue's due date, `YYYY-MM-DD`, or `null` for none. The input starts from it. */
   value: string | null;
   /**
@@ -44,7 +49,7 @@ export interface DueDatePickerProps {
 export function DueDatePicker(props: DueDatePickerProps) {
   return (
     <div className="pd-due-date-picker" data-pd="DueDatePicker">
-      <button id={props.id} type="button" className="pd-button" data-variant="secondary" data-size="sm" aria-expanded={false}>
+      <button id={props.id} type="button" className="pd-button" data-variant="secondary" data-size="sm" aria-label={props.toggleName} aria-expanded={false}>
         <span className="pd-button-text">{props.toggleLabel}</span>
       </button>
     </div>

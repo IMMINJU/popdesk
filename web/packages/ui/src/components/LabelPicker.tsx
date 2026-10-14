@@ -6,6 +6,11 @@ export interface LabelPickerProps {
   label: string;
   /** The text of the button that opens and closes it, e.g. "바꾸기". */
   toggleLabel: string;
+  /**
+   * Accessible name of that button when the visible text alone is not enough, e.g. "라벨 바꾸기"
+   * beside the visible "바꾸기" (it must contain the visible text). Default: the visible text.
+   */
+  toggleName?: string;
   /** The labels of the issue's company, in name order. Empty: `emptyText` and `emptyAction` instead of boxes. */
   labels: readonly LabelItem[];
   /** IDs of the labels on the issue. */
@@ -54,7 +59,7 @@ export interface LabelPickerProps {
 export function LabelPicker(props: LabelPickerProps) {
   return (
     <div className="pd-label-picker" data-pd="LabelPicker">
-      <button id={props.id} type="button" className="pd-button" data-variant="secondary" data-size="sm" aria-expanded={false}>
+      <button id={props.id} type="button" className="pd-button" data-variant="secondary" data-size="sm" aria-label={props.toggleName} aria-expanded={false}>
         <span className="pd-button-text">{props.toggleLabel}</span>
       </button>
     </div>
