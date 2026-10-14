@@ -15,6 +15,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
@@ -118,11 +119,27 @@ class ApiExceptionHandler {
         log.error("Request failed: {}{}", e.getClass().getName(),
                 SqlStates.of(e).map(state -> " (SQL state " + state + ")").orElse(""));
         if (response.isCommitted()) {
-            BrokenResponseFilter.mark(request);
+            if (!clientGone(e)) {
+                BrokenResponseFilter.mark(request);
+            }
             return null;
         }
         return respond(new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrors.INTERNAL_ERROR,
                 ApiErrors.INTERNAL_ERROR_MESSAGE));
+    }
+
+    /**
+     * Whether the response broke off because the client went away: the connection is gone already, so
+     * there is nothing to end, and such a request ends quietly as it always did.
+     */
+    private static boolean clientGone(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof AsyncRequestNotUsableException
+                    || t.getClass().getSimpleName().equals("ClientAbortException")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static ResponseEntity<ApiError> respond(ApiException e) {
