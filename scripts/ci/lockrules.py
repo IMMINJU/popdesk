@@ -18,6 +18,9 @@ TEST_GLOBS = [
     "web/**/*.test.tsx",
     "web/**/__tests__/**",
     "web/**/test-setup.ts",
+    # Stories that hold assertions in `play` (overflow at three widths, S6A-AC-91). The test side
+    # writes them; Storybook picks them up with the other stories.
+    "web/**/*.overflow.stories.tsx",
     "web/**/e2e/**",
     "web/packages/api/src/testing/**",
     "**/__snapshots__/**",
