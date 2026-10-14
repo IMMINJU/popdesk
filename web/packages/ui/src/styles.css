@@ -824,9 +824,10 @@ textarea {
   background: var(--surface);
 }
 
+/* The padding keeps the focus ring of a box inside; no side margin, so the group stays its width. */
 .pd-label-picker-group .pd-group-options {
   max-height: calc(8 * var(--body-line) + 7 * var(--space-2) + 2 * var(--space-1));
-  margin: calc(var(--space-1) * -1);
+  margin: calc(var(--space-1) * -1) 0;
   padding: var(--space-1);
   overflow-y: auto;
 }
