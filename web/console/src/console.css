@@ -192,6 +192,13 @@
   align-items: baseline;
 }
 
+/* C-3 라벨: the chips wrap in a column of their own width, and a long name wraps inside its chip, so
+   the two 6a columns do not push the table past 1280 px with the side menu open. */
+.pd-issues .pd-table td:has(> .pd-label-chips) {
+  min-width: 9rem;
+  white-space: normal;
+}
+
 /* C-3 마감일: the date and "지남" stay on one line. */
 .pd-issues .pd-due-cell {
   flex-wrap: nowrap;

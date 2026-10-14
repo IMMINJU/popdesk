@@ -22,6 +22,7 @@ import { SaveFailure } from './bands';
 import { useLive, useLoad } from './hooks';
 import { LoadFailed } from './layout';
 import { TEXT } from './messages';
+import { byName } from './labelItems';
 import { call, type Failure } from './result';
 import { useToast } from './toastContext';
 
@@ -241,7 +242,8 @@ export function CompanyLabels(props: { code: string; archived: boolean }) {
     if (live()) void load.reload();
   };
 
-  const labels = load.data?.items ?? [];
+  // The same order as the chips of C-3 and C-4 (S6A-AC-10): the API sorts by code point, the screens by the reader's language.
+  const labels = byName(load.data?.items ?? []);
   const full = labels.length >= COMPANY_LABEL_LIMIT;
 
   const columns: DataTableColumn<Label>[] = [
