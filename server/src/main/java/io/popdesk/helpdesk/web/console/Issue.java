@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.popdesk.helpdesk.IssueStatus;
 import io.popdesk.helpdesk.Priority;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -25,6 +26,12 @@ public record Issue(
         @Schema(description = "The assignee can no longer see the issue: the account is not `ACTIVE`, or it is "
                 + "an agent who is not assigned to the company (ISSUE-11). `false` without an assignee.")
                 boolean assigneeUnavailable,
+        @Schema(description = "Labels of the issue, at most 20, in name order whatever the case (S6A-AC-50). "
+                + "Empty without labels.") List<LabelRef> labels,
+        @Schema(description = "`YYYY-MM-DD`; null without a due date (DUE-1).", nullable = true) LocalDate dueDate,
+        @Schema(description = "The due date is before today in the installation time zone (`POPDESK_TIMEZONE`, "
+                + "S6A-AC-35). `false` without a due date. Judged by the server when it answers; show this "
+                + "instead of comparing with the browser's date.") boolean overdue,
         @Schema(description = "The statuses `changeIssueStatus` takes now (STATUS-1). Empty for a `CLOSED` "
                 + "issue.") List<IssueStatus> nextStatuses,
         @Schema(description = "`reopenIssue` works now: the issue is `RESOLVED`, or `CLOSED` for less than 14 "

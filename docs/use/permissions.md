@@ -69,7 +69,8 @@ Order of checks: sign-in (401) → target in scope (404) → permission (403) �
 | Assign or unassign agents | – | – | Yes. Not to an `ARCHIVED` company |
 | Mark or unmark a customer manager | – | – | Yes |
 | Approve or reject membership requests | – | – | Yes |
-| Create, edit, delete labels | – | – | Yes |
+| List a company's labels | – | Assigned to them | All |
+| Create, edit, delete labels | – | – | Yes. At most 200 labels in a company. None can be created in an `ARCHIVED` company; its labels can still be edited and deleted |
 | Export a company's data | – | – | Yes (`PII-8`) |
 
 ### Customer manager
@@ -110,7 +111,8 @@ Everything a manager does goes to the audit log.
 | Change status (staff transitions) | – | – | Yes | Yes |
 | Close from any open status, confirm a resolution | Yes | No (403) | Through status changes (not from `IN_PROGRESS`) | Through status changes (not from `IN_PROGRESS`) |
 | Reopen a `RESOLVED` issue, or a `CLOSED` one within 14 days | Yes | No (403) | Yes | Yes |
-| Add or remove labels (of that company), set a due date (today or later) | – | – | Yes | Yes |
+| Add or remove labels (of that company, at most 20 on an issue), set or clear a due date (today or later in `POPDESK_TIMEZONE`) | – | – | Yes | Yes |
+| Filter the list by label, sort it by due date | – | – | Yes | Yes |
 | See issue history | – | – | Yes | Yes |
 | See SLA state and remaining time | – | – | Yes | Yes |
 | See the trash, delete, restore, purge | – | – | – | Yes |

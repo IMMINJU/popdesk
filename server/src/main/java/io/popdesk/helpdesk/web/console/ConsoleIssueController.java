@@ -2,6 +2,7 @@ package io.popdesk.helpdesk.web.console;
 
 import io.popdesk.ApiError;
 import io.popdesk.ApiException;
+import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.IssueStatus;
@@ -47,7 +48,7 @@ class ConsoleIssueController {
 
     /** Query parameters of the list; any other name is 400, so a mistyped filter is not ignored (S3-AC-07). */
     private static final Set<String> LIST_PARAMETERS = Set.of("page", "size", "status", "companyCode", "assignee",
-            "reporter", "q");
+            "reporter", "q", "label", "sort");
 
     private final IssueService issues;
 
@@ -63,7 +64,8 @@ class ConsoleIssueController {
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
                 person(row.createdBy()), IssueChannel.valueOf(row.channel()), person(row.assignee()),
-                row.assigneeUnavailable(), row.status().next(), issues.reopenable(row),
+                // Labels, due date, and overdue are fixed values until slice 6a builds them (C-4 shell).
+                row.assigneeUnavailable(), List.of(), null, false, row.status().next(), issues.reopenable(row),
                 utc(row.firstResponseAt()), utc(row.resolvedAt()), utc(row.closedAt()), row.version(),
                 utc(row.createdAt()), utc(row.updatedAt()));
     }
@@ -71,7 +73,9 @@ class ConsoleIssueController {
     static IssueSummary summary(IssueRow row) {
         return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
-                row.createdBy() != null, person(row.assignee()), row.assigneeUnavailable(), utc(row.createdAt()));
+                // Labels, due date, and overdue are fixed values until slice 6a builds them (C-4 shell).
+                row.createdBy() != null, person(row.assignee()), row.assigneeUnavailable(), List.of(), null, false,
+                utc(row.createdAt()));
     }
 
     /** Staff see every person by name, with the time of the profile photo for the photo's address. */
@@ -110,11 +114,11 @@ class ConsoleIssueController {
     @Operation(operationId = "listIssues", summary = "Issues the caller can see",
             description = "All issues of assigned companies for agents, all issues for admins, newest first "
                     + "(S0-AC-47). The filters narrow that and never widen it: with several, an issue must match "
-                    + "all of them (S3-AC-06).")
+                    + "all of them (S3-AC-06). `sort` changes the order and nothing else (S6A-AC-54).")
     @ApiResponse(responseCode = "200", description = "One page.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `page` or `size` out of range "
-            + "(`OUT_OF_RANGE`), unknown `status` or `assignee` (`UNKNOWN_VALUE`), `reporter` not a number "
-            + "(`INVALID_FORMAT`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14) or with a "
+            + "(`OUT_OF_RANGE`), unknown `status`, `assignee`, or `sort` (`UNKNOWN_VALUE`), `reporter` or a "
+            + "`label` not a number (`INVALID_FORMAT`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14) or with a "
             + "character that cannot be stored (`INVALID_FORMAT`), or a parameter this list does not take "
             + "(`UNKNOWN_PARAMETER`, S3-AC-07).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
@@ -135,9 +139,20 @@ class ConsoleIssueController {
             @Parameter(description = "Only issues whose title or content, as shown, holds this text, 1 to 100 "
                     + "characters. Case is ignored; `%` and `_` are ordinary characters (COM-5).")
                     @RequestParam(required = false) @Nullable String q,
+            @Parameter(description = "Only issues that have one of these labels: label IDs, given once for each "
+                    + "label. Works with or without `companyCode`. An ID that does not exist, or a label of a "
+                    + "company the caller cannot see, matches nothing, so with only such IDs the page is empty "
+                    + "(S6A-AC-51, S6A-AC-52).")
+                    @RequestParam(required = false) @Nullable List<Long> label,
+            @Parameter(description = "`createdAt` (the default): newest first. `dueDate`: earliest due date "
+                    + "first, issues without one last, and issues with the same due date newest first "
+                    + "(S6A-AC-53). Works with `q`.", schema = @Schema(type = "string",
+                    allowableValues = {"createdAt", "dueDate"}, defaultValue = "createdAt"))
+                    @RequestParam(required = false) @Nullable String sort,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size,
             HttpServletRequest request) {
+        // label and sort are taken and not used yet (slice 6a C-4 shell).
         List<ApiError.FieldError> unknown = request.getParameterMap().keySet().stream()
                 .filter(name -> !LIST_PARAMETERS.contains(name)).sorted()
                 .map(name -> new ApiError.FieldError(name, "UNKNOWN_PARAMETER")).toList();
@@ -272,6 +287,71 @@ class ConsoleIssueController {
     @DeleteMapping("/{key}/assignee")
     Issue clearIssueAssignee(@PathVariable String key) {
         return issue(issues.unassign(CurrentAccount.get().viewer(), key));
+    }
+
+    static final String CLOSED_400 = "`ISSUE_CLOSED`: the issue is `CLOSED`; nothing changed";
+
+    @Operation(operationId = "addIssueLabel", summary = "Put a label on an issue",
+            description = "A label of the issue's company (LBL-2). A label the issue has already is 200 too and "
+                    + "leaves no history entry (S6A-AC-20); otherwise the issue gets a `CHANGED` entry of the "
+                    + "field `LABEL` (S6A-AC-60). An issue has at most 20 labels (S6A-AC-24). Customers never see "
+                    + "labels (LBL-4).")
+    @ApiResponse(responseCode = "200", description = "The issue with its labels.")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: the path's `id` is not a label of the "
+            + "issue's company (field `id` `UNKNOWN_VALUE`); one answer for a label of another company and an ID that does not "
+            + "exist (S6A-AC-22). `ISSUE_LABEL_LIMIT_EXCEEDED`: the issue has 20 labels already (S6A-AC-24). "
+            + CLOSED_400 + " (STATUS-7, S6A-AC-23).")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
+    @PutMapping("/{key}/labels/{id}")
+    Issue addIssueLabel(@PathVariable String key, @PathVariable long id) {
+        throw new NotImplementedException();
+    }
+
+    @Operation(operationId = "removeIssueLabel", summary = "Take a label off an issue",
+            description = "A label the issue does not have, a deleted one included, is 200 too and leaves no "
+                    + "history entry (S6A-AC-21); otherwise the issue gets a `CHANGED` entry of the field `LABEL` "
+                    + "(S6A-AC-60).")
+    @ApiResponse(responseCode = "200", description = "The issue with its labels.")
+    @ApiResponse(responseCode = "400", description = CLOSED_400 + " (STATUS-7, S6A-AC-23).")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
+    @DeleteMapping("/{key}/labels/{id}")
+    Issue removeIssueLabel(@PathVariable String key, @PathVariable long id) {
+        throw new NotImplementedException();
+    }
+
+    @Operation(operationId = "setIssueDueDate", summary = "Set an issue's due date",
+            description = "A date, today or later in the installation time zone (`POPDESK_TIMEZONE`, S6A-AC-30, "
+                    + "S6A-AC-34). The date the issue has already is 200 too and leaves no history entry "
+                    + "(S6A-AC-36); otherwise the issue gets a `CHANGED` entry of the field `DUE_DATE` "
+                    + "(S6A-AC-61). Customers never see due dates (DUE-1).")
+    @ApiResponse(responseCode = "200", description = "The issue with its due date.")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `dueDate` missing (`REQUIRED`), not a "
+            + "date `YYYY-MM-DD` (`INVALID_FORMAT`: a time or an offset, or a day that does not exist), or before "
+            + "today (`OUT_OF_RANGE`), also when it is the date an overdue issue has already (S6A-AC-31, "
+            + "S6A-AC-35). " + CLOSED_400 + " (STATUS-7, S6A-AC-33).")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
+    @PutMapping("/{key}/due-date")
+    Issue setIssueDueDate(@PathVariable String key, @RequestBody SetDueDateRequest request) {
+        throw new NotImplementedException();
+    }
+
+    @Operation(operationId = "clearIssueDueDate", summary = "Clear an issue's due date",
+            description = "An issue without a due date is 200 too and leaves no history entry (S6A-AC-32); "
+                    + "otherwise the issue gets a `CHANGED` entry of the field `DUE_DATE` (S6A-AC-61).")
+    @ApiResponse(responseCode = "200", description = "The issue without a due date.")
+    @ApiResponse(responseCode = "400", description = CLOSED_400 + " (STATUS-7, S6A-AC-33).")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = "`CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = NOT_VISIBLE)
+    @DeleteMapping("/{key}/due-date")
+    Issue clearIssueDueDate(@PathVariable String key) {
+        throw new NotImplementedException();
     }
 
     @Operation(operationId = "listIssueHistory", summary = "History of an issue",

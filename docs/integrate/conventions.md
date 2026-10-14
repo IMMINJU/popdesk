@@ -97,7 +97,9 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 400 | `INVITATION_NOT_ACCEPTED` | The account never accepted its invitation, so its suspension cannot be lifted. Send the invitation again instead |
 | 400 | `INVITATION_ALREADY_ACCEPTED` | The account accepted its invitation before, so the invitation cannot be sent again or cancelled |
 | 400 | `COMPANY_ARCHIVED` | The customer company is `ARCHIVED`: its status, name, and legal name no longer change |
-| 400 | `COMPANY_NOT_ACTIVE` | Filing an issue: the customer company is not `ACTIVE`. Adding a member, an agent, a manager mark, or an invitation: the customer company is `ARCHIVED` |
+| 400 | `COMPANY_NOT_ACTIVE` | Filing an issue: the customer company is not `ACTIVE`. Adding a member, an agent, a manager mark, an invitation, or a label: the customer company is `ARCHIVED` |
+| 400 | `LABEL_LIMIT_EXCEEDED` | The customer company has 200 labels already, so no label can be created |
+| 400 | `ISSUE_LABEL_LIMIT_EXCEEDED` | The issue has 20 labels already, so no label can be put on it |
 | 400 | `MEMBER_IS_MANAGER` | A customer manager tries to remove another manager of the company. An admin does that |
 | 400 | `INVITATION_NOT_RESENDABLE` | A customer manager tries to send again an invitation that cannot be sent again from the portal. One code whatever the reason |
 | 400 | `NOT_A_CUSTOMER` | The account of a membership request is an agent or an admin, so the request cannot be approved. It can be rejected |
@@ -119,6 +121,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 403 | `CSRF_TOKEN_INVALID` | A request that changes data has no CSRF token or a wrong one |
 | 404 | `NOT_FOUND` | The target does not exist or the caller may not see it (`COM-1`). Also a path the host does not serve |
 | 409 | `COMPANY_CODE_TAKEN` | Another customer company has this code |
+| 409 | `LABEL_NAME_TAKEN` | The customer company has a label of this name, whatever the case |
 | 409 | `EMAIL_TAKEN` | An account has this email |
 | 409 | `ALREADY_LISTED` | The email a customer manager invites is already a row of that company's member list |
 | 409 | `TOO_MANY_PENDING` | The company already has 100 rows waiting in its member list (`INVITED`), so its manager cannot invite more |
@@ -131,7 +134,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 500 | `INTERNAL_ERROR` | An unexpected server error |
 | 501 | `NOT_IMPLEMENTED` | The endpoint is in the contract but not built yet. Only before a slice is finished; never in a release |
 | 503 | `SERVER_BUSY` | 16 uploads, or 16 downloads, are already running, 2 profile photos are already being decoded, or 2 audit log exports are already running. `Retry-After` says when to try again |
-| 503 | `SETUP_REQUIRED` | The first admin could not be created, or `POPDESK_LOCALE` is not a value popdesk takes, so the app takes no requests yet. The log says what to set |
+| 503 | `SETUP_REQUIRED` | The first admin could not be created, or `POPDESK_LOCALE` or `POPDESK_TIMEZONE` is not a value popdesk takes, so the app takes no requests yet. The log says what to set |
 
 A request to a host that is neither the portal host nor the console host gets 404 with a plain text note, not this body.
 
@@ -145,7 +148,7 @@ Codes in `fields[].code`:
 | `TOO_LONG` | Over the maximum length |
 | `INVALID_FORMAT` | Does not match the expected form, for example an email address or a company code |
 | `UNKNOWN_VALUE` | Not one of the allowed values, or names something that does not exist or the caller cannot choose |
-| `OUT_OF_RANGE` | A number outside its range, for example `page` below 1 or `size` above 100 |
+| `OUT_OF_RANGE` | A number or a date outside its range, for example `page` below 1, `size` above 100, or a due date before today |
 | `TOO_MANY` | A list has more items than it may, for example over 10 mentions in a comment |
 | `FROM_AFTER_TO` | The start of a period is after its end: `from` after `to` in the audit log filters. Reported on `from` |
 | `NOT_ALLOWED` | The field must be left out here, for example companies when inviting staff |
@@ -241,6 +244,15 @@ The response is:
 
 A `page` past the last page returns an empty `items`. A `page` below 1 or a `size` outside 1 to 100 is 400.
 
+The staff issue list also takes `sort`. Both orders end with a key that is unique to each issue, so issues with the same due date and the same filing time neither repeat nor go missing across pages:
+
+| `sort` | Order |
+|---|---|
+| `createdAt` (default) | Newest first, then by issue number, newest first |
+| `dueDate` | Earliest due date first, issues without a due date last; equal due dates in the `createdAt` order |
+
+Any other value of `sort` is 400 with `sort` `UNKNOWN_VALUE`. `sort` changes only the order: the filters, `totalElements`, and `totalPages` stay the same. Lists that do not take `sort` answer it with `UNKNOWN_PARAMETER` (the customer issue list, for example).
+
 ## Search (COM-5)
 
 - The search parameter `q` is 1 to 100 characters. On the issue lists and the list of customers staff can file for it is a one-line value ("Text input"): the whitespace around it is removed before it is counted and searched, so a `q` of spaces only is empty. An empty `q` is 400 with `q` `TOO_SHORT`; one over 100 characters is `TOO_LONG`.
@@ -311,7 +323,8 @@ Limits are per account over a 60-second window:
 
 - Timestamps are stored in UTC and returned as ISO-8601 with an offset, in UTC: `2026-10-08T03:15:00Z` (D-10).
 - Timestamps sent to the API must include an offset. A timestamp without one is 400.
-- Date-only values (for example due dates) are `YYYY-MM-DD`. "Today" for these values is judged in the installation time zone (`POPDESK_TIMEZONE`, default `UTC`).
+- Date-only values (for example due dates) are `YYYY-MM-DD`. "Today" for these values is judged in the installation time zone (`POPDESK_TIMEZONE`, default `UTC`), so two installations in different zones can answer the same date differently at the same moment. The client never judges "today" itself: issues carry `overdue`.
+- `POPDESK_TIMEZONE` takes an IANA zone name (`Asia/Seoul`) or `UTC`. With an empty value or any other value, such as `KST` or `+09:00`, the app takes no requests and answers `SETUP_REQUIRED` until the setting is fixed (see `docs/operate/configuration.md`).
 
 - Periods (24 hours, 7, 14, or 30 days, retention periods) are measured as a difference of UTC times. Daylight saving time and changes to `POPDESK_TIMEZONE` do not change their length. The installation time zone is used only to judge dates: due dates and SLA business hours and holidays.
 

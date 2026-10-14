@@ -4,7 +4,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.popdesk.helpdesk.IssueStatus;
 import io.popdesk.helpdesk.Priority;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /** A row of the staff issue list. */
 public record IssueSummary(
@@ -20,4 +22,9 @@ public record IssueSummary(
         @Schema(description = "Null when nobody is assigned (S3-AC-28).", nullable = true) Person assignee,
         @Schema(description = "The assignee can no longer see the issue (ISSUE-11). `false` without an "
                 + "assignee.") boolean assigneeUnavailable,
+        @Schema(description = "Labels of the issue, in name order whatever the case (S6A-AC-50). Empty without "
+                + "labels.") List<LabelRef> labels,
+        @Schema(description = "`YYYY-MM-DD`; null without a due date (DUE-1).", nullable = true) LocalDate dueDate,
+        @Schema(description = "The due date is before today in the installation time zone (S6A-AC-35). `false` "
+                + "without a due date.") boolean overdue,
         OffsetDateTime createdAt) {}
