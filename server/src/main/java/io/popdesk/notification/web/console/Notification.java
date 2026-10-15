@@ -21,4 +21,9 @@ public record Notification(
         @Schema(description = "When the caller marked it read.", nullable = true) OffsetDateTime readAt,
         @Schema(description = "The task a `TASK_ASSIGNED` item is about, with its title as it is now; null for "
                 + "the other kinds (S6B-AC-33). Deleting the task deletes its items (S6B-AC-36).", nullable = true)
-                NotificationTask task) {}
+                NotificationTask task,
+        @Schema(description = "For `LINKED_ISSUE_RESOLVED` and `LINKED_ISSUE_CLOSED`: the linked issue that was "
+                + "resolved or closed, with its key and title as they are now; `issue` is the caller's own issue "
+                + "it is linked to (S6C-AC-31). Such an item is listed only while the caller can see both issues "
+                + "(S6C-AC-33). Null for the other kinds (S6C-AC-34).", nullable = true)
+                NotificationIssue linkedIssue) {}

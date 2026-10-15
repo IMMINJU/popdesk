@@ -35,5 +35,12 @@ public enum NotificationKind {
     /** The caller became the assignee of the issue (S4-AC-31). */
     ASSIGNED,
     /** The caller became the assignee of a task of the issue; the item's {@code task} names it (S6B-AC-33). */
-    TASK_ASSIGNED
+    TASK_ASSIGNED,
+    /**
+     * An issue linked to the caller's issue became {@code RESOLVED}; the item's {@code issue} is the
+     * caller's issue and {@code linkedIssue} the resolved one (S6C-AC-31). No email.
+     */
+    LINKED_ISSUE_RESOLVED,
+    /** An issue linked to the caller's issue became {@code CLOSED}, like {@link #LINKED_ISSUE_RESOLVED}. */
+    LINKED_ISSUE_CLOSED
 }

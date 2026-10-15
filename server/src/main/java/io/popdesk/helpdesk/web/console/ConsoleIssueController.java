@@ -109,7 +109,8 @@ class ConsoleIssueController {
         return new IssueHistoryEntry(row.id(), IssueHistoryKind.valueOf(row.kind()), row.field(), row.oldValue(),
                 row.newValue(), person(row.oldPerson()), person(row.newPerson()),
                 new IssueHistoryActor(row.actorId(), row.actorName(), row.actorRole(), utc(row.actorPhotoUpdatedAt())),
-                utc(row.createdAt()));
+                utc(row.createdAt()),
+                null, null); // oldLink, newLink: null until slice 6c writes LINK entries (S6C-AC-21).
     }
 
     static OffsetDateTime utc(Instant instant) {
@@ -374,7 +375,9 @@ class ConsoleIssueController {
                     + "first (S3-AC-61, S3-AC-62, S3-AC-64). An attachment that was attached to the issue or one "
                     + "of its comments after the filing, or deleted, is a `CHANGED` entry of the field "
                     + "`ATTACHMENT` (S5-AC-40, S5-AC-41); the files and images a filing brings are part of "
-                    + "`CREATED` and leave no entry (S5-AC-42). The portal has no such path (S3-AC-65).")
+                    + "`CREATED` and leave no entry (S5-AC-42). A link made or removed is a `CHANGED` entry of the "
+                    + "field `LINK`, left out when the caller cannot see the other issue (S6C-AC-22). The portal "
+                    + "has no such path (S3-AC-65).")
     @ApiResponse(responseCode = "200", description = "One page.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")

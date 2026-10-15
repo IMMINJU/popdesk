@@ -34,7 +34,11 @@ public interface IssueInbox {
         /** The recipient became the assignee. */
         ASSIGNED,
         /** The recipient became the assignee of a task of the issue (S6B-AC-33). */
-        TASK_ASSIGNED
+        TASK_ASSIGNED,
+        /** An issue linked to the recipient's issue became {@code RESOLVED}, to its assignee (S6C-AC-31). */
+        LINKED_ISSUE_RESOLVED,
+        /** An issue linked to the recipient's issue became {@code CLOSED}, to its assignee (S6C-AC-31). */
+        LINKED_ISSUE_CLOSED
     }
 
     /**

@@ -179,7 +179,12 @@ Staff can link two issues as duplicate or related, even across customer companie
 - Linking or unlinking requires that you can see both issues; otherwise 404.
 - Customers never see links: not in the portal, the API, email, or company exports (`LINK-3`).
 - Staff see only the linked issues they can see. An agent assigned to company A does not see, or count, a link to an issue of company B (`LINK-4`).
-- Notifications about a linked issue go only to assignees who can see it (`LINK-6`).
+- An issue has at most 50 links, counting links to issues you cannot see (`LINK-2`). Two issues have one link at most, of any kind.
+- A duplicate has one original, and an issue that is a duplicate cannot be an original: duplicates do not form chains (`LINK-2`).
+- When the issue you link from or unlink from is `CLOSED`, you cannot link or unlink it. The other issue may be closed: a new issue can be linked as a duplicate of an old, closed one.
+- Linking and unlinking leave an entry in the history of both issues. An entry about an issue you cannot see is left out of the history you read (`LINK-7`).
+- Linking and unlinking change neither issue's version, last-updated time, or status (`LINK-5`).
+- When an issue becomes resolved or closed, the assignees of the issues linked to it are told in the inbox only, without email, and only if they can see both issues (`LINK-6`).
 
 ## Other areas
 
