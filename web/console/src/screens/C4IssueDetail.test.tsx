@@ -338,15 +338,16 @@ describe('C-4 문의 상세', () => {
     ];
     renderAt(URL_7);
 
-    await link(/mine\.txt/);
-    expect(screen.queryAllByRole('button', { name: /지우기/ })).toHaveLength(3);
+    // Inside the 첨부 section: an admin also has "문의 지우기" in the head (7a screens.md 1절).
+    const files = (await link(/mine\.txt/)).closest('section') as HTMLElement;
+    expect(within(files).queryAllByRole('button', { name: /지우기/ })).toHaveLength(3);
   });
 
   test('C-4 첨부 지우기: 확인 대화상자를 거쳐 지우고, 다시 불러와 "지워진 첨부" 흔적으로 남는다', async () => {
     state.attachments = [attachment({ id: CUSTOMER_FILE, fileName: 'log.txt' })];
     const { user } = renderAt(URL_7);
-    await link(/log\.txt/);
-    await user.click(await button(/지우기/));
+    const files = (await link(/log\.txt/)).closest('section') as HTMLElement;
+    await user.click(within(files).getByRole('button', { name: /지우기/ }));
 
     const confirmBox = await dialog();
     expect(callsTo('DELETE', `/api/console/issues/ACME-7/attachments/${CUSTOMER_FILE}`)).toHaveLength(0);
