@@ -259,4 +259,33 @@ public class AttachmentRepository {
                 deleterPhoto == null ? null : deleterPhoto.toInstant(), rs.getString("storage"),
                 rs.getString("storage_location"));
     }
+
+    /**
+     * The first step of purging an issue's attachments (TRASH-3, slice 7a design section 4): every row of
+     * the issue that is not {@code purged} yet, pending ones too, becomes {@code purging} without its file
+     * name and its comment, locked in ID order first (architecture.md "Concurrency and lock order", step 2).
+     * The time and the person of an earlier delete stay. Rows already {@code purged} lost their file and
+     * are deleted.
+     *
+     * @param deletedBy the admin who purges, or null for popdesk itself
+     * @return the rows whose files are to go after the commit
+     */
+    public List<UUID> updatePurgingOfIssue(UUID issueId, Long deletedBy, Instant at) {
+        List<UUID> ids = jdbc.sql("update attachment a set state = 'purging', file_name = null, comment_id = null, "
+                        + "deleted_at = coalesce(a.deleted_at, ?), deleted_by = coalesce(a.deleted_by, ?) "
+                        + "where a.id in (select id from attachment where issue_id = ? and state <> 'purged' "
+                        + "order by id for no key update) returning a.id")
+                .params(Timestamp.from(at), deletedBy, issueId)
+                .query(UUID.class).list();
+        jdbc.sql("delete from attachment where issue_id = ? and state = 'purged'").param(issueId).update();
+        return ids;
+    }
+
+    /**
+     * The last step of purging an attachment, once its file is gone: the row goes too, as nothing of a
+     * purged issue stays (S7A-AC-33).
+     */
+    public int deletePurging(UUID id) {
+        return jdbc.sql("delete from attachment where id = ? and state = 'purging'").param(id).update();
+    }
 }

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
  * {@link IssueRepository}.
  */
 @Repository
-class IdempotencyKeyRepository {
+public class IdempotencyKeyRepository {
 
     /** What a key was used for: the hash of the filing and the issue it made. */
     record KeyRow(String requestHash, UUID issueId) {}
@@ -53,5 +53,13 @@ class IdempotencyKeyRepository {
     /** Deletes the rows written at {@code until} or before; returns how many. */
     long deleteWrittenUntil(Instant until) {
         return jdbc.sql("delete from issue_idempotency where created_at <= ?").param(Timestamp.from(until)).update();
+    }
+
+    /**
+     * Deletes the key a purged issue was filed with (S7A-AC-30): the row holds a hash of its title and
+     * content.
+     */
+    public void deleteOfIssue(UUID issueId) {
+        jdbc.sql("delete from issue_idempotency where issue_id = ?").param(issueId).update();
     }
 }

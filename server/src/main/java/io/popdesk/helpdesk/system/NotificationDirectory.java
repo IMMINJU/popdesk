@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
  * What the notification module reads about accounts and issues when it sends (MAIL-5, S0-AC-66): the
  * address, name, language, app, and status of an account, the active admins, and an issue's key, title,
  * and company code. A system read: no viewer, by ID; who may see an issue is {@link IssueVisibility}.
+ * An issue in the trash or purged is none: what waits to be sent about it is dropped (S7A-AC-10).
  */
 @Component
 class NotificationDirectory implements Recipients, IssueFacts {
@@ -43,7 +44,7 @@ class NotificationDirectory implements Recipients, IssueFacts {
     @Override
     public Optional<Issue> find(UUID issueId) {
         return jdbc.sql("select c.code, i.number, i.title from issue i join company c on c.id = i.company_id "
-                        + "where i.id = ?")
+                        + "where i.id = ? and i.deleted_at is null")
                 .param(issueId)
                 .query((rs, n) -> new Issue(rs.getString("code") + "-" + rs.getInt("number"), rs.getString("title"),
                         rs.getString("code")))

@@ -90,6 +90,12 @@ public interface IssueInbox {
     void deleteOfTask(long taskId);
 
     /**
+     * Every item about the issue goes, read or not: its own items and the items of other issues about it
+     * as their linked issue (S7A-AC-30). For an issue that is purged.
+     */
+    void deleteOfIssue(UUID issueId);
+
+    /**
      * Deletes the account's unread {@link Kind#MENTIONED} items about the comment: an edit took the
      * account out of its mentions (S4-AC-56). Joins the caller's transaction.
      */

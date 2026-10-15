@@ -106,6 +106,11 @@ public class OutboxRepository {
         jdbc.sql("delete from outbox where id = ?").param(id).update();
     }
 
+    /** Every row of the channel about the issue, whatever its state. */
+    void deleteOfIssue(String channel, UUID issueId) {
+        jdbc.sql("delete from outbox where channel = ? and issue_id = ?").params(channel, issueId).update();
+    }
+
     /** A failed attempt that will be tried again at {@code nextAttemptAt}. */
     void updateRetry(long id, int attempts, Instant firstFailedAt, Instant nextAttemptAt, String errorKind) {
         jdbc.sql("update outbox set attempts = ?, first_failed_at = ?, next_attempt_at = ?, last_error_kind = ? "

@@ -39,7 +39,8 @@ public class LabelRepository {
 
     /** Every label of the company, in name order, each with its issue count. */
     public List<LabelRow> list(long companyId) {
-        return jdbc.sql("select l.id, l.name, l.color, (select count(*) from issue_label il where il.label_id = l.id) "
+        return jdbc.sql("select l.id, l.name, l.color, (select count(*) from issue_label il "
+                        + "join issue i on i.id = il.issue_id where il.label_id = l.id and i.deleted_at is null) "
                         + "as issue_count from label l where l.company_id = ?" + NAME_ORDER)
                 .param(companyId)
                 .query((rs, n) -> new LabelRow(rs.getLong("id"), rs.getString("name"), rs.getString("color"),
@@ -49,7 +50,8 @@ public class LabelRepository {
 
     /** The label of the company with this ID, with its issue count. */
     public Optional<LabelRow> find(long companyId, long id) {
-        return jdbc.sql("select l.id, l.name, l.color, (select count(*) from issue_label il where il.label_id = l.id) "
+        return jdbc.sql("select l.id, l.name, l.color, (select count(*) from issue_label il "
+                        + "join issue i on i.id = il.issue_id where il.label_id = l.id and i.deleted_at is null) "
                         + "as issue_count from label l where l.company_id = ? and l.id = ?")
                 .params(companyId, id)
                 .query((rs, n) -> new LabelRow(rs.getLong("id"), rs.getString("name"), rs.getString("color"),
@@ -161,5 +163,10 @@ public class LabelRepository {
         return jdbc.sql("delete from issue_label il using label l where il.issue_id = ? and il.label_id = ? "
                         + "and l.id = il.label_id returning l.name")
                 .params(issueId, labelId).query(String.class).optional();
+    }
+
+    /** Takes every label off a purged issue (TRASH-3, S7A-AC-30); the labels stay. The caller holds the issue row. */
+    public void deleteOfIssue(UUID issueId) {
+        jdbc.sql("delete from issue_label where issue_id = ?").param(issueId).update();
     }
 }

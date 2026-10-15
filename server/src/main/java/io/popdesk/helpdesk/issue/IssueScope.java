@@ -6,7 +6,9 @@ import io.popdesk.helpdesk.Viewer;
  * Which issues a viewer may see, as SQL on the issue alias {@code i} or another (S0-AC-47, permissions.md
  * "The customer-company boundary"): admins every issue; agents every issue of the companies assigned
  * to them; customers every issue they reported, and the public issues of the companies they belong to
- * now. A customer who left a company keeps seeing what they reported there, and only that.
+ * now. A customer who left a company keeps seeing what they reported there, and only that. Nobody sees an
+ * issue in the trash or a purged one (TRASH-1, slice 7a design section 2): to every read and lock through
+ * the scope it is an issue that does not exist.
  * Repositories that read under an issue (comments, attachments) put the same condition in their query.
  */
 public final class IssueScope {
@@ -21,12 +23,12 @@ public final class IssueScope {
      * {@code i} (slice 6c design section 5), with the parameters of {@link #params}.
      */
     public static String on(String alias) {
-        return "(? = 'ADMIN' "
+        return "(" + alias + ".deleted_at is null and (? = 'ADMIN' "
                 + "or (? = 'AGENT' and exists (select 1 from company_agent ca "
                 + "where ca.company_id = " + alias + ".company_id and ca.account_id = ?)) "
                 + "or (? = 'CUSTOMER' and (" + alias + ".reporter_id = ? or (not " + alias + ".is_private and "
                 + "exists (select 1 from company_member cm where cm.company_id = " + alias + ".company_id "
-                + "and cm.account_id = ?)))))";
+                + "and cm.account_id = ?))))))";
     }
 
     /** The parameters of {@link #SQL}, in order. */

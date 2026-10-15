@@ -47,4 +47,10 @@ class OutboxWebhookQueue implements WebhookQueue {
                 clock.instant().truncatedTo(ChronoUnit.MICROS));
         wakeups.afterCommit(OutboxRepository.WEBHOOK);
     }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void dropAbout(UUID issueId) {
+        repository.deleteOfIssue(OutboxRepository.WEBHOOK, issueId);
+    }
 }

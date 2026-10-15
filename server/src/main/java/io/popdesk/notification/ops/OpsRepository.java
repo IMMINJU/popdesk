@@ -173,6 +173,11 @@ public class OpsRepository {
         jdbc.sql("delete from notification where task_id = ?").param(taskId).update();
     }
 
+    void deleteInboxOfIssue(UUID issueId) {
+        jdbc.sql("delete from notification where issue_id = ? or linked_issue_id = ?").params(issueId, issueId)
+                .update();
+    }
+
     /**
      * An item about the account's issue and a linked issue that changed (S6C-AC-31), unless the account has
      * an unread item of the same kind about the same two issues (S6C-AC-35).

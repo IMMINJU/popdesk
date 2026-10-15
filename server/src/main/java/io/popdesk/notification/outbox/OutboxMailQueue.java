@@ -54,4 +54,10 @@ class OutboxMailQueue implements MailQueue {
                 clock.instant().truncatedTo(ChronoUnit.MICROS));
         wakeups.afterCommit(OutboxRepository.MAIL);
     }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void dropAbout(UUID issueId) {
+        repository.deleteOfIssue(OutboxRepository.MAIL, issueId);
+    }
 }

@@ -12,6 +12,17 @@ package io.popdesk.helpdesk;
  */
 public record Viewer(long accountId, Role role) {
 
+    /** The account ID that stands for popdesk itself; no account has it. */
+    public static final long SYSTEM_ACCOUNT_ID = 0;
+
+    /**
+     * Popdesk itself, for what a cleanup job does without a request (slice 7a design section 0, 6): account
+     * 0 with the scope of an admin. As an actor it is staff, and it is no account anyone is told about.
+     */
+    public static Viewer system() {
+        return new Viewer(SYSTEM_ACCOUNT_ID, Role.ADMIN);
+    }
+
     public boolean admin() {
         return role == Role.ADMIN;
     }

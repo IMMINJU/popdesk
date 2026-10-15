@@ -321,7 +321,8 @@ public class TaskRepository {
      * Clears the assignee of every open task of an issue that is not {@code CLOSED} and has this account
      * as its assignee; with {@code companyId}, of that company's issues only (ACCT-7, S6B-AC-76). One
      * conditional UPDATE, without locking the issue rows: a task that got another assignee, was done, or
-     * whose issue was closed meanwhile no longer matches and stays as it is.
+     * whose issue was closed meanwhile no longer matches and stays as it is. A task of an issue in the trash
+     * keeps its assignee, to be restored as it was (slice 7a acceptance section 5, 6).
      *
      * @return the tasks that were cleared, in ID order
      */
@@ -330,7 +331,7 @@ public class TaskRepository {
         if (companyId != null) {
             params.add(companyId);
         }
-        return jdbc.sql("update task t set assignee_id = null from issue i where i.id = t.issue_id and "
+        return jdbc.sql("update task t set assignee_id = null from issue i where i.id = t.issue_id and i.deleted_at is null and "
                         + OPEN_ASSIGNMENT + (companyId == null ? "" : " and i.company_id = ?") + " returning t.id")
                 .params(params)
                 .query(Long.class).list().stream().sorted().toList();
@@ -363,5 +364,12 @@ public class TaskRepository {
     private static Instant instant(ResultSet rs, String column) throws SQLException {
         Timestamp at = rs.getTimestamp(column);
         return at == null ? null : at.toInstant();
+    }
+
+    /** Deletes every task of a purged issue and its notes (TRASH-3, S7A-AC-30). The caller holds the issue row. */
+    public void deleteOfIssue(UUID issueId) {
+        jdbc.sql("delete from task_note n using task t where t.id = n.task_id and t.issue_id = ?").param(issueId)
+                .update();
+        jdbc.sql("delete from task where issue_id = ?").param(issueId).update();
     }
 }

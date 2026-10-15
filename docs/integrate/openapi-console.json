@@ -246,7 +246,7 @@
           },
           "reason" : {
             "description" : "Null when `valid`.",
-            "enum" : [ "ENTRY_MISMATCH", "HEAD_MISMATCH" ],
+            "enum" : [ "ENTRY_MISMATCH", "HEAD_MISMATCH", null ],
             "type" : [ "string", "null" ]
           },
           "valid" : {
@@ -884,7 +884,7 @@
           },
           "role" : {
             "description" : "Null for popdesk itself.",
-            "enum" : [ "CUSTOMER", "AGENT", "ADMIN" ],
+            "enum" : [ "CUSTOMER", "AGENT", "ADMIN", null ],
             "type" : [ "string", "null" ]
           }
         },

@@ -51,7 +51,19 @@ public class IssueHistoryRepository {
          * new value when it was made and the old value when it was removed, the other one null. Only the
          * other issue's ID, never its key or title.
          */
-        LINK
+        LINK,
+        /**
+         * The issue was deleted into the trash, restored from it, or purged (S7A-AC-06): {@link #TRASHED}
+         * is the new value of a delete and the old value of a restore and of a purge; {@link #PURGED} the
+         * new value of a purge; the other one null.
+         */
+        TRASH;
+
+        /** The value of {@link #TRASH} for an issue in the trash. */
+        public static final String TRASHED = "TRASHED";
+
+        /** The value of {@link #TRASH} for a purged issue. */
+        public static final String PURGED = "PURGED";
     }
 
     /** An account as a history entry names it, by its name today. */
@@ -183,5 +195,15 @@ public class IssueHistoryRepository {
     private static Instant instant(ResultSet rs, String column) throws SQLException {
         Timestamp value = rs.getTimestamp(column);
         return value == null ? null : value.toInstant();
+    }
+
+    /**
+     * Clears the values of the {@code TITLE} and {@code CONTENT} entries of a purged issue (TRASH-3,
+     * S7A-AC-30); the entries stay. The caller holds the issue row.
+     */
+    public void updateTextsCleared(UUID issueId) {
+        jdbc.sql("update issue_history set old_value = null, new_value = null where issue_id = ? "
+                        + "and field in (?, ?)")
+                .params(issueId, Field.TITLE.name(), Field.CONTENT.name()).update();
     }
 }

@@ -29,7 +29,8 @@ import org.springframework.context.annotation.Configuration;
  *   <li>Response types list every field as required, and a field marked {@code @Schema(nullable =
  *       true)} may be {@code null} (ADR D-44: fields are never left out). Request types, whose names end in
  *       {@code Request}, keep optional fields optional. {@code ApiError.fields} and
- *       {@code ApiError.issueKeys} are the only response fields that may be left out.
+ *       {@code ApiError.issueKeys} are the only response fields that may be left out. A nullable field
+ *       with an {@code enum} has {@code null} among its values.
  * </ul>
  */
 @Configuration(proxyBeanMethods = false)
@@ -119,7 +120,7 @@ class OpenApiConfig {
                     return;
                 }
                 // A nullable reference comes out of the PropertyCustomizer as {$ref, type: null}.
-                schema.getProperties().replaceAll((property, value) -> nullableRef((Schema) value));
+                schema.getProperties().replaceAll((property, value) -> nullableEnum(nullableRef((Schema) value)));
                 if (name.endsWith("Request")) {
                     return;
                 }
@@ -142,6 +143,23 @@ class OpenApiConfig {
         wrapper.setOneOf(List.of(new Schema<>().$ref(property.get$ref()), new Schema<>().types(Set.of("null"))));
         wrapper.setDescription(property.getDescription());
         return wrapper;
+    }
+
+    /**
+     * A nullable field with an {@code enum} lists {@code null} among its values too (slice 7a design section
+     * 0, 7): JSON Schema checks {@code enum} apart from {@code type}, so without it a validator refuses the
+     * {@code null} the type allows, such as the role of popdesk itself in a history entry.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static Schema nullableEnum(Schema property) {
+        if (property.getEnum() == null || property.getTypes() == null || !property.getTypes().contains("null")
+                || property.getEnum().contains(null)) {
+            return property;
+        }
+        List<Object> values = new ArrayList<>(property.getEnum());
+        values.add(null);
+        property.setEnum(values);
+        return property;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
