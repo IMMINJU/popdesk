@@ -2,6 +2,7 @@ package io.popdesk.helpdesk.web.console;
 
 import io.popdesk.ApiError;
 import io.popdesk.ApiException;
+import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.IssueStatus;
@@ -249,6 +250,27 @@ class ConsoleIssueController {
         return issue(issues.edit(CurrentAccount.get().viewer(), key, new IssueService.Edit(
                 PatchText.of("title", request.title()), PatchText.of("content", request.content()),
                 PatchText.of("priority", request.priority()), request.version(), request.imageIds())));
+    }
+
+    @Operation(operationId = "deleteIssue", summary = "Delete an issue, into the trash",
+            description = "Moves the issue to the trash, with the time and the admin (S7A-AC-01). Any status. "
+                    + "Its content and everything under it (comments, attachments, tasks, links, labels, assignee) "
+                    + "stay as they are, for `restoreIssue`; popdesk purges it 30 days later (S7A-AC-31). From "
+                    + "then on the issue and every path under it answer 404 in both apps, to admins too, and it is "
+                    + "left out of every list, search, count, and inbox (S7A-AC-03, S7A-AC-04). Its waiting "
+                    + "messages are deleted and nothing more is sent about it (S7A-AC-10). Goes up `version` by 1 "
+                    + "and leaves a history entry `TRASH` with the new value `TRASHED` (S7A-AC-06) and an audit "
+                    + "entry `ISSUE_DELETED` (S7A-AC-07). Takes no `version`. Checks, in this order: role (403), "
+                    + "the issue (404).")
+    @ApiResponse(responseCode = "204", description = "In the trash.")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = ConsoleTrashController.ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
+    @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such issue, or it is in the trash already "
+            + "or purged (S7A-AC-03).")
+    @DeleteMapping("/{key}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void deleteIssue(@PathVariable String key) {
+        throw new NotImplementedException();
     }
 
     @Operation(operationId = "changeIssueStatus", summary = "Change an issue's status",

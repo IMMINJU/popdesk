@@ -273,6 +273,14 @@ If the files of a place are lost for good and you want popdesk to start anyway, 
 
 While it runs, popdesk answers 500 `INTERNAL_ERROR` to an upload whose file cannot be stored and to a download whose file is missing or cannot be read, and logs the attachment's ID and the storage kind. Every request to S3 has a time limit (5 seconds to connect, 60 seconds for an answer), so a storage that does not answer holds an upload or a download for a minute at most. A cleanup job that cannot reach the storage stops its run and tries again later.
 
+## Trash and closing resolved issues
+
+Two cleanup jobs, without settings. Both show in the system status and in the cleanup metrics (`popdesk_cleanup_last_run_seconds`, `popdesk_cleanup_deleted`, label `job`) like the other jobs.
+
+- `trash-purge` runs every hour and purges each issue that was deleted into the trash 30 days ago or longer: its title, content, comments, attachments with their files, tasks, links, labels, and inbox items are deleted; the issue's row and its history stay. Each issue is purged in a transaction of its own. A file that cannot be removed is removed later by `attachment-cleanup`. The count is the number of issues purged.
+- `issue-auto-close` runs every 10 minutes and closes each `RESOLVED` issue 7 days after it was resolved, or 7 days after it was restored from the trash. It closes as popdesk itself (account 0) and sends what closing by staff sends: the reporter's inbox item and email and the webhook message `ISSUE_CLOSED`. The count is the number of issues closed. Issues in the trash are not closed.
+- Times are measured in UTC; `POPDESK_TIMEZONE` does not change them. A job that was not running (the app was stopped) does its work at its next run.
+
 ## Profile photos
 
 A profile photo is a PNG, JPEG, or WebP file of at most 2 MB (2,097,152 bytes), judged by its content and not by its name. popdesk decodes it, scales it to fit 256 px, and keeps only that copy as a PNG in the database (table `account_photo`, a few tens of KB each); the uploaded file and its metadata are not kept. The limits are fixed, there is no setting for them: a PNG or JPEG may have up to 25 million pixels (width times height) and a WebP up to 12 million, read from the file's header before anything is decoded, and an account uploads at most 10 photos in 60 seconds. Decoding is what costs memory. PNG and JPEG are read at a reduced size and need little, but a WebP that is lossless or has transparency is decoded whole first, about 72 MB of heap for one at the limit. So at most 2 photos are decoded at once, which fits the image's 384 MB heap next to the app's other work; a third upload at that moment gets 503 `SERVER_BUSY` with `Retry-After`, and the screens try again. If you lower `-Xmx` below the default, leave room for about 150 MB of photo decoding. Photos are in the database dump, so `popdesk backup` covers them whatever `POPDESK_STORAGE` is.

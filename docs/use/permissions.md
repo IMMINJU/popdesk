@@ -116,7 +116,7 @@ Everything a manager does goes to the audit log.
 | Filter the list by label, sort it by due date | – | – | Yes | Yes |
 | See issue history | – | – | Yes | Yes |
 | See SLA state and remaining time | – | – | Yes | Yes |
-| See the trash, delete, restore, purge | – | – | – | Yes |
+| See the trash, delete, restore, purge (see [Trash](#trash-and-closing-resolved-issues)) | – | – | – | Yes |
 
 On a `CLOSED` issue nothing can be edited, commented on, attached, labelled, or given a due date (400); tasks and notes are read-only. Its assignee can still be set and cleared.
 
@@ -185,6 +185,21 @@ Staff can link two issues as duplicate or related, even across customer companie
 - Linking and unlinking leave an entry in the history of both issues. An entry about an issue you cannot see is left out of the history you read (`LINK-7`).
 - Linking and unlinking change neither issue's version, last-updated time, or status (`LINK-5`).
 - When an issue becomes resolved or closed, the assignees of the issues linked to it are told in the inbox only, without email, and only if they can see both issues (`LINK-6`).
+
+## Trash and closing resolved issues
+
+| Action | Customer | Agent | Admin |
+|---|---|---|---|
+| Delete an issue (into the trash), in any status | – | – (403) | Yes |
+| See the trash, restore an issue, purge it at once | – | – (403) | Yes |
+
+- **Nobody sees an issue in the trash**, admins included: the issue and every path under it are 404 in both apps, and it is left out of every list, search, count, and inbox (`TRASH-1`). Only the admin's trash list shows it, with when and by whom it was deleted and when it will be purged.
+- **Nothing is sent about it.** While an issue is in the trash, popdesk makes no inbox item and sends no email or webhook message about it. Deleting it also deletes the messages still waiting to be sent, so restoring it does not send them later (`TRASH-2`).
+- **Restoring brings it back as it was**: content, comments, attachments, tasks, links, labels, assignee, due date, and status, and its inbox items are listed again. A restore that would break the link rules is refused (409) and names the other issues.
+- **popdesk purges an issue 30 days after it was deleted**, checking every hour; an admin can purge it earlier from the trash. Purging deletes what was written (title and content, comments, attachments and their files, tasks and notes, links, labels on it, inbox items) and keeps only the issue's key, company, status, times, and history entries, without the old title and content values. It cannot be undone (`TRASH-3`).
+- **Issue numbers are never used again**, also after a purge (`TRASH-4`).
+- Deleting, restoring, and purging by an admin leave an entry in the audit log (by company code and issue key, never the title) and in the issue's history. popdesk's own purges leave a history entry only.
+- **A resolved issue closes by itself 7 days after it was resolved**, checked every 10 minutes (`STATUS-5`). popdesk closes it as "System": the reporter and the team are told as when staff close an issue. An issue reopened or moved on in the meantime is not closed. An issue in the trash is not closed; a resolved issue restored from the trash closes 7 days after the restore.
 
 ## Other areas
 

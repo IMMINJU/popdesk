@@ -120,7 +120,7 @@ class SecurityConfiguration {
 
     /**
      * Endpoints for admins only (docs/use/permissions.md, S0-AC-30, S0-AC-33, S0-AC-40, S1A-AC-43,
-     * S1A-AC-44, S1B-AC-02, S2-AC-02, S2-AC-33, S6A-AC-07).
+     * S1A-AC-44, S1B-AC-02, S2-AC-02, S2-AC-33, S6A-AC-07, S7A-AC-02, S7A-AC-20).
      */
     private static RequestMatcher adminOnly() {
         return new OrRequestMatcher(
@@ -134,6 +134,8 @@ class SecurityConfiguration {
                 PATHS.matcher(HttpMethod.POST, "/api/console/companies/*/labels"),
                 PATHS.matcher(HttpMethod.PATCH, "/api/console/companies/*/labels/*"),
                 PATHS.matcher(HttpMethod.DELETE, "/api/console/companies/*/labels/*"),
+                PATHS.matcher(HttpMethod.DELETE, "/api/console/issues/*"),
+                PATHS.matcher("/api/console/trash/**"),
                 PATHS.matcher("/api/console/invitations/**"),
                 PATHS.matcher("/api/console/membership-requests/**"),
                 PATHS.matcher("/api/console/system/**"));

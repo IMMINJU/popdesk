@@ -77,6 +77,10 @@ The next version stores attachment files in a folder (`POPDESK_STORAGE=disk`) or
 - **Changing `POPDESK_STORAGE` moves no file.** New files go to the new place; files that are there stay and are read where they are. Read [Attachment storage](configuration.md#attachment-storage) before you change it: the marker, the volume, the start check, and what a backup has to hold from then on.
 - **New command**: `popdesk attachments check` ([configuration.md](configuration.md#check-the-attachment-files)).
 - **A download whose file is missing or cannot be read answers 500 `INTERNAL_ERROR`**, with every storage.
+- **The trash and closing resolved issues (migration 17).** The migration adds four columns to the issue table and two partial indexes. It also gives every `RESOLVED` issue a start for closing by itself: the time it was resolved.
+- **Within 10 minutes after the start, resolved issues older than 7 days are closed.** The job `issue-auto-close` closes every `RESOLVED` issue that was resolved over 7 days ago, as popdesk itself, with the same email to the reporter and the same webhook message as when staff close an issue. An installation with many old resolved issues sends that many emails at once, at most 50 an hour to one address ([configuration.md](configuration.md#sending-email-and-webhook-messages)).
+- **New cleanup jobs**: `trash-purge` and `issue-auto-close` ([configuration.md](configuration.md#trash-and-closing-resolved-issues)).
+- **New kinds of audit entry**: `ISSUE_DELETED`, `ISSUE_RESTORED`, and `ISSUE_PURGED`. A receiver of the audit copy or of exports that lists the kinds it knows needs these three.
 
 ## A migration failed
 

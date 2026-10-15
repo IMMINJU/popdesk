@@ -28,8 +28,8 @@ import org.springframework.context.annotation.Configuration;
  *   <li>Every error response (4xx, 5xx) has the {@link ApiError} body (COM-3).
  *   <li>Response types list every field as required, and a field marked {@code @Schema(nullable =
  *       true)} may be {@code null} (ADR D-44: fields are never left out). Request types, whose names end in
- *       {@code Request}, keep optional fields optional. {@code ApiError.fields} is the one response
- *       field that may be left out.
+ *       {@code Request}, keep optional fields optional. {@code ApiError.fields} and
+ *       {@code ApiError.issueKeys} are the only response fields that may be left out.
  * </ul>
  */
 @Configuration(proxyBeanMethods = false)
@@ -126,6 +126,7 @@ class OpenApiConfig {
                 Set<String> required = new LinkedHashSet<>(schema.getProperties().keySet());
                 if (name.equals("ApiError")) {
                     required.remove("fields");
+                    required.remove("issueKeys");
                 }
                 schema.setRequired(new ArrayList<>(required));
             });

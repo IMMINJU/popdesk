@@ -15,7 +15,8 @@ public record Notification(
                 + "null for the other kinds.", nullable = true) String companyCode,
         @Schema(description = "The comment the item is about; null when it is about no comment.", nullable = true)
                 Long commentId,
-        @Schema(description = "Who did it; null for an item about no issue.", nullable = true)
+        @Schema(description = "Who did it; null for an item about no issue, and null for what popdesk itself "
+                + "did, such as closing a `RESOLVED` issue after 7 days (S7A-AC-43).", nullable = true)
                 NotificationActor actor,
         OffsetDateTime createdAt,
         @Schema(description = "When the caller marked it read.", nullable = true) OffsetDateTime readAt,

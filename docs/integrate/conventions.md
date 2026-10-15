@@ -43,6 +43,7 @@ Every request is checked in this order:
 5. Does the current state allow it? If not, 400 or 409.
 
 - A target the caller may not see (outside their scope, does not exist, or in the trash) is 404. The response does not reveal whether it exists (`COM-1`).
+- An issue in the trash, or purged, is 404 on every issue path of both apps, to admins too: the issue and everything under it (comments, attachments and their files, history, tasks and notes, links, labels, due date, assignee, status, mention candidates). Deleting it again is 404 too, and so is a filing sent again with the `Idempotency-Key` of the request that filed it. Only the trash paths (`/api/console/trash/{key}…`, admins only) reach it.
 - A target the caller can see but may not act on is 403 (`COM-2`).
 - An action reserved for other roles, whatever the target (for example an agent calling an endpoint for admins only), is 403 and is checked before the target.
 - A customer never reaches a console endpoint, a task endpoint for example: the portal host does not serve `/api/console/**` (404), and a portal session does not work on the console host (401). The same holds for staff and `/api/portal/**`.
@@ -75,6 +76,16 @@ A 400 for invalid input may also list every invalid field (D-44):
 ```
 
 `fields` is present only when the error is about specific fields. Clients match `fields[].field` to their inputs and choose the text by `fields[].code`.
+
+A 409 `RESTORE_LINK_CONFLICT` lists the other issues whose links stop the restore, by key, in `issueKeys`. Like `fields`, it is present only for that error:
+
+```json
+{
+  "code": "RESTORE_LINK_CONFLICT",
+  "message": "The issue's links break the link rules.",
+  "issueKeys": ["ACME-12", "ACME-40"]
+}
+```
 
 - `code` is a stable key. Clients choose the text they show by `code` and use `message` only for a `code` they do not know.
 - `message` is a default text in the installation language (`POPDESK_LOCALE`).
@@ -136,6 +147,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 409 | `TOO_MANY_PENDING` | The company already has 100 rows waiting in its member list (`INVITED`), so its manager cannot invite more |
 | 409 | `REQUEST_CLOSED` | The membership request was closed the other way (approved when rejecting, rejected when approving), or its manager took it back |
 | 409 | `LINK_EXISTS` | The two issues are linked already, of any kind and in either direction. Nothing changed |
+| 409 | `RESTORE_LINK_CONFLICT` | Restoring an issue from the trash: with its links it would break the link rules (over 50 links, or a duplicate chain). `issueKeys` lists the other issues of the links at fault. The issue stays in the trash |
 | 409 | `VERSION_CONFLICT` | The `version` sent with an edit of an issue is not the issue's current one: someone changed the issue in between. Nothing changed. Read the issue again |
 | 409 | `IDEMPOTENCY_KEY_REUSED` | The account used this `Idempotency-Key` in the last 24 hours for a filing with other content. Nothing is created |
 | 409 | `AUDIT_VERIFICATION_RUNNING` | A check of the audit log's hash chain is already running. One runs at a time |
@@ -296,6 +308,8 @@ Some deletions keep the row and leave a trace: the content fields are cleared, a
 - A task (console only): `title` becomes an empty string, `assignee` and `dueDate` become `null`, `overdue` is `false`, and `notes` is `[]`. Its notes are deleted with it, and its changes lose their values. Deleting it again is 204 and changes nothing.
 - A task note (console only): `content` becomes an empty string. Deleting it again is 204 and changes nothing.
 
+An issue is deleted in two steps. Deleting it (`deleteIssue`, admins only) moves it to the trash and changes nothing in it, so `restoreIssue` brings it back as it was. Purging it, by an admin (`purgeIssue`) or by popdesk 30 days after the delete, deletes what was written: the title and content become empty strings, and its comments, attachments and their files, tasks, links, labels on it, and inbox items are deleted. The issue's row (key, company, status, times) and its history entries stay, with the values of `TITLE` and `CONTENT` entries cleared. A purged issue is answered 404 everywhere and its number is never used again. The history field `TRASH` records each step: new value `TRASHED` on a delete, old value `TRASHED` on a restore, and `TRASHED` to `PURGED` on a purge.
+
 ## Notification inbox (INBOX-3)
 
 Each app has the inbox of the signed-in account: `/api/portal/notifications` and `/api/console/notifications`, with the same four requests (the list, `unread-count`, `{id}/read`, `read-all`).
@@ -311,6 +325,8 @@ Each app has the inbox of the signed-in account: `/api/portal/notifications` and
 - When an issue becomes `RESOLVED` or `CLOSED`, the assignee of each issue linked to it gets an item `LINKED_ISSUE_RESOLVED` or `LINKED_ISSUE_CLOSED`. The item's `issue` is the assignee's own issue and `linkedIssue` the one that changed. No email goes with it. Nobody gets one who cannot see both issues, whose own issue is `CLOSED`, who made the change, or who is not active, and an issue without an assignee tells nobody. While the same item is still unread, another one of the same kind about the same two issues is not made. The item is listed only while the caller can see both issues. Customers never get an item about a link.
 - The portal's items have their own type and their own kinds, only those a customer gets. What an agent or an admin did has the actor `SUPPORT_TEAM`, without a name, an email, or an account ID (D-49). The console gives the actor's account ID, name, and role.
 - Items about no issue (operational alerts, membership requests) go to admins only and have `null` for the issue, the comment, and the actor.
+- What popdesk itself did, such as closing a `RESOLVED` issue after 7 days, has `null` for the actor in the console's items too.
+- Nothing is sent about an issue in the trash: no inbox item, email, or webhook message. Deleting an issue deletes its waiting messages, so restoring it sends none of them. Its inbox items are kept, left out of the list and the unread count, and listed again after a restore.
 
 ## Rate limits (COM-8)
 
