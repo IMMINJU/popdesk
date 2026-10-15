@@ -13,7 +13,7 @@ describe('C-12 감사 로그의 문의 항목 (7a 묶음)', () => {
     ['ISSUE_RESTORED', '문의 복구'],
     ['ISSUE_PURGED', '문의 영구 삭제'],
   ])('S7A-AC-52 C-12 %s: 일은 "%s"이고 대상은 고객사 코드와 문의 키다', async (action, word) => {
-    audit.entries = [entry({ id: 8101, action, target: ISSUE_TARGET, changes: {} })];
+    audit.entries = [entry({ id: 8101, action, target: ISSUE_TARGET, changes: null })];
     renderAt(URL_LOG);
 
     await entryRows(1);
