@@ -72,7 +72,7 @@ alter table notification add column linked_issue_id uuid;
 | 상태가 `RESOLVED`·`CLOSED`가 됨 | 지금의 `move()` 안, `notifications.statusChanged` 다음에 같은 트랜잭션에서 그 문의의 연결을 읽어 상대 문의마다 담당자를 정한다(4절). 연결 쪽 행을 잠그지 않는다. 연결 읽기는 상태를 바꾼 사람의 보기 범위로 거르지 않는다(고객이 닫아도 알림이 가야 한다) |
 
 - 사슬 검사(중복이 될 문의 D, 원본 O): O에 나가는 `DUPLICATE_OF`가 있다(O가 이미 중복), D에 들어오는 `DUPLICATE_OF`가 있다(D가 이미 원본), D에 나가는 `DUPLICATE_OF`가 있다(D에 원본이 이미 있다). 셋 가운데 하나면 400. 두 행을 잠근 뒤라 같은 때의 잇기가 이 검사를 피하지 못한다. A→B와 B→C가 같은 때 오면 B 행을 둘 다 잡으려 하므로 차례가 선다.
-- 잠금 안에서 쓴 연결은 두 문의 행이 잠긴 동안만 바뀐다. 연결을 바꾸는 쓰기는 잇기와 끊기뿐이고, 둘 다 두 행을 잠근다. 그래서 연결 수와 사슬 검사는 그 두 문의에 대해 맞다.
+- 잠금 안에서 쓴 연결은 두 문의 행이 잠긴 동안만 바뀐다. 연결을 바꾸는 쓰기는 잇기와 끊기뿐이고, 둘 다 두 행을 잠근다(7a의 영구 삭제가 셋째가 된다. 휴지통의 문의만 다루고 잇기가 닿지 않는다). 그래서 연결 수와 사슬 검사는 그 두 문의에 대해 맞다.
 - `architecture.md` 잠금 순서 표에 위 두 줄을 C-10에서 더한다.
 - 연결 서비스는 `helpdesk/link`(새)에 둔다. `link` → `issue`의 공개 타입(`IssueRepository`의 잠금, `IssueHistoryRepository`)을 쓴다. 상태가 바뀔 때의 알림은 `issue` 쪽이 `helpdesk`의 인터페이스(새, "이 문의와 이어진 문의 ID들")로 묻고 `link`가 구현한다(6b의 열린 작업 수와 같은 꼴, `PackageCyclesTest`).
 - 이력의 `LINK` 항목은 `IssueHistoryRepository.insertChanged`에 `Field.LINK`를 더해 쓴다.
@@ -129,7 +129,7 @@ alter table notification add column linked_issue_id uuid;
 ## 10. 구현 지시서에 넣을 것 (C-5, C-7에서)
 
 - 서버: 두 문의 행은 ID 차례로 잠근다. 잠그는 문장에 보기 범위를 넣는다. 차례는 SQL `order by id`로 정한다(Java `UUID.compareTo`를 쓰지 않는다).
-- 서버: 사슬 검사 셋(설계 3절)과 한도는 잠근 뒤 한다. 볼 수 없는 연결도 센다.
+- 서버: 사슬 검사 셋(설계 3절)과 한도는 잠근 뒤 한다. 볼 수 없는 연결도 센다. 수와 사슬은 `issue_link`만 읽고 `issue`를 보기 범위로 붙이지 않는다(7a에서 범위가 휴지통의 문의를 빼도 숨은 연결을 세야 한다).
 - 서버: 이력 값은 ID만 담는다. 읽을 때 상대를 보기 범위로 SQL 안에서 거른다(`list`와 `count`).
 - 서버: 연결 알림은 받는 사람이 두 문의를 모두 볼 수 있을 때만, 읽을 때도 둘 다 다시 본다.
 - 서버: 잇기와 끊기는 문의 `version`을 올리지 않는다. 포털 타입은 바뀌지 않는다.
