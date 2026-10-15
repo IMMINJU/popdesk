@@ -147,7 +147,7 @@ export function C11Trash() {
       key: 'issue',
       header: '문의',
       cell: (t) => (
-        <span className="pd-two-lines">
+        <span className="pd-two-lines pd-trash-issue">
           <span className="pd-key">{t.key}</span>
           <span>{t.title}</span>
         </span>
@@ -162,7 +162,7 @@ export function C11Trash() {
   ];
 
   return (
-    <div className="pd-screen">
+    <div className="pd-screen pd-trash">
       <PageTitle titleRef={heading}>휴지통</PageTitle>
       <p className="pd-muted">지운 문의는 30일 뒤 영구 삭제됩니다.</p>
       {load.status === 'failed' && (
