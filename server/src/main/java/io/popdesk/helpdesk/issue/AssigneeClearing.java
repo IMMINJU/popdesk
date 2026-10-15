@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.issue;
 
 import io.popdesk.helpdesk.OpenAssignments;
+import io.popdesk.helpdesk.OpenTasks;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.issue.IssueHistoryRepository.Field;
 import java.time.Clock;
@@ -24,21 +25,25 @@ public class AssigneeClearing implements OpenAssignments {
 
     private final IssueRepository issues;
     private final IssueHistoryRepository history;
+    private final OpenTasks tasks;
     private final Clock clock;
 
-    AssigneeClearing(IssueRepository issues, IssueHistoryRepository history, Clock clock) {
+    AssigneeClearing(IssueRepository issues, IssueHistoryRepository history, OpenTasks tasks, Clock clock) {
         this.issues = issues;
         this.history = history;
+        this.tasks = tasks;
         this.clock = clock;
     }
 
     /**
      * How many open issues the account is the assignee of, among those the viewer, an admin, sees; with
-     * {@code companyId}, in that company only (S3-AC-68).
+     * {@code companyId}, in that company only (S3-AC-68); and how many open tasks of those issues that
+     * are not {@code CLOSED} (S6B-AC-75).
      */
     @Override
-    public long count(Viewer viewer, long accountId, Long companyId) {
-        return issues.countOpenAssignments(viewer, accountId, companyId);
+    public Counts count(Viewer viewer, long accountId, Long companyId) {
+        return new Counts(issues.countOpenAssignments(viewer, accountId, companyId),
+                tasks.count(viewer, accountId, companyId));
     }
 
     /**
@@ -48,18 +53,20 @@ public class AssigneeClearing implements OpenAssignments {
      * gets a history entry by {@code actorId}, the admin; no webhook message is queued (S3-AC-70).
      *
      * <p>The issue rows are not locked one by one: the UPDATE carries the condition, and an issue whose
-     * assignee or status another request changed first is left to that request.
+     * assignee or status another request changed first is left to that request. The account's open
+     * tasks are cleared after the issues, the same way (S6B-AC-76): issue rows before task rows, the
+     * lock order of a task write.
      *
-     * @return how many issues were cleared
+     * @return how many issues and tasks were cleared
      */
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public int clear(long accountId, Long companyId, long actorId) {
+    public Cleared clear(long accountId, Long companyId, long actorId) {
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         List<UUID> cleared = issues.updateAssigneesCleared(accountId, companyId, now);
         for (UUID issueId : cleared) {
             history.insertChanged(issueId, Field.ASSIGNEE, Long.toString(accountId), null, actorId, now);
         }
-        return cleared.size();
+        return new Cleared(cleared.size(), tasks.clear(accountId, companyId, actorId));
     }
 }

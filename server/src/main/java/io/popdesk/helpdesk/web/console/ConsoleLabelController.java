@@ -72,7 +72,8 @@ class ConsoleLabelController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     Label createLabel(@PathVariable String code, @RequestBody CreateLabelRequest request) {
-        return label(labels.create(CurrentAccount.get().viewer(), code, request.name(), request.color()));
+        CurrentAccount admin = CurrentAccount.get();
+        return label(labels.create(admin.viewer(), admin.actor(), code, request.name(), request.color()));
     }
 
     @Operation(operationId = "updateLabel", summary = "Change a label's name or color",
@@ -90,7 +91,8 @@ class ConsoleLabelController {
             + "is not this.")
     @PatchMapping("/{id}")
     Label updateLabel(@PathVariable String code, @PathVariable long id, @RequestBody UpdateLabelRequest request) {
-        return label(labels.update(CurrentAccount.get().viewer(), code, id, PatchText.of("name", request.name()),
+        CurrentAccount admin = CurrentAccount.get();
+        return label(labels.update(admin.viewer(), admin.actor(), code, id, PatchText.of("name", request.name()),
                 PatchText.of("color", request.color())));
     }
 
@@ -103,6 +105,7 @@ class ConsoleLabelController {
     @ApiResponse(responseCode = "404", description = LABEL_NOT_FOUND)
     @DeleteMapping("/{id}")
     void deleteLabel(@PathVariable String code, @PathVariable long id) {
-        labels.delete(CurrentAccount.get().viewer(), code, id);
+        CurrentAccount admin = CurrentAccount.get();
+        labels.delete(admin.viewer(), admin.actor(), code, id);
     }
 }

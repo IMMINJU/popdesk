@@ -200,7 +200,7 @@ public class CompanyService {
      * issues, not of the assignment.
      */
     @Transactional(readOnly = true)
-    public long openAssignments(Viewer viewer, String code, long accountId) {
+    public OpenAssignments.Counts openAssignments(Viewer viewer, String code, long accountId) {
         CompanyRow company = get(viewer, code);
         AccountRow account = accounts.findById(accountId).orElseThrow(ApiException::notFound);
         return assignments.count(viewer, account.id(), company.id());
@@ -392,9 +392,11 @@ public class CompanyService {
             }
             int cleared = 0;
             if (clearAssignments) {
-                cleared = assignments.clear(agent.id(), company.id(), admin.accountId());
-                if (removed || cleared > 0) {
+                OpenAssignments.Cleared both = assignments.clear(agent.id(), company.id(), admin.accountId());
+                cleared = both.issues();
+                if (removed || both.issues() > 0 || both.tasks() > 0) {
                     changes.put("clearedIssues", cleared);
+                    both.putTasks(changes);
                 }
             }
             if (!changes.isEmpty()) {
