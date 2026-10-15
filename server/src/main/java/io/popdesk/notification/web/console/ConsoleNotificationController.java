@@ -86,7 +86,8 @@ class ConsoleNotificationController {
                 item.companyCode(), item.commentId(), actor(item.actor()), utc(item.createdAt()),
                 utc(item.readAt()), item.task() == null ? null
                         : new NotificationTask(item.task().id(), item.task().title()),
-                null); // linkedIssue: null until slice 6c makes LINKED_ISSUE_* items (S6C-AC-31).
+                item.linkedIssue() == null ? null
+                        : new NotificationIssue(item.linkedIssue().key(), item.linkedIssue().title()));
     }
 
     private static NotificationActor actor(Actor actor) {

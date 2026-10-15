@@ -46,6 +46,14 @@ class IssueInboxService implements IssueInbox {
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
+    public void addAboutLinkedIssue(Kind kind, long recipientAccountId, UUID issueId, UUID linkedIssueId,
+            long actorId) {
+        ops.insertInboxAboutLinkedIssue(recipientAccountId, kind.name(), issueId, linkedIssueId, actorId,
+                clock.instant().truncatedTo(ChronoUnit.MICROS));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
     public void deleteOfComment(long commentId) {
         ops.deleteInboxOfComment(commentId);
     }

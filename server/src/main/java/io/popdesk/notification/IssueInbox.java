@@ -65,6 +65,19 @@ public interface IssueInbox {
     void addAboutTask(long recipientAccountId, UUID issueId, long taskId, long actorId);
 
     /**
+     * Adds a {@link Kind#LINKED_ISSUE_RESOLVED} or {@link Kind#LINKED_ISSUE_CLOSED} item to the recipient's
+     * inbox, without an email (S6C-AC-31): about the recipient's own issue, naming the linked issue that
+     * changed. Nothing is added while the recipient has an unread item of the same kind about the same two
+     * issues (S6C-AC-35). The item holds both IDs; the linked issue's key and title are read when the inbox
+     * is read (S6C-AC-33). Joins the caller's transaction; fails when there is none.
+     *
+     * @param issueId the recipient's issue, linked to the one that changed
+     * @param linkedIssueId the issue that became {@code RESOLVED} or {@code CLOSED}
+     * @param actorId the account that changed its status
+     */
+    void addAboutLinkedIssue(Kind kind, long recipientAccountId, UUID issueId, UUID linkedIssueId, long actorId);
+
+    /**
      * Deletes every item about the comment, read or not, whoever has it (S4-AC-16): the comment was
      * deleted. Joins the caller's transaction.
      */

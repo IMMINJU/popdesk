@@ -2,6 +2,7 @@ package io.popdesk.helpdesk.issue;
 
 import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.IssueStatus;
+import io.popdesk.helpdesk.LinkedIssues;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.account.AccountRepository;
@@ -41,6 +42,8 @@ import org.springframework.transaction.annotation.Transactional;
  *   <tr><td>a comment mentions someone</td><td>that person</td><td>MENTIONED</td><td>yes</td></tr>
  *   <tr><td>a task gets another assignee</td><td>the task's new assignee</td><td>TASK_ASSIGNED</td>
  *       <td>yes</td></tr>
+ *   <tr><td>a linked issue is resolved or closed</td><td>the assignee of each issue linked to it</td>
+ *       <td>LINKED_ISSUE_RESOLVED, LINKED_ISSUE_CLOSED</td><td>no</td></tr>
  * </table>
  *
  * <p>Left out, in this order (S4-AC-34 to S4-AC-36): the person who did it; an account that is not
@@ -62,11 +65,13 @@ public class IssueNotifications {
     private final IssueInbox inbox;
     private final AccountRepository accounts;
     private final IssueRepository issues;
+    private final LinkedIssues linked;
 
-    IssueNotifications(IssueInbox inbox, AccountRepository accounts, IssueRepository issues) {
+    IssueNotifications(IssueInbox inbox, AccountRepository accounts, IssueRepository issues, LinkedIssues linked) {
         this.inbox = inbox;
         this.accounts = accounts;
         this.issues = issues;
+        this.linked = linked;
     }
 
     /**
@@ -135,6 +140,39 @@ public class IssueNotifications {
             }
         }
         tell(actor, issue.id(), null, notices, account -> sees(account, issue.id()));
+    }
+
+    /**
+     * The issue became {@code RESOLVED} or {@code CLOSED}, by staff or by its reporter (LINK-6, S6C-AC-31):
+     * the assignee of each issue linked to it gets an inbox item about their own issue, without an email.
+     * Left out (S6C-AC-32): an issue without an assignee or that is {@code CLOSED}; the person who changed
+     * the status; an account that is not {@code ACTIVE}; and one that cannot see both issues now. The links
+     * are read whoever may see them, so a customer closing tells staff too. One item per linked issue, so a
+     * person who is the assignee of two of them gets two. Any other status tells nobody.
+     *
+     * @param issue the issue as it is after the change
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void linkedStatusChanged(Viewer actor, IssueRow issue, IssueStatus to) {
+        Kind kind = switch (to) {
+            case RESOLVED -> Kind.LINKED_ISSUE_RESOLVED;
+            case CLOSED -> Kind.LINKED_ISSUE_CLOSED;
+            default -> null;
+        };
+        if (kind == null) {
+            return;
+        }
+        for (IssueRepository.Assignment own : issues.assignments(linked.of(issue.id()))) {
+            Long assigneeId = own.assigneeId();
+            if (assigneeId == null || own.status() == IssueStatus.CLOSED || assigneeId == actor.accountId()) {
+                continue;
+            }
+            AccountRow account = accounts.findById(assigneeId).orElse(null);
+            if (account != null && account.status() == AccountStatus.ACTIVE && account.role() != Role.CUSTOMER
+                    && sees(account, own.issueId()) && sees(account, issue.id())) {
+                inbox.addAboutLinkedIssue(kind, account.id(), own.issueId(), issue.id(), actor.accountId());
+            }
+        }
     }
 
     /**
