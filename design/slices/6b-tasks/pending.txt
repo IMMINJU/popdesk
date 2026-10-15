@@ -3,28 +3,8 @@
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
 
-# 서버 구현 탭
-server io/popdesk/task/TaskEditTest.java
-server io/popdesk/task/TaskAssigneeTest.java
-server io/popdesk/task/TaskLimitTest.java
-server io/popdesk/task/TaskRaceTest.java
-server io/popdesk/task/TaskRateLimitTest.java
-server io/popdesk/task/TaskDeleteTest.java
-server io/popdesk/task/TaskNoteTest.java
-server io/popdesk/task/TaskChangeTest.java
-server io/popdesk/task/TaskIssueStatusTest.java
-server io/popdesk/task/MyTasksTest.java
-server io/popdesk/issue/TaskCloseRaceTest.java
-server io/popdesk/issue/TaskClearAssignmentsTest.java
-server io/popdesk/boundary/TaskBoundaryTest.java
-server io/popdesk/inbox/TaskInboxTest.java
-server io/popdesk/notify/TaskMailTest.java
-server io/popdesk/notify/KoreanTaskMailTest.java
-server io/popdesk/audit/TaskClearAuditTest.java
-server io/popdesk/audit/LabelAuditTest.java
+# 서버: deploy 태그라 C-10에서 이미지로 돈다
 server io/popdesk/deploy/TaskSampleTest.java
-server io/popdesk/project/NoStoreTest.java#everyReadSucceedsWithNoStore
-server io/popdesk/notify/SandboxMailTest.java#everyKindGoesToTheSandboxAddress
 
 # 웹 구현 탭
 web **/C4IssueDetail.6b.test.tsx
