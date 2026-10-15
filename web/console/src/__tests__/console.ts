@@ -102,6 +102,7 @@ export function summary(over: Partial<IssueSummary> = {}): IssueSummary {
     labels: [],
     dueDate: null,
     overdue: false,
+    openTaskCount: 0,
     ...over,
   };
 }
@@ -465,6 +466,10 @@ const defaultHandlers = [
   // C-3 (with a company chosen), C-4 and C-9 ask for a company's labels (slice 6a): none, so the
   // earlier screen tests see an empty label part and no error band. console6a.ts answers with labels.
   http.get('*/api/console/companies/:code/labels', () => requireSession() ?? HttpResponse.json<Schemas['CompanyLabels']>({ items: [] })),
+  // C-4 asks for the tasks of the issue and C-15 for the caller's tasks (slice 6b): none, so the
+  // earlier screen tests see an empty 작업 구역. console6b.ts answers with tasks.
+  http.get('*/api/console/issues/:key/tasks', () => requireSession() ?? HttpResponse.json<Schemas['IssueTasks']>({ items: [], openCount: 0 })),
+  http.get('*/api/console/tasks', () => requireSession() ?? HttpResponse.json(paged<Schemas['MyTask']>([]))),
   http.put('*/api/console/companies/:code/agents/:accountId', ({ params }) => {
     const denied = requireSession() ?? unknownCompany(params.code) ?? requireAdmin();
     if (denied) return denied;

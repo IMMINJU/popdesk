@@ -58,6 +58,7 @@ export function notification(over: Partial<Notification> = {}): Notification {
     actor: CUSTOMER_PERSON,
     createdAt: T0,
     readAt: null,
+    task: null,
     ...over,
   };
 }
