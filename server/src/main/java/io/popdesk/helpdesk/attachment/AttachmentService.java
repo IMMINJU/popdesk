@@ -439,10 +439,12 @@ public class AttachmentService implements IssueAttachments {
 
     /**
      * Deletes an attachment (S0-AC-61): the uploader or an admin. A customer deletes only while they
-     * still belong to the issue's company, like comments and uploads (S1A-AC-54). The row becomes
-     * {@code purging} and its history entry is written with it (S5-AC-41), without a lock on the issue
-     * row; that is committed, then the file goes and the row becomes {@code purged}. When removing the
-     * file fails the delete still succeeds; the row stays {@code purging} and the cleanup finishes it.
+     * still belong to the issue's company, like comments and uploads (S1A-AC-54). The issue row is
+     * locked first, in the caller's scope, so a delete of the issue into the trash that came first is
+     * seen here as 404 and one that comes later waits (S7A-AC-12); then the row becomes {@code purging}
+     * and its history entry is written with it (S5-AC-41). That is committed, then the file goes and the
+     * row becomes {@code purged}. When removing the file fails the delete still succeeds; the row stays
+     * {@code purging} and the cleanup finishes it.
      */
     public void delete(Viewer viewer, String key, String attachmentId) {
         UUID id = attachmentId(attachmentId).orElseThrow(ApiException::notFound);
@@ -456,6 +458,7 @@ public class AttachmentService implements IssueAttachments {
         }
         Instant now = now();
         transactions.run(() -> {
+            issues.lockByKey(viewer, IssueKey.parse(key).orElseThrow()).orElseThrow(ApiException::notFound);
             if (attachments.updatePurging(id, viewer.accountId(), now) != 1) {
                 throw ApiException.notFound();
             }

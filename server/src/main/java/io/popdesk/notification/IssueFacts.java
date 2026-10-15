@@ -16,6 +16,9 @@ public interface IssueFacts {
      */
     record Issue(String key, String title, String companyCode) {}
 
-    /** The issue, or empty when there is none. */
+    /**
+     * The issue, or empty when there is none, or when it is in the trash or purged: nothing is sent about
+     * such an issue, and the row that would be is dropped (S7A-AC-10).
+     */
     Optional<Issue> find(UUID issueId);
 }

@@ -161,15 +161,16 @@ public class IssueRepository {
     public record Assignment(UUID issueId, Long assigneeId, IssueStatus status) {}
 
     /**
-     * The assignee and the status of each of these issues that exists, whoever may see it, in the order
-     * of their IDs. For telling the assignees of linked issues (S6C-AC-31); the caller checks who may see
-     * what.
+     * The assignee and the status of each of these issues that exists and is not in the trash or purged,
+     * whoever may see it, in the order of their IDs. For telling the assignees of linked issues
+     * (S6C-AC-31, S7A-AC-10); the caller checks who may see what.
      */
     List<Assignment> assignments(Collection<UUID> ids) {
         if (ids.isEmpty()) {
             return List.of();
         }
-        return jdbc.sql("select i.id, i.assignee_id, i.status from issue i where i.id = any(?) order by i.id")
+        return jdbc.sql("select i.id, i.assignee_id, i.status from issue i where i.id = any(?) and i.deleted_at is null "
+                        + "order by i.id")
                 .param(ids.toArray(UUID[]::new))
                 .query((rs, n) -> new Assignment(rs.getObject("id", UUID.class), rs.getObject("assignee_id", Long.class),
                         IssueStatus.valueOf(rs.getString("status")))).list();
@@ -357,7 +358,8 @@ public class IssueRepository {
      * Clears the assignee of every issue that is not {@code CLOSED} and has this account as its assignee;
      * with {@code companyId}, in that company only (ACCT-7, S3-AC-69). One conditional UPDATE, without
      * locking the rows one by one first (STATUS-7): an issue that got another assignee or was closed
-     * meanwhile no longer matches and stays as it is. Each cleared issue gets a new version.
+     * meanwhile no longer matches and stays as it is. Each cleared issue gets a new version. An issue in
+     * the trash keeps its assignee, to be restored as it was (slice 7a acceptance section 5, 6).
      *
      * @return the issues that were cleared
      */
@@ -367,7 +369,7 @@ public class IssueRepository {
             params.add(companyId);
         }
         return jdbc.sql("update issue i set assignee_id = null, updated_at = ?, version = version + 1 where "
-                        + OPEN_ASSIGNMENT + (companyId == null ? "" : " and i.company_id = ?") + " returning i.id")
+                        + "i.deleted_at is null and " + OPEN_ASSIGNMENT + (companyId == null ? "" : " and i.company_id = ?") + " returning i.id")
                 .params(params)
                 .query(UUID.class).list();
     }
@@ -387,7 +389,9 @@ public class IssueRepository {
      * Moves the issue from one status to another, if it still has the first one (STATUS-7): a change
      * that came in between leaves this one without a row to change, and the caller reads the issue
      * again. {@code RESOLVED} sets the resolved time and {@code CLOSED} the closed time; {@code CLOSED}
-     * keeps the resolved time, every other status clears both (STATUS-6, STATUS-4).
+     * keeps the resolved time, every other status clears both (STATUS-6, STATUS-4). {@code RESOLVED} also
+     * sets the time to close from, and every other status clears it (S7A-AC-41). An issue in the trash
+     * does not change either (S7A-AC-12): it may have been deleted after the caller read it.
      *
      * @param closedAfter for a reopening: a {@code CLOSED} issue only changes when it was closed after
      *     this time; null for every other change
@@ -399,13 +403,14 @@ public class IssueRepository {
         String times = switch (to) {
             case RESOLVED -> {
                 params.add(at);
-                yield "resolved_at = ?, closed_at = null";
+                params.add(at);
+                yield "resolved_at = ?, closed_at = null, auto_close_from = ?";
             }
             case CLOSED -> {
                 params.add(at);
-                yield "closed_at = ?";
+                yield "closed_at = ?, auto_close_from = null";
             }
-            default -> "resolved_at = null, closed_at = null";
+            default -> "resolved_at = null, closed_at = null, auto_close_from = null";
         };
         params.addAll(List.of(at, id, from.name()));
         String stillOpenable = "";
@@ -414,7 +419,7 @@ public class IssueRepository {
             params.add(Timestamp.from(closedAfter));
         }
         return jdbc.sql("update issue set status = ?, " + times + ", updated_at = ?, version = version + 1 "
-                        + "where id = ? and status = ?" + stillOpenable)
+                        + "where id = ? and status = ? and deleted_at is null" + stillOpenable)
                 .params(params)
                 .update() == 1;
     }
