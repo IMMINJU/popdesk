@@ -391,6 +391,30 @@ describe('계약 검증기 checkResponse: 7a 묶음 웹 테스트의 견본', ()
     expect(checkResponse('console', 'listIssueHistory', 200, page)).toBe(page);
   });
 
+  test('console: 이력(listIssueHistory 200)의 시스템 행위자(자동 종료, 영구 삭제) 견본이 계약에 맞는다. role은 null이다', () => {
+    const SYSTEM = { accountId: 0, name: null, role: null, photoUpdatedAt: null };
+    const entry = (over: Record<string, unknown>) => ({
+      id: 1,
+      kind: 'CHANGED',
+      field: 'STATUS',
+      oldValue: 'RESOLVED',
+      newValue: 'CLOSED',
+      oldPerson: null,
+      newPerson: null,
+      oldLink: null,
+      newLink: null,
+      actor: SYSTEM,
+      createdAt: '2026-10-15T03:10:00Z',
+      ...over,
+    });
+    const page = paged([entry({}), entry({ field: 'TRASH', oldValue: 'TRASHED', newValue: 'PURGED' })]);
+
+    expect(checkResponse('console', 'listIssueHistory', 200, page)).toBe(page);
+    expect(() => checkResponse('console', 'listIssueHistory', 200, paged([entry({ actor: { ...SYSTEM, role: 'SYSTEM' } })]))).toThrow(
+      '$.items[0].actor.role',
+    );
+  });
+
   test('console: 알림함(listNotifications 200)의 actor가 null인 문의 항목(자동 종료) 견본이 계약에 맞는다', () => {
     const item = (over: Record<string, unknown>) => ({
       id: 703,
