@@ -2,3 +2,42 @@
 # 구현 탭이 이 테스트들을 통과시키고 병합되면 메인이 그 줄을 지운다. 묶음이 끝나면 파일이 빈다.
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
+
+# 서버 구현 탭
+server io/popdesk/task/TaskEditTest.java
+server io/popdesk/task/TaskAssigneeTest.java
+server io/popdesk/task/TaskLimitTest.java
+server io/popdesk/task/TaskRaceTest.java
+server io/popdesk/task/TaskRateLimitTest.java
+server io/popdesk/task/TaskDeleteTest.java
+server io/popdesk/task/TaskNoteTest.java
+server io/popdesk/task/TaskChangeTest.java
+server io/popdesk/task/TaskIssueStatusTest.java
+server io/popdesk/task/MyTasksTest.java
+server io/popdesk/issue/TaskCloseRaceTest.java
+server io/popdesk/issue/TaskClearAssignmentsTest.java
+server io/popdesk/boundary/TaskBoundaryTest.java
+server io/popdesk/inbox/TaskInboxTest.java
+server io/popdesk/notify/TaskMailTest.java
+server io/popdesk/notify/KoreanTaskMailTest.java
+server io/popdesk/audit/TaskClearAuditTest.java
+server io/popdesk/audit/LabelAuditTest.java
+server io/popdesk/deploy/TaskSampleTest.java
+server io/popdesk/project/NoStoreTest.java#everyReadSucceedsWithNoStore
+server io/popdesk/notify/SandboxMailTest.java#everyKindGoesToTheSandboxAddress
+
+# 웹 구현 탭
+web **/C4IssueDetail.6b.test.tsx
+web **/C15MyTasks.test.tsx
+web **/C3IssueList.6b.test.tsx
+web **/C7Inbox.6b.test.tsx
+web **/ClearAssignments.6b.test.tsx
+web **/C12AuditLog.6b.test.tsx
+web ../../../console/**/Screens6b.overflow.stories.tsx
+# 6b 테스트 탭이 "내 작업" 메뉴와 라벨 감사 종류를 넣어 고친 앞 묶음 테스트(구현 뒤 통과).
+# layout.inbox.test.tsx는 포털에도 같은 경로로 있어 함께 빠진다. 구현이 합쳐지면 줄을 지운다.
+web **/auditWords.words.test.ts
+web **/layout.inbox.test.tsx
+web **/adminOnly.1b.test.tsx
+web **/C12AuditLog.filters.test.tsx
+web **/C12AuditLog.test.tsx

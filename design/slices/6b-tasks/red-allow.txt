@@ -1,0 +1,5 @@
+# 구현 전에 통과해도 되는 테스트. `<테스트 이름> | <까닭>`
+src/screens/ClearAssignments.6b.test.tsx.담당 비우기의 작업 몫 (6b 묶음) > C-9 배정 빼기 > S6B-AC-88 C-9 배정 빼기 문의 3건과 tasks 0: 지금 문장과 지금 체크 상자 그대로다 | 열린 작업이 없을 때(tasks 0이거나 없는 옛 답) 지금 화면 그대로인지 본다. 작업 문장을 더하는 구현이 이 경우를 바꾸지 않는지 지킨다(screens.md 4절)
+src/screens/ClearAssignments.6b.test.tsx.담당 비우기의 작업 몫 (6b 묶음) > C-9 배정 빼기 > S6B-AC-88 C-9 배정 빼기 문의 3건과 tasks가 없는 옛 답: 지금 문장과 지금 체크 상자 그대로다 | 열린 작업이 없을 때(tasks 0이거나 없는 옛 답) 지금 화면 그대로인지 본다. 작업 문장을 더하는 구현이 이 경우를 바꾸지 않는지 지킨다(screens.md 4절)
+src/screens/ClearAssignments.6b.test.tsx.담당 비우기의 작업 몫 (6b 묶음) > C-10 정지 > S6B-AC-88 C-10 정지 문의 3건과 tasks 0: 지금 문장과 지금 체크 상자 그대로다 | 열린 작업이 없을 때(tasks 0이거나 없는 옛 답) 지금 화면 그대로인지 본다. 작업 문장을 더하는 구현이 이 경우를 바꾸지 않는지 지킨다(screens.md 4절)
+src/screens/ClearAssignments.6b.test.tsx.담당 비우기의 작업 몫 (6b 묶음) > C-10 정지 > S6B-AC-88 C-10 정지 문의 3건과 tasks가 없는 옛 답: 지금 문장과 지금 체크 상자 그대로다 | 열린 작업이 없을 때(tasks 0이거나 없는 옛 답) 지금 화면 그대로인지 본다. 작업 문장을 더하는 구현이 이 경우를 바꾸지 않는지 지킨다(screens.md 4절)
