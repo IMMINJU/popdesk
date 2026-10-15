@@ -24,7 +24,7 @@ import tools.jackson.databind.JsonNode;
  * The audit entries of the trash (S7A-AC-07, AUDIT-1, acceptance 5절 8): an admin's delete, restore, and purge
  * each leave one entry, {@code ISSUE_DELETED}, {@code ISSUE_RESTORED}, {@code ISSUE_PURGED}, whose target is the
  * company with the issue key, {@code {"type": "COMPANY", "code": ..., "issueKey": ...}}, and whose changes are
- * {@code {}}. Refused requests leave none. Each test makes its own company, so it reads only its own entries.
+ * null (no value changed, as the contract says). Refused requests leave none. Each test makes its own company, so it reads only its own entries.
  */
 class IssueTrashAuditTest extends BareAppTest {
 
@@ -60,7 +60,7 @@ class IssueTrashAuditTest extends BareAppTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(Step.class)
-    @DisplayName("S7A-AC-07 an admin's delete, restore, and purge each leave one entry (ISSUE_DELETED, ISSUE_RESTORED, ISSUE_PURGED) by the admin, with the target {type COMPANY, code, issueKey} and changes {}; an agent's refused delete and a second delete leave none; the chain is valid")
+    @DisplayName("S7A-AC-07 an admin's delete, restore, and purge each leave one entry (ISSUE_DELETED, ISSUE_RESTORED, ISSUE_PURGED) by the admin, with the target {type COMPANY, code, issueKey} and changes null; an agent's refused delete and a second delete leave none; the chain is valid")
     void oneEntryPerStep(Step step) {
         Session admin = fixtures.admin(flow.admin());
         String code = fixtures.createCompany(admin).code();
@@ -88,8 +88,8 @@ class IssueTrashAuditTest extends BareAppTest {
         for (JsonNode entry : found) {
             assertThat(canonical(entry.path("target"))).as("target of %s", entry)
                     .isEqualTo(canonical(target(code, key)));
-            assertThat(canonical(entry.path("changes"))).as("changes of %s", entry)
-                    .isEqualTo(canonical(json(Map.of())));
+            assertThat(entry.path("changes").isNull() || entry.path("changes").isMissingNode())
+                    .as("changes of %s is null", entry).isTrue();
             assertThat(entry.path("actor").path("accountId").asLong(-1)).as("actor of %s", entry)
                     .isEqualTo(admin.accountId());
         }

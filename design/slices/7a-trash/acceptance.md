@@ -34,7 +34,7 @@
 | S7A-AC-04 | The system shall 지운 문의를 모든 목록과 검색(콘솔·포털 문의 목록, 검색어, 필터, 쪽의 전체 수), 내 작업, 알림함(목록과 안 읽은 수), 남은 담당 수(배정 빼기·정지 앞의 수), 라벨이 붙은 문의 수에서 뺀다. 담당 비우기(ACCT-7)는 지운 문의의 담당자와 작업 담당자를 비우지 않는다. (TRASH-1, 5절 6) |
 | S7A-AC-05 | The system shall 지운 문의와 이어진 연결을 상대 문의의 연결 목록과 이력에서 숨긴다(지운 문의는 아무도 볼 수 없는 문의다). 숨은 연결도 잇기 검사와 개수에는 든다. (LINK-2, LINK-7) |
 | S7A-AC-06 | When 문의를 지우거나 복구하거나 영구 삭제하면, the system shall 그 문의의 이력에 칸 `TRASH` 항목을 남긴다(지울 때 뒤 값 `TRASHED`, 복구할 때 전 값 `TRASHED`, 영구 삭제할 때 전 값 `TRASHED` 뒤 값 `PURGED`. 한 사람은 관리자, 시스템이 영구 삭제하면 0). 지우기와 복구는 문의의 `version`을 올린다. (HIST-1, 5절 7) |
-| S7A-AC-07 | When 관리자가 문의를 지우거나 복구하거나 바로 영구 삭제하면, the system shall 감사 로그에 한 항목(`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`)을 남긴다. 대상은 `{type: "COMPANY", code, issueKey}`, 바뀐 값은 없다(`{}`). 시스템이 한 영구 삭제는 남기지 않는다. (AUDIT-1, 5절 8) |
+| S7A-AC-07 | When 관리자가 문의를 지우거나 복구하거나 바로 영구 삭제하면, the system shall 감사 로그에 한 항목(`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`)을 남긴다. 대상은 `{type: "COMPANY", code, issueKey}`, 바뀐 값은 없다(`changes`는 `null`. 계약과 앞 감사 항목의 꼴, 2026-10-16 메인이 고침). 시스템이 한 영구 삭제는 남기지 않는다. (AUDIT-1, 5절 8) |
 
 ### 2.2 휴지통에 있는 동안
 
