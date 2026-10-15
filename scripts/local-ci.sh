@@ -40,7 +40,7 @@ SUMMARY="$OUT/summary.txt"
 # deploy and e2e are the deploy step. `root` is the classes right under io.popdesk.
 PART_1="notify root"
 PART_2="ops audit due task link"
-PART_3="auth start photo"
+PART_3="auth start photo trash"
 PART_4="issue inbox boundary manager label"
 PART_5="attachment project helpdesk notification support"
 
