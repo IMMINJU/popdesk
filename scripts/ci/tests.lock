@@ -215,6 +215,7 @@ f4de80d0f25bd2de23c99b4cc5050ce86d54d7590e14d59e8731712c3008e420  server/src/tes
 e500e9a5f26f41aa893e3ae74fdcde2f6785680ff7144ed2017f83874a2470a9  server/src/test/java/io/popdesk/helpdesk/issue/SearchTextTest.java
 52d1f2750a273e4e0d538ae61bae4c11de51becfba3f233e8d88ce9a7e982267  server/src/test/java/io/popdesk/helpdesk/label/LabelColorTest.java
 368e1964e9dafb3d64699ec55549a4b9371b4d074807fe84da67bcb34b642338  server/src/test/java/io/popdesk/helpdesk/label/LabelNameTest.java
+4a0d2e5da703541c92bf261515bfe3f044a1cea98e957ca0306faabe3ecd37ed  server/src/test/java/io/popdesk/helpdesk/link/LinkRulesTest.java
 2fff15b4c150c092c5f4c0fce02261cb3546c5201ef56d9973d781732c5aa250  server/src/test/java/io/popdesk/helpdesk/photo/PhotoImagesTest.java
 980fd4d9203ada8c7702dd176c01d245709cf201da977cfba6b122effe1445d9  server/src/test/java/io/popdesk/helpdesk/task/TaskChangesTest.java
 21517e5a550060bf6467bdbe7e0823c7da7dfba5622a031d6da86004134b712c  server/src/test/java/io/popdesk/inbox/AdminInboxItemsTest.java
