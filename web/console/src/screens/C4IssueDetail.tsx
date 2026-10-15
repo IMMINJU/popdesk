@@ -54,6 +54,7 @@ import { IssueAssigneeDialog } from '../app/IssueAssigneeDialog';
 import { IssueEdit } from '../app/IssueEdit';
 import { issuesHref, type IssueStatus } from '../app/issueFilters';
 import { IssueHistory } from '../app/IssueHistory';
+import { IssueLinks } from '../app/IssueLinks';
 import { IssueDueLine, IssueLabelsLine } from '../app/IssueLabels';
 import { IssueTasks } from '../app/IssueTasks';
 import { useIssueTasks } from '../app/taskList';
@@ -772,6 +773,14 @@ function IssueDetail(props: { issueKey: string }) {
       </div>
 
       <IssueTasks issue={issue} tasks={tasks} onStale={onIssueStale} />
+
+      <IssueLinks
+        issue={issue}
+        onStale={reloadIssue}
+        onChanged={() => {
+          setHistoryVersion((n) => n + 1);
+        }}
+      />
 
       <section className="pd-detail-comments" aria-labelledby="comments-title">
         <h2 id="comments-title" className="pd-section-title">

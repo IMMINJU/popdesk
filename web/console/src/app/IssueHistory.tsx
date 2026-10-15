@@ -1,12 +1,14 @@
 // C-4 이력 (3-issues screens.md 2절, S3-AC-80): folded, read when it opens, oldest
 // first, 20 lines at a time. A change of status or assignee reads it again.
-// Slice 6a (6a-labels screens.md 3절) adds the lines of labels and due dates.
+// Slice 6a (6a-labels screens.md 3절) adds the lines of labels and due dates, slice 6c those of links.
 import { Button, ISSUE_STATUS_WORDS, PRIORITY_WORDS, RelativeTime, type IssueStatus, type Priority } from '@popdesk/ui';
 import { useEffect, useState, type ReactNode } from 'react';
+import { Link } from 'react-router';
 import { api, type Schemas } from '../api';
 import { Disclosure } from './Disclosure';
 import { longDate } from './dueDates';
 import { LoadFailed } from './layout';
+import { linkChangeText } from './linkWords';
 import { toward } from './particles';
 import { call } from './result';
 import { useToLogin } from './sessionContext';
@@ -31,7 +33,7 @@ function called(person: { name: string | null; role: Person['role'] | null } | n
 }
 
 /** What one line says, and what it shows under itself. */
-function lineOf(entry: Entry, onBehalf: boolean, fileName: (id: string | null) => string): { text: string; detail?: ReactNode } {
+function lineOf(entry: Entry, onBehalf: boolean, fileName: (id: string | null) => string): { text: ReactNode; detail?: ReactNode } {
   // popdesk itself (account 0) has no name.
   const who = entry.actor.name === null ? '시스템이' : `${called(entry.actor)}이`;
   if (entry.kind === 'CREATED') return { text: onBehalf ? `${who} 대리 등록했습니다` : `${who} 문의를 올렸습니다` };
@@ -80,6 +82,21 @@ function lineOf(entry: Entry, onBehalf: boolean, fileName: (id: string | null) =
       if (entry.newValue === null) return { text: `${who} 마감일을 지웠습니다` };
       if (entry.oldValue === null) return { text: `${who} 마감일을 ${toward(longDate(entry.newValue))} 정했습니다` };
       return { text: `${who} 마감일을 ${longDate(entry.oldValue)}에서 ${toward(longDate(entry.newValue))} 바꿨습니다` };
+    case 'LINK': {
+      // Slice 6c (6c-links screens.md 2절): the other issue's key leads to it, its title is under the line.
+      const said = linkChangeText(who, entry.oldLink, entry.newLink);
+      if ('text' in said) return said;
+      return {
+        text: (
+          <>
+            {said.before}
+            <Link to={`/issues/${encodeURIComponent(said.key)}`}>{said.key}</Link>
+            {said.after}
+          </>
+        ),
+        detail: <p className="pd-muted">{said.title}</p>,
+      };
+    }
     default:
       // A field of a later release.
       return { text: `${who} 문의를 바꿨습니다` };

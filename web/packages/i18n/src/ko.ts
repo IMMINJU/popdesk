@@ -145,6 +145,8 @@ export const ko = {
   'inbox.mentioned': '{who} 댓글에서 나를 언급했습니다',
   'inbox.assigned': '{who} 이 문의를 나에게 맡겼습니다',
   'inbox.taskAssigned': '{who} 작업을 나에게 맡겼습니다: {title}',
+  'inbox.linkedIssueResolved': '{who} 연결된 문의를 해결했습니다: {key} {title}',
+  'inbox.linkedIssueClosed': '{who} 연결된 문의를 종료했습니다: {key} {title}',
   'inbox.membershipRequested': '고객사 {code}에 소속 요청이 있습니다',
   'inbox.deliveryFailed': '보내지 못한 메일이나 웹훅이 있습니다',
   'inbox.quotaWarning': '첨부 용량이 한도의 80%를 넘었습니다',

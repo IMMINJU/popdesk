@@ -911,3 +911,87 @@
 .pd-my-tasks .pd-due-cell time {
   white-space: nowrap;
 }
+
+/* Slice 6c: the 연결 구역 of C-4 and "문의 잇기" (6c-links screens.md 1절). A line is the kind, the
+   key and the status on one line, and the title and the company under them, at every width. */
+.pd-detail-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pd-link-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pd-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border);
+}
+
+.pd-link:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.pd-link-found {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2) 0;
+  border-block: 1px solid var(--border);
+}
+
+/* The kind, the key and the status stay on one line; "끊기" sits at its end, or under it at the right
+   when the line is full. */
+.pd-link-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+}
+
+.pd-link-head > .pd-button {
+  margin-left: auto;
+}
+
+.pd-link-tags {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pd-link-key {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pd-link-title,
+.pd-link-company {
+  margin: 0;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.pd-link-company {
+  font-size: var(--text-sm);
+}
+
+.pd-link-search {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.pd-link-search > .pd-field {
+  flex: 1;
+  min-width: 0;
+}
