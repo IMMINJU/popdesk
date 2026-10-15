@@ -365,4 +365,11 @@ public class TaskRepository {
         Timestamp at = rs.getTimestamp(column);
         return at == null ? null : at.toInstant();
     }
+
+    /** Deletes every task of a purged issue and its notes (TRASH-3, S7A-AC-30). The caller holds the issue row. */
+    public void deleteOfIssue(UUID issueId) {
+        jdbc.sql("delete from task_note n using task t where t.id = n.task_id and t.issue_id = ?").param(issueId)
+                .update();
+        jdbc.sql("delete from task where issue_id = ?").param(issueId).update();
+    }
 }

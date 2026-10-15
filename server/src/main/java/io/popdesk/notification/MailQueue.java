@@ -48,4 +48,11 @@ public interface MailQueue {
      * @param companyCode the company it is about
      */
     void queueAboutCompany(MailKind kind, long recipientAccountId, String companyCode);
+
+    /**
+     * Deletes, in the caller's transaction, every email row about the issue, whatever its state: those
+     * waiting, those to be tried again, and those {@code failed} (S7A-AC-10). For an issue that goes to
+     * the trash, so nothing about it is sent, not after a restore either.
+     */
+    void dropAbout(UUID issueId);
 }

@@ -49,9 +49,10 @@ public class LinkRepository {
 
     /**
      * Every link of the issue, whoever may see its other issue, in the order they were made. The caller
-     * that judges a new link holds the lock of the issue row, so no link of it changes meanwhile.
+     * that judges a new link, or a restore (S7A-AC-24), holds the lock of the issue row, so no link of it
+     * changes meanwhile.
      */
-    List<Link> linksOf(UUID issueId) {
+    public List<Link> linksOf(UUID issueId) {
         return jdbc.sql("select " + LINK_COLUMNS + " from issue_link l where l.low_issue_id = ? or l.high_issue_id = ? "
                         + "order by l.id")
                 .params(issueId, issueId).query((rs, n) -> link(rs)).list();
@@ -114,4 +115,15 @@ public class LinkRepository {
                         photo == null ? null : photo.toInstant()),
                 rs.getTimestamp("created_at").toInstant());
     }
+
+    /**
+     * Deletes every link of a purged issue (TRASH-3, S7A-AC-30), without an entry in the other issue's
+     * history: its {@code LINK} entries name an issue nobody can see (slice 7a acceptance section 5, 10).
+     * The caller holds the purged issue's row only; no link reaches an issue in the trash meanwhile.
+     */
+    public void deleteOfIssue(UUID issueId) {
+        jdbc.sql("delete from issue_link where low_issue_id = ? or high_issue_id = ?").params(issueId, issueId)
+                .update();
+    }
+
 }

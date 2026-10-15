@@ -2,7 +2,6 @@ package io.popdesk.helpdesk.web.console;
 
 import io.popdesk.ApiError;
 import io.popdesk.ApiException;
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.IssueStatus;
@@ -16,6 +15,7 @@ import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.helpdesk.issue.IssueService;
 import io.popdesk.helpdesk.label.LabelRepository.IssueLabel;
 import io.popdesk.helpdesk.task.TaskService;
+import io.popdesk.helpdesk.trash.TrashService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -56,10 +56,12 @@ class ConsoleIssueController {
 
     private final IssueService issues;
     private final TaskService tasks;
+    private final TrashService trash;
 
-    ConsoleIssueController(IssueService issues, TaskService tasks) {
+    ConsoleIssueController(IssueService issues, TaskService tasks, TrashService trash) {
         this.issues = issues;
         this.tasks = tasks;
+        this.trash = trash;
     }
 
     /**
@@ -67,7 +69,7 @@ class ConsoleIssueController {
      * see who filed it for the reporter and who is assigned (S3-AC-28, S3-AC-36), its labels, and its due
      * date with whether it has passed (S6A-AC-50).
      */
-    private Issue issue(IssueRow row) {
+    Issue issue(IssueRow row) {
         List<LabelRef> labels = labels(issues.labels(List.of(row.id())), row.id());
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
@@ -270,7 +272,8 @@ class ConsoleIssueController {
     @DeleteMapping("/{key}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void deleteIssue(@PathVariable String key) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        trash.delete(admin.viewer(), admin.actor(), key);
     }
 
     @Operation(operationId = "changeIssueStatus", summary = "Change an issue's status",

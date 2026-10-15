@@ -440,25 +440,26 @@ public class AttachmentService implements IssueAttachments {
     /**
      * Deletes an attachment (S0-AC-61): the uploader or an admin. A customer deletes only while they
      * still belong to the issue's company, like comments and uploads (S1A-AC-54). The issue row is
-     * locked first, in the caller's scope, so a delete of the issue into the trash that came first is
-     * seen here as 404 and one that comes later waits (S7A-AC-12); then the row becomes {@code purging}
-     * and its history entry is written with it (S5-AC-41). That is committed, then the file goes and the
+     * locked first, in the caller's scope, and everything is checked under that lock, so a delete of the
+     * issue into the trash that came first is seen here as 404 and one that comes later waits
+     * (S7A-AC-12); then the row becomes {@code purging} and its history entry is written with it
+     * (S5-AC-41). That is committed, then the file goes and the
      * row becomes {@code purged}. When removing the file fails the delete still succeeds; the row stays
      * {@code purging} and the cleanup finishes it.
      */
     public void delete(Viewer viewer, String key, String attachmentId) {
         UUID id = attachmentId(attachmentId).orElseThrow(ApiException::notFound);
-        IssueRow issue = issue(viewer, key);
-        AttachmentRow attachment = attachments.find(viewer, issue.id(), id).orElseThrow(ApiException::notFound);
-        if (!viewer.admin() && attachment.uploadedById() != viewer.accountId()) {
-            throw ApiException.forbidden();
-        }
-        if (viewer.customer() && companies.findByCode(viewer, issue.companyCode()).isEmpty()) {
-            throw ApiException.forbidden();
-        }
-        Instant now = now();
+        IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
         transactions.run(() -> {
-            issues.lockByKey(viewer, IssueKey.parse(key).orElseThrow()).orElseThrow(ApiException::notFound);
+            IssueRow issue = issues.lockByKey(viewer, issueKey).orElseThrow(ApiException::notFound);
+            AttachmentRow attachment = attachments.find(viewer, issue.id(), id).orElseThrow(ApiException::notFound);
+            if (!viewer.admin() && attachment.uploadedById() != viewer.accountId()) {
+                throw ApiException.forbidden();
+            }
+            if (viewer.customer() && companies.findByCode(viewer, issue.companyCode()).isEmpty()) {
+                throw ApiException.forbidden();
+            }
+            Instant now = now();
             if (attachments.updatePurging(id, viewer.accountId(), now) != 1) {
                 throw ApiException.notFound();
             }
@@ -502,6 +503,40 @@ public class AttachmentService implements IssueAttachments {
                 attachments.updatePurged(id);
             } catch (RuntimeException e) {
                 log.warn("Removing the file of a deleted attachment failed ({}); the attachment cleanup tries again.",
+                        e.getClass().getSimpleName());
+            }
+        }
+        if (!ids.isEmpty() && !overWarning(attachments.storedBytes())) {
+            alerts.resolve(OpsAlerts.Kind.ATTACHMENT_QUOTA_WARNING);
+        }
+    }
+
+    /**
+     * The first step of purging an issue (TRASH-3, S7A-AC-30), inside the caller's transaction and after it
+     * locked the issue row: every attachment of the issue that still has its file, pending ones too,
+     * becomes {@code purging} without its name and its comment, and those already {@code purged} go. No
+     * history entry: the issue's history is a trace without content from now on. Returns the IDs for
+     * {@link #removePurgedFiles}.
+     *
+     * @param deletedBy the admin who purges, or null for popdesk itself
+     */
+    public List<UUID> purgeOfIssue(UUID issueId, Long deletedBy, Instant at) {
+        return attachments.updatePurgingOfIssue(issueId, deletedBy, at);
+    }
+
+    /**
+     * The rest of purging an issue, after the {@code purging} rows are committed and never inside a
+     * transaction (S7A-AC-33): each file goes, then its row. When removing a file fails the purge still
+     * succeeds; the row stays {@code purging} and the attachment cleanup finishes it.
+     */
+    public void removePurgedFiles(List<UUID> ids) {
+        for (UUID id : ids) {
+            try {
+                FilePlace place = attachments.filePlace(id).orElseThrow();
+                storage.delete(place.storage(), place.location(), id);
+                attachments.deletePurging(id);
+            } catch (RuntimeException e) {
+                log.warn("Removing the file of a purged attachment failed ({}); the attachment cleanup tries again.",
                         e.getClass().getSimpleName());
             }
         }

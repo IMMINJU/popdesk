@@ -14,6 +14,7 @@ public class ApiException extends RuntimeException {
     private final HttpStatus status;
     private final String code;
     private final List<ApiError.FieldError> fields;
+    private List<String> issueKeys;
     private Long retryAfterSeconds;
 
     public ApiException(HttpStatus status, String code, String message, List<ApiError.FieldError> fields) {
@@ -41,7 +42,7 @@ public class ApiException extends RuntimeException {
     }
 
     public ApiError body() {
-        return new ApiError(code, getMessage(), fields);
+        return new ApiError(code, getMessage(), fields, issueKeys);
     }
 
     /** 404: the target does not exist or the caller may not see it; one body for both (COM-1). */
@@ -92,6 +93,18 @@ public class ApiException extends RuntimeException {
     public static ApiException channelDisabled() {
         return new ApiException(HttpStatus.BAD_REQUEST, ApiErrors.CHANNEL_DISABLED,
                 ApiErrors.CHANNEL_DISABLED_MESSAGE);
+    }
+
+    /**
+     * 409 {@code RESTORE_LINK_CONFLICT}: with its links the issue would break the link rules (S7A-AC-24).
+     *
+     * @param issueKeys the keys of the other issues of the links at fault, at least one
+     */
+    public static ApiException restoreLinkConflict(List<String> issueKeys) {
+        ApiException e = conflict("RESTORE_LINK_CONFLICT",
+                "With its links this issue would break the link rules, so it was not restored.");
+        e.issueKeys = List.copyOf(issueKeys);
+        return e;
     }
 
     /** 409 for a state that does not allow the change. */

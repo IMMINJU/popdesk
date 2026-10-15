@@ -23,4 +23,10 @@ public interface WebhookQueue {
      * @param commentId the comment it is about, if any
      */
     void queue(WebhookKind kind, UUID issueId, @Nullable Long commentId);
+
+    /**
+     * Deletes, in the caller's transaction, every webhook row about the issue, whatever its state
+     * (S7A-AC-10), as {@link MailQueue#dropAbout} does for emails.
+     */
+    void dropAbout(UUID issueId);
 }

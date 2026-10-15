@@ -435,6 +435,172 @@ public class IssueRepository {
                 .update();
     }
 
+    // The trash (TRASH-1 to TRASH-4) and the automatic closing (STATUS-5). An issue in the trash is out of
+    // IssueScope, so these read it with a condition of their own: admins only, as the trash paths are.
+
+    /** "In the trash", as SQL on {@code i}: deleted and not purged yet. */
+    private static final String IN_TRASH = "i.deleted_at is not null and i.purged_at is null";
+
+    /** Only an admin reads the trash, as SQL with the parameter of {@link #trashParams}. */
+    private static final String TRASH_READER = "? = 'ADMIN'";
+
+    /** A live {@code RESOLVED} issue due to close, as SQL on {@code i} with one parameter, the latest time to close from. */
+    private static final String DUE_FOR_CLOSING = "i.status = 'RESOLVED' and i.auto_close_from <= ? "
+            + "and i.deleted_at is null";
+
+    private static final String TRASH_SELECT = "select i.id, c.code, c.name, i.number, i.title, i.status, "
+            + "i.deleted_at, i.purged_at, i.deleted_by, db.name as deleted_by_name, db.role as deleted_by_role, "
+            + "dbp.updated_at as deleted_by_photo_updated_at from issue i join company c on c.id = i.company_id "
+            + "left join account db on db.id = i.deleted_by "
+            + "left join account_photo dbp on dbp.account_id = i.deleted_by ";
+
+    private static Object[] trashParams(Viewer viewer) {
+        return new Object[] {viewer.role().name()};
+    }
+
+    /**
+     * An issue as the trash sees it: its key, title, company, status, and when and by whom it was deleted
+     * ({@code deletedBy} null when it is not deleted). {@code deletedAt} is null for a live issue and
+     * {@code purgedAt} null unless it was purged.
+     */
+    public record TrashedRow(UUID id, String companyCode, String companyName, int number, String title,
+            IssueStatus status, Instant deletedAt, Staff deletedBy, Instant purgedAt) {
+
+        public String key() {
+            return companyCode + "-" + number;
+        }
+
+        /** Deleted and not purged yet. */
+        public boolean inTrash() {
+            return deletedAt != null && purgedAt == null;
+        }
+    }
+
+    /**
+     * One page of the issues in the trash, the latest deleted first and of those deleted at once the
+     * highest number first (S7A-AC-20); empty unless the viewer is an admin. The company code and the ID
+     * last make the order total, so a page boundary neither repeats nor misses an issue.
+     */
+    public List<TrashedRow> listTrash(Viewer viewer, long offset, int limit) {
+        return jdbc.sql(TRASH_SELECT + "where " + IN_TRASH + " and " + TRASH_READER
+                        + " order by i.deleted_at desc, i.number desc, c.code, i.id offset ? limit ?")
+                .params(concat(trashParams(viewer), offset, limit))
+                .query(IssueRepository::trashed).list();
+    }
+
+    /** How many issues {@link #listTrash} has over all its pages. */
+    public long countTrash(Viewer viewer) {
+        return jdbc.sql("select count(*) from issue i where " + IN_TRASH + " and " + TRASH_READER)
+                .params(trashParams(viewer)).query(Long.class).single();
+    }
+
+    /** The issue in the trash with this key, if the viewer is an admin; not locked. */
+    public Optional<TrashedRow> findInTrash(Viewer viewer, IssueKey key) {
+        return jdbc.sql(TRASH_SELECT + "where c.code = ? and i.number = ? and " + IN_TRASH + " and " + TRASH_READER)
+                .params(concat(new Object[] {key.companyCode(), key.number()}, trashParams(viewer)))
+                .query(IssueRepository::trashed).optional();
+    }
+
+    /**
+     * The issues with these IDs, live, in the trash, or purged, locked {@code FOR NO KEY UPDATE} in the
+     * order of their IDs as the database orders the uuid type, in one statement, if the viewer is an admin.
+     * A restore locks the issue and every issue linked to it this way (S7A-AC-24), like a link locks two
+     * (S6C-AC-08); a purge locks the one issue. The caller looks at whether the issue is in the trash under
+     * the lock (TRASH-2, TRASH-3).
+     *
+     * @return the issues found, in ID order
+     */
+    public List<TrashedRow> lockTrashedByIds(Viewer viewer, Collection<UUID> ids) {
+        return jdbc.sql(TRASH_SELECT + "where i.id = any(?) and " + TRASH_READER
+                        + " order by i.id for no key update of i")
+                .params(concat(new Object[] {ids.toArray(UUID[]::new)}, trashParams(viewer)))
+                .query(IssueRepository::trashed).list();
+    }
+
+    /**
+     * The issues deleted at or before {@code deletedUntil} and not purged yet, the earliest deleted first,
+     * at most {@code limit}, if the viewer is an admin; not locked (TRASH-3).
+     */
+    public List<UUID> findDueForPurge(Viewer viewer, Instant deletedUntil, int limit) {
+        return jdbc.sql("select i.id from issue i where " + IN_TRASH + " and i.deleted_at <= ? and " + TRASH_READER
+                        + " order by i.deleted_at, i.id limit ?")
+                .params(Timestamp.from(deletedUntil), viewer.role().name(), limit)
+                .query(UUID.class).list();
+    }
+
+    /**
+     * Moves a live issue to the trash (S7A-AC-01): the time, the admin, and a new version. The caller has
+     * locked the row in its scope.
+     */
+    public void updateDeleted(UUID id, long deletedBy, Instant now) {
+        jdbc.sql("update issue set deleted_at = ?, deleted_by = ?, updated_at = ?, version = version + 1 "
+                        + "where id = ? and deleted_at is null")
+                .params(Timestamp.from(now), deletedBy, Timestamp.from(now), id)
+                .update();
+    }
+
+    /**
+     * Takes an issue out of the trash (S7A-AC-21) with a new version. A {@code RESOLVED} issue closes 7
+     * days after now, not 7 days after it was resolved (S7A-AC-22). The caller has locked the row and seen
+     * it in the trash.
+     */
+    public void updateRestored(UUID id, Instant now) {
+        jdbc.sql("update issue i set deleted_at = null, deleted_by = null, updated_at = ?, version = version + 1, "
+                        + "auto_close_from = case when i.status = 'RESOLVED' then cast(? as timestamptz) end where i.id = ? and " + IN_TRASH)
+                .params(Timestamp.from(now), Timestamp.from(now), id)
+                .update();
+    }
+
+    /**
+     * Empties a purged issue (TRASH-3, S7A-AC-30): an empty title, content, and search text, and the time
+     * it was purged. The row with its key, company, status, and times stays; the version does not change,
+     * as nobody reads the issue again. The caller has locked the row and seen it in the trash.
+     */
+    public void updatePurged(UUID id, Instant now) {
+        jdbc.sql("update issue i set title = '', content = '', search_text = '', purged_at = ? where i.id = ? and "
+                        + IN_TRASH)
+                .params(Timestamp.from(now), id)
+                .update();
+    }
+
+    /**
+     * Up to {@code limit} live {@code RESOLVED} issues whose time to close from is at or before
+     * {@code until}, in ID order, locked {@code FOR NO KEY UPDATE}; a row another transaction holds is
+     * skipped (STATUS-5, slice 7a design section 4). The automatic closing takes them one batch at a time.
+     */
+    List<UUID> lockDueForClosing(Instant until, int limit) {
+        return jdbc.sql("select i.id from issue i where " + DUE_FOR_CLOSING + " order by i.id limit ? "
+                        + "for no key update skip locked")
+                .params(Timestamp.from(until), limit)
+                .query(UUID.class).list();
+    }
+
+    /**
+     * Closes these issues as {@link #updateStatus} closes one, on the conditions of
+     * {@link #lockDueForClosing} again (STATUS-5, STATUS-7): an issue reopened, deleted, or resolved anew
+     * meanwhile does not change.
+     *
+     * @return the issues that were closed
+     */
+    List<UUID> updateClosedAutomatically(List<UUID> ids, Instant until, Instant now) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql("update issue i set status = 'CLOSED', closed_at = ?, auto_close_from = null, updated_at = ?, "
+                        + "version = version + 1 where i.id = any(?) and " + DUE_FOR_CLOSING + " returning i.id")
+                .params(Timestamp.from(now), Timestamp.from(now), ids.toArray(UUID[]::new), Timestamp.from(until))
+                .query(UUID.class).list();
+    }
+
+    private static TrashedRow trashed(ResultSet rs, int row) throws SQLException {
+        Timestamp deleted = rs.getTimestamp("deleted_at");
+        Timestamp purged = rs.getTimestamp("purged_at");
+        return new TrashedRow(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("name"),
+                rs.getInt("number"), rs.getString("title"), IssueStatus.valueOf(rs.getString("status")),
+                deleted == null ? null : deleted.toInstant(), staff(rs, "deleted_by", "deleted_by"),
+                purged == null ? null : purged.toInstant());
+    }
+
     private static IssueRow issue(ResultSet rs, int row) throws SQLException {
         Timestamp firstResponse = rs.getTimestamp("first_response_at");
         Timestamp resolved = rs.getTimestamp("resolved_at");

@@ -190,4 +190,14 @@ public class CommentRepository {
                 editedAt == null ? null : editedAt.toInstant(), deletedAt == null ? null : deletedAt.toInstant(),
                 deletedBy, List.of());
     }
+
+    /**
+     * Deletes every comment of a purged issue and whom they mention (TRASH-3, S7A-AC-30). The caller holds
+     * the issue row, and the issue's attachments point at no comment any more.
+     */
+    public void deleteOfIssue(UUID issueId) {
+        jdbc.sql("delete from comment_mention m using comment c where c.id = m.comment_id and c.issue_id = ?")
+                .param(issueId).update();
+        jdbc.sql("delete from comment where issue_id = ?").param(issueId).update();
+    }
 }

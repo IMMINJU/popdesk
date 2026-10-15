@@ -1,7 +1,10 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.issue.IssueRepository.TrashedRow;
+import io.popdesk.helpdesk.trash.TrashService;
+import io.popdesk.helpdesk.trash.TrashTimes;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -31,6 +34,14 @@ class ConsoleTrashController {
             + "issue that is not deleted, or one that is purged already, for example by someone else just before "
             + "(S7A-AC-23). One body for all of these.";
 
+    private final TrashService trash;
+    private final ConsoleIssueController issues;
+
+    ConsoleTrashController(TrashService trash, ConsoleIssueController issues) {
+        this.trash = trash;
+        this.issues = issues;
+    }
+
     @Operation(operationId = "listTrash", summary = "Issues in the trash",
             description = "Every deleted issue that is not purged yet, of every company, the latest deleted first; "
                     + "issues deleted at the same moment by key, the highest number first (S7A-AC-20). Checks, in "
@@ -43,7 +54,7 @@ class ConsoleTrashController {
     Paged<TrashedIssue> listTrash(
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+        return trash.list(CurrentAccount.get().viewer(), page, size).map(ConsoleTrashController::trashed);
     }
 
     @Operation(operationId = "restoreIssue", summary = "Restore an issue from the trash",
@@ -64,7 +75,8 @@ class ConsoleTrashController {
             + "nothing changed. `issueKeys` lists the keys of the other issues of the links at fault (S7A-AC-24).")
     @PostMapping("/{key}/restore")
     Issue restoreIssue(@PathVariable String key) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        return issues.issue(trash.restore(admin.viewer(), admin.actor(), key));
     }
 
     @Operation(operationId = "purgeIssue", summary = "Purge an issue in the trash",
@@ -83,6 +95,15 @@ class ConsoleTrashController {
     @DeleteMapping("/{key}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void purgeIssue(@PathVariable String key) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        trash.purge(admin.viewer(), admin.actor(), key);
+    }
+
+    private static TrashedIssue trashed(TrashedRow row) {
+        return new TrashedIssue(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
+                ConsoleIssueController.utc(row.deletedAt()),
+                row.deletedBy() == null ? null : ConsoleIssueController.person(row.deletedBy().accountId(),
+                        row.deletedBy().name(), row.deletedBy().role(), row.deletedBy().photoUpdatedAt()),
+                ConsoleIssueController.utc(TrashTimes.purgeAt(row.deletedAt())));
     }
 }

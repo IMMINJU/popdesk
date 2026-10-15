@@ -196,4 +196,14 @@ public class IssueHistoryRepository {
         Timestamp value = rs.getTimestamp(column);
         return value == null ? null : value.toInstant();
     }
+
+    /**
+     * Clears the values of the {@code TITLE} and {@code CONTENT} entries of a purged issue (TRASH-3,
+     * S7A-AC-30); the entries stay. The caller holds the issue row.
+     */
+    public void updateTextsCleared(UUID issueId) {
+        jdbc.sql("update issue_history set old_value = null, new_value = null where issue_id = ? "
+                        + "and field in (?, ?)")
+                .params(issueId, Field.TITLE.name(), Field.CONTENT.name()).update();
+    }
 }

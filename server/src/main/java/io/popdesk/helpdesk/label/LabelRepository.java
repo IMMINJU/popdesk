@@ -164,4 +164,9 @@ public class LabelRepository {
                         + "and l.id = il.label_id returning l.name")
                 .params(issueId, labelId).query(String.class).optional();
     }
+
+    /** Takes every label off a purged issue (TRASH-3, S7A-AC-30); the labels stay. The caller holds the issue row. */
+    public void deleteOfIssue(UUID issueId) {
+        jdbc.sql("delete from issue_label where issue_id = ?").param(issueId).update();
+    }
 }
