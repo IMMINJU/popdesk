@@ -299,6 +299,7 @@ class NoStoreTest extends BareAppTest {
     private static ApiResponse send(ApiClient client, Operation op) {
         String path = op.path()
                 .replace("{key}", "NOSUCH9-1")
+                .replace("{otherKey}", "NOSUCH9-2")
                 .replace("{code}", "NOSUCH9")
                 .replace("{accountId}", "999999999")
                 .replace("{noteId}", "999999999")
