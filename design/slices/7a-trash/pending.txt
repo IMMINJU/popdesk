@@ -26,3 +26,12 @@ web **/C12AuditLog.test.tsx
 web **/C12AuditLog.filters.test.tsx
 web **/C12AuditLog.6b.test.tsx
 web ../../../console/**/Screens7a.overflow.stories.tsx
+server io/popdesk/trash/TrashListTest.java
+server io/popdesk/trash/IssueRestoreTest.java
+server io/popdesk/trash/IssuePurgeTest.java
+server io/popdesk/trash/TrashPurgeJobTest.java
+server io/popdesk/trash/AutoCloseTest.java
+server io/popdesk/trash/AutoCloseNotifyTest.java
+server io/popdesk/trash/TrashPurgeRaceTest.java
+server io/popdesk/trash/AutoCloseRaceTest.java
+server io/popdesk/deploy/TrashSampleTest.java

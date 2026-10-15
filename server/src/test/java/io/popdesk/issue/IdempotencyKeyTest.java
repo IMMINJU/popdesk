@@ -54,7 +54,8 @@ class IdempotencyKeyTest extends BareAppTest {
      * them); their rows tell which table holds the records.
      */
     private static final Set<String> EARLIER_JOBS = Set.of("outbox-failed-cleanup", "attachment-cleanup",
-            "session-cleanup", "password-reset-cleanup", "audit-retention", "temporary-image-cleanup");
+            "session-cleanup", "password-reset-cleanup", "audit-retention", "temporary-image-cleanup",
+            "trash-purge", "issue-auto-close");
 
     /** The three ways to file an issue. */
     enum Way {
