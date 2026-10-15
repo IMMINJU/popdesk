@@ -618,6 +618,8 @@ export interface components {
             code: string;
             /** @description Present only when the error is about specific fields (400 `INVALID_INPUT`). */
             fields?: components["schemas"]["FieldError"][];
+            /** @description Present only when the error is about other issues: the keys of the other issues whose links stop a restore (409 `RESTORE_LINK_CONFLICT`, S7A-AC-24). */
+            issueKeys?: string[];
             message: string;
         };
         Attachment: {

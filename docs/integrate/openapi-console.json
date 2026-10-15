@@ -62,6 +62,13 @@
             },
             "type" : "array"
           },
+          "issueKeys" : {
+            "description" : "Present only when the error is about other issues: the keys of the other issues whose links stop a restore (409 `RESTORE_LINK_CONFLICT`, S7A-AC-24).",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "message" : {
             "type" : "string"
           }
@@ -215,7 +222,7 @@
           },
           "target" : {
             "additionalProperties" : { },
-            "description" : "What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`) and the keys that name it (`accountId`, `code`).",
+            "description" : "What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`) and the keys that name it (`accountId`, `code`). An issue deleted, restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is `{\"type\": \"COMPANY\", \"code\": …, \"issueKey\": …}`, with the issue's company and key and never its title, and `changes` is `{}` (S7A-AC-07).",
             "type" : [ "object", "null" ]
           }
         },
@@ -894,7 +901,7 @@
             "type" : "string"
           },
           "field" : {
-            "description" : "The field that changed: `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, `PRIORITY`, or `ATTACHMENT` (a file or content image was attached to the issue or one of its comments, or deleted; one entry for each attachment, S5-AC-40, S5-AC-41), `LABEL` (a label was put on or taken off; one entry for each label, S6A-AC-60), `DUE_DATE` (the due date was set, changed, or cleared, S6A-AC-61), or `LINK` (a link to another issue was made or removed; the same change is an entry of the other issue too, S6C-AC-20). A `LINK` entry whose other issue the caller cannot see is left out, also from the count of pages, and is back when the caller can see it again (S6C-AC-22). Later releases add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `CREATED`.",
+            "description" : "The field that changed: `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, `PRIORITY`, or `ATTACHMENT` (a file or content image was attached to the issue or one of its comments, or deleted; one entry for each attachment, S5-AC-40, S5-AC-41), `LABEL` (a label was put on or taken off; one entry for each label, S6A-AC-60), `DUE_DATE` (the due date was set, changed, or cleared, S6A-AC-61), or `LINK` (a link to another issue was made or removed; the same change is an entry of the other issue too, S6C-AC-20). A `LINK` entry whose other issue the caller cannot see is left out, also from the count of pages, and is back when the caller can see it again (S6C-AC-22). `TRASH`: the issue was deleted into the trash (new value `TRASHED`), restored from it (old value `TRASHED`, new value null), or purged (old value `TRASHED`, new value `PURGED`); the actor is the admin, or popdesk itself for a purge after 30 days (S7A-AC-06). Later releases add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `CREATED`.",
             "type" : [ "string", "null" ]
           },
           "id" : {
@@ -923,7 +930,7 @@
             } ]
           },
           "newValue" : {
-            "description" : "The value after the change, like `oldValue`. For `ATTACHMENT`: the ID of the attachment that was attached; null when one was deleted. For `LABEL`: the name of the label that was put on; null when one was taken off. For `DUE_DATE`: the date after, `YYYY-MM-DD`; null when it was cleared.",
+            "description" : "The value after the change, like `oldValue`. For `ATTACHMENT`: the ID of the attachment that was attached; null when one was deleted. For `LABEL`: the name of the label that was put on; null when one was taken off. For `DUE_DATE`: the date after, `YYYY-MM-DD`; null when it was cleared. For `TRASH`: `TRASHED` on a delete, `PURGED` on a purge, null on a restore.",
             "type" : [ "string", "null" ]
           },
           "oldLink" : {
@@ -943,7 +950,7 @@
             } ]
           },
           "oldValue" : {
-            "description" : "The value before the change: the name of the status or priority, or the title or content as it was. For `ATTACHMENT`: the ID of the attachment that was deleted, never its file name (S5-AC-43); null when one was attached. For `LABEL`: the name the label had when it was taken off, not changed by a later rename (S6A-AC-05); null when one was put on. For `DUE_DATE`: the date before, `YYYY-MM-DD`; null when there was none. Null for `CREATED`, for `ASSIGNEE`, for `LINK`, and when there was no value.",
+            "description" : "The value before the change: the name of the status or priority, or the title or content as it was. For `ATTACHMENT`: the ID of the attachment that was deleted, never its file name (S5-AC-43); null when one was attached. For `LABEL`: the name the label had when it was taken off, not changed by a later rename (S6A-AC-05); null when one was put on. For `DUE_DATE`: the date before, `YYYY-MM-DD`; null when there was none. Null for `CREATED`, for `ASSIGNEE`, for `LINK`, and when there was no value. For `TRASH`: `TRASHED` on a restore and a purge, null on a delete. `TITLE` and `CONTENT` entries of a purged issue have both values null (S7A-AC-30).",
             "type" : [ "string", "null" ]
           }
         },
@@ -1303,7 +1310,7 @@
       "Notification" : {
         "properties" : {
           "actor" : {
-            "description" : "Who did it; null for an item about no issue.",
+            "description" : "Who did it; null for an item about no issue, and null for what popdesk itself did, such as closing a `RESOLVED` issue after 7 days (S7A-AC-43).",
             "oneOf" : [ {
               "$ref" : "#/components/schemas/NotificationActor"
             }, {
@@ -1849,6 +1856,36 @@
         "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
         "type" : "object"
       },
+      "PagedTrashedIssue" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/TrashedIssue"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Page number, starting at 1.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Items per page, 1 to 100.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
       "PasswordResetLink" : {
         "properties" : {
           "resetLink" : {
@@ -2290,6 +2327,43 @@
           }
         },
         "required" : [ "errorKind", "ok", "serverReply" ],
+        "type" : "object"
+      },
+      "TrashedIssue" : {
+        "properties" : {
+          "companyCode" : {
+            "type" : "string"
+          },
+          "companyName" : {
+            "type" : "string"
+          },
+          "deletedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "deletedBy" : {
+            "$ref" : "#/components/schemas/Person",
+            "description" : "The admin who deleted the issue, by the account's current name."
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "purgeAt" : {
+            "description" : "When popdesk purges the issue by itself: `deletedAt` plus 30 days, measured in UTC (S7A-AC-31). The hourly job may do it up to an hour later.",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "The status the issue had when it was deleted; the trash does not change it.",
+            "enum" : [ "RECEIVED", "CONFIRMED", "IN_PROGRESS", "RESOLVED", "CLOSED" ],
+            "type" : "string"
+          },
+          "title" : {
+            "description" : "The title as it was when the issue was deleted.",
+            "type" : "string"
+          }
+        },
+        "required" : [ "companyCode", "companyName", "deletedAt", "deletedBy", "key", "purgeAt", "status", "title" ],
         "type" : "object"
       },
       "UnreadCount" : {
@@ -2996,7 +3070,7 @@
           "required" : false,
           "schema" : {
             "items" : {
-              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED", "DELIVERY_RESENT", "TEST_MAIL_SENT", "LABEL_CREATED", "LABEL_UPDATED", "LABEL_DELETED" ],
+              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED", "DELIVERY_RESENT", "TEST_MAIL_SENT", "LABEL_CREATED", "LABEL_UPDATED", "LABEL_DELETED", "ISSUE_DELETED", "ISSUE_RESTORED", "ISSUE_PURGED" ],
               "type" : "string"
             },
             "type" : "array"
@@ -3141,7 +3215,7 @@
           "required" : false,
           "schema" : {
             "items" : {
-              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED", "DELIVERY_RESENT", "TEST_MAIL_SENT", "LABEL_CREATED", "LABEL_UPDATED", "LABEL_DELETED" ],
+              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED", "DELIVERY_RESENT", "TEST_MAIL_SENT", "LABEL_CREATED", "LABEL_UPDATED", "LABEL_DELETED", "ISSUE_DELETED", "ISSUE_RESTORED", "ISSUE_PURGED" ],
               "type" : "string"
             },
             "type" : "array"
@@ -3304,7 +3378,7 @@
           "required" : false,
           "schema" : {
             "items" : {
-              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED", "DELIVERY_RESENT", "TEST_MAIL_SENT", "LABEL_CREATED", "LABEL_UPDATED", "LABEL_DELETED" ],
+              "enum" : [ "SIGN_IN_SUCCEEDED", "SIGN_IN_FAILED", "ACCOUNT_LOCKED", "FIRST_ADMIN_CREATED", "ACCOUNT_NAME_CHANGED", "ACCOUNT_ROLE_CHANGED", "ACCOUNT_SUSPENDED", "ACCOUNT_REACTIVATED", "ACCOUNT_PASSWORD_RESET", "PASSWORD_CHANGED", "PASSWORD_RESET_COMPLETED", "INVITATION_CREATED", "INVITATION_RESENT", "INVITATION_CANCELLED", "INVITATION_LINK_CREATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_STATUS_CHANGED", "CUSTOMER_ADDED", "CUSTOMER_REMOVED", "AGENT_ASSIGNED", "AGENT_UNASSIGNED", "ADMIN_PASSWORD_RESET", "BACKUP_CREATED", "DATABASE_RESTORED", "AUDIT_EXPORTED", "MANAGER_MARKED", "MANAGER_UNMARKED", "MEMBERSHIP_REQUESTED", "MEMBERSHIP_REQUEST_WITHDRAWN", "MEMBERSHIP_REQUEST_APPROVED", "MEMBERSHIP_REQUEST_REJECTED", "DELIVERY_RESENT", "TEST_MAIL_SENT", "LABEL_CREATED", "LABEL_UPDATED", "LABEL_DELETED", "ISSUE_DELETED", "ISSUE_RESTORED", "ISSUE_PURGED" ],
               "type" : "string"
             },
             "type" : "array"
@@ -5701,6 +5775,55 @@
       }
     },
     "/api/console/issues/{key}" : {
+      "delete" : {
+        "description" : "Moves the issue to the trash, with the time and the admin (S7A-AC-01). Any status. Its content and everything under it (comments, attachments, tasks, links, labels, assignee) stay as they are, for `restoreIssue`; popdesk purges it 30 days later (S7A-AC-31). From then on the issue and every path under it answer 404 in both apps, to admins too, and it is left out of every list, search, count, and inbox (S7A-AC-03, S7A-AC-04). Its waiting messages are deleted and nothing more is sent about it (S7A-AC-10). Goes up `version` by 1 and leaves a history entry `TRASH` with the new value `TRASHED` (S7A-AC-06) and an audit entry `ISSUE_DELETED` (S7A-AC-07). Takes no `version`. Checks, in this order: role (403), the issue (404).",
+        "operationId" : "deleteIssue",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "In the trash."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only, checked before the issue (S7A-AC-02). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no such issue, or it is in the trash already or purged (S7A-AC-03)."
+          }
+        },
+        "summary" : "Delete an issue, into the trash",
+        "tags" : [ "Issues" ]
+      },
       "get" : {
         "operationId" : "getIssue",
         "parameters" : [ {
@@ -9065,6 +9188,196 @@
         },
         "summary" : "The caller's own tasks",
         "tags" : [ "Tasks" ]
+      }
+    },
+    "/api/console/trash" : {
+      "get" : {
+        "description" : "Every deleted issue that is not purged yet, of every company, the latest deleted first; issues deleted at the same moment by key, the highest number first (S7A-AC-20). Checks, in this order: role (403), `page` and `size` (400).",
+        "operationId" : "listTrash",
+        "parameters" : [ {
+          "description" : "Page number, from 1.",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "1 to 100.",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedTrashedIssue"
+                }
+              }
+            },
+            "description" : "One page."
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`)."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only, checked before the issue (S7A-AC-02)."
+          }
+        },
+        "summary" : "Issues in the trash",
+        "tags" : [ "Trash" ]
+      }
+    },
+    "/api/console/trash/{key}" : {
+      "delete" : {
+        "description" : "At once, without waiting for the 30 days (S7A-AC-30). What was written is deleted: the title and content (left empty), comments and mentions, attachments and their files, tasks and their notes, links, labels on the issue, its inbox items, its waiting messages, and the `Idempotency-Key` of its filing; the title and content values of its history entries are cleared. The key, company, status, times, and history entries stay, but the issue is shown nowhere again and its number is not used again (S7A-AC-32, S7A-AC-35). Leaves a history entry `TRASH` from `TRASHED` to `PURGED` (S7A-AC-06) and an audit entry `ISSUE_PURGED` (S7A-AC-07). Checks, in this order: role (403), the issue in the trash (404).",
+        "operationId" : "purgeIssue",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Purged."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only, checked before the issue (S7A-AC-02). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no issue with this key is in the trash: no such issue, an issue that is not deleted, or one that is purged already, for example by someone else just before (S7A-AC-23). One body for all of these."
+          }
+        },
+        "summary" : "Purge an issue in the trash",
+        "tags" : [ "Trash" ]
+      }
+    },
+    "/api/console/trash/{key}/restore" : {
+      "post" : {
+        "description" : "The issue is back as it was before it was deleted: its content, comments, attachments, tasks and their notes, links, labels, assignee, due date, and status, and its inbox items are listed again (S7A-AC-21). What was not sent while it was in the trash is not sent now (S7A-AC-10). A `RESOLVED` issue is closed by popdesk 7 days after the restore, not after `resolvedAt`, which stays as it was (S7A-AC-22). Goes up `version` by 1 and leaves a history entry `TRASH` with the old value `TRASHED` (S7A-AC-06) and an audit entry `ISSUE_RESTORED` (S7A-AC-07). Takes no body. Checks, in this order: role (403), the issue in the trash (404), its links (409).",
+        "operationId" : "restoreIssue",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description" : "The issue as it is now."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`FORBIDDEN`: admins only, checked before the issue (S7A-AC-02). `CSRF_TOKEN_INVALID`."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: no issue with this key is in the trash: no such issue, an issue that is not deleted, or one that is purged already, for example by someone else just before (S7A-AC-23). One body for all of these."
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`RESTORE_LINK_CONFLICT`: with its links the issue would break the link rules (LINK-2: over 50 links, or a duplicate chain); it stays in the trash and nothing changed. `issueKeys` lists the keys of the other issues of the links at fault (S7A-AC-24)."
+          }
+        },
+        "summary" : "Restore an issue from the trash",
+        "tags" : [ "Trash" ]
       }
     },
     "/api/public/csrf" : {

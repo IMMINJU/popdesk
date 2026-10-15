@@ -653,7 +653,11 @@ export interface paths {
         get: operations["getIssue"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete an issue, into the trash
+         * @description Moves the issue to the trash, with the time and the admin (S7A-AC-01). Any status. Its content and everything under it (comments, attachments, tasks, links, labels, assignee) stay as they are, for `restoreIssue`; popdesk purges it 30 days later (S7A-AC-31). From then on the issue and every path under it answer 404 in both apps, to admins too, and it is left out of every list, search, count, and inbox (S7A-AC-03, S7A-AC-04). Its waiting messages are deleted and nothing more is sent about it (S7A-AC-10). Goes up `version` by 1 and leaves a history entry `TRASH` with the new value `TRASHED` (S7A-AC-06) and an audit entry `ISSUE_DELETED` (S7A-AC-07). Takes no `version`. Checks, in this order: role (403), the issue (404).
+         */
+        delete: operations["deleteIssue"];
         options?: never;
         head?: never;
         /**
@@ -1379,6 +1383,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/console/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Issues in the trash
+         * @description Every deleted issue that is not purged yet, of every company, the latest deleted first; issues deleted at the same moment by key, the highest number first (S7A-AC-20). Checks, in this order: role (403), `page` and `size` (400).
+         */
+        get: operations["listTrash"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/trash/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Purge an issue in the trash
+         * @description At once, without waiting for the 30 days (S7A-AC-30). What was written is deleted: the title and content (left empty), comments and mentions, attachments and their files, tasks and their notes, links, labels on the issue, its inbox items, its waiting messages, and the `Idempotency-Key` of its filing; the title and content values of its history entries are cleared. The key, company, status, times, and history entries stay, but the issue is shown nowhere again and its number is not used again (S7A-AC-32, S7A-AC-35). Leaves a history entry `TRASH` from `TRASHED` to `PURGED` (S7A-AC-06) and an audit entry `ISSUE_PURGED` (S7A-AC-07). Checks, in this order: role (403), the issue in the trash (404).
+         */
+        delete: operations["purgeIssue"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/trash/{key}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore an issue from the trash
+         * @description The issue is back as it was before it was deleted: its content, comments, attachments, tasks and their notes, links, labels, assignee, due date, and status, and its inbox items are listed again (S7A-AC-21). What was not sent while it was in the trash is not sent now (S7A-AC-10). A `RESOLVED` issue is closed by popdesk 7 days after the restore, not after `resolvedAt`, which stays as it was (S7A-AC-22). Goes up `version` by 1 and leaves a history entry `TRASH` with the old value `TRASHED` (S7A-AC-06) and an audit entry `ISSUE_RESTORED` (S7A-AC-07). Takes no body. Checks, in this order: role (403), the issue in the trash (404), its links (409).
+         */
+        post: operations["restoreIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/csrf": {
         parameters: {
             query?: never;
@@ -1532,6 +1596,8 @@ export interface components {
             code: string;
             /** @description Present only when the error is about specific fields (400 `INVALID_INPUT`). */
             fields?: components["schemas"]["FieldError"][];
+            /** @description Present only when the error is about other issues: the keys of the other issues whose links stop a restore (409 `RESTORE_LINK_CONFLICT`, S7A-AC-24). */
+            issueKeys?: string[];
             message: string;
         };
         AssigneeCandidates: {
@@ -1611,7 +1677,7 @@ export interface components {
              * @description The entry's place in the hash chain, from 1.
              */
             seq: number;
-            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`) and the keys that name it (`accountId`, `code`). */
+            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`) and the keys that name it (`accountId`, `code`). An issue deleted, restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is `{"type": "COMPANY", "code": …, "issueKey": …}`, with the issue's company and key and never its title, and `changes` is `{}` (S7A-AC-07). */
             target: {
                 [key: string]: unknown;
             } | null;
@@ -1964,7 +2030,7 @@ export interface components {
             actor: components["schemas"]["IssueHistoryActor"];
             /** Format: date-time */
             createdAt: string;
-            /** @description The field that changed: `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, `PRIORITY`, or `ATTACHMENT` (a file or content image was attached to the issue or one of its comments, or deleted; one entry for each attachment, S5-AC-40, S5-AC-41), `LABEL` (a label was put on or taken off; one entry for each label, S6A-AC-60), `DUE_DATE` (the due date was set, changed, or cleared, S6A-AC-61), or `LINK` (a link to another issue was made or removed; the same change is an entry of the other issue too, S6C-AC-20). A `LINK` entry whose other issue the caller cannot see is left out, also from the count of pages, and is back when the caller can see it again (S6C-AC-22). Later releases add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `CREATED`. */
+            /** @description The field that changed: `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, `PRIORITY`, or `ATTACHMENT` (a file or content image was attached to the issue or one of its comments, or deleted; one entry for each attachment, S5-AC-40, S5-AC-41), `LABEL` (a label was put on or taken off; one entry for each label, S6A-AC-60), `DUE_DATE` (the due date was set, changed, or cleared, S6A-AC-61), or `LINK` (a link to another issue was made or removed; the same change is an entry of the other issue too, S6C-AC-20). A `LINK` entry whose other issue the caller cannot see is left out, also from the count of pages, and is back when the caller can see it again (S6C-AC-22). `TRASH`: the issue was deleted into the trash (new value `TRASHED`), restored from it (old value `TRASHED`, new value null), or purged (old value `TRASHED`, new value `PURGED`); the actor is the admin, or popdesk itself for a purge after 30 days (S7A-AC-06). Later releases add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `CREATED`. */
             field: string | null;
             /**
              * Format: int64
@@ -1977,13 +2043,13 @@ export interface components {
             newLink: components["schemas"]["IssueHistoryLink"] | null;
             /** @description For `ASSIGNEE`: the assignee after the change; null when it was cleared. Null for every other field. */
             newPerson: components["schemas"]["Person"] | null;
-            /** @description The value after the change, like `oldValue`. For `ATTACHMENT`: the ID of the attachment that was attached; null when one was deleted. For `LABEL`: the name of the label that was put on; null when one was taken off. For `DUE_DATE`: the date after, `YYYY-MM-DD`; null when it was cleared. */
+            /** @description The value after the change, like `oldValue`. For `ATTACHMENT`: the ID of the attachment that was attached; null when one was deleted. For `LABEL`: the name of the label that was put on; null when one was taken off. For `DUE_DATE`: the date after, `YYYY-MM-DD`; null when it was cleared. For `TRASH`: `TRASHED` on a delete, `PURGED` on a purge, null on a restore. */
             newValue: string | null;
             /** @description For `LINK`: the link that was removed, seen from this issue, with the other issue's current key and title (S6C-AC-21); null when one was made. Null for every other field. */
             oldLink: components["schemas"]["IssueHistoryLink"] | null;
             /** @description For `ASSIGNEE`: the assignee before the change, by the account's current name; null when there was none. Null for every other field. */
             oldPerson: components["schemas"]["Person"] | null;
-            /** @description The value before the change: the name of the status or priority, or the title or content as it was. For `ATTACHMENT`: the ID of the attachment that was deleted, never its file name (S5-AC-43); null when one was attached. For `LABEL`: the name the label had when it was taken off, not changed by a later rename (S6A-AC-05); null when one was put on. For `DUE_DATE`: the date before, `YYYY-MM-DD`; null when there was none. Null for `CREATED`, for `ASSIGNEE`, for `LINK`, and when there was no value. */
+            /** @description The value before the change: the name of the status or priority, or the title or content as it was. For `ATTACHMENT`: the ID of the attachment that was deleted, never its file name (S5-AC-43); null when one was attached. For `LABEL`: the name the label had when it was taken off, not changed by a later rename (S6A-AC-05); null when one was put on. For `DUE_DATE`: the date before, `YYYY-MM-DD`; null when there was none. Null for `CREATED`, for `ASSIGNEE`, for `LINK`, and when there was no value. For `TRASH`: `TRASHED` on a restore and a purge, null on a delete. `TITLE` and `CONTENT` entries of a purged issue have both values null (S7A-AC-30). */
             oldValue: string | null;
         };
         IssueHistoryLink: {
@@ -2156,7 +2222,7 @@ export interface components {
             title: string;
         };
         Notification: {
-            /** @description Who did it; null for an item about no issue. */
+            /** @description Who did it; null for an item about no issue, and null for what popdesk itself did, such as closing a `RESOLVED` issue after 7 days (S7A-AC-43). */
             actor: components["schemas"]["NotificationActor"] | null;
             /**
              * Format: int64
@@ -2456,6 +2522,23 @@ export interface components {
             /** Format: int32 */
             totalPages: number;
         };
+        PagedTrashedIssue: {
+            items: components["schemas"]["TrashedIssue"][];
+            /**
+             * Format: int32
+             * @description Page number, starting at 1.
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Items per page, 1 to 100.
+             */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
+        };
         PasswordResetLink: {
             /** @description The reset link, only when SMTP is not configured; shown once, the token is in the fragment after `#`. `null` when the reset email is sent. */
             resetLink: string | null;
@@ -2661,6 +2744,27 @@ export interface components {
             ok: boolean;
             /** @description What the SMTP server answered, as plain text of up to 500 characters, with line breaks but no other control characters; show it as text, never as markup. The address the email went to is masked after its first character, and the SMTP user name and password are replaced by `***`. null when the server gave no answer: when the email was taken, or when the server could not be reached. */
             serverReply: string | null;
+        };
+        TrashedIssue: {
+            companyCode: string;
+            companyName: string;
+            /** Format: date-time */
+            deletedAt: string;
+            /** @description The admin who deleted the issue, by the account's current name. */
+            deletedBy: components["schemas"]["Person"];
+            key: string;
+            /**
+             * Format: date-time
+             * @description When popdesk purges the issue by itself: `deletedAt` plus 30 days, measured in UTC (S7A-AC-31). The hourly job may do it up to an hour later.
+             */
+            purgeAt: string;
+            /**
+             * @description The status the issue had when it was deleted; the trash does not change it.
+             * @enum {string}
+             */
+            status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+            /** @description The title as it was when the issue was deleted. */
+            title: string;
         };
         UnreadCount: {
             /** Format: int64 */
@@ -3166,7 +3270,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -3234,7 +3338,7 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -3314,7 +3418,7 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -5179,6 +5283,53 @@ export interface operations {
                 };
             };
             /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description In the trash. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, checked before the issue (S7A-AC-02). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or it is in the trash already or purged (S7A-AC-03). */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -7865,6 +8016,163 @@ export interface operations {
             };
             /** @description `UNAUTHENTICATED`. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listTrash: {
+        parameters: {
+            query?: {
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description 1 to 100. */
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedTrashedIssue"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, checked before the issue (S7A-AC-02). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    purgeIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Purged. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, checked before the issue (S7A-AC-02). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no issue with this key is in the trash: no such issue, an issue that is not deleted, or one that is purged already, for example by someone else just before (S7A-AC-23). One body for all of these. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    restoreIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The issue as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, checked before the issue (S7A-AC-02). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no issue with this key is in the trash: no such issue, an issue that is not deleted, or one that is purged already, for example by someone else just before (S7A-AC-23). One body for all of these. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RESTORE_LINK_CONFLICT`: with its links the issue would break the link rules (LINK-2: over 50 links, or a duplicate chain); it stays in the trash and nothing changed. `issueKeys` lists the keys of the other issues of the links at fault (S7A-AC-24). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
