@@ -5,21 +5,3 @@
 
 # 서버: deploy 태그라 C-10에서 이미지로 돈다
 server io/popdesk/deploy/TaskSampleTest.java
-
-# 웹 구현 탭
-web **/C4IssueDetail.6b.test.tsx
-web **/C15MyTasks.test.tsx
-web **/C3IssueList.6b.test.tsx
-web **/C7Inbox.6b.test.tsx
-web **/ClearAssignments.6b.test.tsx
-web **/C12AuditLog.6b.test.tsx
-web ../../../console/**/Screens6b.overflow.stories.tsx
-# 6b 테스트 탭이 "내 작업" 메뉴와 라벨 감사 종류를 넣어 고친 앞 묶음 테스트(구현 뒤 통과).
-# layout.inbox.test.tsx는 포털에도 같은 경로로 있어 함께 빠진다. 구현이 합쳐지면 줄을 지운다.
-web **/auditWords.words.test.ts
-web **/layout.inbox.test.tsx
-web **/adminOnly.1b.test.tsx
-web **/C12AuditLog.filters.test.tsx
-web **/C12AuditLog.test.tsx
-# C-7 보강에서 라벨 셋이 "고객사" 묶음에 들어간 것을 반영한 앞 묶음 테스트(구현 뒤 통과).
-web **/auditWords.survivors.test.ts
