@@ -691,3 +691,223 @@
   display: block;
   padding: var(--space-8);
 }
+
+/* Slice 6b: the 작업 구역 of C-4 (6b-tasks screens.md 1절) */
+.pd-detail-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pd-task-list,
+.pd-task-notes {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pd-task {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.pd-task:first-child {
+  border-top: 1px solid var(--border);
+}
+
+.pd-task-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pd-task-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+}
+
+/* The box of the status: empty while open, filled with the check once done. */
+.pd-task-status > .pd-icon-button,
+.pd-task-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: transparent;
+}
+
+.pd-task-status[data-done='true'] > .pd-icon-button,
+.pd-task-status[data-done='true'] > .pd-task-check {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.pd-task-check {
+  border-style: dashed;
+}
+
+.pd-task[data-deleted='true'] .pd-task-trace {
+  padding-left: 40px;
+}
+
+.pd-task-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.pd-task-title {
+  padding-top: var(--space-1);
+  overflow-wrap: anywhere;
+}
+
+.pd-task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.pd-task-trace {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.pd-task-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-left: 40px;
+  padding-bottom: var(--space-2);
+  min-width: 0;
+}
+
+.pd-task-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2) var(--space-6);
+}
+
+/* The label stays beside the button while the date picker opens under it. */
+.pd-task-tools > .pd-inline {
+  align-items: flex-start;
+}
+
+.pd-task-tools .pd-label {
+  line-height: var(--button-height-sm);
+}
+
+.pd-task-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.pd-task-note-head,
+.pd-task-change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.pd-task-change {
+  color: var(--text-muted);
+}
+
+.pd-task-note-author {
+  font-weight: 600;
+}
+
+.pd-task-note-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pd-task-note-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.pd-task-note-area {
+  min-height: 72px;
+}
+
+.pd-task-add,
+.pd-task-title-form,
+.pd-task-note-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+@media (max-width: 600px) {
+  .pd-task-panel {
+    margin-left: 0;
+  }
+}
+
+.pd-task-titles {
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+/* Slice 6b: C-15 내 작업 */
+.pd-finish-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+/* A link that wraps as text in a table cell (C-15 작업, 문의). Its column keeps room for a few
+   words, so a narrow window scrolls the table rather than press it to a word a line. */
+.pd-wrap-cell {
+  display: inline-block;
+  min-width: 10rem;
+  overflow-wrap: break-word;
+}
+
+/* Korean lines of the 작업 구역 break between words, as the comments do. */
+.pd-task-title,
+.pd-task-meta,
+.pd-task-trace,
+.pd-task-change,
+.pd-task-titles,
+.pd-task-note-text {
+  word-break: keep-all;
+}
+
+/* A date of C-15 stays on one line; the table scrolls sideways when it must. */
+.pd-my-tasks .pd-due-cell time {
+  white-space: nowrap;
+}

@@ -19,7 +19,10 @@ import { UnreadContext, useUnreadCount } from './unread';
 /** `requests`: the open membership requests of all companies, shown on 고객사 (S2-AC-48). */
 function menu(me: Me, requests: number): Omit<NavItem, 'current'>[] {
   // 문의 opens the 내 담당 view (S3-AC-77).
-  const items: Omit<NavItem, 'current'>[] = [{ href: MY_ISSUES_HREF, label: '문의' }];
+  const items: Omit<NavItem, 'current'>[] = [
+    { href: MY_ISSUES_HREF, label: '문의' },
+    { href: '/tasks', label: '내 작업' },
+  ];
   if (me.role === 'ADMIN') {
     items.push(
       { href: '/companies', label: '고객사', count: requests, countLabel: `소속 요청 ${String(requests)}건` },

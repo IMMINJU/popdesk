@@ -37,6 +37,8 @@ function sentence(n: Notification): string {
       return tf('inbox.mentioned', { who });
     case 'ASSIGNED':
       return tf('inbox.assigned', { who });
+    case 'TASK_ASSIGNED':
+      return tf('inbox.taskAssigned', { who, title: n.task?.title ?? '' });
     case 'MEMBERSHIP_REQUESTED':
       return tf('inbox.membershipRequested', { code: n.companyCode ?? '' });
     case 'DELIVERY_FAILED':
@@ -58,6 +60,8 @@ function sentence(n: Notification): string {
 function hrefOf(n: Notification): string | undefined {
   if (n.issue !== null) {
     const issue = `/issues/${encodeURIComponent(n.issue.key)}`;
+    // Slice 6b: a task item leads to its task (6b-tasks screens.md 4절).
+    if (n.task !== null) return `${issue}#task-${String(n.task.id)}`;
     return n.commentId === null ? issue : `${issue}#comment-${String(n.commentId)}`;
   }
   switch (n.kind) {

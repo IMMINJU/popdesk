@@ -39,7 +39,15 @@ export const KIND_GROUPS: readonly KindGroup[] = [
   {
     key: 'COMPANY',
     name: '고객사',
-    kinds: { COMPANY_CREATED: '고객사 만들기', COMPANY_UPDATED: '고객사 고치기', COMPANY_STATUS_CHANGED: '고객사 상태 바꾸기' },
+    // Slice 6b: a company's labels are in this group (6b-tasks screens.md 4절).
+    kinds: {
+      COMPANY_CREATED: '고객사 만들기',
+      COMPANY_UPDATED: '고객사 고치기',
+      COMPANY_STATUS_CHANGED: '고객사 상태 바꾸기',
+      LABEL_CREATED: '라벨 만들기',
+      LABEL_UPDATED: '라벨 고치기',
+      LABEL_DELETED: '라벨 지우기',
+    },
   },
   {
     key: 'MEMBERSHIP',
@@ -89,6 +97,8 @@ export interface Target {
   type: string;
   accountId?: number;
   code?: string;
+  /** A label of the company `code` (slice 6b). */
+  labelId?: number;
 }
 
 /** Reads a stored target (a free JSON object); null when it names nothing. */
@@ -98,14 +108,16 @@ export function targetOf(stored: Readonly<Record<string, unknown>> | null): Targ
     type: stored.type,
     ...(typeof stored.accountId === 'number' ? { accountId: stored.accountId } : {}),
     ...(typeof stored.code === 'string' ? { code: stored.code } : {}),
+    ...(typeof stored.labelId === 'number' ? { labelId: stored.labelId } : {}),
   };
 }
 
-/** "계정 12", "고객사 ACME", "고객사 ACME · 계정 12", "데이터베이스", "감사 로그". */
+/** "계정 12", "고객사 ACME", "고객사 ACME · 계정 12", "고객사 ACME · 라벨 61", "데이터베이스", "감사 로그". */
 export function targetWord(target: Target): string {
   const account = target.accountId === undefined ? null : `계정 ${String(target.accountId)}`;
   const company = target.code === undefined ? null : `고객사 ${target.code}`;
-  if (company !== null || account !== null) return [company, account].filter((part) => part !== null).join(' · ');
+  const label = target.labelId === undefined ? null : `라벨 ${String(target.labelId)}`;
+  if (company !== null || account !== null || label !== null) return [company, account, label].filter((part) => part !== null).join(' · ');
   if (target.type === 'DATABASE') return '데이터베이스';
   if (target.type === 'AUDIT_LOG') return '감사 로그';
   return target.type;
@@ -124,6 +136,8 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
   manager: '담당자',
   assigned: '배정',
   clearedIssues: '비운 담당',
+  clearedTasks: '비운 작업',
+  color: '색',
   file: '파일',
   format: '형식',
   count: '건수',
@@ -219,8 +233,8 @@ function valueWord(action: string, field: string, value: unknown): string {
   }
   const text = typeof value === 'string' ? value : JSON.stringify(value);
   if (TIME_FIELDS.has(field)) return timeWord(value) ?? text;
-  // The open issues a 배정 빼기 or 계정 정지 cleared the assignee of (S3-AC-72).
-  if (field === 'clearedIssues' && typeof value === 'number') return `${text}건`;
+  // The open issues a 배정 빼기 or 계정 정지 cleared the assignee of (S3-AC-72), and the open tasks (slice 6b).
+  if ((field === 'clearedIssues' || field === 'clearedTasks') && typeof value === 'number') return `${text}건`;
   if (field === 'role') return word(ROLE_WORDS, text);
   if (field === 'channel') return word(CHANNEL_WORDS, text);
   // 정지 is an account's word and 멈춤 a company's for the same stored name.

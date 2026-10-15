@@ -5,6 +5,7 @@
 // Slice 4 (4-talk screens.md 2절) adds 댓글 고치기·댓글 지우기, the mention line and "알릴 사람",
 // the trace of a deleted comment, and the `#comment-ID` of the address.
 // Slice 6a (6a-labels screens.md 1절) adds the 라벨 and 마감일 lines after 담당자.
+// Slice 6b (6b-tasks screens.md 1절) adds the 작업 구역 between the attachments and the comments.
 import {
   Alert,
   AttachmentList,
@@ -54,6 +55,8 @@ import { IssueEdit } from '../app/IssueEdit';
 import { issuesHref, type IssueStatus } from '../app/issueFilters';
 import { IssueHistory } from '../app/IssueHistory';
 import { IssueDueLine, IssueLabelsLine } from '../app/IssueLabels';
+import { IssueTasks } from '../app/IssueTasks';
+import { useIssueTasks } from '../app/taskList';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
 import { t, tf } from '../app/locale';
 import { MentionPicker } from '../app/MentionPicker';
@@ -70,6 +73,7 @@ type Visibility = 'public' | 'internal';
 
 const LIST_SIZE = 100;
 const ISSUE_CLOSED_TEXT = '문의가 종료되어 댓글을 달 수 없습니다.';
+const CLOSE_TEXT = '이 문의를 종료할까요? 고객은 14일 안에 다시 열 수 있습니다.';
 /** The band over the comments when an edit could not be saved any more. */
 const EDIT_GONE_TEXT = { closed: 'comment.editClosed', deleted: 'comment.alreadyDeleted', notFound: 'comment.notFound' } as const;
 const CHANNEL_WORDS: Record<Issue['channel'], string> = { PORTAL: '포털', EMAIL: '메일', PHONE: '전화', OTHER: '그 밖' };
@@ -150,6 +154,8 @@ function IssueDetail(props: { issueKey: string }) {
     };
   }, key);
 
+  const tasks = useIssueTasks(key);
+
   const firstLoad = load.status === 'loading' && load.data === undefined;
   useMainBusy(firstLoad);
   const hash = useLocation().hash;
@@ -188,7 +194,7 @@ function IssueDetail(props: { issueKey: string }) {
 
   // Slice 3: the action row, 담당자 바꾸기, 고치기, and the history that is read again after them.
   const [acting, setActing] = useState<IssueStatus | 'reopen' | null>(null);
-  const [asking, setAsking] = useState<'close' | 'reopen' | null>(null);
+  const [asking, setAsking] = useState<'resolve' | 'close' | 'reopen' | null>(null);
   const [actionFailure, setActionFailure] = useState<Failure | null>(null);
   // Counts openings: the key that makes every opening a new dialog.
   const [assigning, setAssigning] = useState<number | null>(null);
@@ -280,6 +286,9 @@ function IssueDetail(props: { issueKey: string }) {
   }
 
   const issue = answered !== null && answered.version >= detail.issue.version ? answered : detail.issue;
+  // Slice 6b: 해결 and 종료 ask about the open tasks; before the list is in, as if there were none.
+  const openTasks = tasks.list?.openCount ?? 0;
+  const unfinished = `끝나지 않은 작업이 ${String(openTasks)}개 있습니다.`;
   const closed = issue.status === 'CLOSED';
   const isAdmin = me?.role === 'ADMIN';
 
@@ -557,6 +566,7 @@ function IssueDetail(props: { issueKey: string }) {
                 blocked={acting !== null && acting !== next}
                 onClick={() => {
                   if (next === 'CLOSED') setAsking('close');
+                  else if (next === 'RESOLVED' && openTasks > 0) setAsking('resolve');
                   else void act(next);
                 }}
               >
@@ -760,6 +770,8 @@ function IssueDetail(props: { issueKey: string }) {
           />
         )}
       </div>
+
+      <IssueTasks issue={issue} tasks={tasks} onStale={onIssueStale} />
 
       <section className="pd-detail-comments" aria-labelledby="comments-title">
         <h2 id="comments-title" className="pd-section-title">
@@ -987,15 +999,41 @@ function IssueDetail(props: { issueKey: string }) {
         }}
       />
       <ConfirmDialog
-        open={asking !== null}
+        open={asking === 'reopen' || asking === 'close'}
         title={asking === 'reopen' ? '다시 열기' : '문의 종료'}
-        message={asking === 'reopen' ? '이 문의를 다시 열까요? 상태가 접수로 돌아갑니다.' : '이 문의를 종료할까요? 고객은 14일 안에 다시 열 수 있습니다.'}
+        message={
+          asking === 'reopen' ? (
+            '이 문의를 다시 열까요? 상태가 접수로 돌아갑니다.'
+          ) : openTasks > 0 ? (
+            <>
+              <p>{CLOSE_TEXT}</p>
+              <p>{unfinished}</p>
+            </>
+          ) : (
+            CLOSE_TEXT
+          )
+        }
         confirmLabel={asking === 'reopen' ? '다시 열기' : '종료'}
         cancelLabel={TEXT.cancel}
         pending={acting !== null}
         pendingLabel={TEXT.sending}
         onConfirm={() => {
           void act(asking === 'reopen' ? 'reopen' : 'CLOSED');
+        }}
+        onCancel={() => {
+          setAsking(null);
+        }}
+      />
+      <ConfirmDialog
+        open={asking === 'resolve'}
+        title="문의 해결"
+        message={`${unfinished} 그래도 해결로 바꿀까요?`}
+        confirmLabel="해결로 바꾸기"
+        cancelLabel="그만두기"
+        pending={acting !== null}
+        pendingLabel={TEXT.sending}
+        onConfirm={() => {
+          void act('RESOLVED');
         }}
         onCancel={() => {
           setAsking(null);
