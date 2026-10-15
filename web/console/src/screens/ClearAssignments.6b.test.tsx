@@ -4,7 +4,7 @@
 import { waitFor } from '@testing-library/react';
 import { HttpResponse } from 'msw/http';
 import { describe, expect, test } from 'vitest';
-import { account, dialog, expectNoAxeViolations, found, member, on, renderAt, sent, state, text, within } from '../__tests__/console';
+import { account, callsTo, dialog, expectNoAxeViolations, found, member, on, renderAt, sent, state, text, within } from '../__tests__/console';
 import { openRowAction, region, rowOf } from '../__tests__/console1a';
 import { CLEAR, clearBox, go } from '../__tests__/console3';
 import { contract } from '../__tests__/console6a';
@@ -27,6 +27,10 @@ interface Place {
   where: string;
   open: (user: User) => Promise<HTMLElement>;
   setUp: () => void;
+  /** The button that goes on, and the request it sends (its method and path). */
+  go: '빼기' | '정지';
+  method: string;
+  sends: string;
 }
 
 const PLACES: Place[] = [
@@ -43,6 +47,9 @@ const PLACES: Place[] = [
       await user.click(await found(() => within(row).queryByRole('button', { name: /빼기/ }), '이상담 줄의 "빼기"'));
       return dialog();
     },
+    go: '빼기',
+    method: 'DELETE',
+    sends: '/api/console/companies/ACME/agents/2',
   },
   {
     what: 'C-10 정지',
@@ -53,6 +60,9 @@ const PLACES: Place[] = [
       state.accounts = [account(), LEE];
     },
     open: (user) => openRowAction(user, LEE.name, '정지'),
+    go: '정지',
+    method: 'POST',
+    sends: '/api/console/accounts/2/suspend',
   },
 ];
 
@@ -60,6 +70,11 @@ const URL_OF: Record<string, string> = { 'C-9 배정 빼기': '/companies/ACME',
 
 /** Renders the screen of `place`, answers the count with `answer`, and opens the dialog. */
 async function openWith(place: Place, answer: Answer, checked: boolean): Promise<HTMLElement> {
+  return (await openFor(place, answer, checked)).box;
+}
+
+/** Like `openWith`, and gives the user too. */
+async function openFor(place: Place, answer: Answer, checked: boolean): Promise<{ box: HTMLElement; user: User }> {
   place.setUp();
   on('get', place.path, () => HttpResponse.json(checked ? contract(place.operationId, 200, answer) : answer));
   const { user } = renderAt(URL_OF[place.what] ?? '/');
@@ -71,7 +86,7 @@ async function openWith(place: Place, answer: Answer, checked: boolean): Promise
   );
   const box = await place.open(user);
   await sent('GET', place.path);
-  return box;
+  return { box, user };
 }
 
 describe('담당 비우기의 작업 몫 (6b 묶음)', () => {
@@ -100,6 +115,17 @@ describe('담당 비우기의 작업 몫 (6b 묶음)', () => {
       });
       expect(text(box)).not.toContain('담당인 열린 문의');
       expect(within(box).queryByRole('checkbox', { name: BOTH })).not.toBeNull();
+    });
+
+    test(`S6B-AC-88 ${place.what} 문의 0건과 작업 2건에서 "${BOTH}"를 체크하고 ${place.go}: clearAssignments=true로 보낸다`, async () => {
+      const { box, user } = await openFor(place, { issues: 0, tasks: 2 }, true);
+
+      await user.click(await found(() => within(box).queryByRole('checkbox', { name: BOTH }), `체크 상자 "${BOTH}"`));
+      await user.click(go(box, place.go));
+
+      await sent(place.method, place.sends);
+      const query = new URL(callsTo(place.method, place.sends).at(-1)?.url ?? 'http://x/').searchParams;
+      expect(query.get('clearAssignments')).toBe('true');
     });
 
     test.each([

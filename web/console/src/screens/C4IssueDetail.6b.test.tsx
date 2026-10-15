@@ -29,6 +29,7 @@ import { answered, closed, route, settle } from '../__tests__/console1a';
 import { ISSUES, issueIn } from '../__tests__/console3';
 import { longDate, metaValueNow, rejectedWith } from '../__tests__/console6a';
 import {
+  DONE_AT,
   TASKS_7,
   actionOf,
   actionsOf,
@@ -44,6 +45,7 @@ import {
   noteLine,
   notePath,
   outerLine,
+  ownText,
   regionName,
   s6b,
   sendNoteButton,
@@ -171,7 +173,7 @@ describe('C-4 작업 구역 (6b 묶음)', () => {
     expect(text(region).includes('아직 작업이 없습니다.'), '"아직 작업이 없습니다."').toBe(empty);
   });
 
-  test('S6B-AC-85 C-4 줄: 상태 단추의 이름, 담당자 또는 "담당 없음", 마감일과 "지남"(서버의 overdue만 본다), "기록 n"(사람 기록), 끝낸 작업은 "완료"와 끝낸 사람이다', async () => {
+  test('S6B-AC-85 C-4 줄: 상태 단추의 이름, 담당자 또는 "담당 없음", 마감일과 "지남"(서버의 overdue만 본다), "기록 n"(사람 기록), 끝낸 작업은 "완료"와 끝낸 사람·시각이다', async () => {
     seed();
     state.issue = issueIn('IN_PROGRESS');
     renderAt(URL_7);
@@ -195,6 +197,7 @@ describe('C-4 작업 구역 (6b 묶음)', () => {
     expect(statusButtonNow(C.title, 'DONE'), '끝낸 작업의 "완료" 단추').toBeNull();
     expect(text(c)).toContain('완료');
     expect(text(c)).toContain(person(ADMIN_PERSON));
+    expect(c.querySelector(`time[datetime="${DONE_AT}"]`), '끝낸 시각(<time datetime>)').not.toBeNull();
     expect(text(c), '날짜가 지났어도 overdue가 false').not.toContain('지남');
     expect(c.querySelector('s, del, strike'), '제목에 줄을 긋지 않는다').toBeNull();
   });
@@ -284,6 +287,60 @@ describe('C-4 작업 구역 (6b 묶음)', () => {
     await opened();
 
     expect(await actionsOf(user, await taskLine(A.title))).toEqual(['고치기', '지우기']);
+  });
+
+  test('S6B-AC-85 C-4 줄 메뉴(상담원): "지우기"는 그 작업을 만든 사람에게만 있다. 최관리가 만든 작업은 "고치기"만, 자기가 만든 작업은 둘 다다', async () => {
+    state.me = { ...AGENT, companies: [{ code: 'ACME', name: '에이크미' }] };
+    seed();
+    state.issue = issueIn('IN_PROGRESS');
+    const { user } = renderAt(URL_7);
+    await opened();
+
+    expect(await actionsOf(user, await taskLine(A.title)), '최관리가 만든 A').toEqual(['고치기']);
+    expect(await actionsOf(user, await taskLine(B.title)), '이상담이 만든 B').toEqual(['고치기', '지우기']);
+  });
+
+  test('S6B-AC-85 C-4 "기록 n"은 지우지 않은 사람 기록만 센다: 지운 기록과 시스템 항목은 빼고, 작업 지우기 확인의 "기록 n개"도 같은 수다', async () => {
+    seed([task({ ...A, notes: [LEE_NOTE, deletedNote({ id: 805 }), A_CHANGE] }), B]);
+    state.issue = issueIn('IN_PROGRESS');
+    const { user } = renderAt(URL_7);
+    await opened();
+
+    const a = await taskLine(A.title);
+    await eventually(() => {
+      expect(/기록 (\d+)/.exec(ownText(a))?.[1], 'A 줄의 "기록 n"').toBe('1');
+    });
+    await user.click(await actionOf(user, a, '지우기'));
+    const box = await found(openDialog, '지우기 확인');
+    expect(text(box)).toContain('이 작업을 지울까요? 기록 1개도 함께 지웁니다.');
+  });
+
+  const manyTasks = (live: number, deleted: number): Task[] => [
+    ...Array.from({ length: live }, (_, i) => (i % 3 === 0 ? doneTask : task)({ id: 100 + i, title: `할 일 ${String(i + 1).padStart(3, '0')}` })),
+    ...Array.from({ length: deleted }, (_, i) => deletedTask({ id: 300 + i })),
+  ];
+
+  test.each([
+    { what: '지우지 않은 작업 30개', live: 30, deleted: 0, blocked: true },
+    { what: '지우지 않은 것 29개와 지운 것 71개(모두 100개)', live: 29, deleted: 71, blocked: true },
+    { what: '지우지 않은 것 29개와 지운 것 70개(모두 99개)', live: 29, deleted: 70, blocked: false },
+  ])('S6B-AC-85 C-4 작업 한도($what): 다 차면 "작업 더하기"를 미리 막고(aria-disabled) "작업은 문의마다 30개까지 만듭니다."를 보인다', async ({ live, deleted, blocked }) => {
+    seed(manyTasks(live, deleted));
+    state.issue = issueIn('IN_PROGRESS');
+    const { user } = renderAt(URL_7);
+    const region = await opened();
+    await taskLine(`할 일 ${String(live).padStart(3, '0')}`);
+    await settle();
+
+    const add = await found(() => within(region).queryByRole('button', { name: '작업 더하기' }), '"작업 더하기"');
+    expect(isBlocked(add), '"작업 더하기"가 막힘').toBe(blocked);
+    expect(text(region).includes(TASK_LIMIT), `"${TASK_LIMIT}"`).toBe(blocked);
+    if (blocked) {
+      await user.click(add);
+      await settle();
+      expect(within(region).queryByRole('textbox', { name: '작업 제목' }), '막힌 "작업 더하기"가 연 칸').toBeNull();
+      expect(callsTo('POST', TASKS_7)).toHaveLength(0);
+    }
   });
 
   test('S6B-AC-85 C-4 제목 고치기: 줄 메뉴의 "고치기"가 지금 제목이 든 "작업 제목" 칸을 열고, Enter로 PATCH에 title만 보낸다', async () => {
@@ -527,6 +584,25 @@ describe('C-4 작업 구역 (6b 묶음)', () => {
     expect(within(region).queryAllByRole('textbox', { name: '기록 남기기' }), '펼친 것은 A 하나').toHaveLength(1);
   });
 
+  test('S6B-AC-85 C-4 지운 작업은 펼쳐지지 않는다: 줄에 펼침 단추가 없고, 줄과 그 안의 단추를 눌러도 기록이 열리지 않는다', async () => {
+    seed([A, D]);
+    state.issue = issueIn('IN_PROGRESS');
+    const { user } = renderAt(URL_7);
+    const region = await opened();
+    await taskLine(A.title);
+    const gone = await taskLine('지워진 작업');
+
+    const toggles = [gone, ...within(gone).queryAllByRole('button')].filter((el) => el.hasAttribute('aria-expanded'));
+    expect(toggles, '지운 작업 줄의 펼침 단추(aria-expanded)').toEqual([]);
+    const words = Array.from(gone.querySelectorAll<HTMLElement>('*')).filter((el) => el.children.length === 0 && text(el).includes('지워진 작업'));
+    for (const el of [gone, ...words, ...within(gone).queryAllByRole('button')]) await user.click(el);
+    await settle();
+
+    expect(noteBoxNow(), '지운 작업의 "기록 남기기"').toBeNull();
+    expect(region.querySelector('[aria-expanded="true"]'), '펼친 것').toBeNull();
+    expect(text(region), '펼치지 않은 A의 기록').not.toContain(LEE_NOTE.content);
+  });
+
   test('S6B-AC-85 C-4 CLOSED: 상태 단추, "작업 더하기", 바꾸기 둘, "기록 남기기", 기록과 줄 메뉴의 "고치기"가 없다. 작업과 기록의 "지우기"는 남는다', async () => {
     seed();
     state.issue = issueIn('CLOSED');
@@ -562,11 +638,11 @@ describe('C-4 작업 구역 (6b 묶음)', () => {
     expect(statusButtonNow(A.title, 'DONE'), '그대로인 "완료"').not.toBeNull();
   });
 
-  test('S6B-AC-85 C-4 TASK_DELETED: 남이 지운 작업을 바꾸려다 400 TASK_DELETED를 받으면 작업 목록을 다시 읽어 흔적 줄을 보인다', async () => {
+  test('S6B-AC-85 C-4 TASK_DELETED: 다른 창에서 지운 작업을 바꾸려다 400 TASK_DELETED를 받으면 작업 목록을 다시 읽어 흔적 줄을 보인다', async () => {
     seed();
     state.issue = issueIn('IN_PROGRESS');
     route('patch', taskPath(A.id), () => {
-      seed([deletedTask({ id: A.id }), B, C, D]);
+      seed([deletedTask({ id: A.id, createdBy: ADMIN_PERSON, deletedBy: ADMIN_PERSON }), B, C, D]);
       return rejectedWith('updateTask', 'TASK_DELETED');
     });
     const { user } = renderAt(URL_7);
@@ -612,7 +688,7 @@ describe('C-4 작업 구역 (6b 묶음)', () => {
   test.each([
     { what: '다른 사람', pick: '정상담', body: { assigneeId: 3 }, shows: '정상담' },
     { what: '담당 없음', pick: '담당 없음', body: { assigneeId: null }, shows: '담당 없음' },
-  ])('S6B-AC-85 C-4 작업 담당자($what): "작업 담당자 바꾸기" 대화상자에서 고르고 "저장"이 PATCH에 assigneeId(정수 또는 null)만 보낸다', async ({ pick, body, shows }) => {
+  ])('S6B-AC-85 C-4 작업 담당자($what): "작업 담당자 바꾸기" 대화상자에서 고르고 "저장"이 PATCH에 assigneeId(정수 또는 null)만 보내며 줄의 담당자 칸이 바뀐다', async ({ pick, body, shows }) => {
     seed();
     state.issue = issueIn('IN_PROGRESS');
     const { user } = renderAt(URL_7);
@@ -626,16 +702,19 @@ describe('C-4 작업 구역 (6b 묶음)', () => {
     await sent('PATCH', taskPath(A.id));
     expect(await lastBody('PATCH', taskPath(A.id))).toEqual(body);
     await closed();
+    // The opened notes may sit inside the line and now hold a system entry naming both people: the
+    // assignee is read from the line itself.
     const line = await taskLine(A.title);
     await eventually(() => {
-      expect(text(line)).toContain(shows);
+      expect(ownText(line), '줄의 담당자 칸').toContain(shows);
+      expect(ownText(line), '줄의 담당자 칸에 앞 담당자').not.toContain(person(AGENT_PERSON));
     });
   });
 
   test.each([
-    { what: '정하기', act: '정하기' as const, type: '2099-12-01', body: { dueDate: '2099-12-01' }, shows: '2099년 12월 1일', gone: null },
-    { what: '지우기', act: '지우기' as const, type: null, body: { dueDate: null }, shows: null, gone: '2026년 10월 20일' },
-  ])('S6B-AC-85 C-4 작업 마감일($what): "작업 마감일 바꾸기"의 날짜 고르기가 PATCH에 dueDate(날짜 또는 null)만 보내고 줄을 다시 그린다', async ({ act, type, body, shows, gone }) => {
+    { what: '정하기', act: '정하기' as const, type: '2099-12-01', body: { dueDate: '2099-12-01' }, shows: '2099년 12월 1일' },
+    { what: '지우기', act: '지우기' as const, type: null, body: { dueDate: null }, shows: null },
+  ])('S6B-AC-85 C-4 작업 마감일($what): "작업 마감일 바꾸기"의 날짜 고르기가 PATCH에 dueDate(날짜 또는 null)만 보내고 줄의 마감일 칸을 다시 그린다', async ({ act, type, body, shows }) => {
     seed();
     state.issue = issueIn('IN_PROGRESS');
     const { user } = renderAt(URL_7);
@@ -650,10 +729,12 @@ describe('C-4 작업 구역 (6b 묶음)', () => {
 
     await sent('PATCH', taskPath(A.id));
     expect(await lastBody('PATCH', taskPath(A.id))).toEqual(body);
+    // The opened notes show the old date in their system entries ("마감일을 2026년 10월 20일로 정했습니다"
+    // and the one this change adds): the date is read from the line itself.
     const line = await taskLine(A.title);
     await eventually(() => {
-      if (shows !== null) expect(text(line)).toContain(shows);
-      if (gone !== null) expect(text(line)).not.toContain(gone);
+      if (shows !== null) expect(ownText(line), '줄의 마감일 칸').toContain(shows);
+      expect(ownText(line), '줄의 마감일 칸에 앞 날짜').not.toContain(longDate('2026-10-20'));
     });
   });
 
@@ -671,7 +752,9 @@ describe('C-4 작업 구역 (6b 묶음)', () => {
 
     await sent('PATCH', taskPath(A.id));
     await found(() => (text(region).includes(PAST_TEXT) ? region : null), `"${PAST_TEXT}"`);
-    expect(text(await taskLine(A.title))).toContain(longDate('2026-10-20'));
+    const line = await taskLine(A.title);
+    expect(ownText(line), '줄의 마감일 칸').toContain(longDate('2026-10-20'));
+    expect(ownText(line), '미리 바꿔 그린 날짜').not.toContain(longDate('2026-01-02'));
   });
 });
 
@@ -793,7 +876,7 @@ describe('C-4 작업의 늦은 답 (6b 묶음)', () => {
 
     const line = await taskLine(A.title);
     await eventually(() => {
-      expect(text(line), '닫힌 뒤 온 성공').toContain('정상담');
+      expect(ownText(line), '닫힌 뒤 온 성공').toContain('정상담');
     });
     expect(openDialog(), '늦은 답이 대화상자를 다시 열지 않는다').toBeNull();
   });
@@ -821,7 +904,11 @@ describe('C-4 작업의 늦은 답 (6b 묶음)', () => {
     await settle();
 
     expect(text(region), '닫힌 뒤 온 실패').not.toContain(FAILED);
-    expect(text(await taskLine(A.title))).toContain('이상담');
+    const line = await taskLine(A.title);
+    await eventually(() => {
+      expect(ownText(line), '줄의 담당자 칸').toContain('이상담');
+      expect(ownText(line), '미리 바꿔 그린 담당자가 되돌아갔다').not.toContain('정상담');
+    });
     await user.click(await found(() => within(region).queryByRole('button', { name: '작업 담당자 바꾸기' }), '"작업 담당자 바꾸기"'));
     const again = await found(assigneeDialog, '다시 연 대화상자');
     expect(within(again).queryAllByRole('alert'), '앞 요청의 오류').toHaveLength(0);
@@ -861,11 +948,14 @@ describe('C-4 작업의 늦은 답 (6b 묶음)', () => {
     const line = await taskLine(A.title);
     if (ok) {
       await eventually(() => {
-        expect(text(line), '닫힌 뒤 온 성공').toContain('2099년 12월 1일');
+        expect(ownText(line), '닫힌 뒤 온 성공').toContain('2099년 12월 1일');
       });
     } else {
       expect(text(region), '닫힌 뒤 온 400').not.toContain(PAST_TEXT);
-      expect(text(line)).toContain(longDate('2026-10-20'));
+      await eventually(() => {
+        expect(ownText(line), '줄의 마감일 칸').toContain(longDate('2026-10-20'));
+        expect(ownText(line), '미리 바꿔 그린 날짜가 되돌아갔다').not.toContain('2099년 12월 1일');
+      });
     }
   });
 
@@ -905,7 +995,7 @@ describe('C-4 작업의 늦은 답 (6b 묶음)', () => {
   test.each([
     { what: '만들기 성공', method: 'post' as const, path: TASKS_7, start: 'create', answer: () => taskResponse(task({ id: 77, title: '늦게 온 작업' }), 'createTask', 201) },
     { what: '만들기 실패', method: 'post' as const, path: TASKS_7, start: 'create', answer: () => errors.internal() },
-    { what: '고치기 성공', method: 'patch' as const, path: taskPath(41), start: 'status', answer: () => taskResponse(doneTask({ ...A, status: 'DONE', doneBy: ADMIN_PERSON, doneAt: '2026-10-09T02:00:00Z' })) },
+    { what: '고치기 성공', method: 'patch' as const, path: taskPath(41), start: 'status', answer: () => taskResponse(doneTask({ ...A, status: 'DONE', doneBy: ADMIN_PERSON, doneAt: '2026-10-09T02:00:00Z', overdue: false })) },
     { what: '고치기 실패', method: 'patch' as const, path: taskPath(41), start: 'status', answer: () => errors.internal() },
   ])('S6B-AC-89 C-4 다른 문의로 옮긴 뒤 온 $what 답은 버린다: 새 문의의 작업 구역이 그대로다', async ({ method, path, start, answer }) => {
     seed();
