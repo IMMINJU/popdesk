@@ -589,6 +589,7 @@ b5a90c30475aa2dbab8aee731ff28560954f857986e138b707625357b2078e6b  web/console/sr
 b15d97f615ddb3e132710e0c7567bccfd9fb735e4936646541f3696a56a53606  web/console/src/app/safeNext.1a.test.ts
 6aeab692d184061b6e79103ba729a57ec91afc9ac95aac91797d1d2493df17da  web/console/src/app/safeNext.behavior.test.ts
 1ede7b4a6ebaafa77396244ed23c4d25d9758ea6ab6cffa20a02f51028d93afc  web/console/src/app/sessionEnd.test.tsx
+6d64d9add5486c40e6649deee844c117909f2c1e324b8dde14b16f9da336083a  web/console/src/app/taskWords.test.ts
 c2a5e632d77ee6134bc1e31137934593b74a1ab6f50ea5390e539c530231dee4  web/console/src/screens/C10MemberList.1a.test.tsx
 be75bfcf2cfe48786765b074aea9f122b77782a29908dd1d773b220fcf8f9802  web/console/src/screens/C10MemberList.clear.test.tsx
 bd84c7601af2865ee7f6496c149ffaa86fede2945c660e07d13303e8141c6adb  web/console/src/screens/C10MemberList.lateLink.test.tsx
