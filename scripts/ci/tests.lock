@@ -198,6 +198,7 @@ e1b3395553f0d8e0c1285a685972557535ee2c2fd581b7a835a02a7ebdd8e9c3  server/src/tes
 4a8f6cd248d5f8e5aa6fd4c246263925de48396cfd2f72bae786a7283207f0f9  server/src/test/java/io/popdesk/e2e/support/StandIns.java
 7ce32cb72f5243d23c3ba9ff144ec197ca16e8833cc2e894a4c5e1b50f88e229  server/src/test/java/io/popdesk/e2e/support/Steps.java
 ba63c49cf719dbab7a67e2d5e5d1e3b6f77040a201c88bfff30a68216aa728de  server/src/test/java/io/popdesk/e2e/support/TestHostsResolverProvider.java
+4a419babd5dad6c2a5aeaeaa53f18945678316bc85a2bdbf9ca7e828e092d49e  server/src/test/java/io/popdesk/helpdesk/DueDatesTest.java
 d0d80b4d646f3f47f936d58719e104310d35f571738181d69881e0ddb3aae943  server/src/test/java/io/popdesk/helpdesk/account/IpRateLimitTest.java
 f242cf87a9ff3908d0514e2d3a439e6fb18a1e56556ec7c27cef87d1040e7222  server/src/test/java/io/popdesk/helpdesk/account/LimitedPasswordEncoderTest.java
 e96e457f6a0c7fed5601c5a9b52bb539796d00ae32acb2e1e71e9d66440df3c6  server/src/test/java/io/popdesk/helpdesk/attachment/AttachmentIdTest.java
@@ -214,6 +215,7 @@ e500e9a5f26f41aa893e3ae74fdcde2f6785680ff7144ed2017f83874a2470a9  server/src/tes
 52d1f2750a273e4e0d538ae61bae4c11de51becfba3f233e8d88ce9a7e982267  server/src/test/java/io/popdesk/helpdesk/label/LabelColorTest.java
 368e1964e9dafb3d64699ec55549a4b9371b4d074807fe84da67bcb34b642338  server/src/test/java/io/popdesk/helpdesk/label/LabelNameTest.java
 2fff15b4c150c092c5f4c0fce02261cb3546c5201ef56d9973d781732c5aa250  server/src/test/java/io/popdesk/helpdesk/photo/PhotoImagesTest.java
+980fd4d9203ada8c7702dd176c01d245709cf201da977cfba6b122effe1445d9  server/src/test/java/io/popdesk/helpdesk/task/TaskChangesTest.java
 21517e5a550060bf6467bdbe7e0823c7da7dfba5622a031d6da86004134b712c  server/src/test/java/io/popdesk/inbox/AdminInboxItemsTest.java
 eba01141ca1667892f907cc462687651bfe23afd66d9a7ae02647802f5d48e8c  server/src/test/java/io/popdesk/inbox/InboxReadTest.java
 6fff2c0683b54a3f40ae540fa60677589c8d4e4503df963506ec68a84c02e740  server/src/test/java/io/popdesk/inbox/InboxRecipientsTest.java
