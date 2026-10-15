@@ -38,7 +38,7 @@
 
 | ID | 규칙 |
 |---|---|
-| STATUS-5 | → `../slices/7a-trash/rules.md`로 옮김(7a 묶음) |
+| STATUS-5 | → `../archive/7a-trash/rules.md`로 옮김(7a 묶음) |
 
 ## 5. 댓글과 멘션 (CMT, MNT)
 
@@ -72,7 +72,7 @@
 
 ## 9. 이력과 휴지통 (HIST, TRASH)
 
-→ HIST-1~3은 `../archive/3-issues/rules.md`로 옮김(3번 묶음). TRASH-1~4는 `../slices/7a-trash/rules.md`로 옮김(7a 묶음).
+→ HIST-1~3은 `../archive/3-issues/rules.md`로 옮김(3번 묶음). TRASH-1~4는 `../archive/7a-trash/rules.md`로 옮김(7a 묶음).
 
 ## 10. 알림 (INBOX, MAIL, HOOK)
 
