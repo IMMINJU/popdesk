@@ -487,5 +487,19 @@ final class BoundaryList {
             tested("DELETE", STAFF_ISSUE + "/links/{otherKey}",
                     LINK_LIST + "unseenPathIsNotRemoved",
                     LINK_LIST + "unseenOrMissingLinkIsNotRemoved",
-                    LINK_CUSTOMER + "customerGetsTheConsoleAnswer"));
+                    LINK_CUSTOMER + "customerGetsTheConsoleAnswer"),
+
+            // Slice 7a (S7A-AC-02, 03, 20): the 4 trash operations, all on the console and for admins only. An admin
+            // sees every customer company. Deleting is an issue path: an issue already in the trash is the 404 of a key
+            // nobody has, like every other issue path. The trash paths reach only issues in the trash, and no customer
+            // company narrows what an admin may list, restore, or purge there.
+            tested("DELETE", STAFF_ISSUE,
+                    "trash.IssueDeleteTest#onlyAdminsDelete",
+                    "boundary.TrashedIssueNotFoundTest#everyIssuePathIsNotFound"),
+            none("GET", "/api/console/trash",
+                    "admins only (checked by boundary.AdminOnlyContractTest), and an admin sees every customer company; the trash is not narrowed by a customer company"),
+            none("POST", "/api/console/trash/{key}/restore",
+                    "admins only (checked by boundary.AdminOnlyContractTest), and an admin sees every customer company; no customer company narrows which issue of the trash an admin may restore"),
+            none("DELETE", "/api/console/trash/{key}",
+                    "admins only (checked by boundary.AdminOnlyContractTest), and an admin sees every customer company; no customer company narrows which issue of the trash an admin may purge"));
 }
