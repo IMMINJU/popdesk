@@ -81,6 +81,17 @@ class LinkInboxTest extends ConnectedAppTest {
         flow.changeStatus(staff, key, "RESOLVED");
     }
 
+    /**
+     * Waits until every mail and webhook queued so far is out: a later mail, and the webhook of a later issue of
+     * A. So mails and webhooks are counted after this, not after a fixed wait.
+     */
+    private void awaitWhatWasQueued(World w) {
+        TalkFlow.awaitALaterMail(fixtures, w.admin());
+        String later = fixtures.fileIssue(w.reporterA(), w.a().code()).key();
+        Wait.until("the webhook of the later issue " + later,
+                () -> webhook().containing(later).isEmpty() ? null : Boolean.TRUE);
+    }
+
     private static List<ReceivedMail> mailNaming(List<ReceivedMail> mails, String text) {
         return mails.stream().filter(m -> (m.subject() + "\n" + m.text()).contains(text)).toList();
     }
@@ -101,6 +112,7 @@ class LinkInboxTest extends ConnectedAppTest {
     void assigneeOfTheLinkedIssueIsTold(Change change) {
         Linked s = linked();
         World w = s.w();
+        awaitWhatWasQueued(w);
         int mailsBefore = mail().messagesTo(s.assignee().email()).size();
         int webhooksBefore = webhook().containing(s.y().key()).size();
 
@@ -128,13 +140,46 @@ class LinkInboxTest extends ConnectedAppTest {
                 .as("items of the assignee of the linked issue, newest first")
                 .containsExactlyElementsOf(kinds.stream().map(k -> expected(k, s.y(), s.x(), titleOf(s.x()))).toList());
         assertThat(linkedItems(s.assignee(), s.x().key())).as("items on the changed issue itself").isEmpty();
-        TalkFlow.awaitALaterMail(fixtures, w.admin());
-        String later = fixtures.fileIssue(w.reporterA(), w.a().code()).key();
-        Wait.until("the webhook of the later issue " + later,
-                () -> webhook().containing(later).isEmpty() ? null : Boolean.TRUE);
+        awaitWhatWasQueued(w);
         assertThat(mail().messagesTo(s.assignee().email())).as("mail to the assignee of the linked issue")
                 .hasSize(mailsBefore);
         assertThat(webhook().containing(s.y().key())).as("webhooks naming the linked issue").hasSize(webhooksBefore);
+    }
+
+    /** A change of the linked issue to a status other than RESOLVED or CLOSED. */
+    enum OtherStatus {
+        TO_IN_PROGRESS,
+        REOPENED_AFTER_READING
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(OtherStatus.class)
+    @DisplayName("S6C-AC-31 a linked issue moving to IN_PROGRESS, or reopened after the item was read, adds no item and leaves the unread count; resolving it afterwards adds one")
+    void otherStatusIsNotTold(OtherStatus change) {
+        Linked s = linked();
+        Session admin = s.w().admin();
+        if (change == OtherStatus.REOPENED_AFTER_READING) {
+            flow.moveTo(admin, s.x().key(), "RESOLVED");
+            List<JsonNode> items = linkedItems(s.assignee(), s.y().key());
+            assertThat(items).as("items after resolving").hasSize(1);
+            TalkFlow.markRead(s.assignee(), items.getFirst().path("id").asLong());
+        }
+        int items = linkedItems(s.assignee(), s.y().key()).size();
+        long unread = TalkFlow.unreadCount(s.assignee());
+
+        if (change == OtherStatus.TO_IN_PROGRESS) {
+            flow.changeStatus(admin, s.x().key(), "IN_PROGRESS");
+        } else {
+            flow.reopen(admin, s.x().key());
+        }
+
+        assertThat(linkedItems(s.assignee(), s.y().key())).as("items after %s", change).hasSize(items);
+        assertThat(TalkFlow.unreadCount(s.assignee())).as("unread count after %s", change).isEqualTo(unread);
+
+        resolve(admin, s.x().key());
+
+        assertThat(linkedItems(s.assignee(), s.y().key())).as("items after resolving then").hasSize(items + 1);
+        assertThat(TalkFlow.unreadCount(s.assignee())).as("unread count after resolving then").isEqualTo(unread + 1);
     }
 
     // S6C-AC-32

@@ -476,7 +476,8 @@ final class BoundaryList {
             // Slice 6c (S6C-AC-02, 11, 12, 40): the 3 link operations, all on the console. Both issues are found
             // within what the caller may see: an issue of a company the agent is not assigned to is the 404 of a
             // key nobody has, for the path and for the other issue, and a link to it is left out of the list.
-            // Customers get what any console path gives them.
+            // Customers get what any console path gives them. Removing has both: unseenPathIsNotRemoved for the
+            // path's issue, unseenOrMissingLinkIsNotRemoved for the other issue.
             tested("GET", STAFF_ISSUE + "/links",
                     LINK_LIST + "unseenLinksAreLeftOut",
                     LINK_CUSTOMER + "customerGetsTheConsoleAnswer"),
@@ -484,6 +485,7 @@ final class BoundaryList {
                     LINK_CREATE + "unseenIssueIsNotFound",
                     LINK_CUSTOMER + "customerGetsTheConsoleAnswer"),
             tested("DELETE", STAFF_ISSUE + "/links/{otherKey}",
+                    LINK_LIST + "unseenPathIsNotRemoved",
                     LINK_LIST + "unseenOrMissingLinkIsNotRemoved",
                     LINK_CUSTOMER + "customerGetsTheConsoleAnswer"));
 }

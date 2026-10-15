@@ -12,6 +12,7 @@ import io.popdesk.issue.IssueFlow;
 import io.popdesk.link.LinkSteps.World;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
+import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.Issue;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -94,26 +95,30 @@ class LinkLimitTest extends BareAppTest {
     // S6C-AC-09
 
     @Test
-    @DisplayName("S6C-AC-09 after 60 link and removal requests by one account within 60 seconds, 201, 204, 404, 400, and 409 alike, the 61st link or removal is 429 RATE_LIMITED with Retry-After before any other check, and changes nothing; another account is not limited")
+    @DisplayName("S6C-AC-09 S6C-AC-14 after 60 link and removal requests by one account within 60 seconds, 201, 204, 404 (also for a path issue of a company it is not assigned to), 400, and 409 alike, the 61st link or removal is 429 RATE_LIMITED with Retry-After before any other check, also on such a path issue, and changes nothing; another account is not limited")
     void sixtyFirstRequestIsLimited() {
         World w = LinkSteps.world(fixtures, flow);
         Issue one = w.issueOfA(fixtures);
         Issue two = w.issueOfA(fixtures);
         Issue three = w.issueOfA(fixtures);
+        Company c = fixtures.createCompany(w.admin());
+        Issue unseen = fixtures.fileIssue(fixtures.customer(w.admin(), c.code()), c.code());
         LinkSteps.nextWindow(clock);
 
         LinkSteps.link(w.linker(), one.key(), two.key(), RELATED);
         for (int i = 0; i < 9; i++) {
             LinkSteps.createRequest(w.linker(), one.key(), two.key(), RELATED).expect(409);
         }
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 5; i++) {
             LinkSteps.createRequest(w.linker(), one.key(), NO_KEY, RELATED).expect(404);
+            LinkSteps.createRequest(w.linker(), unseen.key(), one.key(), RELATED).expect(404);
         }
         for (int i = 0; i < 10; i++) {
             LinkSteps.createRequest(w.linker(), one.key(), one.key(), RELATED).expect(400);
         }
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 5; i++) {
             LinkSteps.deleteRequest(w.linker(), one.key(), three.key()).expect(404);
+            LinkSteps.deleteRequest(w.linker(), unseen.key(), one.key()).expect(404);
         }
         for (int i = 0; i < 10; i++) {
             LinkSteps.unlink(w.linker(), one.key(), two.key());
@@ -123,7 +128,9 @@ class LinkLimitTest extends BareAppTest {
         List<ApiResponse> limited = List.of(
                 LinkSteps.createRequest(w.linker(), one.key(), three.key(), RELATED).send(),
                 LinkSteps.createRequest(w.linker(), one.key(), NO_KEY, "WRONG").send(),
-                LinkSteps.deleteRequest(w.linker(), one.key(), two.key()).send());
+                LinkSteps.createRequest(w.linker(), unseen.key(), one.key(), RELATED).send(),
+                LinkSteps.deleteRequest(w.linker(), one.key(), two.key()).send(),
+                LinkSteps.deleteRequest(w.linker(), unseen.key(), two.key()).send());
 
         for (ApiResponse answer : limited) {
             assertRefused(answer, 429, "RATE_LIMITED");
@@ -131,6 +138,7 @@ class LinkLimitTest extends BareAppTest {
         }
         assertThat(described(w.admin(), one.key())).as("links after the limited requests")
                 .containsExactly(RELATED + " " + two.key());
+        assertThat(described(w.admin(), unseen.key())).as("links of the issue the linker cannot see").isEmpty();
         LinkSteps.link(w.agentOfA(), one.key(), three.key(), RELATED);
         LinkSteps.nextWindow(clock);
         LinkSteps.unlink(w.linker(), one.key(), two.key());

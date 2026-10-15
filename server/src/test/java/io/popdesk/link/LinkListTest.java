@@ -101,6 +101,36 @@ class LinkListTest extends BareAppTest {
         assertThat(described(w.admin(), ofB.key())).as("links of B's issue").containsExactly(RELATED + " " + ofA.key());
     }
 
+    /** Who removes the link through B's issue, and whether B's issue is CLOSED by then. */
+    enum UnseenPath {
+        AGENT_OF_A,
+        AGENT_OF_A_PATH_CLOSED,
+        UNASSIGNED_AGENT
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(UnseenPath.class)
+    @DisplayName("S6C-AC-02 S6C-AC-11 S6C-AC-14 removing a link through the path of an issue the agent cannot see (DELETE .../{B's issue}/links/{A's issue}) is the 404 of a key nobody has in the path, also when that issue is CLOSED, and the link stays")
+    void unseenPathIsNotRemoved(UnseenPath who) {
+        World w = LinkSteps.world(fixtures, flow);
+        Issue ofA = w.issueOfA(fixtures);
+        Issue ofB = w.issueOfB(fixtures);
+        LinkSteps.link(w.linker(), ofA.key(), ofB.key(), RELATED);
+        if (who == UnseenPath.AGENT_OF_A_PATH_CLOSED) {
+            flow.changeStatus(w.admin(), ofB.key(), "CLOSED");
+        }
+        var caller = who == UnseenPath.UNASSIGNED_AGENT ? w.unassigned() : w.agentOfA();
+
+        ApiResponse answer = LinkSteps.deleteRequest(caller, ofB.key(), ofA.key()).send();
+        ApiResponse nobody = LinkSteps.deleteRequest(caller, NO_KEY, ofA.key()).send();
+
+        assertRefused(answer, 404, "NOT_FOUND");
+        assertThat(answer.text()).as("body of %s, like %s", answer.request(), nobody.request())
+                .isEqualTo(nobody.text());
+        assertThat(described(w.admin(), ofA.key())).as("links of A's issue").containsExactly(RELATED + " " + ofB.key());
+        assertThat(described(w.admin(), ofB.key())).as("links of B's issue").containsExactly(RELATED + " " + ofA.key());
+    }
+
     // S6C-AC-12
 
     @Test
