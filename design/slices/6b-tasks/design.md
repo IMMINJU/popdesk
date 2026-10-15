@@ -108,12 +108,12 @@ create index notification_task_idx on notification(task_id) where task_id is not
 ## 5. 알림
 
 - `IssueInbox.add`가 받는 값에 `taskId`를 더한다. 메일 대기 행에도 `task_id`를 적는다. 알림함을 읽을 때 `helpdesk`가 작업 제목을 준다(`InboxFacts`에 메서드 하나, 지운 작업이면 항목이 이미 지워졌다).
-- 메일 `MailText.taskAssigned`: `aboutIssue` 꼴로 `[KEY] 작업을 맡았습니다: {작업 제목}` / `[KEY] Task assigned: {title}`. 본문에 작업 제목, 문의 제목, 링크 `origin/issues/{key}#task-{id}` [소스: `MailText.java:131-171`, `MailSender.java:105`].
+- 메일 `MailText.taskAssigned`: `aboutIssue`는 제목 줄에 문의 제목을 넣으므로 그 변형으로(C-4 탭이 짚음) `[KEY] 작업을 맡았습니다: {작업 제목}` / `[KEY] Task assigned: {title}`. 본문에 작업 제목, 문의 제목, 링크 `origin/issues/{key}#task-{id}` [소스: `MailText.java:131-171`, `MailSender.java:105`].
 - 작업 제목은 메일 제목 줄에 들어가므로 줄바꿈을 지운다(앞 묶음 제목과 같은 처리를 쓴다).
 
 ## 6. 라벨 감사 (6a 몫)
 
-- `AuditAction`에 셋을 더한다. 대상은 `{companyCode, labelId}`, 바뀐 값은 S6B-AC-80의 꼴이다(만들기와 지우기는 값 그대로, 고치기는 바뀐 칸만 `{from, to}`, 바뀐 것이 없으면 남기지 않는다). 감사 항목은 라벨 쓰기와 같은 트랜잭션에 넣는다(앞 묶음의 감사 꼴) [소스: `AuditAction.java:7-42`].
+- `AuditAction`에 셋을 더한다. 대상은 `{type: "COMPANY", code, labelId}`(있는 고객사 대상 꼴, `AuditRepository`의 `targetCode`·`targetType` 필터가 읽는다), 바뀐 값은 S6B-AC-80의 꼴이다(만들기와 지우기는 값 그대로, 고치기는 바뀐 칸만 `{from, to}`, 바뀐 것이 없으면 남기지 않는다). 감사 항목은 라벨 쓰기와 같은 트랜잭션에 넣는다(앞 묶음의 감사 꼴) [소스: `AuditAction.java:7-42`].
 - 콘솔 C-12의 문장은 `auditWords.ts`에 더한다.
 
 ## 7. 웹

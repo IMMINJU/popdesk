@@ -87,7 +87,7 @@
 | ID | 기준 |
 |---|---|
 | S6B-AC-60 | When 상담 쪽이 내 작업을 읽으면, the system shall 자기가 담당인 작업을 모든 문의에 걸쳐 준다. 항목마다 작업(ID, 제목, 상태, 마감일, `overdue`, 끝낸 시각), 문의(키, 제목, 상태), 고객사(코드, 이름)가 있다. 쪽 나누기는 COM-4다. (TASK-7) |
-| S6B-AC-61 | The system shall 내 작업을 `status`로 거른다. 기본은 `OPEN`이고 `DONE`도 받는다. 그 밖의 값은 400 `INVALID_INPUT`(필드 `status`, `UNKNOWN_VALUE`), 모르는 매개변수는 `UNKNOWN_PARAMETER`다. `OPEN`은 마감일이 빠른 순(없는 것은 뒤), 같으면 만든 차례다. `DONE`은 끝낸 시각이 늦은 순이다. 쪽 경계에서 빠지거나 겹치지 않는다. (TASK-7, 5절 11) |
+| S6B-AC-61 | The system shall 내 작업을 `status`로 거른다. 기본은 `OPEN`이고 `DONE`도 받는다. `status`는 한 값이다. 그 밖의 값과 여러 번 준 것은 400 `INVALID_INPUT`(필드 `status`, `UNKNOWN_VALUE`), 모르는 매개변수는 `UNKNOWN_PARAMETER`다. `OPEN`은 마감일이 빠른 순(없는 것은 뒤), 같으면 만든 차례다. `DONE`은 끝낸 시각이 늦은 순이다. 쪽 경계에서 빠지거나 겹치지 않는다. (TASK-7, 5절 11) |
 | S6B-AC-62 | The system shall 내 작업에서 지금 볼 수 없는 문의(배정에서 빠진 고객사)와 `CLOSED` 문의와 지운 작업을 뺀다. (TASK-7, TM-57) |
 | S6B-AC-63 | When 상담 쪽이 내 작업에서 "완료"를 누르면, the system shall 작업 고치기와 같은 요청으로 `DONE`이 된다. (TASK-7) |
 
@@ -109,7 +109,7 @@
 
 | ID | 기준 |
 |---|---|
-| S6B-AC-80 | When 관리자가 라벨을 만들거나 고치거나 지우면, the system shall 감사 로그에 한 항목(`LABEL_CREATED`, `LABEL_UPDATED`, `LABEL_DELETED`)을 남긴다. 대상은 `{companyCode, labelId}`다. 바뀐 값은 만들기 `{name, color}`(값 그대로), 고치기는 바뀐 칸만 `{"from", "to"}`, 지우기는 지운 라벨의 `{name, color}`다. 바뀐 것이 없는 고치기와 거절된 요청은 남기지 않는다. (AUDIT-1, `conventions.md` 감사 해시 사슬, 5절 1) |
+| S6B-AC-80 | When 관리자가 라벨을 만들거나 고치거나 지우면, the system shall 감사 로그에 한 항목(`LABEL_CREATED`, `LABEL_UPDATED`, `LABEL_DELETED`)을 남긴다. 대상은 `{type: "COMPANY", code, labelId}`다(있는 고객사 대상과 같은 꼴이라 감사 로그의 대상 종류·코드 필터에 걸린다, C-4에서 정함). 바뀐 값은 만들기 `{name, color}`(값 그대로), 고치기는 바뀐 칸만 `{"from", "to"}`, 지우기는 지운 라벨의 `{name, color}`다. 바뀐 것이 없는 고치기와 거절된 요청은 남기지 않는다. (AUDIT-1, `conventions.md` 감사 해시 사슬, 5절 1) |
 
 ### 2.11 콘솔 화면
 
