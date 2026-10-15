@@ -22,14 +22,16 @@ public class OpsRepository {
      * An inbox item. {@code kind} is an {@code OpsAlerts.Kind} name, {@code MEMBERSHIP_REQUESTED}, or an
      * {@code IssueInbox.Kind} name. {@code companyCode} is the company a membership request is about,
      * null for the other kinds. {@code issueId}, {@code commentId}, and {@code actorId} are those of an
-     * item about an issue; all null for the items of admins that are about none.
+     * item about an issue; all null for the items of admins that are about none. {@code linkedIssueId} is the
+     * linked issue that changed, of the items {@code LINKED_ISSUE_*} only (S6C-AC-31).
      */
     public record InboxRow(long id, String kind, String companyCode, UUID issueId, Long commentId, Long actorId,
-            Instant createdAt, Instant readAt, Long taskId) {}
+            Instant createdAt, Instant readAt, Long taskId, UUID linkedIssueId) {}
 
     /**
      * Which of an account's items a read is about: every kind or only {@code kinds}, and of the items
-     * about an issue only those whose issue is in {@code issues} (S4-AC-42).
+     * about an issue only those whose issue is in {@code issues} (S4-AC-42), and whose linked issue is
+     * too when they have one (S6C-AC-33).
      *
      * @param kinds the kinds to read; null for every kind
      * @param issues the issues the account may see now
@@ -41,11 +43,13 @@ public class OpsRepository {
          * written as a range of one value on purpose; see {@link OpsRepository#listInbox}.
          */
         static final String SQL = "account_id >= ? and account_id <= ? "
-                + "and (cast(? as text[]) is null or kind = any(?)) and (issue_id is null or issue_id = any(?))";
+                + "and (cast(? as text[]) is null or kind = any(?)) and (issue_id is null or issue_id = any(?)) "
+                + "and (linked_issue_id is null or linked_issue_id = any(?))";
 
         Object[] params() {
             String[] names = kinds == null ? null : kinds.toArray(String[]::new);
-            return new Object[] {accountId, accountId, names, names, issues.toArray(UUID[]::new)};
+            UUID[] seen = issues.toArray(UUID[]::new);
+            return new Object[] {accountId, accountId, names, names, seen, seen};
         }
     }
 
@@ -101,15 +105,16 @@ public class OpsRepository {
     }
 
     /**
-     * The issues the account's items of these kinds are about, each once; with {@code unreadOnly}, those
-     * of its unread items only. Null {@code kinds} is every kind.
+     * The issues the account's items of these kinds are about, and their linked issues, each once; with
+     * {@code unreadOnly}, those of its unread items only. Null {@code kinds} is every kind.
      */
     List<UUID> listInboxIssues(long accountId, Collection<String> kinds, boolean unreadOnly) {
         String[] names = kinds == null ? null : kinds.toArray(String[]::new);
-        return jdbc.sql("select distinct issue_id from notification where account_id = ? and issue_id is not null "
-                        + "and (cast(? as text[]) is null or kind = any(?))"
-                        + (unreadOnly ? " and read_at is null" : ""))
-                .params(accountId, names, names).query(UUID.class).list();
+        String items = "from notification where account_id = ? and (cast(? as text[]) is null or kind = any(?))"
+                + (unreadOnly ? " and read_at is null" : "");
+        return jdbc.sql("select issue_id " + items + " and issue_id is not null "
+                        + "union select linked_issue_id " + items + " and linked_issue_id is not null")
+                .params(accountId, names, names, accountId, names, names).query(UUID.class).list();
     }
 
     /**
@@ -123,8 +128,8 @@ public class OpsRepository {
      * {@code (account_id, id)} gives the order, read backward, or the account's rows are sorted.
      */
     List<InboxRow> listInbox(Shown shown, long offset, int limit) {
-        return jdbc.sql("select id, kind, company_code, issue_id, comment_id, actor_id, created_at, read_at, task_id "
-                        + "from notification where " + Shown.SQL
+        return jdbc.sql("select id, kind, company_code, issue_id, comment_id, actor_id, created_at, read_at, task_id, "
+                        + "linked_issue_id from notification where " + Shown.SQL
                         + " order by account_id desc, id desc offset ? limit ?")
                 .params(with(shown.params(), offset, limit)).query(OpsRepository::inbox).list();
     }
@@ -168,6 +173,21 @@ public class OpsRepository {
         jdbc.sql("delete from notification where task_id = ?").param(taskId).update();
     }
 
+    /**
+     * An item about the account's issue and a linked issue that changed (S6C-AC-31), unless the account has
+     * an unread item of the same kind about the same two issues (S6C-AC-35).
+     */
+    void insertInboxAboutLinkedIssue(long accountId, String kind, UUID issueId, UUID linkedIssueId, long actorId,
+            Instant now) {
+        jdbc.sql("insert into notification (tenant_id, account_id, kind, issue_id, linked_issue_id, actor_id, "
+                        + "created_at) select 1, ?, ?, ?, ?, ?, ? where not exists (select 1 from notification "
+                        + "where account_id = ? and kind = ? and issue_id = ? and linked_issue_id = ? "
+                        + "and read_at is null)")
+                .params(accountId, kind, issueId, linkedIssueId, actorId, Timestamp.from(now), accountId, kind,
+                        issueId, linkedIssueId)
+                .update();
+    }
+
     /** Deletes the account's unread items of this kind about the comment. */
     void deleteUnreadInbox(long commentId, long accountId, String kind) {
         jdbc.sql("delete from notification where comment_id = ? and account_id = ? and kind = ? "
@@ -203,7 +223,8 @@ public class OpsRepository {
         return new InboxRow(rs.getLong("id"), rs.getString("kind"), rs.getString("company_code"),
                 rs.getObject("issue_id", UUID.class), rs.getObject("comment_id", Long.class),
                 rs.getObject("actor_id", Long.class), instant(rs.getTimestamp("created_at")),
-                instant(rs.getTimestamp("read_at")), rs.getObject("task_id", Long.class));
+                instant(rs.getTimestamp("read_at")), rs.getObject("task_id", Long.class),
+                rs.getObject("linked_issue_id", UUID.class));
     }
 
     private static Object[] with(Object[] first, Object... more) {

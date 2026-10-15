@@ -104,13 +104,20 @@ class ConsoleIssueController {
                 : person(person.accountId(), person.name(), person.role(), person.photoUpdatedAt());
     }
 
-    /** An assignee change names people; every other change gives its values as text (S3-AC-64). */
+    /**
+     * An assignee change names people, a link change links (S6C-AC-21); every other change gives its values
+     * as text (S3-AC-64).
+     */
     private static IssueHistoryEntry entry(HistoryRow row) {
         return new IssueHistoryEntry(row.id(), IssueHistoryKind.valueOf(row.kind()), row.field(), row.oldValue(),
                 row.newValue(), person(row.oldPerson()), person(row.newPerson()),
                 new IssueHistoryActor(row.actorId(), row.actorName(), row.actorRole(), utc(row.actorPhotoUpdatedAt())),
-                utc(row.createdAt()),
-                null, null); // oldLink, newLink: null until slice 6c writes LINK entries (S6C-AC-21).
+                utc(row.createdAt()), link(row.oldLink()), link(row.newLink()));
+    }
+
+    private static IssueHistoryLink link(IssueHistoryRepository.HistoryLink link) {
+        return link == null ? null
+                : new IssueHistoryLink(IssueLinkType.valueOf(link.type().name()), new IssueRef(link.key(), link.title()));
     }
 
     static OffsetDateTime utc(Instant instant) {

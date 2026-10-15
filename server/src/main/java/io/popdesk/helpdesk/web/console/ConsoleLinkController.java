@@ -1,6 +1,9 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.link.LinkRepository.LinkRow;
+import io.popdesk.helpdesk.link.LinkService;
+import io.popdesk.helpdesk.link.LinkService.LinkView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,6 +36,22 @@ class ConsoleLinkController {
     static final String UNCHANGED = "Neither issue's `version` nor `updatedAt` changes (S6C-AC-23), nor its status "
             + "(S6C-AC-30). Both issues' histories get one `LINK` entry each (S6C-AC-20).";
 
+    private final LinkService links;
+
+    ConsoleLinkController(LinkService links) {
+        this.links = links;
+    }
+
+    private static IssueLink link(LinkView view) {
+        LinkRow row = view.row();
+        return new IssueLink(IssueLinkType.valueOf(view.type().name()),
+                new LinkedIssue(row.other().key(), row.other().title(), row.other().status(), row.other().companyCode(),
+                        row.other().companyName()),
+                ConsoleIssueController.person(row.createdBy().accountId(), row.createdBy().name(),
+                        row.createdBy().role(), row.createdBy().photoUpdatedAt()),
+                ConsoleIssueController.utc(row.createdAt()));
+    }
+
     @Operation(operationId = "listIssueLinks", summary = "Links of an issue",
             description = "Only links whose other issue the caller can see, in the order they were made, all at "
                     + "once without pages (S6C-AC-12). Each link's `type` is seen from this issue (S6C-AC-13). "
@@ -42,7 +61,8 @@ class ConsoleLinkController {
     @ApiResponse(responseCode = "404", description = ConsoleIssueController.NOT_VISIBLE)
     @GetMapping("/issues/{key}/links")
     IssueLinks listIssueLinks(@PathVariable String key) {
-        throw new NotImplementedException();
+        return new IssueLinks(links.list(CurrentAccount.get().viewer(), key).stream()
+                .map(ConsoleLinkController::link).toList());
     }
 
     @Operation(operationId = "createIssueLink", summary = "Link an issue to another issue",
@@ -74,7 +94,7 @@ class ConsoleLinkController {
     @PostMapping("/issues/{key}/links")
     @ResponseStatus(HttpStatus.CREATED)
     IssueLink createIssueLink(@PathVariable String key, @RequestBody CreateIssueLinkRequest request) {
-        throw new NotImplementedException();
+        return link(links.create(CurrentAccount.get().viewer(), key, request.issueKey(), request.type()));
     }
 
     @Operation(operationId = "deleteIssueLink", summary = "Remove the link between two issues",
@@ -93,6 +113,6 @@ class ConsoleLinkController {
     @DeleteMapping("/issues/{key}/links/{otherKey}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void deleteIssueLink(@PathVariable String key, @PathVariable String otherKey) {
-        throw new NotImplementedException();
+        links.delete(CurrentAccount.get().viewer(), key, otherKey);
     }
 }

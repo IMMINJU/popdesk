@@ -47,7 +47,12 @@ public class AccountRateLimit {
          * Adding or editing a task, and adding or editing a task note, together (S6B-AC-13). Deleting is
          * not counted.
          */
-        TASK(60);
+        TASK(60),
+        /**
+         * Linking two issues and removing a link, together, also the requests refused with 400, 404, or 409
+         * (S6C-AC-09).
+         */
+        LINK(60);
 
         final int limit;
 
