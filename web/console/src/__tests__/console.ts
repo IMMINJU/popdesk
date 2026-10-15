@@ -470,6 +470,9 @@ const defaultHandlers = [
   // earlier screen tests see an empty 작업 구역. console6b.ts answers with tasks.
   http.get('*/api/console/issues/:key/tasks', () => requireSession() ?? HttpResponse.json<Schemas['IssueTasks']>({ items: [], openCount: 0 })),
   http.get('*/api/console/tasks', () => requireSession() ?? HttpResponse.json(paged<Schemas['MyTask']>([]))),
+  // C-4 asks for the links of the issue (slice 6c): none, so the earlier screen tests see an empty
+  // 연결 구역. console6c.ts answers with links.
+  http.get('*/api/console/issues/:key/links', () => requireSession() ?? HttpResponse.json<Schemas['IssueLinks']>({ items: [] })),
   http.put('*/api/console/companies/:code/agents/:accountId', ({ params }) => {
     const denied = requireSession() ?? unknownCompany(params.code) ?? requireAdmin();
     if (denied) return denied;
