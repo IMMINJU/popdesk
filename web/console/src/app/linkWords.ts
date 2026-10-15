@@ -68,7 +68,7 @@ export function linkChangeText(who: string, oldLink: HistoryLink | null, newLink
 /**
  * The inbox sentence of `LINKED_ISSUE_RESOLVED` and `LINKED_ISSUE_CLOSED` (screens.md 3절).
  *
- * `who` is `inbox.who` with the name of who did it, or `inbox.someone`. `linked` is the issue that
+ * `who` is `inbox.who` with the name of who did it, or `inbox.system`. `linked` is the issue that
  * was resolved or closed, by its key and title now; null (the contract sets it for these kinds)
  * leaves the key and title empty.
  *

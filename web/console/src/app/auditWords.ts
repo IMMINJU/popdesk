@@ -39,7 +39,7 @@ export const KIND_GROUPS: readonly KindGroup[] = [
   {
     key: 'COMPANY',
     name: '고객사',
-    // Slice 6b: a company's labels are in this group (6b-tasks screens.md 4절).
+    // Slice 6b: a company's labels are in this group (6b-tasks screens.md 4절); slice 7a its issues in the trash.
     kinds: {
       COMPANY_CREATED: '고객사 만들기',
       COMPANY_UPDATED: '고객사 고치기',
@@ -47,6 +47,9 @@ export const KIND_GROUPS: readonly KindGroup[] = [
       LABEL_CREATED: '라벨 만들기',
       LABEL_UPDATED: '라벨 고치기',
       LABEL_DELETED: '라벨 지우기',
+      ISSUE_DELETED: '문의 지우기',
+      ISSUE_RESTORED: '문의 복구',
+      ISSUE_PURGED: '문의 영구 삭제',
     },
   },
   {
@@ -99,6 +102,8 @@ export interface Target {
   code?: string;
   /** A label of the company `code` (slice 6b). */
   labelId?: number;
+  /** An issue of the company `code` deleted, restored, or purged (slice 7a). */
+  issueKey?: string;
 }
 
 /** Reads a stored target (a free JSON object); null when it names nothing. */
@@ -109,15 +114,19 @@ export function targetOf(stored: Readonly<Record<string, unknown>> | null): Targ
     ...(typeof stored.accountId === 'number' ? { accountId: stored.accountId } : {}),
     ...(typeof stored.code === 'string' ? { code: stored.code } : {}),
     ...(typeof stored.labelId === 'number' ? { labelId: stored.labelId } : {}),
+    ...(typeof stored.issueKey === 'string' ? { issueKey: stored.issueKey } : {}),
   };
 }
 
-/** "계정 12", "고객사 ACME", "고객사 ACME · 계정 12", "고객사 ACME · 라벨 61", "데이터베이스", "감사 로그". */
+/** "계정 12", "고객사 ACME", "고객사 ACME · 계정 12", "고객사 ACME · 라벨 61", "고객사 ACME · 문의 ACME-7", "데이터베이스", "감사 로그". */
 export function targetWord(target: Target): string {
   const account = target.accountId === undefined ? null : `계정 ${String(target.accountId)}`;
   const company = target.code === undefined ? null : `고객사 ${target.code}`;
   const label = target.labelId === undefined ? null : `라벨 ${String(target.labelId)}`;
-  if (company !== null || account !== null || label !== null) return [company, account, label].filter((part) => part !== null).join(' · ');
+  const issue = target.issueKey === undefined ? null : `문의 ${target.issueKey}`;
+  if (company !== null || account !== null || label !== null || issue !== null) {
+    return [company, account, label, issue].filter((part) => part !== null).join(' · ');
+  }
   if (target.type === 'DATABASE') return '데이터베이스';
   if (target.type === 'AUDIT_LOG') return '감사 로그';
   return target.type;

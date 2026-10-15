@@ -137,9 +137,9 @@ export const en: Record<keyof typeof ko, string> = {
   'inbox.empty': 'No notifications',
   'inbox.emptyPage': 'No notifications on this page',
   'inbox.toFirstPage': 'To page 1',
-  // The console's sentences. `{who}` is `inbox.who` with the name of who did it, or `inbox.someone`.
+  // The console's sentences. `{who}` is `inbox.who` with the name of who did it, or `inbox.system` when popdesk did it.
   'inbox.who': '{name}',
-  'inbox.someone': 'Someone',
+  'inbox.system': 'popdesk',
   'inbox.customerComment': '{who} left a comment',
   'inbox.issueClosed': '{who} closed the issue',
   'inbox.issueReopened': '{who} reopened the issue',
