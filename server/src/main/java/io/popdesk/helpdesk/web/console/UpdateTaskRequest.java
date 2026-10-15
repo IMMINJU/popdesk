@@ -13,7 +13,7 @@ public record UpdateTaskRequest(
                 + "`null` is refused.") JsonNode title,
         @Schema(type = "string", allowableValues = {"OPEN", "DONE"}, description = "`DONE` records who and when; "
                 + "`OPEN` clears both (S6B-AC-06). `null` is refused.") JsonNode status,
-        @Schema(type = "integer", format = "int64", description = "An `ACTIVE` admin, or an `ACTIVE` agent "
+        @Schema(implementation = Long.class, description = "An `ACTIVE` admin, or an `ACTIVE` agent "
                 + "assigned to the issue's company (TASK-6). Checked only when it differs from the current "
                 + "assignee (S6B-AC-04). `null` clears it.", nullable = true) JsonNode assigneeId,
         @Schema(type = "string", format = "date", description = "`YYYY-MM-DD`, today or later in the "

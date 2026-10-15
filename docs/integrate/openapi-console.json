@@ -2287,7 +2287,7 @@
           "assigneeId" : {
             "description" : "An `ACTIVE` admin, or an `ACTIVE` agent assigned to the issue's company (TASK-6). Checked only when it differs from the current assignee (S6B-AC-04). `null` clears it.",
             "format" : "int64",
-            "type" : [ "string", "null" ]
+            "type" : [ "integer", "null" ]
           },
           "dueDate" : {
             "description" : "`YYYY-MM-DD`, today or later in the installation time zone (S6B-AC-05). `null` clears it.",

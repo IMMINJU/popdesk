@@ -2623,7 +2623,7 @@ export interface components {
              * Format: int64
              * @description An `ACTIVE` admin, or an `ACTIVE` agent assigned to the issue's company (TASK-6). Checked only when it differs from the current assignee (S6B-AC-04). `null` clears it.
              */
-            assigneeId?: string | null;
+            assigneeId?: number | null;
             /**
              * Format: date
              * @description `YYYY-MM-DD`, today or later in the installation time zone (S6B-AC-05). `null` clears it.
