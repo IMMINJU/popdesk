@@ -45,6 +45,7 @@ final class BoundaryList {
     private static final String IMAGE = "attachment.ImageReadTest#";
     private static final String LABEL_OF_B = "boundary.LabelBoundaryTest#";
     private static final String LABELS = "label.LabelManageTest#";
+    private static final String TASK_OF_B = "boundary.TaskBoundaryTest#";
 
     static final List<Entry> ENTRIES = List.of(
             // Before sign-in, both hosts
@@ -430,5 +431,39 @@ final class BoundaryList {
                     LABEL_OF_B + "customerGetsTheConsoleAnswer"),
             tested("DELETE", STAFF_ISSUE + "/due-date",
                     LABEL_OF_B + "agentOfACannotLabelAnIssueOfB",
-                    LABEL_OF_B + "customerGetsTheConsoleAnswer"));
+                    LABEL_OF_B + "customerGetsTheConsoleAnswer"),
+
+            // Slice 6b (S6B-AC-40 to 42): the 8 operations it adds, all on the console. A task path finds its
+            // issue within what the caller may see (an agent of A reaches no task of B's issue), and the task and
+            // the note within that issue (a task of B or of another issue, a note of another task, are not found
+            // under A's path). Customers get what any console path gives them. The caller's own tasks are read
+            // within the companies the caller sees (S6B-AC-62).
+            tested("GET", STAFF_ISSUE + "/tasks",
+                    TASK_OF_B + "agentOfACannotReachTasksOfB",
+                    TASK_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("POST", STAFF_ISSUE + "/tasks",
+                    TASK_OF_B + "agentOfACannotReachTasksOfB",
+                    TASK_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("PATCH", STAFF_ISSUE + "/tasks/{id}",
+                    TASK_OF_B + "agentOfACannotReachTasksOfB",
+                    TASK_OF_B + "taskOfAnotherIssueIsNotFound",
+                    TASK_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("DELETE", STAFF_ISSUE + "/tasks/{id}",
+                    TASK_OF_B + "agentOfACannotReachTasksOfB",
+                    TASK_OF_B + "taskOfAnotherIssueIsNotFound",
+                    TASK_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("POST", STAFF_ISSUE + "/tasks/{id}/notes",
+                    TASK_OF_B + "agentOfACannotReachTasksOfB",
+                    TASK_OF_B + "taskOfAnotherIssueIsNotFound",
+                    TASK_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("PATCH", STAFF_ISSUE + "/tasks/{id}/notes/{noteId}",
+                    TASK_OF_B + "agentOfACannotReachTasksOfB",
+                    TASK_OF_B + "noteOfAnotherTaskIsNotFound",
+                    TASK_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("DELETE", STAFF_ISSUE + "/tasks/{id}/notes/{noteId}",
+                    TASK_OF_B + "agentOfACannotReachTasksOfB",
+                    TASK_OF_B + "noteOfAnotherTaskIsNotFound",
+                    TASK_OF_B + "customerGetsTheConsoleAnswer"),
+            tested("GET", "/api/console/tasks",
+                    TASK_OF_B + "customerGetsTheConsoleAnswer"));
 }

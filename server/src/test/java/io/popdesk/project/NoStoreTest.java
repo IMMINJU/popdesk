@@ -157,7 +157,7 @@ class NoStoreTest extends BareAppTest {
                 "No store, read " + Unique.number()));
         fixtures.comment(admin, issue.key(), "No store answer " + Unique.number());
         Map<String, String> values = Map.of("{key}", issue.key(), "{code}", company.code(), "{id}", file.id(),
-                "{accountId}", String.valueOf(agent.accountId()));
+                "{accountId}", String.valueOf(agent.accountId()), "{noteId}", "999999999");
         // A temporary image is read by the account that uploaded it, on its own path (S5-AC-10): each
         // reader gets the ID of an image of their own there, not the ID of the issue's attachment.
         Map<String, String> imageReads = Map.of(
@@ -301,6 +301,7 @@ class NoStoreTest extends BareAppTest {
                 .replace("{key}", "NOSUCH9-1")
                 .replace("{code}", "NOSUCH9")
                 .replace("{accountId}", "999999999")
+                .replace("{noteId}", "999999999")
                 .replace("{id}", "999999999");
         ApiRequest request = client.request(op.method(), path);
         if (Set.of("POST", "PUT", "PATCH").contains(op.method())) {
