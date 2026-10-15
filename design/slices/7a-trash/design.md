@@ -16,6 +16,7 @@
 | 4 | 영구 삭제는 문의 하나를 한 트랜잭션으로 한다. 첨부는 그 안에서 `pending`·`stored`를 모두 `purging`으로 바꾸고 `file_name`과 `comment_id`를 비운다. 커밋한 뒤 파일을 지우고 행을 지운다 | TRASH-3, ATT-10. `attachment.comment_id`가 `comment`를 가리키고(V13, deferred) 파일 지우기가 행의 저장 위치를 읽으므로(`attachments.filePlace`), 행은 커밋 뒤까지 남고 댓글을 가리키지 않아야 한다(C-1~3 검토에서 찾음) [소스: `AttachmentService.purgeOfComment` 474줄, `removeFiles` 495-509줄] |
 | 5 | 정리 작업 둘은 `CleanupJob` 빈이다(`trash-purge` 1시간, `issue-auto-close` 10분) | 앞 정리 작업과 같은 틀이라 기록과 C-18이 저절로 붙는다 [소스: `notification/ops/Housekeeping.java`, `CleanupJobs.java`] |
 | 6 | 시스템이 하는 일의 `Viewer`는 계정 0, 역할 `ADMIN`이다(`Viewer.system()` 같은 이름 하나를 둔다) | 상태 바꾸기의 알림(`statusChanged`)은 `actor.staff()`를 보고, 행을 읽는 데 범위가 든다. 지금 `Viewer`에는 시스템 꼴이 없다(C-1~3 검토에서 찾음) |
+| 7 | 계약에서 `null`을 받는 enum 칸(`IssueHistoryActor.role` 등)은 `enum`에도 `null`을 넣는다. 구현 서버 탭이 `OpenApiConfig`에서 고치고 계약 파일을 다시 만든다(2026-10-16 메인이 정함) | `role`이 `type: ["string", "null"]`인데 `enum`에 `null`이 없어, popdesk 자신(계정 0)이 한 이력의 `role: null`을 웹 계약 검증기가 거부한다. 앞 묶음 견본에는 시스템 행위자가 없어 드러나지 않았다(C-5 웹 탭이 찾음) |
 
 ## 1. 표 (V17)
 
