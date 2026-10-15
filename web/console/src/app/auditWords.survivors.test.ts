@@ -45,7 +45,7 @@ describe('changeLines: 내보내기의 조건', () => {
 
   test('S1B-AC-36 changeLines 조건의 종류: 묶음의 종류가 모두 있을 때만 묶음 이름이다. 차례는 달라도 된다', () => {
     expect(filtered({ action: ['ACCOUNT_LOCKED', 'SIGN_IN_SUCCEEDED', 'SIGN_IN_FAILED'] })).toEqual(['조건: 종류: 로그인 기록']);
-    expect(filtered({ action: ['COMPANY_STATUS_CHANGED', 'COMPANY_CREATED', 'COMPANY_UPDATED'] })).toEqual(['조건: 종류: 고객사']);
+    expect(filtered({ action: ['COMPANY_STATUS_CHANGED', 'LABEL_DELETED', 'COMPANY_CREATED', 'LABEL_CREATED', 'COMPANY_UPDATED', 'LABEL_UPDATED'] })).toEqual(['조건: 종류: 고객사']);
   });
 
   test.each([

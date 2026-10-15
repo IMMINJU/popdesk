@@ -190,7 +190,7 @@ describe('C-15 내 작업 (6b 묶음)', () => {
     expect(pageText()).not.toContain('완료했습니다');
   });
 
-  test('S6B-AC-87 C-15 끝낸 일: "끝낸 일"을 누르면 status=DONE으로 받고 주소에 남는다. 줄에 "완료" 단추가 없고 끝낸 시각 열이 있다', async () => {
+  test('S6B-AC-87 C-15 끝낸 일: "끝낸 일"을 누르면 status=DONE으로 받고 주소에 남는다. 줄에 "완료" 단추가 없고 끝낸 시각 열과 그 시각이 있다', async () => {
     seed();
     const { user } = renderAt(URL_TASKS);
     await table(3);
@@ -202,10 +202,11 @@ describe('C-15 내 작업 (6b 묶음)', () => {
     });
     expect(address().get('status')).toBe('DONE');
     const t = await table(1);
-    await rowWith(FINISHED.title);
+    const finished = await rowWith(FINISHED.title);
     expect(currentViews()).toEqual(['끝낸 일']);
     expect(within(t).queryAllByRole('button', { name: /완료$/ }), '끝낸 일의 "완료"').toEqual([]);
     expect(headers(t).some((h) => h.includes('끝낸')), '끝낸 시각 열').toBe(true);
+    expect(finished.querySelector(`time[datetime="${FINISHED.doneAt ?? ''}"]`), '끝낸 시각(<time datetime>)').not.toBeNull();
 
     await user.click(await view('할 일'));
     await table(3);
