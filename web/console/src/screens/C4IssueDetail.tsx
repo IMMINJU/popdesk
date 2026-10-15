@@ -6,6 +6,7 @@
 // the trace of a deleted comment, and the `#comment-ID` of the address.
 // Slice 6a (6a-labels screens.md 1절) adds the 라벨 and 마감일 lines after 담당자.
 // Slice 6b (6b-tasks screens.md 1절) adds the 작업 구역 between the attachments and the comments.
+// Slice 7a (7a-trash screens.md 1절) adds 문의 지우기 (admins) at the end of the action row.
 import {
   Alert,
   AttachmentList,
@@ -52,13 +53,14 @@ import { CommentEdit, type EditGone } from '../app/CommentEdit';
 import { useCooldown, useFieldErrors, useLeaveGuard, useLive, useLoad } from '../app/hooks';
 import { IssueAssigneeDialog } from '../app/IssueAssigneeDialog';
 import { IssueEdit } from '../app/IssueEdit';
-import { issuesHref, type IssueStatus } from '../app/issueFilters';
+import { issuesHref, MY_ISSUES_HREF, type IssueStatus } from '../app/issueFilters';
 import { IssueHistory } from '../app/IssueHistory';
 import { IssueLinks } from '../app/IssueLinks';
 import { IssueDueLine, IssueLabelsLine } from '../app/IssueLabels';
 import { IssueTasks } from '../app/IssueTasks';
 import { useIssueTasks } from '../app/taskList';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
+import { useLiveNavigate } from '../app/navigate';
 import { t, tf } from '../app/locale';
 import { MentionPicker } from '../app/MentionPicker';
 import { useMentions } from '../app/mentions';
@@ -75,6 +77,9 @@ type Visibility = 'public' | 'internal';
 const LIST_SIZE = 100;
 const ISSUE_CLOSED_TEXT = '문의가 종료되어 댓글을 달 수 없습니다.';
 const CLOSE_TEXT = '이 문의를 종료할까요? 고객은 14일 안에 다시 열 수 있습니다.';
+const TRASH_TITLE = '이 문의를 지울까요?';
+const TRASH_TEXT = '휴지통으로 옮깁니다. 30일 안에는 휴지통에서 복구할 수 있고, 그 뒤에는 영구 삭제됩니다. 고객과 상담원에게 더는 보이지 않습니다.';
+const TRASH_FAILED = '문의를 지우지 못했습니다. 다시 해 보세요.';
 /** The band over the comments when an edit could not be saved any more. */
 const EDIT_GONE_TEXT = { closed: 'comment.editClosed', deleted: 'comment.alreadyDeleted', notFound: 'comment.notFound' } as const;
 const CHANNEL_WORDS: Record<Issue['channel'], string> = { PORTAL: '포털', EMAIL: '메일', PHONE: '전화', OTHER: '그 밖' };
@@ -136,6 +141,7 @@ function IssueDetail(props: { issueKey: string }) {
   const { me } = useSession();
   const toLogin = useToLogin();
   const toast = useToast();
+  const navigate = useLiveNavigate();
 
   const load = useLoad(async (): Promise<Result<Detail>> => {
     const path = { params: { path: { key } } };
@@ -212,6 +218,12 @@ function IssueDetail(props: { issueKey: string }) {
   const [deleteTarget, setDeleteTarget] = useState<Attachment | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [fileBand, setFileBand] = useState<string | null>(null);
+
+  // Slice 7a: 문의 지우기 is asked about first; an answer for a question already closed is dropped.
+  const [trashing, setTrashing] = useState(false);
+  const [trashPending, setTrashPending] = useState(false);
+  const [trashError, setTrashError] = useState<string | undefined>(undefined);
+  const trashAsk = useRef(0);
 
   const detail = load.data;
   const reload = load.reload;
@@ -453,6 +465,41 @@ function IssueDetail(props: { issueKey: string }) {
     }
   };
 
+  // 문의 지우기 (7a) ------------------------------------------------------
+  const closeTrash = () => {
+    trashAsk.current += 1;
+    setTrashing(false);
+    setTrashPending(false);
+    setTrashError(undefined);
+  };
+
+  const confirmTrash = async () => {
+    if (trashPending) return;
+    const mine = trashAsk.current;
+    setTrashPending(true);
+    setTrashError(undefined);
+    const result = await call(api.DELETE('/api/console/issues/{key}', { params: { path: { key } } }));
+    if (!live()) return;
+    if (mine !== trashAsk.current) {
+      // Closed while it was on its way: a success still means the issue is gone, so read it again (404).
+      if (result.ok) void load.reload();
+      return;
+    }
+    if (result.ok) {
+      closeTrash();
+      toast(`${key} 문의를 휴지통으로 옮겼습니다.`);
+      void navigate(MY_ISSUES_HREF);
+    } else if (result.failure.kind === 'notFound') {
+      closeTrash();
+      void load.reload();
+    } else if (result.failure.kind === 'unauthenticated') {
+      toLogin();
+    } else {
+      setTrashPending(false);
+      setTrashError(TRASH_FAILED);
+    }
+  };
+
   // Attachments --------------------------------------------------------
   const replaceUpload = (id: string, patch: Partial<Upload>) => {
     setUploads((current) => current.map((u) => (u.id === id ? { ...u, ...patch } : u)));
@@ -597,6 +644,18 @@ function IssueDetail(props: { issueKey: string }) {
                 }}
               >
                 {t('issueEdit.edit')}
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                variant="quiet"
+                size="sm"
+                blocked={acting !== null}
+                onClick={() => {
+                  setTrashing(true);
+                }}
+              >
+                문의 지우기
               </Button>
             )}
           </div>
@@ -992,6 +1051,21 @@ function IssueDetail(props: { issueKey: string }) {
           void confirmRemove();
         }}
         onCancel={closeRemove}
+      />
+      <ConfirmDialog
+        open={trashing}
+        tone="danger"
+        title={TRASH_TITLE}
+        message={TRASH_TEXT}
+        confirmLabel="지우기"
+        cancelLabel="그만두기"
+        pending={trashPending}
+        pendingLabel="지우는 중…"
+        {...(trashError === undefined ? {} : { error: trashError })}
+        onConfirm={() => {
+          void confirmTrash();
+        }}
+        onCancel={closeTrash}
       />
       <ConfirmDialog
         open={discarding !== null}
