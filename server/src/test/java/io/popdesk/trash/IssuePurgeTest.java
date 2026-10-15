@@ -131,6 +131,8 @@ class IssuePurgeTest extends BareAppTest {
         }
         assertThat(rows.notifications(key)).as("inbox items about the purged issue").isEmpty();
         assertThat(linkedItems(id)).as("linked items about the purged issue on other issues").isZero();
+        // Always true here: the delete already deleted the issue's queue rows (S7A-AC-10), and nothing queues a row
+        // for an issue in the trash. It states the end, not that the purge deletes them.
         assertThat(rows.outbox(key)).as("queue rows of the purged issue").isEmpty();
         assertThat(db.count("select count(*) from issue_idempotency where issue_id = ?", keyedId))
                 .as("Idempotency-Key rows of the purged " + keyed).isZero();
@@ -240,6 +242,32 @@ class IssuePurgeTest extends BareAppTest {
                 assertThat(attachmentRows(file.id())).as("rows of file " + file.id()).isZero();
             }
         });
+    }
+
+    @Test
+    @DisplayName("S7A-AC-33 a purge whose transaction fails at its commit answers 5xx and leaves the files in the storage, their rows, the issue's title, and its trash entry as they were: the files go only after the commit")
+    void failedPurgeLeavesTheFiles() {
+        TrashScene s = TrashScene.build(fixtures, flow, clock, "CONFIRMED");
+        String key = s.key();
+        List<Attachment> files = List.of(s.issueFile(), s.commentFile());
+        TrashSteps.delete(s.admin(), key);
+        JsonNode entry = TrashSteps.entry(s.admin(), key);
+        assertThat(entry).as("trash entry before the purge").isNotNull();
+        Object title = rows.issue(key).get("title");
+        ApiResponse answer;
+
+        // The purge's history entry (TRASH, TRASHED to PURGED) is its last write; the commit fails after it.
+        try (FailedWrite committing = FailedWrite.commit(db, "issue_history", rows.id(key).toString())) {
+            answer = TrashSteps.purgeRequest(s.admin(), key).send();
+        }
+
+        assertThat(answer.status()).as("purge whose commit failed: " + answer.snippet()).isBetween(500, 599);
+        for (Attachment file : files) {
+            assertThat(contentCopies(file.content())).as("content of file " + file.id()).isEqualTo(1);
+            assertThat(attachmentRows(file.id())).as("rows of file " + file.id()).isEqualTo(1);
+        }
+        assertThat(rows.issue(key).get("title")).as("title of the issue").isEqualTo(title);
+        assertThat(TrashSteps.entry(s.admin(), key)).as("trash entry after the failed purge").isEqualTo(entry);
     }
 
     @Test

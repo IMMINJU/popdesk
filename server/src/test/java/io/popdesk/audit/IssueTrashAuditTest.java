@@ -88,8 +88,8 @@ class IssueTrashAuditTest extends BareAppTest {
         for (JsonNode entry : found) {
             assertThat(canonical(entry.path("target"))).as("target of %s", entry)
                     .isEqualTo(canonical(target(code, key)));
-            assertThat(entry.path("changes").isNull() || entry.path("changes").isMissingNode())
-                    .as("changes of %s is null", entry).isTrue();
+            // changes is required in the contract, with the value null: a missing field fails.
+            assertThat(entry.path("changes").isNull()).as("changes of %s is null", entry).isTrue();
             assertThat(entry.path("actor").path("accountId").asLong(-1)).as("actor of %s", entry)
                     .isEqualTo(admin.accountId());
         }

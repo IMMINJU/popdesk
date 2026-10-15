@@ -12,13 +12,20 @@ import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
 import io.popdesk.trash.TrashScene;
 import io.popdesk.trash.TrashSteps;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,6 +33,8 @@ import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * An issue in the trash is 404 on every issue path of both apps, to admins too (S7A-AC-03, TRASH-1, COM-1). The
@@ -144,9 +153,43 @@ class TrashedIssueNotFoundTest extends BareAppTest {
         return body;
     }
 
-    /** The callers of an operation: the reporting customer on the portal; the admin and the agent on the console. */
-    private static List<Session> callers(Entry e, TrashScene s) {
-        return portal(e) ? List.of(s.reporter()) : List.of(s.admin(), s.agent());
+    /**
+     * The console operations whose 403 answer the contract describes as for admins only, written as
+     * {@link Entry#operation()}. The same reading as {@link AdminOnlyContractTest}.
+     */
+    private static Set<String> adminOnly() {
+        Path file = Path.of("..", "docs", "integrate", "openapi-console.json");
+        JsonNode paths;
+        try {
+            paths = JsonMapper.builder().build().readTree(Files.readString(file)).path("paths");
+        } catch (IOException ex) {
+            throw new UncheckedIOException("Could not read " + file.toAbsolutePath(), ex);
+        }
+        Set<String> out = new HashSet<>();
+        for (String path : paths.propertyNames()) {
+            for (String method : paths.path(path).propertyNames()) {
+                String forbidden = paths.path(path).path(method).path("responses").path("403").path("description")
+                        .asString("");
+                if (forbidden.toLowerCase(Locale.ROOT).contains("admins only")) {
+                    out.add(method.toUpperCase(Locale.ROOT) + " " + path);
+                }
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The callers of an operation: the reporting customer on the portal; the admin and the agent on the console.
+     * An operation for admins only (today {@code DELETE /api/console/issues/{key}}) is called by the admin only: the
+     * role is checked before the issue, so an agent gets 403 for any key, a key nobody has too
+     * ({@link AdminOnlyContractTest}), and there is no 404 to compare with. The agent's 403 on the delete is
+     * {@code trash.IssueDeleteTest#onlyAdminsDelete}.
+     */
+    private static List<Session> callers(Entry e, TrashScene s, Set<String> adminOnly) {
+        if (portal(e)) {
+            return List.of(s.reporter());
+        }
+        return adminOnly.contains(e.operation()) ? List.of(s.admin()) : List.of(s.admin(), s.agent());
     }
 
     @Test
@@ -155,13 +198,16 @@ class TrashedIssueNotFoundTest extends BareAppTest {
         TrashScene s = TrashScene.build(fixtures, flow, clock, "IN_PROGRESS");
         long version = flow.version(s.admin(), s.key());
         List<Entry> operations = issueOperations();
+        Set<String> adminOnly = adminOnly();
+        assertThat(adminOnly).as("operations of the contract for admins only")
+                .contains("DELETE /api/console/issues/{key}");
         assertThat(operations.stream().map(Entry::operation))
                 .as("issue operations found in the boundary list")
                 .contains("GET /api/portal/issues/{key}/attachments/{id}", "GET /api/console/issues/{key}/history",
                         "DELETE /api/console/issues/{key}");
         SoftAssertions before = new SoftAssertions();
         for (Entry e : operations.stream().filter(TrashedIssueNotFoundTest::read).toList()) {
-            for (Session caller : callers(e, s)) {
+            for (Session caller : callers(e, s, adminOnly)) {
                 ApiResponse live = request(e, caller, s, s.key(), version).send();
                 before.assertThat(live.status()).as("before the delete: " + live.request() + " -> " + live.snippet())
                         .isBetween(200, 299);
@@ -174,7 +220,7 @@ class TrashedIssueNotFoundTest extends BareAppTest {
         SoftAssertions soft = new SoftAssertions();
         List<String> checked = new ArrayList<>();
         for (Entry e : operations) {
-            for (Session caller : callers(e, s)) {
+            for (Session caller : callers(e, s, adminOnly)) {
                 ApiResponse answer = request(e, caller, s, s.key(), version).send();
                 ApiResponse missing = request(e, caller, s, NO_KEY, version).send();
                 soft.assertThatCode(() -> TrashSteps.assertLikeMissing(answer, missing))

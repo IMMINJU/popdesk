@@ -75,5 +75,17 @@ class TrashPurgeJobTest extends BareAppTest {
         ApiResponse restore = TrashSteps.restoreRequest(admin, key).send();
         assertThat(restore.status()).as("restore after the job: " + restore.snippet()).isEqualTo(404);
         assertThat(restore.errorCode()).as("code of the restore after the job").isEqualTo("NOT_FOUND");
+        // The system's purge leaves no audit entry (S7A-AC-07); the admin's delete of the same issue shows the query
+        // finds the company's entries.
+        assertThat(auditEntries(admin, s.code(), "ISSUE_DELETED")).as("ISSUE_DELETED entries of the company")
+                .isEqualTo(1);
+        assertThat(auditEntries(admin, s.code(), "ISSUE_PURGED")).as("ISSUE_PURGED entries of the company after the "
+                + "job").isZero();
+    }
+
+    /** How many audit entries of {@code action} name the company {@code code} as their target. */
+    private static long auditEntries(Session admin, String code, String action) {
+        return admin.client().get("/api/console/audit-log").query("targetCode", code).query("action", action)
+                .expect(200).jsonLong("totalElements");
     }
 }

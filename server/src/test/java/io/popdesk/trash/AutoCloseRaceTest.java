@@ -29,15 +29,15 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * overlap as {@code acceptance.md} 4절 says: the test holds the issue row {@code FOR UPDATE} on a connection of its own
  * ({@link RowLock}), sends the reopening and waits until it reaches the row, moves the app clock past the 7 days so
  * that {@code issue-auto-close} runs while the reopening has not committed, and lets the row go once the job waits
- * for it too (or a short time passed).
+ * for it too or finished. There is no shorter bound than a job run: the cleanup jobs run one after another on one
+ * thread, so the job may reach this row only after the other jobs and the other resolved issues. A right job waits
+ * for the row or skips it and leaves its run record, so this ends.
  *
  * <p>The reopening reached the row first, so the issue ends {@code RECEIVED}. A job that reads the resolved issues
  * and then writes {@code CLOSED} without its conditions in the UPDATE reads the issue still {@code RESOLVED}, waits
  * behind the reopening, and closes the reopened issue.
  */
 class AutoCloseRaceTest extends BareAppTest {
-
-    private static final Duration HELD_AT_MOST = Duration.ofSeconds(3);
 
     @Autowired
     PostgreSQLContainer postgres;
@@ -80,10 +80,9 @@ class AutoCloseRaceTest extends BareAppTest {
             admin = fixtures.signInAgain(w.admin());
             Session fresh = admin;
             Instant since = due;
-            long heldUntil = System.nanoTime() + HELD_AT_MOST.toNanos();
-            Wait.until("the job waits for the row, finished, or had " + HELD_AT_MOST,
+            Wait.until("the job waits for the row or finished", TrashJobs.RUN,
                     () -> lock.waitingForALock() >= 2 || TrashJobs.run(fresh, TrashJobs.AUTO_CLOSE, since) != null
-                            || System.nanoTime() > heldUntil ? Boolean.TRUE : null);
+                            ? Boolean.TRUE : null);
             lock.release();
             reopening = Concurrently.finish(reopen, "the reopening");
         }
