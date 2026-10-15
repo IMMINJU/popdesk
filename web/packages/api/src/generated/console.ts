@@ -915,6 +915,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/console/issues/{key}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tasks of an issue
+         * @description Every task of the issue in the order they were made, each with its notes and changes oldest first, all at once (S6B-AC-24). A deleted task stays in its place as a trace (S6B-AC-10). Also on a `CLOSED` issue.
+         */
+        get: operations["listIssueTasks"];
+        put?: never;
+        /**
+         * Add a task to an issue
+         * @description The task is `OPEN` (S6B-AC-01). An assignee other than the caller gets an inbox item `TASK_ASSIGNED` and an email (S6B-AC-33). An issue has at most 30 tasks that are not deleted, and 100 with the deleted ones (S6B-AC-08). The issue's `version` does not change and its history gets no entry (S6B-AC-31).
+         */
+        post: operations["createTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/issues/{key}/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a task
+         * @description The task's creator or an admin may delete, on a `CLOSED` issue too (S6B-AC-10, S6B-AC-50). The list keeps a trace: the title, assignee, and due date are cleared and `deleted`, `deletedAt`, and `deletedBy` are set (COM-7). The task's notes are deleted with it and its changes lose their values. Inbox items about the task are deleted (S6B-AC-36). Deleting a deleted task again is 204 too and changes nothing.
+         */
+        delete: operations["deleteTask"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a task's title, status, assignee, or due date
+         * @description A field left out keeps its value; `null` clears the assignee and the due date (S6B-AC-03). Anyone of the staff who sees the issue may change any task. Each field that changed adds one `CHANGE` entry to the task's notes; a field sent with the value it has adds none (S6B-AC-30). A new assignee other than the caller gets an inbox item `TASK_ASSIGNED` and an email (S6B-AC-33). The task has no `version`: the later request wins. The issue's `version` does not change (S6B-AC-31).
+         */
+        patch: operations["updateTask"];
+        trace?: never;
+    };
+    "/api/console/issues/{key}/tasks/{id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a note to a task
+         * @description Anyone of the staff who sees the issue (S6B-AC-20). A task has at most 100 notes that are not deleted, and 1,000 entries with the deleted notes and the changes (S6B-AC-23). Nobody is told (S6B-AC-35).
+         */
+        post: operations["createTaskNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/issues/{key}/tasks/{id}/notes/{noteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a task note
+         * @description The author or an admin may delete, on a `CLOSED` issue too (S6B-AC-22, S6B-AC-50). The list keeps a trace: `content` is emptied and `deleted`, `deletedAt`, and `deletedBy` are set (COM-7). Deleting a deleted note again is 204 too and changes nothing. A `CHANGE` entry cannot be deleted (S6B-AC-32).
+         */
+        delete: operations["deleteTaskNote"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit the caller's own task note
+         * @description Only the author edits, an admin neither (S6B-AC-21). A new `content` sets `editedAt`. A `CHANGE` entry cannot be edited (S6B-AC-32).
+         */
+        patch: operations["updateTaskNote"];
+        trace?: never;
+    };
     "/api/console/me": {
         parameters: {
             query?: never;
@@ -1217,6 +1309,26 @@ export interface paths {
          * @description Sends one email to the caller's own address, in a sandbox to the sandbox address, within the request and without the outbox, and says what the SMTP server answered (S4B-AC-22). A server that refuses or cannot be reached is 200 with `ok` false, never a 5xx (S4B-AC-23). The email counts toward the 50 an hour one address gets (S4B-AC-13). Leaves an audit entry `TEST_MAIL_SENT` whether it worked or not (S4B-AC-27). The request can take as long as the SMTP timeouts.
          */
         post: operations["sendTestMail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's own tasks
+         * @description Tasks whose assignee is the caller, across every issue the caller can see now. Tasks of `CLOSED` issues, of issues of a company the caller is no longer assigned to, and deleted tasks are left out (S6B-AC-60, S6B-AC-62). `OPEN`: earliest due date first, tasks without one last, then in the order they were made. `DONE`: the most recently done first (S6B-AC-61). Pages neither repeat nor miss a task.
+         */
+        get: operations["listMyTasks"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1666,6 +1778,20 @@ export interface components {
             /** @description 1 to 30 characters after the whitespace around it is removed and the text is put in Unicode NFC. Unique in the company whatever the case (S6A-AC-02, S6A-AC-03). */
             name: string;
         };
+        CreateTaskRequest: {
+            /**
+             * Format: int64
+             * @description An `ACTIVE` admin, or an `ACTIVE` agent assigned to the issue's company, as for the issue's assignee (TASK-6, S6B-AC-04). Left out or `null`: nobody.
+             */
+            assigneeId?: number | null;
+            /**
+             * Format: date
+             * @description `YYYY-MM-DD`, today or later in the installation time zone, by the rules of the issue's due date (S6B-AC-05). Left out or `null`: none.
+             */
+            dueDate?: string | null;
+            /** @description 1 to 100 characters after the whitespace around it is removed (S6B-AC-02). */
+            title: string;
+        };
         FailedDelivery: {
             /**
              * Format: int64
@@ -1823,6 +1949,11 @@ export interface components {
             key: string;
             /** @description Labels of the issue, in name order whatever the case (S6A-AC-50). Empty without labels. */
             labels: components["schemas"]["LabelRef"][];
+            /**
+             * Format: int64
+             * @description Tasks of the issue that are `OPEN` and not deleted, also on a `CLOSED` issue (S6B-AC-70). 0 without tasks.
+             */
+            openTaskCount: number;
             /** @description The due date is before today in the installation time zone (S6A-AC-35). `false` without a due date. */
             overdue: boolean;
             /** @enum {string} */
@@ -1832,6 +1963,15 @@ export interface components {
             /** @enum {string} */
             status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
             title: string;
+        };
+        IssueTasks: {
+            /** @description In the order they were made, deleted ones as traces in their place. */
+            items: components["schemas"]["Task"][];
+            /**
+             * Format: int64
+             * @description Tasks that are `OPEN` and not deleted, also on a `CLOSED` issue.
+             */
+            openCount: number;
         };
         Label: {
             /** @description `#RRGGBB` in capital letters, for example `#808080`. */
@@ -1896,6 +2036,28 @@ export interface components {
         MentionCandidates: {
             items: components["schemas"]["Person"][];
         };
+        MyTask: {
+            companyCode: string;
+            companyName: string;
+            /**
+             * Format: date-time
+             * @description When the task became `DONE`; null while it is `OPEN`.
+             */
+            doneAt: string | null;
+            /**
+             * Format: date
+             * @description `YYYY-MM-DD`; null without a due date.
+             */
+            dueDate: string | null;
+            /** Format: int64 */
+            id: number;
+            issue: components["schemas"]["TaskIssue"];
+            /** @description The task is `OPEN` and its due date is before today in the installation time zone (S6B-AC-07). */
+            overdue: boolean;
+            /** @enum {string} */
+            status: "OPEN" | "DONE";
+            title: string;
+        };
         Notification: {
             /** @description Who did it; null for an item about no issue. */
             actor: components["schemas"]["NotificationActor"] | null;
@@ -1913,12 +2075,14 @@ export interface components {
             /** @description The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, and `MEMBERSHIP_REQUESTED` (S4-AC-40). */
             issue: components["schemas"]["NotificationIssue"] | null;
             /** @enum {string} */
-            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MAIL_STALLED" | "WEBHOOK_STALLED" | "AUDIT_FORWARD_STALLED" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED";
+            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MAIL_STALLED" | "WEBHOOK_STALLED" | "AUDIT_FORWARD_STALLED" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED" | "TASK_ASSIGNED";
             /**
              * Format: date-time
              * @description When the caller marked it read.
              */
             readAt: string | null;
+            /** @description The task a `TASK_ASSIGNED` item is about, with its title as it is now; null for the other kinds (S6B-AC-33). Deleting the task deletes its items (S6B-AC-36). */
+            task: components["schemas"]["NotificationTask"] | null;
         };
         NotificationActor: {
             /** Format: int64 */
@@ -1937,12 +2101,23 @@ export interface components {
             /** @description The title as it is now, not as it was when the item was made (INBOX-1). */
             title: string;
         };
+        NotificationTask: {
+            /** Format: int64 */
+            id: number;
+            /** @description The title as it is now, not as it was when the item was made. */
+            title: string;
+        };
         OpenAssignments: {
             /**
              * Format: int64
              * @description Issues that are not `CLOSED` and have this account as assignee.
              */
             issues: number;
+            /**
+             * Format: int64
+             * @description Tasks that are `OPEN`, not deleted, on issues that are not `CLOSED`, and have this account as assignee; for an agent taken off a company, only tasks of that company's issues (S6B-AC-75).
+             */
+            tasks: number;
         };
         PagedAccount: {
             items: components["schemas"]["Account"][];
@@ -2099,6 +2274,23 @@ export interface components {
         };
         PagedIssueSummary: {
             items: components["schemas"]["IssueSummary"][];
+            /**
+             * Format: int32
+             * @description Page number, starting at 1.
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Items per page, 1 to 100.
+             */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
+        };
+        PagedMyTask: {
+            items: components["schemas"]["MyTask"][];
             /**
              * Format: int32
              * @description Page number, starting at 1.
@@ -2271,6 +2463,91 @@ export interface components {
             sandboxMailToSet: boolean;
             webhook: components["schemas"]["ChannelStatus"];
         };
+        Task: {
+            /** @description Null when nobody is assigned, and once the task is deleted. */
+            assignee: components["schemas"]["Person"] | null;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: components["schemas"]["Person"];
+            deleted: boolean;
+            /** Format: date-time */
+            deletedAt: string | null;
+            /** @description The creator, or an admin (TASK-2). */
+            deletedBy: components["schemas"]["Person"] | null;
+            /**
+             * Format: date-time
+             * @description When the task became `DONE`; null while it is `OPEN` (S6B-AC-06).
+             */
+            doneAt: string | null;
+            /** @description Who made the task `DONE`; null while it is `OPEN` (S6B-AC-06). */
+            doneBy: components["schemas"]["Person"] | null;
+            /**
+             * Format: date
+             * @description `YYYY-MM-DD`; null without a due date, and once the task is deleted (TASK-6).
+             */
+            dueDate: string | null;
+            /**
+             * Format: int64
+             * @description Tasks of an issue are in the order of their IDs, the order they were made (S6B-AC-24).
+             */
+            id: number;
+            /** @description Notes and changes, oldest first (S6B-AC-24). Empty once the task is deleted (S6B-AC-10). */
+            notes: components["schemas"]["TaskNote"][];
+            /** @description The task is `OPEN` and its due date is before today in the installation time zone (S6B-AC-07). `false` for a `DONE` task, without a due date, and once the task is deleted. */
+            overdue: boolean;
+            /** @enum {string} */
+            status: "OPEN" | "DONE";
+            /** @description 1 to 100 characters. An empty string once the task is deleted (S6B-AC-10). */
+            title: string;
+        };
+        TaskIssue: {
+            /** @description `{company code}-{number}`, for example `ACME-7`. */
+            key: string;
+            /** @enum {string} */
+            status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+            /** @description The title as it is now. */
+            title: string;
+        };
+        TaskNote: {
+            /** @description Who wrote the note, or who made the change. */
+            author: components["schemas"]["Person"];
+            /** @description The note as written: plain text, 1 to 4,000 characters; line breaks are kept. An empty string once the note is deleted (S6B-AC-22), and always for `CHANGE`. */
+            content: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description The note was deleted (S6B-AC-22). Always `false` for `CHANGE`. */
+            deleted: boolean;
+            /** Format: date-time */
+            deletedAt: string | null;
+            /** @description The author, or an admin (TASK-3). */
+            deletedBy: components["schemas"]["Person"] | null;
+            /**
+             * Format: date-time
+             * @description When the author last changed the note; null when it never changed (S6B-AC-21). Always null for `CHANGE`.
+             */
+            editedAt: string | null;
+            /** @description For `CHANGE`: the field that changed, `STATUS`, `ASSIGNEE`, `DUE_DATE`, or `TITLE` (S6B-AC-30). Later releases may add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `NOTE`. */
+            field: string | null;
+            /**
+             * Format: int64
+             * @description Entries of a task are in the order of their IDs (S6B-AC-24).
+             */
+            id: number;
+            /** @enum {string} */
+            kind: "NOTE" | "CHANGE";
+            /** @description For `ASSIGNEE`: the assignee after; null when it was cleared. Null for every other field. */
+            newPerson: components["schemas"]["Person"] | null;
+            /** @description For `CHANGE`, the value after, like `oldValue`. Null when the value was cleared. */
+            newValue: string | null;
+            /** @description For `ASSIGNEE`: the assignee before, by the account's current name; null when there was none. Null for every other field. */
+            oldPerson: components["schemas"]["Person"] | null;
+            /** @description For `CHANGE`, the value before: for `STATUS` the status name, for `DUE_DATE` the date `YYYY-MM-DD`, for `TITLE` the title as it was. Null for `ASSIGNEE`, for `NOTE`, and when there was no value. */
+            oldValue: string | null;
+        };
+        TaskNoteRequest: {
+            /** @description Plain text, 1 to 4,000 characters; only whitespace is refused (S6B-AC-20). Line breaks are kept. */
+            content: string;
+        };
         TemporaryImage: {
             /**
              * Format: uuid
@@ -2340,6 +2617,25 @@ export interface components {
             locale?: "ko" | "en";
             /** @description 1 to 50 characters. */
             name?: string;
+        };
+        UpdateTaskRequest: {
+            /**
+             * Format: int64
+             * @description An `ACTIVE` admin, or an `ACTIVE` agent assigned to the issue's company (TASK-6). Checked only when it differs from the current assignee (S6B-AC-04). `null` clears it.
+             */
+            assigneeId?: string | null;
+            /**
+             * Format: date
+             * @description `YYYY-MM-DD`, today or later in the installation time zone (S6B-AC-05). `null` clears it.
+             */
+            dueDate?: string | null;
+            /**
+             * @description `DONE` records who and when; `OPEN` clears both (S6B-AC-06). `null` is refused.
+             * @enum {string}
+             */
+            status?: "OPEN" | "DONE";
+            /** @description 1 to 100 characters after the whitespace around it is removed. `null` is refused. */
+            title?: string;
         };
     };
     responses: never;
@@ -2771,7 +3067,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -2839,7 +3135,7 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -2919,7 +3215,7 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -5984,6 +6280,431 @@ export interface operations {
             };
         };
     };
+    listIssueTasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The tasks and the number of open ones. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueTasks"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `title` missing (`REQUIRED`), only whitespace (`BLANK`), or over 100 characters (`TOO_LONG`, S6B-AC-02); `assigneeId` not an account that can be the assignee (`UNKNOWN_VALUE`, one answer whatever the reason, S6B-AC-04); `dueDate` not a date `YYYY-MM-DD` (`INVALID_FORMAT`) or before today (`OUT_OF_RANGE`, S6B-AC-05); `fields` lists all. `ISSUE_CLOSED`: the issue is `CLOSED`; nothing changed (S6B-AC-50). `TASK_LIMIT_EXCEEDED`: the issue has 30 tasks, or 100 with the deleted ones, already (S6B-AC-08). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 60 tasks and notes added or edited in 60 seconds, counted together; deleting is not counted (S6B-AC-13, COM-8). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: an agent who did not make the task (S6B-AC-11). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue or task, the caller cannot see the issue (S6B-AC-40), or the task belongs to another issue (S6B-AC-41). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description The task as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `title` only whitespace (`BLANK`), over 100 characters (`TOO_LONG`), or `null` (`REQUIRED`); `status` unknown (`UNKNOWN_VALUE`) or `null` (`REQUIRED`); `assigneeId` different from the current assignee and not an account that can be the assignee (`UNKNOWN_VALUE`, S6B-AC-04); `dueDate` not a date `YYYY-MM-DD` (`INVALID_FORMAT`) or before today (`OUT_OF_RANGE`), also when it is the date the task has already (S6B-AC-05); `fields` lists all. `TASK_DELETED`: the task is deleted; nothing changed (S6B-AC-12). `ISSUE_CLOSED`: the issue is `CLOSED`; nothing changed (S6B-AC-50). `TASK_NOTE_LIMIT_EXCEEDED`: the task has 1,000 entries already, deleted notes and changes included; nothing changed (S6B-AC-23). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue or task, the caller cannot see the issue (S6B-AC-40), or the task belongs to another issue (S6B-AC-41). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 60 tasks and notes added or edited in 60 seconds, counted together; deleting is not counted (S6B-AC-13, COM-8). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createTaskNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskNoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskNote"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `content` missing (`REQUIRED`), only whitespace (`BLANK`), or over 4,000 characters (`TOO_LONG`, S6B-AC-20). `TASK_DELETED`: the task is deleted; nothing changed (S6B-AC-12). `ISSUE_CLOSED`: the issue is `CLOSED`; nothing changed (S6B-AC-50). `TASK_NOTE_LIMIT_EXCEEDED`: the task has 100 notes that are not deleted, or 1,000 entries, already (S6B-AC-23). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue or task, the caller cannot see the issue (S6B-AC-40), or the task belongs to another issue (S6B-AC-41). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 60 tasks and notes added or edited in 60 seconds, counted together; deleting is not counted (S6B-AC-13, COM-8). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteTaskNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                id: number;
+                noteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: an agent who did not write the note, or a `CHANGE` entry (S6B-AC-22, S6B-AC-32). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, task, or note, the caller cannot see the issue (S6B-AC-40), or the task or the note belongs to another issue or task (S6B-AC-41). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateTaskNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                id: number;
+                noteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskNoteRequest"];
+            };
+        };
+        responses: {
+            /** @description The note as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskNote"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `content` missing or `null` (`REQUIRED`), only whitespace (`BLANK`), or over 4,000 characters (`TOO_LONG`). `TASK_NOTE_DELETED`: the note is deleted; nothing changed (S6B-AC-22). `TASK_DELETED`: the task is deleted; nothing changed (S6B-AC-12). `ISSUE_CLOSED`: the issue is `CLOSED`; nothing changed (S6B-AC-50). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: the caller did not write the note, or it is a `CHANGE` entry (S6B-AC-21, S6B-AC-32). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, task, or note, the caller cannot see the issue (S6B-AC-40), or the task or the note belongs to another issue or task (S6B-AC-41). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 60 tasks and notes added or edited in 60 seconds, counted together; deleting is not counted (S6B-AC-13, COM-8). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     getMe: {
         parameters: {
             query?: never;
@@ -6814,6 +7535,51 @@ export interface operations {
             };
             /** @description `RATE_LIMITED`: more than 5 test emails in 60 seconds (S4B-AC-26). Counted before the channel is checked. */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listMyTasks: {
+        parameters: {
+            query?: {
+                /** @description `OPEN` (the default) or `DONE`. */
+                status?: "OPEN" | "DONE";
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description 1 to 100. */
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedMyTask"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), `status` neither `OPEN` nor `DONE` (`UNKNOWN_VALUE`), or a parameter this list does not take (`UNKNOWN_PARAMETER`, S6B-AC-61). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
