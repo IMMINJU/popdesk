@@ -820,7 +820,7 @@ export interface paths {
         };
         /**
          * History of an issue
-         * @description One `CREATED` entry, then one `CHANGED` entry for each field that changed, oldest first (S3-AC-61, S3-AC-62, S3-AC-64). An attachment that was attached to the issue or one of its comments after the filing, or deleted, is a `CHANGED` entry of the field `ATTACHMENT` (S5-AC-40, S5-AC-41); the files and images a filing brings are part of `CREATED` and leave no entry (S5-AC-42). The portal has no such path (S3-AC-65).
+         * @description One `CREATED` entry, then one `CHANGED` entry for each field that changed, oldest first (S3-AC-61, S3-AC-62, S3-AC-64). An attachment that was attached to the issue or one of its comments after the filing, or deleted, is a `CHANGED` entry of the field `ATTACHMENT` (S5-AC-40, S5-AC-41); the files and images a filing brings are part of `CREATED` and leave no entry (S5-AC-42). A link made or removed is a `CHANGED` entry of the field `LINK`, left out when the caller cannot see the other issue (S6C-AC-22). The portal has no such path (S3-AC-65).
          */
         get: operations["listIssueHistory"];
         put?: never;
@@ -850,6 +850,50 @@ export interface paths {
          * @description A label the issue does not have, a deleted one included, is 200 too and leaves no history entry (S6A-AC-21); otherwise the issue gets a `CHANGED` entry of the field `LABEL` (S6A-AC-60).
          */
         delete: operations["removeIssueLabel"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/issues/{key}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Links of an issue
+         * @description Only links whose other issue the caller can see, in the order they were made, all at once without pages (S6C-AC-12). Each link's `type` is seen from this issue (S6C-AC-13). Also on a `CLOSED` issue.
+         */
+        get: operations["listIssueLinks"];
+        put?: never;
+        /**
+         * Link an issue to another issue
+         * @description Makes one link between this issue and the issue `issueKey`, which may belong to another company (S6C-AC-01). Two issues have at most one link, of any kind and direction (S6C-AC-04). A duplicate has one original, and an original is never a duplicate (S6C-AC-05). An issue has at most 50 links, counting those the caller cannot see (S6C-AC-06). Neither issue's `version` nor `updatedAt` changes (S6C-AC-23), nor its status (S6C-AC-30). Both issues' histories get one `LINK` entry each (S6C-AC-20). Checks, in this order (S6C-AC-14): rate limit (429), this issue (404), `issueKey` present (400 `REQUIRED`), the other issue (404), `type` (400), the same issue (400 `LINK_TO_SELF`), this issue `CLOSED` (400), a link already there (409), a duplicate chain (400), the limit (400). So a wrong `type` with an issue the caller cannot see is 404.
+         */
+        post: operations["createIssueLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/issues/{key}/links/{otherKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove the link between two issues
+         * @description Removes the link between this issue and the issue `otherKey`, from either side (S6C-AC-10). The two issues can be linked again afterwards. Neither issue's `version` nor `updatedAt` changes (S6C-AC-23), nor its status (S6C-AC-30). Both issues' histories get one `LINK` entry each (S6C-AC-20). Checks, in this order (S6C-AC-14): rate limit (429), this issue (404), the other issue (404), the link (404), this issue `CLOSED` (400).
+         */
+        delete: operations["deleteIssueLink"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1745,6 +1789,15 @@ export interface components {
             /** @enum {string} */
             role: "CUSTOMER" | "AGENT" | "ADMIN";
         };
+        CreateIssueLinkRequest: {
+            /** @description Key of the other issue. Missing, `null`, or empty after the whitespace around it is removed is `REQUIRED`; a key the caller cannot see, or a value that is not a key, is 404 (S6C-AC-02, S6C-AC-03). */
+            issueKey: string;
+            /**
+             * @description Seen from this issue (S6C-AC-13): `DUPLICATE_OF` makes this issue a duplicate of the other one, `DUPLICATED_BY` the other one a duplicate of this one. Missing or `null` is `REQUIRED`, any other value `UNKNOWN_VALUE`.
+             * @enum {string}
+             */
+            type: "DUPLICATE_OF" | "DUPLICATED_BY" | "RELATED";
+        };
         CreateIssueRequest: {
             /**
              * @description How the request came in.
@@ -1911,7 +1964,7 @@ export interface components {
             actor: components["schemas"]["IssueHistoryActor"];
             /** Format: date-time */
             createdAt: string;
-            /** @description The field that changed: `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, `PRIORITY`, or `ATTACHMENT` (a file or content image was attached to the issue or one of its comments, or deleted; one entry for each attachment, S5-AC-40, S5-AC-41), `LABEL` (a label was put on or taken off; one entry for each label, S6A-AC-60), or `DUE_DATE` (the due date was set, changed, or cleared, S6A-AC-61). Later releases add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `CREATED`. */
+            /** @description The field that changed: `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, `PRIORITY`, or `ATTACHMENT` (a file or content image was attached to the issue or one of its comments, or deleted; one entry for each attachment, S5-AC-40, S5-AC-41), `LABEL` (a label was put on or taken off; one entry for each label, S6A-AC-60), `DUE_DATE` (the due date was set, changed, or cleared, S6A-AC-61), or `LINK` (a link to another issue was made or removed; the same change is an entry of the other issue too, S6C-AC-20). A `LINK` entry whose other issue the caller cannot see is left out, also from the count of pages, and is back when the caller can see it again (S6C-AC-22). Later releases add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `CREATED`. */
             field: string | null;
             /**
              * Format: int64
@@ -1920,14 +1973,49 @@ export interface components {
             id: number;
             /** @enum {string} */
             kind: "CREATED" | "CHANGED";
+            /** @description For `LINK`: the link that was made, like `oldLink`; null when one was removed. Null for every other field. */
+            newLink: components["schemas"]["IssueHistoryLink"] | null;
             /** @description For `ASSIGNEE`: the assignee after the change; null when it was cleared. Null for every other field. */
             newPerson: components["schemas"]["Person"] | null;
             /** @description The value after the change, like `oldValue`. For `ATTACHMENT`: the ID of the attachment that was attached; null when one was deleted. For `LABEL`: the name of the label that was put on; null when one was taken off. For `DUE_DATE`: the date after, `YYYY-MM-DD`; null when it was cleared. */
             newValue: string | null;
+            /** @description For `LINK`: the link that was removed, seen from this issue, with the other issue's current key and title (S6C-AC-21); null when one was made. Null for every other field. */
+            oldLink: components["schemas"]["IssueHistoryLink"] | null;
             /** @description For `ASSIGNEE`: the assignee before the change, by the account's current name; null when there was none. Null for every other field. */
             oldPerson: components["schemas"]["Person"] | null;
-            /** @description The value before the change: the name of the status or priority, or the title or content as it was. For `ATTACHMENT`: the ID of the attachment that was deleted, never its file name (S5-AC-43); null when one was attached. For `LABEL`: the name the label had when it was taken off, not changed by a later rename (S6A-AC-05); null when one was put on. For `DUE_DATE`: the date before, `YYYY-MM-DD`; null when there was none. Null for `CREATED`, for `ASSIGNEE`, and when there was no value. */
+            /** @description The value before the change: the name of the status or priority, or the title or content as it was. For `ATTACHMENT`: the ID of the attachment that was deleted, never its file name (S5-AC-43); null when one was attached. For `LABEL`: the name the label had when it was taken off, not changed by a later rename (S6A-AC-05); null when one was put on. For `DUE_DATE`: the date before, `YYYY-MM-DD`; null when there was none. Null for `CREATED`, for `ASSIGNEE`, for `LINK`, and when there was no value. */
             oldValue: string | null;
+        };
+        IssueHistoryLink: {
+            /** @description The other issue, by its current key and title. */
+            issue: components["schemas"]["IssueRef"];
+            /**
+             * @description Seen from the issue whose history this is (S6C-AC-13).
+             * @enum {string}
+             */
+            type: "DUPLICATE_OF" | "DUPLICATED_BY" | "RELATED";
+        };
+        IssueLink: {
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Who linked the two issues. */
+            createdBy: components["schemas"]["Person"];
+            issue: components["schemas"]["LinkedIssue"];
+            /**
+             * @description Seen from this issue (S6C-AC-13).
+             * @enum {string}
+             */
+            type: "DUPLICATE_OF" | "DUPLICATED_BY" | "RELATED";
+        };
+        IssueLinks: {
+            /** @description Only links whose other issue the caller can see, in the order they were made (S6C-AC-12). A link the caller cannot see is left out and not counted anywhere; it is back when the caller can see the other issue again. */
+            items: components["schemas"]["IssueLink"][];
+        };
+        IssueRef: {
+            /** @description `{company code}-{number}`, for example `ACME-7`. */
+            key: string;
+            /** @description The title as it is now, not as it was when the item was made. */
+            title: string;
         };
         IssueSummary: {
             /** @description Null when nobody is assigned (S3-AC-28). */
@@ -1992,6 +2080,15 @@ export interface components {
             /** Format: int64 */
             id: number;
             name: string;
+        };
+        LinkedIssue: {
+            companyCode: string;
+            companyName: string;
+            /** @description `{company code}-{number}`, for example `ACME-7`. */
+            key: string;
+            /** @enum {string} */
+            status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+            title: string;
         };
         Me: {
             /** @description The companies an agent is assigned to, in code order; `[]` for an admin, who sees every company. */
@@ -2075,7 +2172,9 @@ export interface components {
             /** @description The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, and `MEMBERSHIP_REQUESTED` (S4-AC-40). */
             issue: components["schemas"]["NotificationIssue"] | null;
             /** @enum {string} */
-            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MAIL_STALLED" | "WEBHOOK_STALLED" | "AUDIT_FORWARD_STALLED" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED" | "TASK_ASSIGNED";
+            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MAIL_STALLED" | "WEBHOOK_STALLED" | "AUDIT_FORWARD_STALLED" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED" | "TASK_ASSIGNED" | "LINKED_ISSUE_RESOLVED" | "LINKED_ISSUE_CLOSED";
+            /** @description For `LINKED_ISSUE_RESOLVED` and `LINKED_ISSUE_CLOSED`: the linked issue that was resolved or closed, with its key and title as they are now; `issue` is the caller's own issue it is linked to (S6C-AC-31). Such an item is listed only while the caller can see both issues (S6C-AC-33). Null for the other kinds (S6C-AC-34). */
+            linkedIssue: components["schemas"]["NotificationIssue"] | null;
             /**
              * Format: date-time
              * @description When the caller marked it read.
@@ -6099,6 +6198,192 @@ export interface operations {
             };
             /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listIssueLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The links the caller can see. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueLinks"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for example after being unassigned (COM-1, PROJ-4). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createIssueLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateIssueLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Created; the link as seen from this issue. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueLink"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `issueKey` missing, `null`, or empty after the whitespace around it is removed (`REQUIRED`); `type` missing or `null` (`REQUIRED`) or not `DUPLICATE_OF`, `DUPLICATED_BY`, or `RELATED` (`UNKNOWN_VALUE`, S6C-AC-03). `LINK_TO_SELF`: `issueKey` is this issue (S6C-AC-03). `ISSUE_CLOSED`: this issue (the one in the path) is `CLOSED`; nothing changed. The other issue may be `CLOSED` (S6C-AC-07). `LINK_DUPLICATE_CHAIN`: as a duplicate link, the original would already be a duplicate, or the duplicate is already an original or already a duplicate of another issue; `RELATED` is not checked (S6C-AC-05). `LINK_LIMIT_EXCEEDED`: this issue or the other one has 50 links already (S6C-AC-06). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for this issue or the other one; also when `issueKey` is not a key. The same body whether the other issue does not exist or the caller cannot see it (S6C-AC-02). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `LINK_EXISTS`: the two issues are linked already, of any kind and direction; nothing changed (S6C-AC-04). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 60 links made and removed in 60 seconds, counted together, also those that ended in 400, 404, or 409; counted before any other check (S6C-AC-09, COM-8). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteIssueLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                otherKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `ISSUE_CLOSED`: this issue (the one in the path) is `CLOSED`; nothing changed. The other issue may be `CLOSED` (S6C-AC-07). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such issue, or the caller cannot see it, for this issue or the other one, for example after being unassigned from its company; or the two issues are not linked. The link stays as it was (S6C-AC-11). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 60 links made and removed in 60 seconds, counted together, also those that ended in 400, 404, or 409; counted before any other check (S6C-AC-09, COM-8). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
