@@ -194,6 +194,25 @@ def fill(project):
     mistake = agent.json("POST", tasks, {"title": "Made twice"}, expect=201)
     agent.json("POST", f"{tasks}/{mistake['id']}/notes", {"content": "Same as the other one."}, expect=201)
     agent.request("DELETE", f"{tasks}/{mistake['id']}", expect=204)
+    # What slice 6c added (S6C-AC-60). Two new issues of ACME: the agent is the assignee of the first,
+    # and the admin links the second to it as its duplicate (issue_link.duplicate_issue_id). The first is
+    # related to the issue of BETA (a link between two companies), and was related to the second issue of
+    # ACME until the admin removed that link. Each link made and removed is a LINK entry on both issues.
+    scanner = [customer.json("POST", "/api/portal/issues",
+                             {"companyCode": "ACME", "title": title, "content": "It jams on page two."},
+                             expect=201)["key"] for title in ("Scanner jams", "Scanner jams again")]
+    admin.json("PUT", f"/api/console/issues/{scanner[0]}/assignee", {"accountId": agent_id})
+    admin.json("POST", f"/api/console/issues/{scanner[1]}/links", {"issueKey": scanner[0], "type": "DUPLICATE_OF"},
+               expect=201)
+    admin.json("POST", f"/api/console/issues/{scanner[0]}/links", {"issueKey": keys[3], "type": "RELATED"},
+               expect=201)
+    admin.json("POST", f"/api/console/issues/{scanner[0]}/links", {"issueKey": keys[1], "type": "RELATED"},
+               expect=201)
+    admin.request("DELETE", f"/api/console/issues/{scanner[0]}/links/{keys[1]}", expect=204)
+    # The admin resolves the duplicate: the agent, the assignee of the original, gets an unread
+    # LINKED_ISSUE_RESOLVED item on it (notification.linked_issue_id).
+    for status in ("IN_PROGRESS", "RESOLVED"):
+        admin.json("PUT", f"/api/console/issues/{scanner[1]}/status", {"status": status})
     # A filing with a key (issue_idempotency), which its reporter then closes.
     once = customer.json("POST", "/api/portal/issues",
                          {"companyCode": "ACME", "title": "Filed once", "content": "Sent with a key."},
