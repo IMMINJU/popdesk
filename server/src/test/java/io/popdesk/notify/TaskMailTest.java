@@ -61,7 +61,7 @@ class TaskMailTest extends ConnectedAppTest {
         assertThat(m.to()).as("To").containsExactly(s.agent().email());
         assertThat(m.subject()).as("subject").isEqualTo("[" + key + "] Task assigned: " + TASK_TITLE);
         assertThat(m.text()).as("text of the mail").contains(link).contains(TASK_TITLE)
-                .contains(WebhookSnapshots.TITLE).doesNotContain(PORTAL_HOST);
+                .contains(WebhookSnapshots.TITLE.replace('\n', ' ')).doesNotContain(PORTAL_HOST);
         assertThat(everything(m)).as("the whole mail").doesNotContainIgnoringCase(noteWord)
                 .doesNotContainIgnoringCase(contentWord);
         assertThat(hasHangul(m.subject() + m.text())).as("Korean in an en mail: " + m.subject() + "\n" + m.text())
