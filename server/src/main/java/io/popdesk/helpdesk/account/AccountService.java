@@ -151,7 +151,7 @@ public class AccountService {
      * clears with {@code clearAssignments} (S3-AC-68). Counted for a suspended account too.
      */
     @Transactional(readOnly = true)
-    public long openAssignments(CurrentAccount admin, long accountId) {
+    public OpenAssignments.Counts openAssignments(CurrentAccount admin, long accountId) {
         AccountRow account = accounts.findById(accountId).orElseThrow(ApiException::notFound);
         return assignments.count(admin.viewer(), account.id(), null);
     }
@@ -184,12 +184,15 @@ public class AccountService {
                     throw accountNotActive();
                 }
                 if (account.status() == AccountStatus.SUSPENDED) {
-                    int cleared = clearAssignments ? assignments.clear(accountId, null, admin.id()) : 0;
-                    if (cleared > 0) {
-                        audit.record(admin.actor(), AuditAction.ACCOUNT_SUSPENDED, target(accountId),
-                                Map.of("clearedIssues", cleared));
+                    OpenAssignments.Cleared cleared = clearAssignments ? assignments.clear(accountId, null, admin.id())
+                            : new OpenAssignments.Cleared(0, 0);
+                    if (cleared.issues() > 0 || cleared.tasks() > 0) {
+                        Map<String, Object> changes = new LinkedHashMap<>();
+                        changes.put("clearedIssues", cleared.issues());
+                        cleared.putTasks(changes);
+                        audit.record(admin.actor(), AuditAction.ACCOUNT_SUSPENDED, target(accountId), changes);
                     }
-                    return new Suspension(account, cleared);
+                    return new Suspension(account, cleared.issues());
                 }
             } else {
                 if (role == Role.CUSTOMER || account.role() == Role.CUSTOMER) {
@@ -209,8 +212,10 @@ public class AccountService {
                 Map<String, Object> changes = new LinkedHashMap<>();
                 changes.put("status", change(account.status().name(), AccountStatus.SUSPENDED.name()));
                 if (clearAssignments) {
-                    cleared = assignments.clear(accountId, null, admin.id());
+                    OpenAssignments.Cleared both = assignments.clear(accountId, null, admin.id());
+                    cleared = both.issues();
                     changes.put("clearedIssues", cleared);
+                    both.putTasks(changes);
                 }
                 audit.record(admin.actor(), AuditAction.ACCOUNT_SUSPENDED, target(accountId), changes);
             } else {

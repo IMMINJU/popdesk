@@ -29,7 +29,15 @@ public class OutboxRepository {
 
     /** A row as the send loop reads it. {@code auditId} is the audit entry of an outside copy, else null. */
     record OutboxRow(long id, String channel, String kind, Long recipientAccountId, UUID issueId, Long commentId,
-            Long auditId, int attempts, Instant firstFailedAt, Instant createdAt) {}
+            Long auditId, int attempts, Instant firstFailedAt, Instant createdAt, Long taskId) {
+
+        /** A row about no task. */
+        OutboxRow(long id, String channel, String kind, Long recipientAccountId, UUID issueId, Long commentId,
+                Long auditId, int attempts, Instant firstFailedAt, Instant createdAt) {
+            this(id, channel, kind, recipientAccountId, issueId, commentId, auditId, attempts, firstFailedAt,
+                    createdAt, null);
+        }
+    }
 
     /** A {@code failed} row for the system status (S0-AC-81, S1B-AC-33). */
     public record FailedRow(long id, String channel, Instant createdAt, String lastErrorKind, Long recipientAccountId,
@@ -43,7 +51,7 @@ public class OutboxRepository {
 
     private static final String COLUMNS = "id, channel, kind, recipient_account_id, issue_id, comment_id, audit_id, "
             + "attempts, "
-            + "first_failed_at, created_at";
+            + "first_failed_at, created_at, task_id";
 
     private final JdbcClient jdbc;
 
@@ -56,6 +64,15 @@ public class OutboxRepository {
         jdbc.sql("insert into outbox (tenant_id, channel, kind, recipient_account_id, issue_id, comment_id, state, "
                         + "attempts, next_attempt_at, created_at) values (1, ?, ?, ?, ?, ?, ?, 0, ?, ?)")
                 .params(channel, kind, recipientAccountId, issueId, commentId, QUEUED, Timestamp.from(now),
+                        Timestamp.from(now))
+                .update();
+    }
+
+    /** A new queued email about a task of an issue, due now (S6B-AC-34). */
+    void insertMailAboutTask(String kind, long recipientAccountId, UUID issueId, long taskId, Instant now) {
+        jdbc.sql("insert into outbox (tenant_id, channel, kind, recipient_account_id, issue_id, task_id, state, "
+                        + "attempts, next_attempt_at, created_at) values (1, ?, ?, ?, ?, ?, ?, 0, ?, ?)")
+                .params(MAIL, kind, recipientAccountId, issueId, taskId, QUEUED, Timestamp.from(now),
                         Timestamp.from(now))
                 .update();
     }
@@ -187,7 +204,8 @@ public class OutboxRepository {
         return new OutboxRow(rs.getLong("id"), rs.getString("channel"), rs.getString("kind"),
                 rs.getObject("recipient_account_id", Long.class), rs.getObject("issue_id", UUID.class),
                 rs.getObject("comment_id", Long.class), rs.getObject("audit_id", Long.class), rs.getInt("attempts"),
-                instant(rs.getTimestamp("first_failed_at")), instant(rs.getTimestamp("created_at")));
+                instant(rs.getTimestamp("first_failed_at")), instant(rs.getTimestamp("created_at")),
+                rs.getObject("task_id", Long.class));
     }
 
     private static Instant instant(Timestamp t) {

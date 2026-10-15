@@ -25,7 +25,7 @@ public class OpsRepository {
      * item about an issue; all null for the items of admins that are about none.
      */
     public record InboxRow(long id, String kind, String companyCode, UUID issueId, Long commentId, Long actorId,
-            Instant createdAt, Instant readAt) {}
+            Instant createdAt, Instant readAt, Long taskId) {}
 
     /**
      * Which of an account's items a read is about: every kind or only {@code kinds}, and of the items
@@ -123,7 +123,7 @@ public class OpsRepository {
      * {@code (account_id, id)} gives the order, read backward, or the account's rows are sorted.
      */
     List<InboxRow> listInbox(Shown shown, long offset, int limit) {
-        return jdbc.sql("select id, kind, company_code, issue_id, comment_id, actor_id, created_at, read_at "
+        return jdbc.sql("select id, kind, company_code, issue_id, comment_id, actor_id, created_at, read_at, task_id "
                         + "from notification where " + Shown.SQL
                         + " order by account_id desc, id desc offset ? limit ?")
                 .params(with(shown.params(), offset, limit)).query(OpsRepository::inbox).list();
@@ -154,6 +154,18 @@ public class OpsRepository {
     /** Deletes every item about the comment. */
     void deleteInboxOfComment(long commentId) {
         jdbc.sql("delete from notification where comment_id = ?").param(commentId).update();
+    }
+
+    /** An item about a task of an issue: the issue, the task, and who did it (S6B-AC-33). */
+    void insertInboxAboutTask(long accountId, String kind, UUID issueId, long taskId, long actorId, Instant now) {
+        jdbc.sql("insert into notification (tenant_id, account_id, kind, issue_id, task_id, actor_id, created_at) "
+                        + "values (1, ?, ?, ?, ?, ?, ?)")
+                .params(accountId, kind, issueId, taskId, actorId, Timestamp.from(now)).update();
+    }
+
+    /** Deletes every item about the task (S6B-AC-36). */
+    void deleteInboxOfTask(long taskId) {
+        jdbc.sql("delete from notification where task_id = ?").param(taskId).update();
     }
 
     /** Deletes the account's unread items of this kind about the comment. */
@@ -191,7 +203,7 @@ public class OpsRepository {
         return new InboxRow(rs.getLong("id"), rs.getString("kind"), rs.getString("company_code"),
                 rs.getObject("issue_id", UUID.class), rs.getObject("comment_id", Long.class),
                 rs.getObject("actor_id", Long.class), instant(rs.getTimestamp("created_at")),
-                instant(rs.getTimestamp("read_at")));
+                instant(rs.getTimestamp("read_at")), rs.getObject("task_id", Long.class));
     }
 
     private static Object[] with(Object[] first, Object... more) {

@@ -137,6 +137,35 @@ final class MailText {
     }
 
     /**
+     * The recipient became the assignee of a task of the issue (S6B-AC-34): the task's title in the
+     * subject in place of the issue's, then the task, the issue's key and title, and the link to the task.
+     * It does not say who chose them, nor anything a note says.
+     *
+     * @param taskTitle the task's title as it is when the email is sent
+     * @param link the console's address of the task
+     */
+    static Message taskAssigned(String locale, Issue issue, String taskTitle, String link) {
+        String task = oneLine(taskTitle);
+        String title = oneLine(issue.title());
+        if (korean(locale)) {
+            return new Message("[" + issue.key() + "] 작업을 맡았습니다: " + task,
+                    "작업을 맡았습니다.\n\n"
+                            + "작업: " + task + "\n"
+                            + "문의: " + issue.key() + "\n"
+                            + "제목: " + title + "\n\n"
+                            + "콘솔에서 작업을 볼 수 있습니다.\n\n"
+                            + link + "\n");
+        }
+        return new Message("[" + issue.key() + "] Task assigned: " + task,
+                "You were given a task on an issue.\n\n"
+                        + "Task: " + task + "\n"
+                        + "Issue: " + issue.key() + "\n"
+                        + "Title: " + title + "\n\n"
+                        + "Open the task in the console:\n\n"
+                        + link + "\n");
+    }
+
+    /**
      * A customer manager asked for an existing account to join a company, to an admin (S4-AC-51). Only
      * the company's code: not the name and the email the manager typed, and not whose account it is.
      */
