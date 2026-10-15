@@ -66,6 +66,12 @@ class IssueInboxService implements IssueInbox {
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
+    public void deleteOfIssue(UUID issueId) {
+        ops.deleteInboxOfIssue(issueId);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
     public void deleteUnreadMention(long commentId, long accountId) {
         ops.deleteUnreadInbox(commentId, accountId, Kind.MENTIONED.name());
     }
