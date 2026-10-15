@@ -26,7 +26,8 @@ const PATH = '/inbox';
  * build does not know read "새 알림이 있습니다".
  */
 function sentence(n: Notification): string {
-  const who = n.actor === null ? t('inbox.someone') : tf('inbox.who', { name: n.actor.name });
+  // Accounts are never deleted, so an issue item without an actor is popdesk itself (7a-trash screens.md 3절).
+  const who = n.actor === null ? t('inbox.system') : tf('inbox.who', { name: n.actor.name });
   switch (n.kind) {
     case 'CUSTOMER_COMMENT':
       return tf('inbox.customerComment', { who });

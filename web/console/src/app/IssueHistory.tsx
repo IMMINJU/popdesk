@@ -1,6 +1,7 @@
 // C-4 이력 (3-issues screens.md 2절, S3-AC-80): folded, read when it opens, oldest
 // first, 20 lines at a time. A change of status or assignee reads it again.
-// Slice 6a (6a-labels screens.md 3절) adds the lines of labels and due dates, slice 6c those of links.
+// Slice 6a (6a-labels screens.md 3절) adds the lines of labels and due dates, slice 6c those of links,
+// slice 7a those of the trash.
 import { Button, ISSUE_STATUS_WORDS, PRIORITY_WORDS, RelativeTime, type IssueStatus, type Priority } from '@popdesk/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
@@ -12,6 +13,7 @@ import { linkChangeText } from './linkWords';
 import { toward } from './particles';
 import { call } from './result';
 import { useToLogin } from './sessionContext';
+import { trashHistoryText } from './trashWords';
 
 type Entry = Schemas['IssueHistoryEntry'];
 type Person = Schemas['Person'];
@@ -97,6 +99,8 @@ function lineOf(entry: Entry, onBehalf: boolean, fileName: (id: string | null) =
         detail: <p className="pd-muted">{said.title}</p>,
       };
     }
+    case 'TRASH':
+      return { text: trashHistoryText(who, entry.oldValue, entry.newValue) };
     default:
       // A field of a later release.
       return { text: `${who} 문의를 바꿨습니다` };

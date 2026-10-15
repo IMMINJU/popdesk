@@ -136,9 +136,9 @@ export const ko = {
   'inbox.empty': '알림이 없습니다',
   'inbox.emptyPage': '이 쪽에는 알림이 없습니다',
   'inbox.toFirstPage': '1쪽으로',
-  // The console's sentences. `{who}` is `inbox.who` with the name of who did it, or `inbox.someone`.
+  // The console's sentences. `{who}` is `inbox.who` with the name of who did it, or `inbox.system` when popdesk did it.
   'inbox.who': '{name} 님이',
-  'inbox.someone': '누군가',
+  'inbox.system': '시스템이',
   'inbox.customerComment': '{who} 댓글을 남겼습니다',
   'inbox.issueClosed': '{who} 문의를 종료했습니다',
   'inbox.issueReopened': '{who} 문의를 다시 열었습니다',
