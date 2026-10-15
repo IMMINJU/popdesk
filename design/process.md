@@ -71,6 +71,7 @@
 - 계약을 합친 뒤에는 두 계약의 모든 operation을 훑는 앞 묶음의 테스트를 한 번 돈다: `project.NoStoreTest`, `ops.CheckOrderTest`, `ops.EndpointMappingsTest`, `boundary.BoundaryListTest`.
 - 있는 표에 칸을 더하는 묶음은 표나 칸을 꼴로 찾는 테스트 도움(`grep -rln "db.tables()" server/src/test`)을 쓰는 클래스를 한 번 돌려 본다.
 - 모든 화면이 부르는 요청(레이아웃이 보내는 것)이 늘면, 계약 뒤 테스트를 맞추는 탭이 앱의 기본 가짜 서버(`console.ts`, `portal.ts`)에 그 핸들러를 더한다. 빠지면 `App.test.tsx` 같은 앞 묶음의 테스트가 가끔 실패한다.
+- 계약 탭 보고의 "맞출 테스트" 목록은 C-5의 테스트 탭이 하나도 빼지 않고 맞춘다. 웹 테스트 탭은 `@popdesk/api` 패키지의 테스트도 돈다(계약 검증기의 견본이 새 칸을 모르면 거기서 실패한다). 6c에서 `contract.test.ts`의 이력 견본이 빠져 C-10에서야 걸렸다.
 
 #### C-5 테스트
 
