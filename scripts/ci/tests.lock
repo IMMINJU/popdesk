@@ -482,11 +482,11 @@ f68d503975e0d789280887ff7175eb3c860e05e1d0620eb2e30be1a251a1cff7  server/src/tes
 273f9a3175a35bc534f76763eeee0d1ad4d37997d0c5ac8aa9cac75e30242186  server/src/test/java/io/popdesk/support/Unique.java
 b9331b381fbf3dab7724d3ef2e66a33c55c87989b7a24e1ddfa4f2d0b5cb3f40  server/src/test/java/io/popdesk/support/Wait.java
 6958df38761e9211fac3811c1d428c410bd86cc16dcb65aab127de0e02ead2f4  server/src/test/java/io/popdesk/support/WebhookReceiver.java
-486a90df7d5995667dd36001dcc903b975bc407c401a385e7deb6810f9c4d50a  server/src/test/java/io/popdesk/task/MyTasksTest.java
+884dc19dd7d5c95e518b8ffcfae900baa9f501e4af2abb7569e423a4e93cb28c  server/src/test/java/io/popdesk/task/MyTasksTest.java
 4bfc5b9d0d91792f7af634365206c52f617922060760b1da4d7b662f6a2573d2  server/src/test/java/io/popdesk/task/TaskAssigneeTest.java
 aa20e9ad76e382896182b94e3bcbc5bdd0863db6fcffcca9a0e6fd8f51445058  server/src/test/java/io/popdesk/task/TaskChangeTest.java
 05dc5ea0ac36daeda11c67818c1dd3249ac629305a222a16049bb2cb7477141d  server/src/test/java/io/popdesk/task/TaskDeleteTest.java
-65f15868bbd2145ec9ec79855acaa0a9740c5dfed52e0c43ec7003631b0c741e  server/src/test/java/io/popdesk/task/TaskEditTest.java
+6cbc10952c4ca8a9c823cdb12488a412ae7fe0785ea7f080e75a1914592267f2  server/src/test/java/io/popdesk/task/TaskEditTest.java
 744fcad5f95ff08b8b86fd132d249a4a648032f75ea79a7e263d77bec0d99f9d  server/src/test/java/io/popdesk/task/TaskIssueStatusTest.java
 260e4254449f3a7eb7e776374ca29159dc101e2d9a3a1f2642e4968835e9ae2a  server/src/test/java/io/popdesk/task/TaskLimitTest.java
 2b04e3b8458582b5af3f585f151f83431ff071221b7bbea7d6cbc6f2dac85ede  server/src/test/java/io/popdesk/task/TaskNoteTest.java
