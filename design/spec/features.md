@@ -64,7 +64,7 @@
 
 ## 8. 작업 (TASK)
 
-→ `../slices/6b-tasks/rules.md`로 옮김(6b 묶음).
+→ `../archive/6b-tasks/rules.md`로 옮김(6b 묶음).
 
 ## 8-1. 문의 연결 (LINK)
 
