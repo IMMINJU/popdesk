@@ -126,7 +126,7 @@ describe('C-7 알림함', () => {
     { kind: 'MEMBERSHIP_REQUESTED', item: alertItem('MEMBERSHIP_REQUESTED'), says: '고객사 ACME에 소속 요청이 있습니다' },
     { kind: 'DELIVERY_FAILED', item: alertItem('DELIVERY_FAILED'), says: '보내지 못한 메일이나 웹훅이 있습니다' },
     { kind: 'ATTACHMENT_QUOTA_WARNING', item: alertItem('ATTACHMENT_QUOTA_WARNING'), says: '첨부 용량이 한도의 80%를 넘었습니다' },
-    { kind: '일으킨 사람이 null인 ISSUE_CLOSED', item: notification({ kind: 'ISSUE_CLOSED', actor: null }), says: '누군가 문의를 종료했습니다' },
+    { kind: '일으킨 사람이 null인 ISSUE_CLOSED', item: notification({ kind: 'ISSUE_CLOSED', actor: null }), says: '시스템이 문의를 종료했습니다' },
     { kind: '콘솔에 오지 않는 STAFF_COMMENT', item: notification({ kind: 'STAFF_COMMENT', actor: ADMIN_PERSON, commentId: 12 }), says: '새 알림이 있습니다' },
     { kind: '콘솔에 오지 않는 ISSUE_RESOLVED', item: notification({ kind: 'ISSUE_RESOLVED', actor: ADMIN_PERSON }), says: '새 알림이 있습니다' },
     { kind: '콘솔에 오지 않는 ISSUE_FILED_ON_BEHALF', item: notification({ kind: 'ISSUE_FILED_ON_BEHALF', actor: ADMIN_PERSON }), says: '새 알림이 있습니다' },

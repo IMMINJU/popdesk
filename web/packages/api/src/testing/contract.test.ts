@@ -334,3 +334,79 @@ describe('계약 검증기 checkResponse: 5번 묶음 웹 테스트의 견본', 
     expect(checkResponse(app, operationId, 400, body)).toBe(body);
   });
 });
+
+describe('계약 검증기 checkResponse: 7a 묶음 웹 테스트의 견본', () => {
+  const ADMIN_PERSON = { accountId: 1, name: '최관리', role: 'ADMIN', photoUpdatedAt: null };
+  const paged = (items: unknown[]) => ({ items, page: 1, size: 20, totalElements: items.length, totalPages: 1 });
+
+  /** `trashed()` of console7a.ts. */
+  const trashed = (over: Record<string, unknown> = {}) => ({
+    key: 'ACME-12',
+    title: '결제 내역이 두 번 보입니다',
+    companyCode: 'ACME',
+    companyName: '에이크미',
+    status: 'IN_PROGRESS',
+    deletedAt: '2026-10-07T03:20:00.000Z',
+    deletedBy: ADMIN_PERSON,
+    purgeAt: '2026-11-06T03:20:00.000Z',
+    ...over,
+  });
+
+  test('console: 휴지통 목록(listTrash 200)의 TrashedIssue 견본이 계약에 맞고, 칸은 모두 필수다', () => {
+    const page = paged([trashed(), trashed({ key: 'BETA-5', companyCode: 'BETA', companyName: '베타상사', status: 'RESOLVED' })]);
+
+    expect(checkResponse('console', 'listTrash', 200, page)).toBe(page);
+    const withoutPurgeAt = Object.fromEntries(Object.entries(trashed()).filter(([name]) => name !== 'purgeAt'));
+    expect(() => checkResponse('console', 'listTrash', 200, paged([withoutPurgeAt]))).toThrow('$.items[0].purgeAt: required, but missing');
+    expect(() => checkResponse('console', 'listTrash', 200, paged([trashed({ deletedBy: null })]))).toThrow('$.items[0].deletedBy');
+  });
+
+  test('console: 복구의 409 RESTORE_LINK_CONFLICT 견본(issueKeys)과 404 견본이 계약에 맞는다', () => {
+    const conflict = { code: 'RESTORE_LINK_CONFLICT', message: 'RESTORE_LINK_CONFLICT (server text).', issueKeys: ['ACME-40', 'BETA-77'] };
+    const missing = { code: 'NOT_FOUND', message: 'NOT_FOUND (server text).' };
+
+    expect(checkResponse('console', 'restoreIssue', 409, conflict)).toBe(conflict);
+    expect(checkResponse('console', 'restoreIssue', 404, missing)).toBe(missing);
+    expect(checkResponse('console', 'purgeIssue', 404, missing)).toBe(missing);
+    expect(() => checkResponse('console', 'restoreIssue', 409, { ...conflict, issueKeys: 'ACME-40' })).toThrow('$.issueKeys');
+  });
+
+  test('console: 이력(listIssueHistory 200)의 TRASH 견본(지우기, 복구, 영구 삭제)이 계약에 맞는다', () => {
+    const entry = (over: Record<string, unknown>) => ({
+      id: 1,
+      kind: 'CHANGED',
+      field: 'TRASH',
+      oldValue: null,
+      newValue: null,
+      oldPerson: null,
+      newPerson: null,
+      oldLink: null,
+      newLink: null,
+      actor: ADMIN_PERSON,
+      createdAt: '2026-10-08T03:15:00Z',
+      ...over,
+    });
+    const page = paged([entry({ newValue: 'TRASHED' }), entry({ oldValue: 'TRASHED' }), entry({ oldValue: 'TRASHED', newValue: 'PURGED' })]);
+
+    expect(checkResponse('console', 'listIssueHistory', 200, page)).toBe(page);
+  });
+
+  test('console: 알림함(listNotifications 200)의 actor가 null인 문의 항목(자동 종료) 견본이 계약에 맞는다', () => {
+    const item = (over: Record<string, unknown>) => ({
+      id: 703,
+      kind: 'ISSUE_CLOSED',
+      actor: null,
+      issue: { key: 'ACME-7', title: '로그인이 안 됩니다' },
+      commentId: null,
+      companyCode: null,
+      task: null,
+      linkedIssue: null,
+      readAt: null,
+      createdAt: '2026-10-08T03:15:00Z',
+      ...over,
+    });
+    const page = paged([item({}), item({ id: 704, kind: 'LINKED_ISSUE_CLOSED', linkedIssue: { key: 'BETA-3', title: '결제가 두 번 됩니다' } })]);
+
+    expect(checkResponse('console', 'listNotifications', 200, page)).toBe(page);
+  });
+});

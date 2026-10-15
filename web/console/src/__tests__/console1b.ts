@@ -54,6 +54,9 @@ export const KIND_GROUPS: readonly { group: string; kinds: Readonly<Record<strin
       LABEL_CREATED: '라벨 만들기',
       LABEL_UPDATED: '라벨 고치기',
       LABEL_DELETED: '라벨 지우기',
+      ISSUE_DELETED: '문의 지우기',
+      ISSUE_RESTORED: '문의 복구',
+      ISSUE_PURGED: '문의 영구 삭제',
     },
   },
   {

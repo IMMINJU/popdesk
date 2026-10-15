@@ -42,7 +42,7 @@ describe('C-7 알림함 연결 알림 (6c 묶음)', () => {
       given: linkedItem({ kind: 'LINKED_ISSUE_CLOSED', actor: CUSTOMER_PERSON }),
       says: '김고객 님이 연결된 문의를 종료했습니다: BETA-3 결제가 두 번 됩니다',
     },
-    { what: '일으킨 사람이 null', given: linkedItem({ actor: null }), says: '누군가 연결된 문의를 해결했습니다: BETA-3 결제가 두 번 됩니다' },
+    { what: '일으킨 사람이 null', given: linkedItem({ actor: null }), says: '시스템이 연결된 문의를 해결했습니다: BETA-3 결제가 두 번 됩니다' },
   ])('S6C-AC-54 C-7 $what: "$says"이고 항목 아래의 문의는 담당자의 문의(ACME-7)다', async ({ given, says }) => {
     showItems([given]);
     renderAt('/inbox');
