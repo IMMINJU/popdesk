@@ -1,12 +1,21 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.ApiError;
+import io.popdesk.ApiException;
 import io.popdesk.Paged;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.task.TaskRepository;
+import io.popdesk.helpdesk.task.TaskRepository.NoteRow;
+import io.popdesk.helpdesk.task.TaskService;
+import io.popdesk.helpdesk.task.TaskService.TaskView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,6 +40,47 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/console")
 class ConsoleTaskController {
 
+    /** Query parameters of the caller's own tasks; any other name is 400 (S6B-AC-61). */
+    private static final Set<String> MY_TASKS_PARAMETERS = Set.of("status", "page", "size");
+
+    private final TaskService tasks;
+
+    ConsoleTaskController(TaskService tasks) {
+        this.tasks = tasks;
+    }
+
+    static Task task(TaskView view) {
+        TaskRepository.TaskRow row = view.task();
+        return new Task(row.id(), row.title(), TaskStatus.valueOf(row.status().name()), person(row.assignee()),
+                row.dueDate(), view.overdue(), person(row.createdBy()), ConsoleIssueController.utc(row.createdAt()),
+                person(row.doneBy()), ConsoleIssueController.utc(row.doneAt()), row.deleted(),
+                person(row.deletedBy()), ConsoleIssueController.utc(row.deletedAt()),
+                view.notes().stream().map(ConsoleTaskController::note).toList());
+    }
+
+    /** An assignee change names people and gives no text values (S6B-AC-30); every other one the reverse. */
+    static TaskNote note(NoteRow row) {
+        boolean assignee = "ASSIGNEE".equals(row.field());
+        return new TaskNote(row.id(), TaskNoteKind.valueOf(row.kind().name()), person(row.author()), row.content(),
+                row.field(), assignee ? null : row.oldValue(), assignee ? null : row.newValue(),
+                assignee ? person(row.oldPerson()) : null, assignee ? person(row.newPerson()) : null,
+                ConsoleIssueController.utc(row.createdAt()), ConsoleIssueController.utc(row.editedAt()), row.deleted(),
+                ConsoleIssueController.utc(row.deletedAt()), person(row.deletedBy()));
+    }
+
+    private static Person person(TaskRepository.Person person) {
+        return person == null ? null : ConsoleIssueController.person(person.accountId(), person.name(),
+                person.role(), person.photoUpdatedAt());
+    }
+
+    private static MyTask myTask(TaskService.MyTask mine) {
+        TaskRepository.MyTaskRow row = mine.row();
+        return new MyTask(row.id(), row.title(), TaskStatus.valueOf(row.status().name()), row.dueDate(),
+                mine.overdue(), ConsoleIssueController.utc(row.doneAt()),
+                new TaskIssue(row.issueKey(), row.issueTitle(), row.issueStatus()), row.companyCode(),
+                row.companyName());
+    }
+
     static final String TASK_NOT_FOUND = "`NOT_FOUND`: no such issue or task, the caller cannot see the issue "
             + "(S6B-AC-40), or the task belongs to another issue (S6B-AC-41).";
     static final String NOTE_NOT_FOUND = "`NOT_FOUND`: no such issue, task, or note, the caller cannot see the "
@@ -51,7 +101,8 @@ class ConsoleTaskController {
     @ApiResponse(responseCode = "404", description = ConsoleIssueController.NOT_VISIBLE)
     @GetMapping("/issues/{key}/tasks")
     IssueTasks listIssueTasks(@PathVariable String key) {
-        throw new NotImplementedException();
+        TaskService.IssueTasks list = tasks.list(CurrentAccount.get().viewer(), key);
+        return new IssueTasks(list.items().stream().map(ConsoleTaskController::task).toList(), list.openCount());
     }
 
     @Operation(operationId = "createTask", summary = "Add a task to an issue",
@@ -73,7 +124,8 @@ class ConsoleTaskController {
     @PostMapping("/issues/{key}/tasks")
     @ResponseStatus(HttpStatus.CREATED)
     Task createTask(@PathVariable String key, @RequestBody CreateTaskRequest request) {
-        throw new NotImplementedException();
+        return task(tasks.create(CurrentAccount.get().viewer(), key, request.title(), request.assigneeId(),
+                request.dueDate()));
     }
 
     @Operation(operationId = "updateTask", summary = "Change a task's title, status, assignee, or due date",
@@ -98,7 +150,8 @@ class ConsoleTaskController {
     Task updateTask(@PathVariable String key,
             @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String id,
             @RequestBody UpdateTaskRequest request) {
-        throw new NotImplementedException();
+        return task(tasks.update(CurrentAccount.get().viewer(), key, id, request.title(), request.status(),
+                request.assigneeId(), request.dueDate()));
     }
 
     @Operation(operationId = "deleteTask", summary = "Delete a task",
@@ -116,7 +169,7 @@ class ConsoleTaskController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void deleteTask(@PathVariable String key,
             @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String id) {
-        throw new NotImplementedException();
+        tasks.delete(CurrentAccount.get().viewer(), key, id);
     }
 
     @Operation(operationId = "createTaskNote", summary = "Add a note to a task",
@@ -137,7 +190,7 @@ class ConsoleTaskController {
     TaskNote createTaskNote(@PathVariable String key,
             @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String id,
             @RequestBody TaskNoteRequest request) {
-        throw new NotImplementedException();
+        return note(tasks.addNote(CurrentAccount.get().viewer(), key, id, request.content()));
     }
 
     @Operation(operationId = "updateTaskNote", summary = "Edit the caller's own task note",
@@ -157,7 +210,7 @@ class ConsoleTaskController {
             @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String id,
             @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String noteId,
             @RequestBody TaskNoteRequest request) {
-        throw new NotImplementedException();
+        return note(tasks.editNote(CurrentAccount.get().viewer(), key, id, noteId, request.content()));
     }
 
     @Operation(operationId = "deleteTaskNote", summary = "Delete a task note",
@@ -175,7 +228,7 @@ class ConsoleTaskController {
     void deleteTaskNote(@PathVariable String key,
             @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String id,
             @Parameter(schema = @Schema(type = "integer", format = "int64")) @PathVariable String noteId) {
-        throw new NotImplementedException();
+        tasks.deleteNote(CurrentAccount.get().viewer(), key, id, noteId);
     }
 
     @Operation(operationId = "listMyTasks", summary = "The caller's own tasks",
@@ -195,7 +248,16 @@ class ConsoleTaskController {
                     allowableValues = {"OPEN", "DONE"}, defaultValue = "OPEN"))
                     @RequestParam(required = false) @Nullable String status,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        throw new NotImplementedException();
+            @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request) {
+        List<ApiError.FieldError> unknown = request.getParameterMap().keySet().stream()
+                .filter(name -> !MY_TASKS_PARAMETERS.contains(name)).sorted()
+                .map(name -> new ApiError.FieldError(name, "UNKNOWN_PARAMETER")).toList();
+        if (!unknown.isEmpty()) {
+            throw ApiException.invalid(unknown);
+        }
+        // Each value as sent: Spring joins a parameter given twice into one text with a comma.
+        return tasks.listMine(CurrentAccount.get().viewer(), request.getParameterValues("status"), page, size)
+                .map(ConsoleTaskController::myTask);
     }
 }

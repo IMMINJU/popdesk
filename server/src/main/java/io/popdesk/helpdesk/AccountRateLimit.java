@@ -42,7 +42,12 @@ public class AccountRateLimit {
          */
         SEARCH(60),
         /** An admin's test email (S4B-AC-26); each one opens an SMTP connection within the request. */
-        TEST_MAIL(5);
+        TEST_MAIL(5),
+        /**
+         * Adding or editing a task, and adding or editing a task note, together (S6B-AC-13). Deleting is
+         * not counted.
+         */
+        TASK(60);
 
         final int limit;
 
