@@ -1,0 +1,11 @@
+Subject: [{key}] Task assigned: Call the customer about the toner
+
+You were given a task on an issue.
+
+Task: Call the customer about the toner
+Issue: {key}
+Title: Printer "B2" jams after toner change
+
+Open the task in the console:
+
+{link}

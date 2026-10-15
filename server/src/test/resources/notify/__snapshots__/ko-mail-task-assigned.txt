@@ -1,0 +1,11 @@
+Subject: [{key}] 작업을 맡았습니다: Call the customer about the toner
+
+작업을 맡았습니다.
+
+작업: Call the customer about the toner
+문의: {key}
+제목: Printer "B2" jams after toner change
+
+콘솔에서 작업을 볼 수 있습니다.
+
+{link}

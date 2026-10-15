@@ -33,6 +33,10 @@ final class InboxSteps {
     static final Set<String> ITEM_FIELDS = Set.of("id", "kind", "issue", "companyCode", "commentId", "actor",
             "createdAt", "readAt");
 
+    /** The fields of a console inbox item: those of {@link #ITEM_FIELDS} and the task (slice 6b, the contract). */
+    static final Set<String> CONSOLE_ITEM_FIELDS = Set.of("id", "kind", "issue", "companyCode", "commentId", "actor",
+            "createdAt", "readAt", "task");
+
     private final Fixtures fixtures;
     private final IssueFlow flow;
 

@@ -19,6 +19,7 @@ import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.ReceivedMail;
 import io.popdesk.support.Unique;
 import io.popdesk.support.Wait;
+import io.popdesk.task.TaskSteps;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -46,7 +47,7 @@ import tools.jackson.databind.JsonNode;
  * was for, it says so in its subject and first line, and a mail that is no longer to be sent is not
  * sent there either.
  *
- * <p>The kinds of mail are the ten names in {@link #KINDS}. A test here reads the list of kinds from
+ * <p>The kinds of mail are the eleven names in {@link #KINDS}. A test here reads the list of kinds from
  * the app's source as text ({@link #KIND_SOURCE}) and fails when the two differ, so a new kind of mail
  * cannot be added without a scenario here. It also reads the kind of each queued row in the
  * {@code outbox} table while the mail server refuses mail, to see that each scenario queues the kind
@@ -56,7 +57,8 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
 
     /** Every kind of mail the send queue holds, by the name in {@code outbox.kind}. */
     static final Set<String> KINDS = Set.of("INVITATION", "PASSWORD_RESET", "STAFF_COMMENT", "ISSUE_FILED_ON_BEHALF",
-            "ISSUE_RESOLVED", "ISSUE_CLOSED", "ISSUE_REOPENED", "MENTIONED", "ASSIGNED", "MEMBERSHIP_REQUESTED");
+            "ISSUE_RESOLVED", "ISSUE_CLOSED", "ISSUE_REOPENED", "MENTIONED", "ASSIGNED", "MEMBERSHIP_REQUESTED",
+            "TASK_ASSIGNED");
 
     /** Where the app lists its kinds of mail, from the module's folder. */
     static final Path KIND_SOURCE = Path.of("src", "main", "java", "io", "popdesk", "notification", "MailKind.java");
@@ -131,6 +133,7 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
         String reopened = fixtures.fileIssue(c.customer(), c.code()).key();
         String talkedAbout = fixtures.fileIssue(c.customer(), c.code()).key();
         String handedOver = fixtures.fileIssue(c.customer(), c.code()).key();
+        String tasked = fixtures.fileIssue(c.customer(), c.code()).key();
         flow.close(c.customer(), reopened);
         String invitedEmail = Unique.email("invited");
         List<Session> people = List.of(c.customer(), c.agent(), mentioned, manager, wanted);
@@ -155,6 +158,8 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
         TalkFlow.mention(c.agent(), talkedAbout, true, List.of(mentioned.accountId()));
         flow.assign(c.admin(), handedOver, c.agent().accountId());
         ManagerSteps.invited(manager, c.code(), wanted.email(), Unique.text("Typed"));
+        TaskSteps.create(c.admin(), tasked, TaskSteps.body("title", TaskSteps.title("Sandbox"), "assigneeId",
+                c.agent().accountId()));
 
         List<Queued> expected = List.of(new Queued("INVITATION", invited),
                 new Queued("PASSWORD_RESET", wanted.accountId()),
@@ -165,7 +170,8 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
                 new Queued("ISSUE_REOPENED", c.customer().accountId()),
                 new Queued("MENTIONED", mentioned.accountId()),
                 new Queued("ASSIGNED", c.agent().accountId()),
-                new Queued("MEMBERSHIP_REQUESTED", c.admin().accountId()));
+                new Queued("MEMBERSHIP_REQUESTED", c.admin().accountId()),
+                new Queued("TASK_ASSIGNED", c.agent().accountId()));
         Set<Long> accounts = new TreeSet<>(expected.stream().map(Queued::recipient).toList());
         accounts.add(manager.accountId());
         Wait.untilAsserted("one queued mail row per kind", () -> assertThat(queuedAt(at, accounts))
