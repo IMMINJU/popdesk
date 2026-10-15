@@ -299,3 +299,9 @@
 - `/../../console/src/screens/Screens6b.overflow.stories.tsx.C 15 Long 820 Dark`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-6b-콘솔-화면--c-15-long-820-dark&addonPanel=storybook/interactions/p
 - `/../../console/src/screens/Screens6b.overflow.stories.tsx.C 15 Long 1280 Light`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-6b-콘솔-화면--c-15-long-1280-light&addonPanel=storybook/interactions
 - `/../../console/src/screens/Screens6b.overflow.stories.tsx.C 15 Long 1280 Dark`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-6b-콘솔-화면--c-15-long-1280-dark&addonPanel=storybook/interactions/
+
+## C-7 보강 뒤 다시 돌린 것 (2026-10-15)
+
+- 서버(`s6b-tfix-server`, 보강한 클래스 전부): 단언 실패 115, 통과 0, 오류 0. 무작위 세 번의 실패 목록이 같다. `TaskInboxTest#taskWorkTellsOnlyTheAssignee`는 처음 실패 확인 때 웹훅 본문의 댓글 글을 15초 기다리다 실패했다(구현과 상관없는 까닭). 고친 뒤에는 작업 만들기 501에서 단언으로 실패한다.
+- 웹(`s6b-tfix-web`, 콘솔): 단언 실패 81, 허용한 통과 4(위와 같음), 오류 0. 무작위 세 번 목록 같음. 넘침 story 66개 실패, 앞 story 367개 통과.
+- 앞 묶음 `auditWords.survivors.test.ts`를 라벨 셋에 맞춰 고쳐 구현 전까지 실패한다(`pending.txt`).

@@ -41,3 +41,5 @@ web **/layout.inbox.test.tsx
 web **/adminOnly.1b.test.tsx
 web **/C12AuditLog.filters.test.tsx
 web **/C12AuditLog.test.tsx
+# C-7 보강에서 라벨 셋이 "고객사" 묶음에 들어간 것을 반영한 앞 묶음 테스트(구현 뒤 통과).
+web **/auditWords.survivors.test.ts
