@@ -146,6 +146,8 @@ export const en: Record<keyof typeof ko, string> = {
   'inbox.mentioned': '{who} mentioned you in a comment',
   'inbox.assigned': '{who} assigned this issue to you',
   'inbox.taskAssigned': '{who} gave you a task: {title}',
+  'inbox.linkedIssueResolved': '{who} resolved a linked issue: {key} {title}',
+  'inbox.linkedIssueClosed': '{who} closed a linked issue: {key} {title}',
   'inbox.membershipRequested': 'Company {code} has a membership request',
   'inbox.deliveryFailed': 'Some mail or webhooks could not be sent',
   'inbox.quotaWarning': 'Attachments have passed 80% of the storage limit',

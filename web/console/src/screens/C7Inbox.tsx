@@ -10,6 +10,7 @@ import { useLive, useLoad } from '../app/hooks';
 import { LoadFailed, PageTitle } from '../app/layout';
 import { t, tf } from '../app/locale';
 import { rateLimitedText, TEXT } from '../app/messages';
+import { linkedIssueText } from '../app/linkWords';
 import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, pageHref, usePageMove, usePageParam } from '../app/paging';
 import { call, type Failure } from '../app/result';
@@ -39,6 +40,9 @@ function sentence(n: Notification): string {
       return tf('inbox.assigned', { who });
     case 'TASK_ASSIGNED':
       return tf('inbox.taskAssigned', { who, title: n.task?.title ?? '' });
+    case 'LINKED_ISSUE_RESOLVED':
+    case 'LINKED_ISSUE_CLOSED':
+      return linkedIssueText(n.kind, who, n.linkedIssue);
     case 'MEMBERSHIP_REQUESTED':
       return tf('inbox.membershipRequested', { code: n.companyCode ?? '' });
     case 'DELIVERY_FAILED':
@@ -58,6 +62,8 @@ function sentence(n: Notification): string {
 
 /** Where an item leads (S4-AC-66). An item of an unknown kind about no issue leads nowhere. */
 function hrefOf(n: Notification): string | undefined {
+  // Slice 6c: the linked issue that was resolved or closed (6c-links screens.md 3절).
+  if (n.linkedIssue !== null) return `/issues/${encodeURIComponent(n.linkedIssue.key)}`;
   if (n.issue !== null) {
     const issue = `/issues/${encodeURIComponent(n.issue.key)}`;
     // Slice 6b: a task item leads to its task (6b-tasks screens.md 4절).
