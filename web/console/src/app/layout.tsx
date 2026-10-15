@@ -27,6 +27,7 @@ function menu(me: Me, requests: number): Omit<NavItem, 'current'>[] {
     items.push(
       { href: '/companies', label: '고객사', count: requests, countLabel: `소속 요청 ${String(requests)}건` },
       { href: '/members', label: '구성원' },
+      { href: '/trash', label: '휴지통' },
       { href: '/audit-log', label: t('auditLog.title') },
       { href: '/system', label: '시스템 상태' },
     );

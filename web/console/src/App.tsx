@@ -5,6 +5,7 @@ import { AdminOnly, ConsoleLayout, NotFound } from './app/layout';
 import { SessionProvider } from './app/session';
 import { ToastProvider } from './app/toast';
 import { C10MemberList } from './screens/C10MemberList';
+import { C11Trash } from './screens/C11Trash';
 import { C12AuditLog } from './screens/C12AuditLog';
 import { C15MyTasks } from './screens/C15MyTasks';
 import { C16PasswordForgot } from './screens/C16PasswordForgot';
@@ -28,6 +29,7 @@ import { C9CompanyDetail } from './screens/C9CompanyDetail';
 // Slice 3 adds C-19 (every role), before `/issues/:issueKey` so `new` is not read as a key.
 // Slice 4 adds C-7 (every role).
 // Slice 6b adds C-15 (every role).
+// Slice 7a adds C-11 (admin only).
 const routes: RouteObject[] = [
   { index: true, element: <Navigate to={MY_ISSUES_HREF} replace /> },
   { path: '/login', element: <C1Login /> },
@@ -46,6 +48,7 @@ const routes: RouteObject[] = [
       { path: '/companies', element: <AdminOnly><C8CompanyList /></AdminOnly> },
       { path: '/companies/:code', element: <AdminOnly><C9CompanyDetail /></AdminOnly> },
       { path: '/members', element: <AdminOnly><C10MemberList /></AdminOnly> },
+      { path: '/trash', element: <AdminOnly><C11Trash /></AdminOnly> },
       { path: '/audit-log', element: <AdminOnly><C12AuditLog /></AdminOnly> },
       { path: '/system', element: <AdminOnly><C18SystemStatus /></AdminOnly> },
       { path: '*', element: <NotFound listHref="/issues" listLabel="문의 목록으로" /> },
