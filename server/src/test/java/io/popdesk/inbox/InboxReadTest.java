@@ -1,5 +1,6 @@
 package io.popdesk.inbox;
 
+import static io.popdesk.inbox.InboxSteps.CONSOLE_ITEM_FIELDS;
 import static io.popdesk.inbox.InboxSteps.ITEM_FIELDS;
 import static io.popdesk.inbox.InboxSteps.assertActor;
 import static io.popdesk.inbox.InboxSteps.assertItem;
@@ -152,7 +153,7 @@ class InboxReadTest extends BareAppTest {
 
         JsonNode item = itemAbout(d, comment);
 
-        assertThat(new TreeSet<>(item.propertyNames())).as("fields of %s", item).isEqualTo(new TreeSet<>(ITEM_FIELDS));
+        assertThat(new TreeSet<>(item.propertyNames())).as("fields of %s", item).isEqualTo(new TreeSet<>(side == Side.PORTAL ? ITEM_FIELDS : CONSOLE_ITEM_FIELDS));
         assertItem(item, d.reader(), side == Side.PORTAL ? "STAFF_COMMENT" : "CUSTOMER_COMMENT", d.key(),
                 comment.id(), d.causer());
         assertThat(new TreeSet<>(item.path("issue").propertyNames())).as("fields of issue in %s", item)

@@ -78,3 +78,10 @@
 ## 5. 볼 폭과 story
 
 - C-4 작업 구역(작업 0개, 여럿, 30개, 긴 제목 100자, 기록 펼침, 지운 것, `CLOSED`), C-15(할 일, 끝낸 일, 빈 것, 긴 제목)의 story를 두고 360·820·1280과 밝게·어둡게에서 넘침과 axe를 본다(테스트 쪽이 `*.overflow.stories.tsx`에 쓴다, 6a와 같다).
+
+## 6. 작업 알림 메일의 글 (C-5에서 정함)
+
+제목 줄은 `acceptance.md` S6B-AC-34 그대로다. 본문은 4번의 담당 메일 꼴로 테스트 탭이 지었고 메인이 받아들였다(스냅샷 `server/src/test/resources/io/popdesk/notify/__snapshots__/{en,ko}-mail-task-assigned.txt`).
+
+- 한국어: "작업을 맡았습니다." / "작업: {작업 제목}" / "문의: {키}" / "제목: {문의 제목}" / "콘솔에서 작업을 볼 수 있습니다." / 링크
+- 영어: "You were given a task on an issue." / "Task:" / "Issue:" / "Title:" / "Open the task in the console:" / 링크
