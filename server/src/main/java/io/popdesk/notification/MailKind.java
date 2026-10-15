@@ -40,5 +40,8 @@ public enum MailKind {
     ASSIGNED,
 
     /** A customer manager asked for an existing account to join a company, to an admin (S4-AC-51). */
-    MEMBERSHIP_REQUESTED
+    MEMBERSHIP_REQUESTED,
+
+    /** The recipient became the assignee of a task (S6B-AC-33, S6B-AC-34). */
+    TASK_ASSIGNED
 }

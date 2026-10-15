@@ -292,7 +292,8 @@ class ConsoleCompanyController {
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company or account.")
     @GetMapping("/{code}/agents/{accountId}/open-assignments")
     OpenAssignments countCompanyOpenAssignments(@PathVariable String code, @PathVariable long accountId) {
-        return new OpenAssignments(companies.openAssignments(CurrentAccount.get().viewer(), code, accountId));
+        // tasks: 0 until slice 6b counts them (S6B-AC-75).
+        return new OpenAssignments(companies.openAssignments(CurrentAccount.get().viewer(), code, accountId), 0);
     }
 
     @Operation(operationId = "unassignAgent", summary = "Take an agent off a company",

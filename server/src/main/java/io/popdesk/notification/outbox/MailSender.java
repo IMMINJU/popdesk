@@ -117,6 +117,8 @@ class MailSender implements Sender {
             case ASSIGNED -> Optional.of(MailText.assigned(locale, issue, issueLink));
             case MEMBERSHIP_REQUESTED -> Optional.of(MailText.membershipRequested(locale, company,
                     address.origin(App.CONSOLE) + "/companies/" + company));
+            // Nothing queues this kind yet; slice 6b writes its email (S6B-AC-34).
+            case TASK_ASSIGNED -> Optional.empty();
         };
         if (message.isEmpty()) {
             return Attempt.dropped();

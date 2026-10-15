@@ -32,7 +32,9 @@ public interface IssueInbox {
         /** A comment mentions the recipient. */
         MENTIONED,
         /** The recipient became the assignee. */
-        ASSIGNED
+        ASSIGNED,
+        /** The recipient became the assignee of a task of the issue (S6B-AC-33). */
+        TASK_ASSIGNED
     }
 
     /**

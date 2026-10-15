@@ -33,5 +33,7 @@ public enum NotificationKind {
     /** A comment mentions the caller (S4-AC-33). */
     MENTIONED,
     /** The caller became the assignee of the issue (S4-AC-31). */
-    ASSIGNED
+    ASSIGNED,
+    /** The caller became the assignee of a task of the issue; the item's {@code task} names it (S6B-AC-33). */
+    TASK_ASSIGNED
 }

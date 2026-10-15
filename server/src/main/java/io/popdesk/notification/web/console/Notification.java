@@ -18,4 +18,7 @@ public record Notification(
         @Schema(description = "Who did it; null for an item about no issue.", nullable = true)
                 NotificationActor actor,
         OffsetDateTime createdAt,
-        @Schema(description = "When the caller marked it read.", nullable = true) OffsetDateTime readAt) {}
+        @Schema(description = "When the caller marked it read.", nullable = true) OffsetDateTime readAt,
+        @Schema(description = "The task a `TASK_ASSIGNED` item is about, with its title as it is now; null for "
+                + "the other kinds (S6B-AC-33). Deleting the task deletes its items (S6B-AC-36).", nullable = true)
+                NotificationTask task) {}

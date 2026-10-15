@@ -77,7 +77,8 @@ class ConsoleIssueController {
         return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
                 row.createdBy() != null, person(row.assignee()), row.assigneeUnavailable(), labels(labels, row.id()),
-                row.dueDate(), issues.overdue(row), utc(row.createdAt()));
+                row.dueDate(), issues.overdue(row), utc(row.createdAt()),
+                0); // openTaskCount: 0 until slice 6b counts tasks (S6B-AC-70).
     }
 
     /** The labels of one issue, in the name order they were read in; empty without labels. */

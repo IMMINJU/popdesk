@@ -27,4 +27,6 @@ public record IssueSummary(
         @Schema(description = "`YYYY-MM-DD`; null without a due date (DUE-1).", nullable = true) LocalDate dueDate,
         @Schema(description = "The due date is before today in the installation time zone (S6A-AC-35). `false` "
                 + "without a due date.") boolean overdue,
-        OffsetDateTime createdAt) {}
+        OffsetDateTime createdAt,
+        @Schema(description = "Tasks of the issue that are `OPEN` and not deleted, also on a `CLOSED` issue "
+                + "(S6B-AC-70). 0 without tasks.") long openTaskCount) {}

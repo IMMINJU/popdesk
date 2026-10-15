@@ -41,7 +41,8 @@ Every feature that returns customer data ships with a negative test: a customer 
 | Not signed in | 401 |
 | The target is outside what you may see, does not exist, or is in the trash | 404. popdesk does not reveal that it exists (`COM-1`) |
 | You can see the target but may not do this | 403 (`COM-2`) |
-| The action is for other roles only, whatever the target (for example a customer calling a task endpoint) | 403, checked before the target |
+| The action is for other roles only, whatever the target (for example an agent calling an endpoint for admins only) | 403, checked before the target |
+| A customer calls a console endpoint (a task endpoint, for example) | 404 on the portal host, which does not serve it; 401 on the console host, where a portal session does not work |
 
 Order of checks: sign-in (401) → target in scope (404) → permission (403) → input (400) → state (400, 409).
 
@@ -156,15 +157,20 @@ Mentions are for staff only. A customer cannot mention anyone, and the portal ne
 
 ## Tasks and task notes
 
-Staff only. Customers get 403 for every task endpoint and never see tasks anywhere (`TASK-1`). A task's assignee must be an active admin or an active agent assigned to that company, as for issues (`TASK-6`).
+Staff only. Customers never reach a task endpoint: like every console endpoint, it is 404 on the portal host and 401 on the console host. Tasks appear nowhere a customer looks: not in the portal, its API, its notifications, or email (`TASK-1`). A task's assignee must be an active admin or an active agent assigned to that company, as for issues (`TASK-6`). Tasks follow the issue: an agent who cannot see the issue gets 404 for its tasks.
 
 | Action | Agent | Admin |
 |---|---|---|
 | Create a task; edit its title, status, assignee, due date; add notes | Yes | Yes |
-| See "My tasks" across issues | Own tasks, on issues they can still see | Own tasks |
+| See "My tasks" across issues | Own tasks, on issues they can still see and that are not closed | Own tasks, on issues that are not closed |
 | Delete a task | Own | Any |
 | Edit a note | Own | Own |
 | Delete a note | Own | Any |
+
+- On a `CLOSED` issue, tasks and notes can be read and deleted, not created or edited. Reopening the issue makes them editable again.
+- A deleted task or note stays in the list as a trace: who deleted it and when. A deleted task loses its title, assignee, due date, and notes. A deleted task or note cannot be edited.
+- The changes popdesk writes into a task's notes (status, assignee, due date, title) cannot be edited or deleted.
+- Limits: 30 tasks per issue that are not deleted (100 with the deleted ones); 100 notes per task that are not deleted (1,000 entries with the deleted notes and the changes); 60 creations and edits of tasks and notes per account in 60 seconds.
 
 ## Linked issues
 

@@ -129,7 +129,8 @@ class ConsoleAccountController {
     @ApiResponse(responseCode = "404", description = NOT_FOUND)
     @GetMapping("/api/console/accounts/{accountId}/open-assignments")
     OpenAssignments countOpenAssignments(@PathVariable long accountId) {
-        return new OpenAssignments(accounts.openAssignments(CurrentAccount.get(), accountId));
+        // tasks: 0 until slice 6b counts them (S6B-AC-75).
+        return new OpenAssignments(accounts.openAssignments(CurrentAccount.get(), accountId), 0);
     }
 
     @Operation(operationId = "reactivateAccount", summary = "Lift an account's suspension",

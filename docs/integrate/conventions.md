@@ -44,7 +44,8 @@ Every request is checked in this order:
 
 - A target the caller may not see (outside their scope, does not exist, or in the trash) is 404. The response does not reveal whether it exists (`COM-1`).
 - A target the caller can see but may not act on is 403 (`COM-2`).
-- An action reserved for other roles, whatever the target (for example a customer calling a task endpoint), is 403 and is checked before the target.
+- An action reserved for other roles, whatever the target (for example an agent calling an endpoint for admins only), is 403 and is checked before the target.
+- A customer never reaches a console endpoint, a task endpoint for example: the portal host does not serve `/api/console/**` (404), and a portal session does not work on the console host (401). The same holds for staff and `/api/portal/**`.
 
 Rate limits (`COM-8`) are counted between steps 1 and 2.
 
@@ -103,8 +104,12 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 400 | `MEMBER_IS_MANAGER` | A customer manager tries to remove another manager of the company. An admin does that |
 | 400 | `INVITATION_NOT_RESENDABLE` | A customer manager tries to send again an invitation that cannot be sent again from the portal. One code whatever the reason |
 | 400 | `NOT_A_CUSTOMER` | The account of a membership request is an agent or an admin, so the request cannot be approved. It can be rejected |
-| 400 | `ISSUE_CLOSED` | The issue is `CLOSED`: no comments, attachments, or edits. "No comments" covers adding a comment and editing one; deleting a comment still works. Also when a customer closes an issue that is closed already. A status change by staff on a closed issue is `INVALID_TRANSITION` |
+| 400 | `ISSUE_CLOSED` | The issue is `CLOSED`: no comments, attachments, tasks, task notes, or edits. "No comments" covers adding a comment and editing one; deleting a comment still works. Tasks and task notes are the same: deleting them still works. Also when a customer closes an issue that is closed already. A status change by staff on a closed issue is `INVALID_TRANSITION` |
 | 400 | `COMMENT_DELETED` | An edit of a comment that is deleted. Nothing changed |
+| 400 | `TASK_LIMIT_EXCEEDED` | The issue has 30 tasks that are not deleted, or 100 with the deleted ones, so no task can be created |
+| 400 | `TASK_NOTE_LIMIT_EXCEEDED` | The task has 100 notes that are not deleted, so no note can be added; or it has 1,000 entries (notes, deleted notes, and changes), so neither a note nor a change of its title, status, assignee, or due date is taken. Nothing changed |
+| 400 | `TASK_DELETED` | An edit of a task that is deleted, or a note added to one. Nothing changed |
+| 400 | `TASK_NOTE_DELETED` | An edit of a task note that is deleted. Nothing changed |
 | 400 | `INVALID_TRANSITION` | A status change by staff: the issue cannot go from its current status to the one sent, or has that status already. Nothing changed |
 | 400 | `NOT_REOPENABLE` | The issue is neither `RESOLVED` nor `CLOSED`, or it was closed 14 days ago or longer, so it cannot be reopened |
 | 400 | `FILE_EMPTY` | The uploaded file has 0 bytes |
@@ -283,6 +288,8 @@ Some deletions keep the row and leave a trace: the content fields are cleared, a
 
 - An attachment: `fileName` becomes `null`.
 - A comment: `content` becomes an empty string, and the comment's attachments are deleted with it. The comment stays in its place in the list and is counted. The portal gives `deleted` and `deletedAt` but not who deleted it; the console gives `deletedBy` too. A deleted comment takes no new attachment: its ID as `commentId` of an upload is `UNKNOWN_VALUE`, like the ID of a comment that is not the caller's.
+- A task (console only): `title` becomes an empty string, `assignee` and `dueDate` become `null`, `overdue` is `false`, and `notes` is `[]`. Its notes are deleted with it, and its changes lose their values. Deleting it again is 204 and changes nothing.
+- A task note (console only): `content` becomes an empty string. Deleting it again is 204 and changes nothing.
 
 ## Notification inbox (INBOX-3)
 
@@ -293,8 +300,9 @@ Each app has the inbox of the signed-in account: `/api/portal/notifications` and
 - The unread count follows the same rule: the items the list would show that have no `readAt`.
 - Marking an item read sets `readAt` once; marking it again is 204 and keeps the first time. An item of another account, or one that does not exist, is 404.
 - `read-all` marks every unread item of the caller read, also those left out of the list now, so they do not come back as unread later.
-- Deleting a comment deletes the items about that comment. Taking an account out of a comment's mentions deletes that account's unread item about the mention.
+- Deleting a comment deletes the items about that comment, and deleting a task deletes the items about that task. Taking an account out of a comment's mentions deletes that account's unread item about the mention.
 - An item is made in the request that causes it, for one person: the reporter for what staff do (a public comment, resolving, closing, reopening, filing for them), the assignee for what the reporter does (a comment, closing, reopening), the new assignee, and each account a comment mentions. Nobody gets an item for what they did themselves, an account that is not active or cannot see the issue at that moment gets none, and a person a comment both mentions and would be told of gets the mention alone. So an issue without an assignee tells nobody of the customer's comment. A request that fails or changes nothing makes no item.
+- A task's new assignee gets an item `TASK_ASSIGNED` that names the task, unless they set it themselves. Clearing a task's assignee, notes, and changes of its status, due date, or title tell nobody. Customers never get an item about a task.
 - The portal's items have their own type and their own kinds, only those a customer gets. What an agent or an admin did has the actor `SUPPORT_TEAM`, without a name, an email, or an account ID (D-49). The console gives the actor's account ID, name, and role.
 - Items about no issue (operational alerts, membership requests) go to admins only and have `null` for the issue, the comment, and the actor.
 
@@ -306,6 +314,7 @@ Limits are per account over a 60-second window:
 |---|---|
 | Create an issue | 10 |
 | Add or edit a comment | 30 (both count together; deleting a comment is not counted) |
+| Create or edit a task, add or edit a task note | 60 (all four count together; deleting is not counted) |
 | Upload an attachment | 30 (each file of a new issue counts as one; a new issue whose files do not all fit is refused whole). An image uploaded for an issue's content or a comment counts here too, as one upload |
 | Upload a profile photo | 10 |
 | List with a search term | 60 (the issue lists, the account list, and the list of customers staff can file for count together). A list without `q` is not counted, whatever other filters it has |
