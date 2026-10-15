@@ -30,6 +30,7 @@ import {
   BETA_9,
   LINKS_7,
   dialogButton,
+  focusOnLinkHeading,
   goToIssue,
   historyLink,
   issuePath,
@@ -44,6 +45,7 @@ import {
   linkOpenerNow,
   linkPath,
   linkRegion,
+  linkRegionNow,
   linkResponse,
   linkTo,
   linksOf,
@@ -65,6 +67,8 @@ const UNLINK_FAILED = '연결을 바꾸지 못했습니다. 다시 해 보세요
 const NOT_FOUND = '찾을 수 없는 문의입니다.';
 const SELF = '이 문의와는 이을 수 없습니다.';
 const LINK_FAILED = '연결하지 못했습니다. 다시 해 보세요.';
+/** rateLimitedText(30) of the console (screens.md 5절). */
+const RATE_LIMITED = '요청이 많습니다. 30초 뒤 다시 하세요.';
 
 const KIND_WORDS: Readonly<Record<IssueLinkType, string>> = {
   DUPLICATE_OF: '이 문의의 원본',
@@ -212,6 +216,7 @@ describe('C-4 연결 구역 (6c 묶음)', () => {
     });
     expect(linkLineNow('ACME-2'), '남은 줄').not.toBeNull();
     expect(linkOpenerNow(), '다시 이을 수 있다: "문의 잇기"').not.toBeNull();
+    await focusOnLinkHeading();
   });
 
   test('S6C-AC-52 C-4 CLOSED: "문의 잇기"와 "끊기"가 없고 목록은 그대로 보인다', async () => {
@@ -229,22 +234,25 @@ describe('C-4 연결 구역 (6c 묶음)', () => {
     expect(regionName(region)).toBe('연결된 문의 3');
   });
 
-  test('S6C-AC-52 C-4 끊기 실패: 줄 아래 role="alert" "연결을 바꾸지 못했습니다. 다시 해 보세요."이고 줄은 그대로다', async () => {
+  test.each([
+    { what: '500', answer: () => errors.internal(), says: UNLINK_FAILED },
+    { what: '429', answer: () => errors.rateLimited(30), says: RATE_LIMITED },
+  ])('S6C-AC-52 C-4 끊기 실패($what): 줄 아래 role="alert" "$says"이고 줄은 그대로다', async ({ answer, says }) => {
     seedLinks(THREE);
     state.issue = issueIn('IN_PROGRESS');
-    route('delete', linkPath('BETA-3'), () => errors.internal());
+    route('delete', linkPath('BETA-3'), answer);
     const { user } = renderAt(URL_7);
     const region = await opened();
 
     await user.click(await unlinkButton('BETA-3'));
 
-    const alert = await found(() => within(region).queryAllByRole('alert').find((a) => text(a).includes(UNLINK_FAILED)), `role="alert" "${UNLINK_FAILED}"`);
+    const alert = await found(() => within(region).queryAllByRole('alert').find((a) => text(a).includes(says)), `role="alert" "${says}"`);
     const line = await linkLine('BETA-3');
     expect(line.compareDocumentPosition(alert) & (Node.DOCUMENT_POSITION_FOLLOWING | Node.DOCUMENT_POSITION_CONTAINED_BY), '오류가 줄 아래').toBeTruthy();
     expect(unlinkButtonNow('BETA-3'), '줄의 "끊기"').not.toBeNull();
   });
 
-  test('S6C-AC-52 C-4 끊기 404: 누군가 먼저 끊었으면 목록을 다시 읽어 그 줄이 빠진다', async () => {
+  test('S6C-AC-52 C-4 끊기 404: 누군가 먼저 끊었으면 목록을 다시 읽어 그 줄이 빠지고 오류 문구는 없다', async () => {
     seedLinks(THREE);
     state.issue = issueIn('IN_PROGRESS');
     route('delete', linkPath('BETA-3'), () => {
@@ -264,6 +272,57 @@ describe('C-4 연결 구역 (6c 묶음)', () => {
       expect(linkLineNow('BETA-3'), '먼저 끊긴 줄').toBeNull();
     });
     expect(linkLineNow('ACME-2')).not.toBeNull();
+    await settle();
+    expect(text(document.body), '끊기 404의 오류 문구').not.toContain(UNLINK_FAILED);
+  });
+
+  test('S6C-AC-52 C-4 끊기 답 ISSUE_CLOSED: 문의를 다시 읽어 "문의 잇기"와 "끊기"가 사라지고 초점은 구역 제목으로 간다', async () => {
+    seedLinks(THREE);
+    state.issue = issueIn('IN_PROGRESS');
+    route('delete', linkPath('BETA-3'), () => {
+      state.issue = issueIn('CLOSED');
+      return rejectedWith('deleteIssueLink', 'ISSUE_CLOSED');
+    });
+    const { user } = renderAt(URL_7);
+    await opened();
+    const before = callsTo('GET', ISSUE_7).length;
+
+    await user.click(await unlinkButton('BETA-3'));
+
+    await sent('DELETE', linkPath('BETA-3'));
+    await eventually(() => {
+      expect(callsTo('GET', ISSUE_7).length, '문의 다시 읽기').toBeGreaterThan(before);
+      expect(linkOpenerNow(), '닫힌 문의의 "문의 잇기"').toBeNull();
+      expect(unlinkButtonNow('BETA-3'), '닫힌 문의의 "끊기"').toBeNull();
+    });
+    expect(linkLineNow('BETA-3'), '목록은 그대로').not.toBeNull();
+    await focusOnLinkHeading();
+  });
+
+  test('S6C-AC-50 C-4 연결 목록 읽기 실패: 구역 안에 role="alert" 띠와 "다시 불러오기"이고, 누르면 목록이 나온다', async () => {
+    seedLinks(THREE);
+    state.issue = issueIn('IN_PROGRESS');
+    let fail = true;
+    route('get', LINKS_7, () => (fail ? errors.internal() : linksResponse(linksOf())));
+    const { user } = renderAt(URL_7);
+    const region = await opened();
+
+    const alert = await found(() => within(region).queryAllByRole('alert')[0] ?? null, '구역 안 role="alert"');
+    const retry = await found(() => within(region).queryByRole('button', { name: '다시 불러오기' }), '구역 안 "다시 불러오기"');
+    expect(alert.contains(retry) || alert.compareDocumentPosition(retry) & Node.DOCUMENT_POSITION_FOLLOWING, '띠의 "다시 불러오기"').toBeTruthy();
+    expect(text(region), '읽지 못했을 때의 빈 목록 문구').not.toContain(EMPTY);
+    const before = callsTo('GET', LINKS_7).length;
+    fail = false;
+
+    await user.click(retry);
+
+    await eventually(() => {
+      expect(callsTo('GET', LINKS_7).length, '목록 다시 읽기').toBeGreaterThan(before);
+    });
+    await linkLine('BETA-3');
+    await eventually(() => {
+      expect(within(linkRegionNow() ?? region).queryAllByRole('alert'), '다시 읽은 뒤의 띠').toHaveLength(0);
+    });
   });
 });
 
@@ -378,6 +437,20 @@ describe('C-4 "문의 잇기" 대화상자 (6c 묶음)', () => {
     expect(await bodyOf('POST', LINKS_7)).toEqual({ issueKey: 'BETA-3', type });
   });
 
+  test('S6C-AC-51 C-4 공백과 소문자로 찾은 뒤 잇기: POST 몸통의 issueKey는 다듬은 키(BETA-3)다', async () => {
+    state.issue = issueIn('IN_PROGRESS');
+    const { user } = renderAt(URL_7);
+    await opened();
+    const box = await openLinkDialog(user);
+    await search(user, box, '  beta-3 ');
+    await shownIn(box, BETA_3.title);
+
+    await user.click(await dialogButton(box, '잇기'));
+
+    await sent('POST', LINKS_7);
+    expect(await bodyOf('POST', LINKS_7)).toEqual({ issueKey: 'BETA-3', type: 'RELATED' });
+  });
+
   test('S6C-AC-51 C-4 보내는 동안 "잇기"가 막힌다', async () => {
     state.issue = issueIn('IN_PROGRESS');
     const release = gate();
@@ -388,11 +461,13 @@ describe('C-4 "문의 잇기" 대화상자 (6c 묶음)', () => {
     const { user } = renderAt(URL_7);
     const box = await foundBeta(user);
 
-    await user.click(await dialogButton(box, '잇기'));
+    // The button may read "보내는 중…" while sending (screens.md 5절): hold the one pressed, not its name.
+    const pressed = await dialogButton(box, '잇기');
+    await user.click(pressed);
 
     await sent('POST', LINKS_7);
     await eventually(() => {
-      expect(isBlocked(within(box).getByRole('button', { name: '잇기' })), '보내는 동안의 "잇기"').toBe(true);
+      expect(isBlocked(pressed), '보내는 동안의 "잇기"').toBe(true);
     });
     release.open();
     await closed();
@@ -409,9 +484,12 @@ describe('C-4 "문의 잇기" 대화상자 (6c 묶음)', () => {
     { code: 'LINK_LIMIT_EXCEEDED', status: 400, says: '연결은 문의마다 50개까지입니다.' },
     { code: 'NOT_FOUND', status: 404, says: NOT_FOUND },
     { code: 'INTERNAL_ERROR', status: 500, says: LINK_FAILED },
+    { code: 'RATE_LIMITED', status: 429, says: RATE_LIMITED },
   ])('S6C-AC-51 C-4 서버 답 $code($status): 대화상자 안 role="alert" "$says"이고 입력은 그대로다', async ({ code, status, says }) => {
     state.issue = issueIn('IN_PROGRESS');
-    route('post', LINKS_7, () => (status === 500 ? errors.internal() : status === 404 ? errors.notFound() : rejectedWith('createIssueLink', code, status)));
+    route('post', LINKS_7, () =>
+      status === 500 ? errors.internal() : status === 404 ? errors.notFound() : status === 429 ? errors.rateLimited(30) : rejectedWith('createIssueLink', code, status),
+    );
     const { user } = renderAt(URL_7);
     const box = await foundBeta(user);
     await user.click(within(await kindGroup(box)).getByRole('radio', { name: '이 문의가 찾은 문의의 중복' }));
@@ -424,7 +502,7 @@ describe('C-4 "문의 잇기" 대화상자 (6c 묶음)', () => {
     expect(within(await kindGroup(box)).getByRole('radio', { name: '이 문의가 찾은 문의의 중복' })).toBeChecked();
   });
 
-  test('S6C-AC-51 C-4 서버 답 ISSUE_CLOSED: 대화상자를 닫고 문의를 다시 읽는다', async () => {
+  test('S6C-AC-51 C-4 서버 답 ISSUE_CLOSED: 대화상자를 닫고 문의를 다시 읽으며 초점은 구역 제목으로 간다', async () => {
     state.issue = issueIn('IN_PROGRESS');
     route('post', LINKS_7, () => {
       state.issue = issueIn('CLOSED');
@@ -441,6 +519,7 @@ describe('C-4 "문의 잇기" 대화상자 (6c 묶음)', () => {
       expect(callsTo('GET', ISSUE_7).length, '문의 다시 읽기').toBeGreaterThan(before);
       expect(linkOpenerNow(), '닫힌 문의의 "문의 잇기"').toBeNull();
     });
+    await focusOnLinkHeading();
   });
 
   test('S6C-AC-51 C-4 성공: 대화상자를 닫고 목록과 이력을 다시 읽으며 초점은 "문의 잇기"로 돌아간다', async () => {
@@ -688,7 +767,7 @@ describe('C-4 연결의 늦은 답 (6c 묶음)', () => {
 
     const region = await linkRegion();
     expect(linkLineNow('BETA-3'), 'ACME-7의 답').toBeNull();
-    expect(text(region), '옮긴 뒤 온 실패').not.toContain(UNLINK_FAILED);
+    expect(text(document.body), '옮긴 뒤 온 실패').not.toContain(UNLINK_FAILED);
     expect(text(document.body), '옮긴 뒤 온 실패').not.toContain(LINK_FAILED);
     expect(regionName(region)).toBe('연결된 문의 1');
     expect(unlinkButtonNow('BETA-9'), 'ACME-8 연결의 "끊기"').not.toBeNull();
