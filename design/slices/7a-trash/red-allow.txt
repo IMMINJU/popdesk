@@ -1,0 +1,5 @@
+# 구현 전에 통과해도 되는 테스트. `<테스트 이름> | <까닭>`
+src/screens/C18SystemStatus.7a.test.tsx.C-18 시스템 상태의 정리 작업 (7a 묶음) > S7A-AC-52 C-18 정리 작업 다섯: issue-auto-close와 trash-purge가 이름순 자리에 <code>로 있다 | C-18은 받은 작업 이름을 있는 꼴대로 그린다(screens.md 3절 "있는 꼴대로"). 새 이름도 그 꼴을 지키는지 본다
+src/screens/IssueHistory.7a.test.tsx.C-4 이력의 휴지통 항목 (7a 묶음) > S7A-AC-52 C-4 이력(시스템의 영구 삭제(그 밖)): "시스템이 문의를 바꿨습니다" | screens.md 3절의 "그 밖"은 있는 기본 문장이다. TRASH를 다루는 구현이 이 경우를 바꾸지 않는지 지킨다
+src/screens/IssueHistory.7a.test.tsx.C-4 이력의 휴지통 항목 (7a 묶음) > S7A-AC-52 C-4 이력(모르는 값(그 밖)): "최관리 님이 문의를 바꿨습니다" | 같다(그 밖의 기본 문장)
+src/screens/IssueHistory.7a.test.tsx.C-4 이력의 휴지통 항목 (7a 묶음) > S7A-AC-52 C-4 이력(자동 종료): "시스템이 상태를 해결에서 종료로 바꿨습니다" | 자동 종료는 있는 STATUS 문장 그대로다(screens.md 3절). 구현 뒤에도 남는지 지킨다
