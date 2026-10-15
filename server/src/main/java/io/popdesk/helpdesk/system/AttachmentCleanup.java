@@ -24,10 +24,11 @@ import org.springframework.stereotype.Component;
  *       when step ③ of the upload holds the row, the one that commits first wins and the other changes
  *       nothing.
  *   <li>Each {@code purging} row loses its file, in the storage its row names (S5B-AC-12; a file that is
- *       already gone counts as removed), and becomes {@code purged}.
+ *       already gone counts as removed), and becomes {@code purged}; the row of a purged issue is deleted
+ *       instead (S7A-AC-33).
  * </ol>
  *
- * The count recorded is the rows that became {@code purged}. A file that cannot be removed is counted and
+ * The count recorded is the rows that became {@code purged} or were deleted. A file that cannot be removed is counted and
  * the run goes on with the next row, but a storage that cannot be reached at all ends the run there: every
  * other row would wait for the same time limit, and the other scheduled work waits behind this job
  * (S5B-AC-35). Either way the run fails and is tried again.
@@ -39,6 +40,13 @@ class AttachmentCleanup implements CleanupJob {
 
     /** How long an upload may stay pending before the cleanup ends it (ATT-11). */
     static final Duration PENDING_FOR = Duration.ofHours(1);
+
+    /**
+     * The attachment's issue is purged, as SQL on {@code attachment}: its row goes with the file, as
+     * nothing of a purged issue stays (TRASH-3, S7A-AC-33).
+     */
+    private static final String PURGED_ISSUE = "select 1 from issue i where i.id = attachment.issue_id "
+            + "and i.purged_at is not null";
 
     private record Purging(UUID id, String storage, String location) {}
 
@@ -77,7 +85,11 @@ class AttachmentCleanup implements CleanupJob {
         for (Purging row : purging) {
             try {
                 storage.delete(row.storage(), row.location(), row.id());
-                purged += jdbc.sql("update attachment set state = 'purged' where id = ? and state = 'purging'")
+                purged += jdbc.sql("update attachment set state = 'purged' where id = ? and state = 'purging' "
+                                + "and not exists (" + PURGED_ISSUE + ")")
+                        .params(row.id()).update();
+                purged += jdbc.sql("delete from attachment where id = ? and state = 'purging' and exists ("
+                                + PURGED_ISSUE + ")")
                         .params(row.id()).update();
             } catch (StorageUnreachableException e) {
                 log.warn("The {} storage could not be reached; this run of the attachment cleanup ends here and "
