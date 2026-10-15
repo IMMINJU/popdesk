@@ -14,6 +14,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,10 +49,11 @@ public class Inbox {
     /**
      * An item as it is read. {@code issue} is the issue as it is now and {@code actor} who did it, as
      * the reader may see them; both null for an item about no issue. {@code companyCode} is the issue's
-     * company, or the company a membership request is about.
+     * company, or the company a membership request is about. {@code linkedIssue} is the linked issue that
+     * changed, as it is now, of the items {@code LINKED_ISSUE_*}; null for the other kinds (S6C-AC-33).
      */
     public record Item(long id, String kind, Issue issue, String companyCode, Long commentId, Actor actor,
-            Instant createdAt, Instant readAt, Task task) {}
+            Instant createdAt, Instant readAt, Task task, Issue linkedIssue) {}
 
     /** The task an item is about, with its title as it is now (S6B-AC-33). */
     public record Task(long id, String title) {}
@@ -72,7 +74,9 @@ public class Inbox {
         PageRequest request = PageRequest.of(page, size);
         Shown shown = shown(accountId, reader, false);
         List<InboxRow> rows = ops.listInbox(shown, request.offset(), request.size());
-        Map<UUID, Issue> issues = facts.issues(distinct(rows, InboxRow::issueId));
+        Set<UUID> about = new HashSet<>(distinct(rows, InboxRow::issueId));
+        about.addAll(distinct(rows, InboxRow::linkedIssueId));
+        Map<UUID, Issue> issues = facts.issues(about);
         Map<Long, Actor> actors = facts.actors(distinct(rows, InboxRow::actorId), reader);
         Map<Long, String> tasks = reader == Reader.STAFF ? facts.taskTitles(distinct(rows, InboxRow::taskId)) : Map.of();
         return request.map(rows, ops.countInbox(shown), row -> item(row, issues, actors, tasks));
@@ -103,8 +107,8 @@ public class Inbox {
 
     /**
      * What the reader's inbox shows now: for a customer only {@link #CUSTOMER_KINDS}, and the issues the
-     * account sees among those its items are about; with {@code unreadOnly}, among those of its unread
-     * items, which is all a count of them needs.
+     * account sees among those its items are about, linked issues included (S6C-AC-33); with
+     * {@code unreadOnly}, among those of its unread items, which is all a count of them needs.
      */
     private Shown shown(long accountId, Reader reader, boolean unreadOnly) {
         Collection<String> kinds = reader == Reader.CUSTOMER ? CUSTOMER_KINDS : null;
@@ -118,7 +122,8 @@ public class Inbox {
         String taskTitle = row.taskId() == null ? null : tasks.get(row.taskId());
         return new Item(row.id(), row.kind(), issue, issue == null ? row.companyCode() : issue.companyCode(),
                 row.commentId(), row.actorId() == null ? null : actors.get(row.actorId()), row.createdAt(),
-                row.readAt(), taskTitle == null ? null : new Task(row.taskId(), taskTitle));
+                row.readAt(), taskTitle == null ? null : new Task(row.taskId(), taskTitle),
+                row.linkedIssueId() == null ? null : issues.get(row.linkedIssueId()));
     }
 
     private static <T> Set<T> distinct(List<InboxRow> rows, Function<InboxRow, T> value) {

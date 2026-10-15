@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -139,6 +140,39 @@ public class IssueRepository {
         return jdbc.sql(SELECT + "where c.code = ? and i.number = ? and " + IssueScope.SQL + " for no key update of i")
                 .params(concat(new Object[] {key.companyCode(), key.number()}, IssueScope.params(viewer)))
                 .query(IssueRepository::issue).optional();
+    }
+
+    /**
+     * The two issues with these IDs that the viewer may see, locked {@code FOR NO KEY UPDATE} until the
+     * end of the transaction, in the order of their IDs as the database orders the uuid type (slice 6c
+     * design section 0, 1). One statement, ordered by the ID, takes the two locks in that order whichever
+     * issue the request names first, so two writes on the same two issues wait for each other instead of
+     * deadlocking (S6C-AC-08). An issue the viewer may not see is not locked and not returned.
+     *
+     * @return the issues found, at most two, smaller ID first
+     */
+    public List<IssueRow> lockPair(Viewer viewer, UUID one, UUID other) {
+        return jdbc.sql(SELECT + "where i.id in (?, ?) and " + IssueScope.SQL + " order by i.id for no key update of i")
+                .params(concat(new Object[] {one, other}, IssueScope.params(viewer)))
+                .query(IssueRepository::issue).list();
+    }
+
+    /** The assignee and the status of an issue, read without the viewer's scope. */
+    public record Assignment(UUID issueId, Long assigneeId, IssueStatus status) {}
+
+    /**
+     * The assignee and the status of each of these issues that exists, whoever may see it, in the order
+     * of their IDs. For telling the assignees of linked issues (S6C-AC-31); the caller checks who may see
+     * what.
+     */
+    List<Assignment> assignments(Collection<UUID> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql("select i.id, i.assignee_id, i.status from issue i where i.id = any(?) order by i.id")
+                .param(ids.toArray(UUID[]::new))
+                .query((rs, n) -> new Assignment(rs.getObject("id", UUID.class), rs.getObject("assignee_id", Long.class),
+                        IssueStatus.valueOf(rs.getString("status")))).list();
     }
 
     /** The issue with this ID, if the viewer may see it. */

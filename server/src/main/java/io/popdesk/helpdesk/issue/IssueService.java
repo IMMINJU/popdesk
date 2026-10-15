@@ -452,6 +452,7 @@ public class IssueService {
                     }
                     IssueRow moved = issues.findByKey(viewer, issueKey).orElseThrow();
                     notifications.statusChanged(viewer, moved, to);
+                    notifications.linkedStatusChanged(viewer, moved, to);
                     return moved;
                 }
                 tries++;
