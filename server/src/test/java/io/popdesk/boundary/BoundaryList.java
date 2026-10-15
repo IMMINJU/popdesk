@@ -46,6 +46,9 @@ final class BoundaryList {
     private static final String LABEL_OF_B = "boundary.LabelBoundaryTest#";
     private static final String LABELS = "label.LabelManageTest#";
     private static final String TASK_OF_B = "boundary.TaskBoundaryTest#";
+    private static final String LINK_CREATE = "link.LinkCreateTest#";
+    private static final String LINK_LIST = "link.LinkListTest#";
+    private static final String LINK_CUSTOMER = "link.LinkCustomerTest#";
 
     static final List<Entry> ENTRIES = List.of(
             // Before sign-in, both hosts
@@ -468,5 +471,19 @@ final class BoundaryList {
                     TASK_OF_B + "customerGetsTheConsoleAnswer"),
             tested("GET", "/api/console/tasks",
                     "task.MyTasksTest#taskOfACompanyTheAgentLeftIsLeftOut",
-                    TASK_OF_B + "customerGetsTheConsoleAnswer"));
+                    TASK_OF_B + "customerGetsTheConsoleAnswer"),
+
+            // Slice 6c (S6C-AC-02, 11, 12, 40): the 3 link operations, all on the console. Both issues are found
+            // within what the caller may see: an issue of a company the agent is not assigned to is the 404 of a
+            // key nobody has, for the path and for the other issue, and a link to it is left out of the list.
+            // Customers get what any console path gives them.
+            tested("GET", STAFF_ISSUE + "/links",
+                    LINK_LIST + "unseenLinksAreLeftOut",
+                    LINK_CUSTOMER + "customerGetsTheConsoleAnswer"),
+            tested("POST", STAFF_ISSUE + "/links",
+                    LINK_CREATE + "unseenIssueIsNotFound",
+                    LINK_CUSTOMER + "customerGetsTheConsoleAnswer"),
+            tested("DELETE", STAFF_ISSUE + "/links/{otherKey}",
+                    LINK_LIST + "unseenOrMissingLinkIsNotRemoved",
+                    LINK_CUSTOMER + "customerGetsTheConsoleAnswer"));
 }

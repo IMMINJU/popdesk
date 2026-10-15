@@ -257,7 +257,7 @@ class IssueHistoryTest extends BareAppTest {
                 .containsExactlyInAnyOrder("accountId", "name", "role", "photoUpdatedAt"));
         assertThat(all).allSatisfy(entry -> assertThat(entry.propertyNames()).as("fields of %s", entry)
                 .containsExactlyInAnyOrder("id", "kind", "field", "oldValue", "newValue", "oldPerson", "newPerson",
-                        "actor", "createdAt"));
+                        "oldLink", "newLink", "actor", "createdAt"));
     }
 
     // S3-AC-65
