@@ -6,6 +6,7 @@ import { SessionProvider } from './app/session';
 import { ToastProvider } from './app/toast';
 import { C10MemberList } from './screens/C10MemberList';
 import { C12AuditLog } from './screens/C12AuditLog';
+import { C15MyTasks } from './screens/C15MyTasks';
 import { C16PasswordForgot } from './screens/C16PasswordForgot';
 import { C17PasswordReset } from './screens/C17PasswordReset';
 import { C18SystemStatus } from './screens/C18SystemStatus';
@@ -26,6 +27,7 @@ import { C9CompanyDetail } from './screens/C9CompanyDetail';
 // Slice 1b adds C-12 (admin only).
 // Slice 3 adds C-19 (every role), before `/issues/:issueKey` so `new` is not read as a key.
 // Slice 4 adds C-7 (every role).
+// Slice 6b adds C-15 (every role).
 const routes: RouteObject[] = [
   { index: true, element: <Navigate to={MY_ISSUES_HREF} replace /> },
   { path: '/login', element: <C1Login /> },
@@ -38,6 +40,7 @@ const routes: RouteObject[] = [
       { path: '/issues', element: <C3IssueList /> },
       { path: '/issues/new', element: <C19IssueCreate /> },
       { path: '/issues/:issueKey', element: <C4IssueDetail /> },
+      { path: '/tasks', element: <C15MyTasks /> },
       { path: '/me', element: <C6MyInfo /> },
       { path: '/inbox', element: <C7Inbox /> },
       { path: '/companies', element: <AdminOnly><C8CompanyList /></AdminOnly> },
