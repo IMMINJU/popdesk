@@ -9,6 +9,7 @@ import io.popdesk.PatchText;
 import io.popdesk.TextInput;
 import io.popdesk.Transactions;
 import io.popdesk.helpdesk.AccountRateLimit;
+import io.popdesk.helpdesk.DueDates;
 import io.popdesk.helpdesk.CompanyStatus;
 import io.popdesk.helpdesk.IssueStatus;
 import io.popdesk.helpdesk.Priority;
@@ -26,8 +27,6 @@ import io.popdesk.notification.WebhookQueue;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -82,12 +81,6 @@ public class IssueService {
     /** The values {@code sort} takes (S6A-AC-53); without it, {@link #SORT_CREATED_AT}. */
     static final String SORT_CREATED_AT = "createdAt";
     static final String SORT_DUE_DATE = "dueDate";
-
-    /**
-     * A due date as text: {@code YYYY-MM-DD} and nothing else, no time, no offset, no sign (S6A-AC-31).
-     * Checked before {@link LocalDate#parse}, which then refuses a day that does not exist.
-     */
-    private static final Pattern DATE = Pattern.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}");
 
     /** An account ID as the assignee filter gets it: a positive number that fits a {@code bigint}. */
     private static final Pattern ACCOUNT_ID = Pattern.compile("[1-9][0-9]{0,17}");
@@ -656,14 +649,11 @@ public class IssueService {
      */
     public IssueRow setDueDate(Viewer viewer, String key, String dueDate) {
         return changeDueDate(viewer, key, () -> {
-            if (dueDate == null || dueDate.isEmpty()) {
-                throw ApiException.invalid("dueDate", "REQUIRED");
+            DueDates.Read read = DueDates.read(dueDate, zone.today(clock));
+            if (read.error() != null) {
+                throw ApiException.invalid("dueDate", read.error());
             }
-            LocalDate date = date(dueDate);
-            if (date.isBefore(zone.today(clock))) {
-                throw ApiException.invalid("dueDate", "OUT_OF_RANGE");
-            }
-            return date;
+            return read.date();
         });
     }
 
@@ -699,18 +689,6 @@ public class IssueService {
         });
     }
 
-    /** {@code YYYY-MM-DD} of a day that exists; else 400 {@code INVALID_FORMAT} for {@code dueDate}. */
-    private static LocalDate date(String text) {
-        if (!DATE.matcher(text).matches()) {
-            throw ApiException.invalid("dueDate", "INVALID_FORMAT");
-        }
-        try {
-            return LocalDate.parse(text, DateTimeFormatter.ISO_LOCAL_DATE);
-        } catch (DateTimeParseException e) {
-            throw ApiException.invalid("dueDate", "INVALID_FORMAT");
-        }
-    }
-
     private static String text(LocalDate date) {
         return date == null ? null : date.toString();
     }
@@ -720,7 +698,7 @@ public class IssueService {
      * now, never stored; false without a due date.
      */
     public boolean overdue(IssueRow issue) {
-        return issue.dueDate() != null && issue.dueDate().isBefore(zone.today(clock));
+        return DueDates.passed(issue.dueDate(), zone.today(clock));
     }
 
     /**
