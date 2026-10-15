@@ -136,6 +136,8 @@ export function IssueTasks(props: IssueTasksProps) {
     if (!live() || mine !== removeAsk.current) return;
     if (result.ok || result.failure.kind === 'notFound') {
       closeRemove();
+      // The line or note that had focus is a trace now: focus goes to the section.
+      document.getElementById(headingId)?.focus();
       void tasks.read();
     } else if (result.failure.kind === 'unauthenticated') {
       toLogin();
@@ -152,7 +154,7 @@ export function IssueTasks(props: IssueTasksProps) {
   return (
     <>
       <section className="pd-detail-tasks" aria-labelledby={headingId}>
-        <h2 id={headingId} className="pd-section-title">
+        <h2 id={headingId} className="pd-section-title" tabIndex={-1}>
           {openCount > 0 ? `작업 ${String(openCount)}/${String(live30)}` : '작업'}
         </h2>
         {tasks.list === null && tasks.failed && (
@@ -276,6 +278,11 @@ function TaskAdd(props: {
 }) {
   const live = useLive();
   const [draft, setDraft] = useState('');
+  const input = useRef<HTMLInputElement>(null);
+  // Pressing "작업 더하기" puts the cursor in the title field.
+  useLayoutEffect(() => {
+    if (props.adding) input.current?.focus();
+  }, [props.adding]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -304,7 +311,7 @@ function TaskAdd(props: {
           void send();
         }}
       >
-        <TextField label="작업 제목" value={draft} onChange={setDraft} maxLength={100} />
+        <TextField ref={input} label="작업 제목" value={draft} onChange={setDraft} maxLength={100} />
         {error !== null && <Alert tone="error">{error}</Alert>}
         <div className="pd-form-actions">
           <Button type="submit" size="sm" pending={pending}>
@@ -415,22 +422,24 @@ function TaskLine(props: TaskLineProps) {
   return (
     <li id={`task-${String(task.id)}`} className="pd-task" data-done={done ? 'true' : undefined}>
       <div className="pd-task-row">
-        {props.canWrite ? (
-          <IconButton
-            label={`${task.title} ${done ? '다시 열기' : '완료'}`}
-            icon={<CheckIcon size={14} />}
-            variant={done ? 'primary' : 'secondary'}
-            size="sm"
-            pending={statusPending}
-            onClick={() => {
-              void toggleStatus();
-            }}
-          />
-        ) : (
-          <span className="pd-task-check" data-done={done ? 'true' : undefined} aria-hidden="true">
-            {done && <CheckIcon size={14} />}
-          </span>
-        )}
+        {/* A box, checked when done; "완료" beside the title says it in words too. */}
+        <span className="pd-task-status" data-done={done ? 'true' : undefined}>
+          {props.canWrite ? (
+            <IconButton
+              label={`${task.title} ${done ? '다시 열기' : '완료'}`}
+              icon={<CheckIcon size={14} />}
+              size="sm"
+              pending={statusPending}
+              onClick={() => {
+                void toggleStatus();
+              }}
+            />
+          ) : (
+            <span className="pd-task-check" aria-hidden="true">
+              <CheckIcon size={14} />
+            </span>
+          )}
+        </span>
         <div className="pd-task-main">
           {props.renaming ? (
             <TaskRename
@@ -507,6 +516,10 @@ function TaskLine(props: TaskLineProps) {
 function TaskRename(props: { task: Task; update: TaskLineProps['update']; onDone: () => void }) {
   const live = useLive();
   const [draft, setDraft] = useState(props.task.title);
+  const input = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    input.current?.focus();
+  }, []);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -535,7 +548,7 @@ function TaskRename(props: { task: Task; update: TaskLineProps['update']; onDone
         void send();
       }}
     >
-      <TextField label="작업 제목" value={draft} onChange={setDraft} maxLength={100} />
+      <TextField ref={input} label="작업 제목" value={draft} onChange={setDraft} maxLength={100} />
       {error !== null && <Alert tone="error">{error}</Alert>}
       <div className="pd-form-actions">
         <Button type="submit" size="sm" pending={pending}>

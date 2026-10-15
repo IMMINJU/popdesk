@@ -82,7 +82,7 @@ export function C15MyTasks() {
       header: '작업',
       width: '14rem',
       cell: (t) => (
-        <Link className="pd-title-cell" to={`${issueHref(t.issue.key)}#task-${String(t.id)}`}>
+        <Link className="pd-wrap-cell" to={`${issueHref(t.issue.key)}#task-${String(t.id)}`}>
           {t.title}
         </Link>
       ),
@@ -92,7 +92,7 @@ export function C15MyTasks() {
       header: '문의',
       width: '14rem',
       cell: (t) => (
-        <Link className="pd-title-cell" to={issueHref(t.issue.key)}>
+        <Link className="pd-wrap-cell" to={issueHref(t.issue.key)}>
           <span className="pd-key">{t.issue.key}</span> {t.issue.title}
         </Link>
       ),
