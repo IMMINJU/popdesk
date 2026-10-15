@@ -5,6 +5,7 @@
 // Slice 4 (4-talk screens.md 2절) adds 댓글 고치기·댓글 지우기, the mention line and "알릴 사람",
 // the trace of a deleted comment, and the `#comment-ID` of the address.
 // Slice 6a (6a-labels screens.md 1절) adds the 라벨 and 마감일 lines after 담당자.
+// Slice 6b (6b-tasks screens.md 1절) adds the 작업 구역 between the attachments and the comments.
 import {
   Alert,
   AttachmentList,
@@ -54,6 +55,8 @@ import { IssueEdit } from '../app/IssueEdit';
 import { issuesHref, type IssueStatus } from '../app/issueFilters';
 import { IssueHistory } from '../app/IssueHistory';
 import { IssueDueLine, IssueLabelsLine } from '../app/IssueLabels';
+import { IssueTasks } from '../app/IssueTasks';
+import { useIssueTasks } from '../app/taskList';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
 import { t, tf } from '../app/locale';
 import { MentionPicker } from '../app/MentionPicker';
@@ -149,6 +152,8 @@ function IssueDetail(props: { issueKey: string }) {
       response: issue.response,
     };
   }, key);
+
+  const tasks = useIssueTasks(key);
 
   const firstLoad = load.status === 'loading' && load.data === undefined;
   useMainBusy(firstLoad);
@@ -760,6 +765,8 @@ function IssueDetail(props: { issueKey: string }) {
           />
         )}
       </div>
+
+      <IssueTasks issue={issue} tasks={tasks} onStale={onIssueStale} />
 
       <section className="pd-detail-comments" aria-labelledby="comments-title">
         <h2 id="comments-title" className="pd-section-title">
