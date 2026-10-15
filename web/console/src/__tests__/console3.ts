@@ -80,6 +80,8 @@ export function history(over: Partial<IssueHistoryEntry> = {}): IssueHistoryEntr
     newValue: 'IN_PROGRESS',
     oldPerson: null,
     newPerson: null,
+    oldLink: null,
+    newLink: null,
     actor: AGENT_PERSON,
     createdAt: T0,
     ...over,
