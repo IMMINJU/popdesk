@@ -1,9 +1,9 @@
 // 7a 묶음 screens.md 2절 C-11 휴지통(관리자, /trash): 옆 메뉴 자리, 제목과 안내, 표의 칸과 캡션, "{n}일 뒤"·"오늘",
 // 복구(묻지 않음, 줄이 링크 알림으로 바뀜, 409의 상대 키), 영구 삭제(한 번 더 묻고 줄이 빠짐), 실패 문구, 404면 다시 읽기,
 // 비었을 때, 쪽과 주소(S7A-AC-51), 그리고 쪽을 옮기거나 확인을 닫은 뒤 온 답(S7A-AC-53).
-// "{n}일 뒤"의 경계(오늘, 1일, 30일, 지남)는 구현 뒤에 순수 함수 단위 테스트로 따로 본다(design.md 7절).
+// "{n}일 뒤"는 남은 시간이 24시간 미만이면 "오늘", 아니면 남은 일수를 올림한다(2026-10-16 메인 결정). 경계는 시계를 멈추고 본다.
 import { waitFor } from '@testing-library/react';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import {
   AGENT,
   callsTo,
@@ -22,7 +22,6 @@ import {
   spokenText,
   state,
   text,
-  useFakeClock,
   within,
 } from '../__tests__/console';
 import { answered, closed, route, settle } from '../__tests__/console1a';
@@ -30,6 +29,7 @@ import { STATUS_WORDS } from '../__tests__/console3';
 import {
   ACME_12,
   BETA_5,
+  NOW,
   PURGE_QUESTION,
   PURGE_TEXT,
   TRASH,
@@ -74,6 +74,11 @@ function cellOf(row: HTMLElement, column: (typeof COLUMNS)[number]): HTMLElement
   const cell = row.children[Array.from(head?.parentElement?.children ?? []).indexOf(head as HTMLElement)];
   expect(cell ?? null, `"${column}" 칸`).not.toBeNull();
   return cell as HTMLElement;
+}
+
+/** Stops `Date` at `NOW` (timers stay real), so "{n}일 뒤" does not hang on how long the render took. */
+function stopClock(): void {
+  vi.useFakeTimers({ now: new Date(NOW), toFake: ['Date'] });
 }
 
 /** The `page` of the last `listTrash` request. */
@@ -140,8 +145,9 @@ describe('C-11 휴지통 자리와 권한 (7a 묶음)', () => {
 
 describe('C-11 휴지통 표 (7a 묶음)', () => {
   test('S7A-AC-51 C-11 제목 아래 안내 한 줄, 캡션 "휴지통, 2건", 열 머리, 줄의 칸(키와 제목·링크 없음, 고객사, 상태, 지운 시각, 지운 사람, 영구 삭제, 동작)', async () => {
-    useFakeClock();
-    s7a.trash = [ACME_12, BETA_5];
+    stopClock();
+    // 28일 18시간 남음: 올림이면 "29일 뒤", 내림이면 "28일 뒤". 일수 경계에서 멀다.
+    s7a.trash = [trashed({ purgeAt: fromNow(29, -6) }), BETA_5];
     renderAt(URL_TRASH);
 
     const table = await trashTable(2);
@@ -177,10 +183,15 @@ describe('C-11 휴지통 표 (7a 묶음)', () => {
   });
 
   test.each([
-    { what: '12일 남음', purgeAt: fromNow(12, 6), says: '12일 뒤' },
-    { what: '하루 안', purgeAt: fromNow(0, 3), says: '오늘' },
+    { what: '12일 6시간 남음', purgeAt: fromNow(12, 6), says: '13일 뒤' },
+    { what: '방금 지움(30일 남음)', purgeAt: fromNow(30), says: '30일 뒤' },
+    { what: '24시간 1분 남음', purgeAt: fromNow(1, 1 / 60), says: '2일 뒤' },
+    { what: '정확히 24시간 남음', purgeAt: fromNow(1), says: '1일 뒤' },
+    { what: '23시간 59분 남음', purgeAt: fromNow(1, -1 / 60), says: '오늘' },
+    { what: '3시간 남음', purgeAt: fromNow(0, 3), says: '오늘' },
+    { what: '이미 지남', purgeAt: fromNow(0, -2), says: '오늘' },
   ])('S7A-AC-51 C-11 영구 삭제 칸($what): "$says"', async ({ purgeAt, says }) => {
-    useFakeClock();
+    stopClock();
     s7a.trash = [trashed({ purgeAt })];
     renderAt(URL_TRASH);
 
@@ -363,7 +374,7 @@ describe('C-11 영구 삭제 (7a 묶음)', () => {
     expect(callsTo('DELETE', trashPath('ACME-12'))).toHaveLength(1);
   });
 
-  test('S7A-AC-51 C-11 영구 삭제 실패(500): "휴지통을 바꾸지 못했습니다. 다시 해 보세요."이고 줄은 남는다', async () => {
+  test('S7A-AC-51 C-11 영구 삭제 실패(500): 확인 대화상자가 열린 채 그 안에 role="alert" "휴지통을 바꾸지 못했습니다. 다시 해 보세요."이고 줄은 남는다', async () => {
     s7a.trash = [ACME_12, BETA_5];
     route('delete', trashPath('ACME-12'), () => errors.internal());
     const { user } = renderAt(URL_TRASH);
@@ -372,11 +383,12 @@ describe('C-11 영구 삭제 (7a 묶음)', () => {
     const box = await openPurge(user, 'ACME-12');
     await user.click(await dialogButton(box, '영구 삭제'));
 
-    await found(() => screen.queryAllByRole('alert').find((a) => text(a).includes(CHANGE_FAILED)), `"${CHANGE_FAILED}"`);
+    await found(() => within(box).queryAllByRole('alert').find((a) => text(a).includes(CHANGE_FAILED)), `대화상자 안의 "${CHANGE_FAILED}"`);
+    expect(purgeDialogNow(), '실패한 뒤의 확인 대화상자').not.toBeNull();
     expect(trashRowNow('ACME-12'), '실패한 줄').not.toBeNull();
   });
 
-  test('S7A-AC-51 C-11 영구 삭제 404(누군가 먼저 했다): 쪽을 다시 읽어 그 줄이 빠지고 오류 문구는 없다', async () => {
+  test('S7A-AC-51 C-11 영구 삭제 404(누군가 먼저 했다): 확인 대화상자를 닫고 쪽을 다시 읽어 그 줄이 빠지며 오류 문구는 없다', async () => {
     s7a.trash = [ACME_12, BETA_5];
     route('delete', trashPath('ACME-12'), () => {
       s7a.trash = s7a.trash.filter((t) => t.key !== 'ACME-12');
@@ -392,6 +404,7 @@ describe('C-11 영구 삭제 (7a 묶음)', () => {
     await eventually(() => {
       expect(callsTo('GET', TRASH).length, '404 뒤 다시 읽기').toBeGreaterThan(reads);
       expect(trashRowNow('ACME-12')).toBeNull();
+      expect(purgeDialogNow(), '404 뒤의 확인 대화상자').toBeNull();
     });
     expect(trashRowNow('BETA-5')).not.toBeNull();
     expect(pageText()).not.toContain(CHANGE_FAILED);
