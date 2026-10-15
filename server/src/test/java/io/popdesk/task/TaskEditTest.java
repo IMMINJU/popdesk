@@ -236,12 +236,13 @@ class TaskEditTest extends BareAppTest {
     @DisplayName("S6B-AC-06, S6B-AC-07 DONE records who and when and ends overdue; DONE again changes nothing; OPEN clears both and is overdue again")
     void doneAndOpenAgain() {
         World w = flow.world();
+        Session firstAdmin = fixtures.admin(w.admin());
         Issue issue = fixtures.fileIssue(w.reporter(), w.code());
         JsonNode task = TaskSteps.create(w.agent(), issue.key(),
                 body("title", TaskSteps.title("Overdue"), "dueDate", today().toString()));
         clock.advance(Duration.ofDays(2));
-        // A session ends 8 hours after sign-in on the app's clock (AUTH-4): sign in after moving it.
-        Session admin = fixtures.admin(w.admin());
+        // A session ends 8 hours after sign-in on the app's clock (AUTH-4): sign in again after moving it.
+        Session admin = fixtures.signInAgain(firstAdmin);
         Session agent = fixtures.signInAgain(w.agent());
         assertThat(TaskSteps.task(agent, issue.key(), id(task)).path("overdue").asBoolean(false))
                 .as("overdue of the OPEN task after its date").isTrue();

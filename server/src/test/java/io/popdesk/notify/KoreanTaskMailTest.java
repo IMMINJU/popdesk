@@ -79,7 +79,7 @@ class KoreanTaskMailTest extends GatedMailTest {
         String link = taskLink(d.key(), task);
         assertThat(m.to()).as("To").containsExactly(d.second().email());
         assertThat(m.subject()).as("subject").isEqualTo("[" + d.key() + "] 작업을 맡았습니다: " + TASK_TITLE);
-        assertThat(m.text()).as("text of the mail").contains(link).contains(WebhookSnapshots.TITLE);
+        assertThat(m.text()).as("text of the mail").contains(link).contains(WebhookSnapshots.TITLE.replace('\n', ' '));
         assertThat(hasHangul(m.text())).as("Korean text: " + m.text()).isTrue();
         WebhookSnapshots.assertMatches("ko-mail-task-assigned.txt",
                 TalkMails.snapshotForm(m, d.key(), link, "{key}"));
