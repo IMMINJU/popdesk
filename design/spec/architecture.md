@@ -155,8 +155,13 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 | 작업 지우기(6b) | 문의 행 | | `task` UPDATE → 그 작업의 `task_note` UPDATE 둘 → 그 작업의 `notification` DELETE | | |
 | 작업 기록 남기기·고치기·지우기(6b) | 문의 행 | | 작업·기록 읽기 → (남기기만) 수 세기 → `task_note` INSERT/UPDATE | | 작업 행, 기록 행 |
 | 담당 비우기의 작업 몫(6b) | 문의 비우기와 같은 트랜잭션. 문의 행을 잠그지 않는다 | | 문의 비우기 뒤 `task` 조건부 UPDATE(`OPEN`, 지우지 않음, `CLOSED`가 아닌 문의) → 돌아온 작업마다 `task_note` INSERT | | |
+| 문의 잇기(6c) | 두 문의 행을 한 문장에서 ID 차례로(`where i.id in (?, ?) and 보기 범위 order by i.id for no key update`) | | 연결 수·사슬 읽기(`issue_link`만) → `issue_link` INSERT → 두 문의의 이력 | | |
+| 연결 끊기(6c) | 위와 같다 | | `issue_link` DELETE → 두 문의의 이력 | | |
+| 상태 바꾸기의 연결 알림(6c) | 상태 바꾸기의 조건부 UPDATE 뒤 같은 트랜잭션. 연결 쪽 문의 행은 잠그지 않는다 | | 이어진 문의의 담당자 읽기 → `notification` INSERT | | |
 
 문의 행을 잠근다는 것은 `FOR NO KEY UPDATE`다. 표의 차례에 붙는 까닭과 남는 틈은 아래와 같다.
+
+- 문의 잇기·끊기(6c)는 두 행을 같은 차례로 잡으므로 잇기끼리는 서로 기다리다 멈추지 않는다. 여러 문의를 힙 차례로 잡는 담당 비우기와는 교착할 수 있고, 그때 앱이 트랜잭션을 한 번 다시 한다(`Transactions`).
 
 소속과 소속 요청(2번 묶음):
 
