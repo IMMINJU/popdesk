@@ -9,24 +9,26 @@ import io.popdesk.helpdesk.issue.IssueScope;
 import io.popdesk.notification.CommentFacts;
 import io.popdesk.notification.InboxFacts;
 import io.popdesk.notification.IssueFacts.Issue;
+import io.popdesk.notification.TaskFacts;
 import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
 /**
- * What the notification module reads about issues, people, and comments for the inbox and just before
- * it sends an email about a comment (INBOX-3, MAIL-4). System reads by ID. The one that says what an
+ * What the notification module reads about issues, people, comments, and tasks for the inbox and just
+ * before it sends an email about a comment or a task (INBOX-3, MAIL-4, S6B-AC-34). System reads by ID. The one that says what an
  * account may see, {@link #visible}, applies {@link IssueScope} with the account's role as it is now,
  * like {@link IssueVisibility}.
  */
 @Component
-class InboxDirectory implements InboxFacts, CommentFacts {
+class InboxDirectory implements InboxFacts, CommentFacts, TaskFacts {
 
     private final AccountRepository accounts;
     private final JdbcClient jdbc;
@@ -88,6 +90,26 @@ class InboxDirectory implements InboxFacts, CommentFacts {
                                     photo == null ? null : photo.toInstant()));
                 });
         return found;
+    }
+
+    @Override
+    public Map<Long, String> taskTitles(Collection<Long> taskIds) {
+        Map<Long, String> found = new HashMap<>();
+        if (taskIds.isEmpty()) {
+            return found;
+        }
+        jdbc.sql("select id, title from task where id = any(?) and deleted_at is null")
+                .param(new HashSet<>(taskIds).toArray(Long[]::new))
+                .query(rs -> {
+                    found.put(rs.getLong("id"), rs.getString("title"));
+                });
+        return found;
+    }
+
+    @Override
+    public Optional<String> titleForAssignee(long taskId, long accountId) {
+        return jdbc.sql("select title from task where id = ? and assignee_id = ? and deleted_at is null")
+                .params(taskId, accountId).query(String.class).optional();
     }
 
     @Override

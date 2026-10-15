@@ -49,4 +49,10 @@ public interface InboxFacts {
      * gets a customer as the person and staff as the support team, without name or ID (S4-AC-41).
      */
     Map<Long, Actor> actors(Collection<Long> accountIds, Reader reader);
+
+    /**
+     * The title as it is now of each of these tasks that exists and is not deleted (S6B-AC-33). Staff
+     * only: a customer's inbox has no item about a task.
+     */
+    Map<Long, String> taskTitles(Collection<Long> taskIds);
 }

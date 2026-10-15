@@ -51,7 +51,10 @@ public class Inbox {
      * company, or the company a membership request is about.
      */
     public record Item(long id, String kind, Issue issue, String companyCode, Long commentId, Actor actor,
-            Instant createdAt, Instant readAt) {}
+            Instant createdAt, Instant readAt, Task task) {}
+
+    /** The task an item is about, with its title as it is now (S6B-AC-33). */
+    public record Task(long id, String title) {}
 
     private final OpsRepository ops;
     private final InboxFacts facts;
@@ -71,7 +74,8 @@ public class Inbox {
         List<InboxRow> rows = ops.listInbox(shown, request.offset(), request.size());
         Map<UUID, Issue> issues = facts.issues(distinct(rows, InboxRow::issueId));
         Map<Long, Actor> actors = facts.actors(distinct(rows, InboxRow::actorId), reader);
-        return request.map(rows, ops.countInbox(shown), row -> item(row, issues, actors));
+        Map<Long, String> tasks = reader == Reader.STAFF ? facts.taskTitles(distinct(rows, InboxRow::taskId)) : Map.of();
+        return request.map(rows, ops.countInbox(shown), row -> item(row, issues, actors, tasks));
     }
 
     /** How many of the items {@link #list} would list are unread (S4-AC-43). */
@@ -108,11 +112,13 @@ public class Inbox {
         return new Shown(accountId, kinds, about.isEmpty() ? Set.of() : facts.visible(accountId, about));
     }
 
-    private static Item item(InboxRow row, Map<UUID, Issue> issues, Map<Long, Actor> actors) {
+    private static Item item(InboxRow row, Map<UUID, Issue> issues, Map<Long, Actor> actors,
+            Map<Long, String> tasks) {
         Issue issue = row.issueId() == null ? null : issues.get(row.issueId());
+        String taskTitle = row.taskId() == null ? null : tasks.get(row.taskId());
         return new Item(row.id(), row.kind(), issue, issue == null ? row.companyCode() : issue.companyCode(),
                 row.commentId(), row.actorId() == null ? null : actors.get(row.actorId()), row.createdAt(),
-                row.readAt());
+                row.readAt(), taskTitle == null ? null : new Task(row.taskId(), taskTitle));
     }
 
     private static <T> Set<T> distinct(List<InboxRow> rows, Function<InboxRow, T> value) {

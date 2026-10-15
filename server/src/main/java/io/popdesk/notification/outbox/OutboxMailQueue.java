@@ -41,6 +41,14 @@ class OutboxMailQueue implements MailQueue {
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
+    public void queueAboutTask(MailKind kind, long recipientAccountId, UUID issueId, long taskId) {
+        repository.insertMailAboutTask(kind.name(), recipientAccountId, issueId, taskId,
+                clock.instant().truncatedTo(ChronoUnit.MICROS));
+        wakeups.afterCommit(OutboxRepository.MAIL);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
     public void queueAboutCompany(MailKind kind, long recipientAccountId, String companyCode) {
         repository.insertMailAboutCompany(kind.name(), recipientAccountId, companyCode,
                 clock.instant().truncatedTo(ChronoUnit.MICROS));

@@ -2,6 +2,7 @@ package io.popdesk.helpdesk.issue;
 
 import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.IssueStatus;
+import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.account.AccountRepository;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
@@ -38,6 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
  *   <tr><td>the assignee is set or changed</td><td>the new assignee</td><td>ASSIGNED</td><td>yes</td></tr>
  *   <tr><td>staff file for a customer</td><td>the reporter</td><td>ISSUE_FILED_ON_BEHALF</td><td>yes</td></tr>
  *   <tr><td>a comment mentions someone</td><td>that person</td><td>MENTIONED</td><td>yes</td></tr>
+ *   <tr><td>a task gets another assignee</td><td>the task's new assignee</td><td>TASK_ASSIGNED</td>
+ *       <td>yes</td></tr>
  * </table>
  *
  * <p>Left out, in this order (S4-AC-34 to S4-AC-36): the person who did it; an account that is not
@@ -153,6 +156,29 @@ public class IssueNotifications {
     public void filedOnBehalf(Viewer actor, UUID issueId, long reporterId) {
         tell(actor, issueId, null, List.of(new Notice(reporterId, Kind.ISSUE_FILED_ON_BEHALF,
                 MailKind.ISSUE_FILED_ON_BEHALF)), account -> account.id() == reporterId);
+    }
+
+    /**
+     * A task of the issue got this assignee, at its creation or by an edit (S6B-AC-33): the new assignee
+     * alone is told, unless they made the change. Clearing the assignee and every other change of a task
+     * tell nobody, and nothing goes to the webhook or to a customer (S6B-AC-35).
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void taskAssigned(Viewer actor, IssueRow issue, long taskId, long assigneeId) {
+        if (assigneeId == actor.accountId()) {
+            return;
+        }
+        AccountRow account = accounts.findById(assigneeId).orElse(null);
+        if (account != null && account.status() == AccountStatus.ACTIVE && account.role() != Role.CUSTOMER
+                && sees(account, issue.id())) {
+            inbox.addAboutTask(account.id(), issue.id(), taskId, actor.accountId());
+        }
+    }
+
+    /** A task was deleted: every item about it goes, read or not (S6B-AC-36). */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void taskDeleted(long taskId) {
+        inbox.deleteOfTask(taskId);
     }
 
     private static List<Notice> mentions(Collection<Long> accountIds) {
