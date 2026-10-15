@@ -120,6 +120,22 @@ class LinkHistoryTest extends BareAppTest {
         return out;
     }
 
+    @Test
+    @DisplayName("S6C-AC-21 the LINK entry gives the other issue's title as it is when read: after the other issue is renamed, newLink holds the new title")
+    void entryGivesTheTitleOfNow() {
+        World w = LinkSteps.world(fixtures, flow);
+        Issue ofA = w.issueOfA(fixtures);
+        Issue ofB = w.issueOfB(fixtures);
+        LinkSteps.link(w.linker(), ofA.key(), ofB.key(), RELATED);
+        String renamed = LinkSteps.title("Renamed");
+
+        flow.edit(w.admin(), ofB.key(), Map.of("title", renamed));
+
+        assertThat(linkEntries(w.admin(), ofA.key())).extracting(e -> historyLink(e, "newLink"))
+                .as("newLink of the LINK entry after the other issue was renamed")
+                .containsExactly(RELATED + " " + ofB.key() + " " + renamed);
+    }
+
     // S6C-AC-22
 
     @Test
