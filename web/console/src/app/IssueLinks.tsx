@@ -188,18 +188,14 @@ function LinkLine(props: { link: IssueLink; canUnlink: boolean; pending: boolean
   const other = props.link.issue;
   return (
     <li className="pd-link">
-      <div className="pd-link-row">
-        <div className="pd-link-main">
-          <p className="pd-link-head">
-            <Badge tone="neutral">{LINK_KIND_WORDS[props.link.type]}</Badge>
-            <Link to={`/issues/${encodeURIComponent(other.key)}`} className="pd-link-key">
-              {other.key}
-            </Link>
-            <StatusBadge kind="issue" status={other.status} audience="agent" />
-          </p>
-          <p className="pd-link-title">{other.title}</p>
-          <p className="pd-link-company pd-muted">{companyOf(other)}</p>
-        </div>
+      <div className="pd-link-head">
+        <span className="pd-link-tags">
+          <Badge tone="neutral">{LINK_KIND_WORDS[props.link.type]}</Badge>
+          <Link to={`/issues/${encodeURIComponent(other.key)}`} className="pd-link-key">
+            {other.key}
+          </Link>
+          <StatusBadge kind="issue" status={other.status} audience="agent" />
+        </span>
         {props.canUnlink && (
           // Named by the key: every line has one (screens.md 1절).
           <button
@@ -217,6 +213,8 @@ function LinkLine(props: { link: IssueLink; canUnlink: boolean; pending: boolean
           </button>
         )}
       </div>
+      <p className="pd-link-title">{other.title}</p>
+      <p className="pd-link-company pd-muted">{companyOf(other)}</p>
       {props.error !== null && <Alert tone="error">{props.error}</Alert>}
     </li>
   );
@@ -325,7 +323,7 @@ function LinkDialog(props: { issueKey: string; create: (issueKey: string, type: 
         )}
         {found !== null && (
           <div className="pd-link-found">
-            <p className="pd-link-head">
+            <p className="pd-link-tags">
               <span className="pd-strong">{found.key}</span>
               <StatusBadge kind="issue" status={found.status} audience="agent" />
             </p>
