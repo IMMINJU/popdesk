@@ -110,7 +110,7 @@ class TaskBoundaryTest extends BareAppTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(Elsewhere.class)
-    @DisplayName("S6B-AC-41 under the path of A's issue, a task of B or of another issue of A is the 404 of a task ID nobody has for editing, deleting, and adding a note, for the agent of A and an admin, also as a non-numeric ID, and that task stays as it was")
+    @DisplayName("S6B-AC-41 under the path of A's issue, a task of B or of another issue of A is the 404 of a task ID nobody has for editing, deleting, adding a note, and editing and deleting its note, for the agent of A and an admin, also as a non-numeric ID, and that task stays as it was")
     void taskOfAnotherIssueIsNotFound(Elsewhere elsewhere) {
         CompanyWorld w = CompanyWorld.build(fixtures);
         String key = w.a().publicIssue().key();
@@ -122,7 +122,8 @@ class TaskBoundaryTest extends BareAppTest {
         JsonNode otherBefore = TaskSteps.list(w.admin(), other.key());
 
         for (Session caller : List.of(w.agentOfA(), fixtures.admin(w.admin()))) {
-            for (Write write : List.of(Write.EDIT, Write.DELETE, Write.ADD_NOTE)) {
+            for (Write write : List.of(Write.EDIT, Write.DELETE, Write.ADD_NOTE, Write.EDIT_NOTE,
+                    Write.DELETE_NOTE)) {
                 ApiResponse missing = request(write, caller, key, NO_TASK, other.note()).send();
                 assertSameAnswer(request(write, caller, key, other.task(), other.note()).send(), missing, 404,
                         "NOT_FOUND");

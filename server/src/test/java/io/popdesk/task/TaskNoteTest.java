@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.issue.IssueFlow;
 import io.popdesk.issue.IssueFlow.World;
+import io.popdesk.issue.TalkFlow;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.BareAppTest;
 import io.popdesk.support.Fixtures.Issue;
@@ -17,6 +18,7 @@ import io.popdesk.support.Fixtures.Session;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -213,6 +215,31 @@ class TaskNoteTest extends BareAppTest {
         assertThat(trace.path("deleted").asBoolean(false)).isTrue();
         assertThat(text(trace, "content")).isEmpty();
         assertThat(text(flow.detail(w.agent(), issue.key()), "status")).isEqualTo("CLOSED");
+    }
+
+    @Test
+    @DisplayName("S6B-AC-22 editing a note of a deleted task, by its author, is 400 TASK_DELETED, not TASK_NOTE_DELETED, and changes nothing in the answer or in the database")
+    void noteOfADeletedTaskIsNotEdited() {
+        World w = flow.world();
+        Issue issue = fixtures.fileIssue(w.reporter(), w.code());
+        long task = id(TaskSteps.create(w.agent(), issue.key()));
+        JsonNode note = TaskSteps.note(w.agent(), issue.key(), task, "Before the delete");
+        TaskSteps.delete(w.agent(), issue.key(), task);
+        JsonNode trace = TaskSteps.task(w.agent(), issue.key(), task);
+        String sql = "select * from task_note where task_id = ? order by id";
+        List<Map<String, Object>> rowsBefore = db.rows(sql, task);
+        String word = IssueFlow.word();
+        clock.advance(Duration.ofMinutes(5));
+
+        ApiResponse editing = TaskSteps.editNoteRequest(w.agent(), issue.key(), task, id(note), "After " + word)
+                .send();
+
+        TaskSteps.assertRefused(editing, 400, "TASK_DELETED");
+        assertThat(TaskSteps.task(w.agent(), issue.key(), task)).as("the trace after the refused edit")
+                .isEqualTo(trace);
+        assertThat(rowsBefore).as("rows of the task's entries").isNotEmpty();
+        assertThat(db.rows(sql, task)).as("rows of the task's entries after the refused edit").isEqualTo(rowsBefore);
+        assertThat(TalkFlow.tablesContaining(db, word)).as("columns holding the word of the refused edit").isEmpty();
     }
 
     // S6B-AC-24

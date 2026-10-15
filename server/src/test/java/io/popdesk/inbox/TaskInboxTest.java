@@ -21,6 +21,7 @@ import io.popdesk.issue.TalkFlow;
 import io.popdesk.support.ConnectedAppTest;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
+import io.popdesk.support.Wait;
 import io.popdesk.support.WebhookReceiver.Received;
 import io.popdesk.task.TaskSteps;
 import java.util.LinkedHashMap;
@@ -67,6 +68,16 @@ class TaskInboxTest extends ConnectedAppTest {
     /** The {@code TASK_ASSIGNED} items of the person about the issue. */
     private static List<JsonNode> taskItems(Session session, String key) {
         return itemsOf(session, key, KIND);
+    }
+
+    /**
+     * Files another issue and waits for its webhook. Webhooks go out one at a time in the order they were
+     * queued, so every webhook queued before has been sent by then.
+     */
+    private void awaitALaterWebhook(Cast c) {
+        String later = fixtures.fileIssue(c.reporter(), c.code()).key();
+        Wait.until("the webhook of the later issue " + later,
+                () -> webhook().containing(later).isEmpty() ? null : Boolean.TRUE);
     }
 
     // S6B-AC-33
@@ -205,9 +216,7 @@ class TaskInboxTest extends ConnectedAppTest {
     void taskWorkTellsOnlyTheAssignee() {
         Cast c = steps.cast();
         String key = steps.assignedIssue(c).key();
-        String before = Unique.text("Question");
-        fixtures.comment(c.reporter(), key, before);
-        webhook().await("the webhook of the comment before the task work", r -> r.text().contains(before));
+        awaitALaterWebhook(c);
         TalkFlow.awaitALaterMail(fixtures, c.admin());
         int webhooksBefore = webhook().containing(key).size();
         Map<String, Set<Long>> itemsBefore = new LinkedHashMap<>();
@@ -228,9 +237,10 @@ class TaskInboxTest extends ConnectedAppTest {
         TaskSteps.update(c.bystander(), key, task, body("status", "DONE"));
         TaskSteps.update(c.assignee(), key, task, body("status", "OPEN", "title", title("Webhook again")));
 
-        String later = Unique.text("Later question");
-        fixtures.comment(c.reporter(), key, later);
-        webhook().await("the webhook of the comment after the task work", r -> r.text().contains(later));
+        // The webhook text holds no comment text, only the issue; webhooks go out in the order they were queued.
+        fixtures.comment(c.reporter(), key, Unique.text("Later question"));
+        Wait.until("the webhook of the comment after the task work",
+                () -> webhook().containing(key).size() > webhooksBefore ? Boolean.TRUE : null);
         TalkFlow.awaitALaterMail(fixtures, c.admin());
         List<Received> webhooks = webhook().containing(key);
         assertThat(webhooks).as("webhook messages about %s: those before and the later comment's", key)
@@ -244,9 +254,10 @@ class TaskInboxTest extends ConnectedAppTest {
             assertThat(mailAbout(mail(), customer, key)).as("mails about %s to %s", key, customer.email())
                     .hasSize(mailBefore.get(customer.email()));
         }
+        // The assignee of the task is also the assignee of the issue, so the later comment gives them an item too.
         List<JsonNode> assigneeGot = added(c.assignee(), key, itemsBefore.get(c.assignee().email()));
-        assertThat(TalkFlow.kinds(assigneeGot)).as("kinds of the items added for the assignee")
-                .containsExactly(KIND);
+        assertThat(assigneeGot.stream().filter(n -> KIND.equals(n.path("kind").asString(null))).toList())
+                .as("TASK_ASSIGNED items added for the assignee").hasSize(1);
         assertThat(mailAbout(mail(), c.assignee(), key)).as("mails about %s to the assignee", key)
                 .hasSize(mailBefore.get(c.assignee().email()) + 1);
     }

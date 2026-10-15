@@ -189,22 +189,23 @@ class TaskClearAssignmentsTest extends BareAppTest {
         }
     }
 
-    /**
-     * Whether the entry is a change of ASSIGNEE from this account to nobody. Making a task may or may not leave
-     * an ASSIGNEE change of its own (from nobody), so only this kind is counted.
-     */
+    /** Whether the entry is a change of ASSIGNEE from this account to nobody. */
     private static boolean clears(JsonNode change, long accountId) {
         return "ASSIGNEE".equals(TaskSteps.text(change, "field")) && change.path("newPerson").isNull()
                 && change.path("oldPerson").path("accountId").asLong(-1) == accountId;
     }
 
-    /** The task's last entry is the one change of ASSIGNEE from the agent to nobody, by the admin, at the clock's time. */
+    /**
+     * The task's only change is the one of ASSIGNEE from the agent to nobody, by the admin, at the clock's time,
+     * and it is the last entry. Making the task with its assignee left no entry (S6B-AC-30).
+     */
     private void assertClearedBy(Scene s, String key, long task, long agentId) {
         JsonNode t = TaskSteps.task(s.admin(), key, task);
-        List<JsonNode> changes = TaskSteps.changes(t).stream().filter(c -> clears(c, agentId)).toList();
-        assertThat(changes).as("changes of ASSIGNEE from the agent to nobody of task %s: %s", task,
-                TaskSteps.changes(t)).hasSize(1);
+        List<JsonNode> changes = TaskSteps.changes(t);
+        assertThat(changes).as("changes of task %s", task).hasSize(1);
         JsonNode change = changes.getFirst();
+        assertThat(clears(change, agentId)).as("%s is the change of ASSIGNEE from the agent to nobody", change)
+                .isTrue();
         assertThat(TaskSteps.personId(change, "author")).as("author of %s", change).isEqualTo(s.admin().accountId());
         assertThat(IssueFlow.time(change, "createdAt")).as("createdAt of %s", change).isEqualTo(clock.instant());
         assertThat(TaskSteps.id(TaskSteps.notes(t).getLast())).as("the last entry of task %s", task)

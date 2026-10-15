@@ -458,12 +458,15 @@ final class BoundaryList {
                     TASK_OF_B + "customerGetsTheConsoleAnswer"),
             tested("PATCH", STAFF_ISSUE + "/tasks/{id}/notes/{noteId}",
                     TASK_OF_B + "agentOfACannotReachTasksOfB",
+                    TASK_OF_B + "taskOfAnotherIssueIsNotFound",
                     TASK_OF_B + "noteOfAnotherTaskIsNotFound",
                     TASK_OF_B + "customerGetsTheConsoleAnswer"),
             tested("DELETE", STAFF_ISSUE + "/tasks/{id}/notes/{noteId}",
                     TASK_OF_B + "agentOfACannotReachTasksOfB",
+                    TASK_OF_B + "taskOfAnotherIssueIsNotFound",
                     TASK_OF_B + "noteOfAnotherTaskIsNotFound",
                     TASK_OF_B + "customerGetsTheConsoleAnswer"),
             tested("GET", "/api/console/tasks",
+                    "task.MyTasksTest#taskOfACompanyTheAgentLeftIsLeftOut",
                     TASK_OF_B + "customerGetsTheConsoleAnswer"));
 }

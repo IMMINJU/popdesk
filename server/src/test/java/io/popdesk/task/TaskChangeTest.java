@@ -39,13 +39,23 @@ class TaskChangeTest extends BareAppTest {
         flow = new IssueFlow(fixtures, clock);
     }
 
-    /** The entries of a task that came after the first {@code before} of them. */
-    private static List<JsonNode> newChanges(JsonNode task, int before) {
-        List<JsonNode> all = changes(task);
-        return all.subList(before, all.size());
-    }
-
     // S6B-AC-30
+
+    @Test
+    @DisplayName("S6B-AC-30 creating a task with an assignee and a due date leaves no entry: the answer and the task read again have no notes")
+    void creatingLeavesNoEntry() {
+        World w = flow.world();
+        Issue issue = fixtures.fileIssue(w.reporter(), w.code());
+
+        JsonNode task = TaskSteps.create(w.agent(), issue.key(), body("title", TaskSteps.title("New"),
+                "assigneeId", w.agent().accountId(), "dueDate", FAR_DATE));
+
+        assertThat(personId(task, "assignee")).as("assignee of the new task").isEqualTo(w.agent().accountId());
+        assertThat(text(task, "dueDate")).as("dueDate of the new task").isEqualTo(FAR_DATE);
+        assertThat(TaskSteps.notes(task)).as("entries of the new task").isEmpty();
+        assertThat(TaskSteps.notes(TaskSteps.task(w.agent(), issue.key(), id(task))))
+                .as("entries of the new task read again").isEmpty();
+    }
 
     /** A field changed, the body that changes it, and the values the entry gives. */
     enum Change {
@@ -73,12 +83,11 @@ class TaskChangeTest extends BareAppTest {
         Issue issue = fixtures.fileIssue(w.reporter(), w.code());
         JsonNode task = TaskSteps.create(w.agent(), issue.key(),
                 body("title", "Before", "dueDate", FAR_DATE));
-        int before = changes(task).size();
         Instant at = flow.tick();
 
         JsonNode after = TaskSteps.update(editor, issue.key(), id(task), change.body);
 
-        List<JsonNode> entries = newChanges(after, before);
+        List<JsonNode> entries = changes(after);
         assertThat(entries).as("new CHANGE entries in %s", after).hasSize(1);
         JsonNode entry = entries.getFirst();
         assertThat(text(entry, "field")).isEqualTo(change.name());
@@ -101,12 +110,11 @@ class TaskChangeTest extends BareAppTest {
         Issue issue = fixtures.fileIssue(w.reporter(), w.code());
         JsonNode task = TaskSteps.create(w.agent(), issue.key(),
                 body("title", TaskSteps.title("Assigned"), "assigneeId", first.accountId()));
-        int before = changes(task).size();
 
         TaskSteps.update(w.agent(), issue.key(), id(task), body("assigneeId", second.accountId()));
         JsonNode after = TaskSteps.update(w.agent(), issue.key(), id(task), body("assigneeId", null));
 
-        List<JsonNode> entries = newChanges(after, before);
+        List<JsonNode> entries = changes(after);
         assertThat(entries.stream().map(e -> text(e, "field")).toList()).as("new CHANGE entries")
                 .containsExactly("ASSIGNEE", "ASSIGNEE");
         assertThat(personId(entries.get(0), "oldPerson")).isEqualTo(first.accountId());
@@ -123,15 +131,14 @@ class TaskChangeTest extends BareAppTest {
         Issue issue = fixtures.fileIssue(w.reporter(), w.code());
         JsonNode task = TaskSteps.create(w.agent(), issue.key(),
                 body("title", "Same", "assigneeId", w.agent().accountId(), "dueDate", FAR_DATE));
-        int before = changes(task).size();
 
         JsonNode same = TaskSteps.update(w.agent(), issue.key(), id(task), body("title", "Same", "status", "OPEN",
                 "assigneeId", w.agent().accountId(), "dueDate", FAR_DATE));
         JsonNode two = TaskSteps.update(w.agent(), issue.key(), id(task), body("title", "Other", "status", "DONE",
                 "dueDate", FAR_DATE));
 
-        assertThat(newChanges(same, before)).as("entries after sending the same values").isEmpty();
-        assertThat(newChanges(two, before).stream().map(e -> text(e, "field")).toList())
+        assertThat(changes(same)).as("entries after sending the same values").isEmpty();
+        assertThat(changes(two).stream().map(e -> text(e, "field")).toList())
                 .as("entries after changing the title and the status")
                 .containsExactlyInAnyOrder("TITLE", "STATUS");
     }

@@ -218,8 +218,14 @@ public final class TaskSteps {
         return id.asLong();
     }
 
-    /** A text field, or null when it is null or missing. */
+    /**
+     * A text field, or null when it is null. Fails when the field is missing: the contract gives every field of
+     * a task, a note, and an own task, null or not.
+     */
     public static String text(JsonNode node, String field) {
+        if (!node.has(field)) {
+            throw new AssertionError("No field '" + field + "' in " + node);
+        }
         JsonNode value = node.path(field);
         return value.isString() ? value.stringValue() : null;
     }
