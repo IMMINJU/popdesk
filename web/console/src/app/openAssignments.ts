@@ -1,23 +1,26 @@
 // The open issues a person is the assignee of, asked by the dialogs that take an
-// agent out (ClearAssignments.tsx, S3-AC-85).
+// agent out (ClearAssignments.tsx, S3-AC-85). Slice 6b adds the open tasks; an answer
+// without them (an older server) counts none.
 import { useEffect, useState } from 'react';
 import { call, type Result } from './result';
 
-/** `loading`, `failed`, or the number of open issues. */
-export type OpenAssignments = 'loading' | 'failed' | number;
+/** `loading`, `failed`, or the numbers of open issues and open tasks. */
+export type OpenAssignments = 'loading' | 'failed' | { issues: number; tasks: number };
+
+type Counts = { issues: number; tasks?: number };
 
 /**
  * Asks once, when the dialog mounts; `ask` null asks nothing and counts as 0
  * (a customer is nobody's assignee). The dialogs are mounted anew for every
  * opening, so a number that comes after closing shows nowhere (S3-AC-87).
  */
-export function useOpenAssignments(ask: (() => Promise<{ data?: { issues: number }; error?: unknown; response: Response }>) | null): OpenAssignments {
-  const [answer, setAnswer] = useState<OpenAssignments>(ask === null ? 0 : 'loading');
+export function useOpenAssignments(ask: (() => Promise<{ data?: Counts; error?: unknown; response: Response }>) | null): OpenAssignments {
+  const [answer, setAnswer] = useState<OpenAssignments>(ask === null ? { issues: 0, tasks: 0 } : 'loading');
   useEffect(() => {
     if (ask === null) return undefined;
     let current = true;
-    void call(ask()).then((result: Result<{ issues: number }>) => {
-      if (current) setAnswer(result.ok ? result.data.issues : 'failed');
+    void call(ask()).then((result: Result<Counts>) => {
+      if (current) setAnswer(result.ok ? { issues: result.data.issues, tasks: result.data.tasks ?? 0 } : 'failed');
     });
     return () => {
       current = false;

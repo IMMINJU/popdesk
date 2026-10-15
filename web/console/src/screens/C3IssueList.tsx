@@ -2,6 +2,7 @@
 // 보기 고르기 and the filter row keep their state in the address (app/issueFilters.ts).
 // Slice 6a (6a-labels screens.md 2절) adds the 라벨 and 마감일 columns, the 라벨 filter once a company
 // is chosen, and 정렬. No SLA column yet.
+// Slice 6b (6b-tasks screens.md 4절) adds "작업 n" beside the title of an issue with open tasks.
 import {
   Alert,
   Badge,
@@ -84,6 +85,7 @@ const columns: DataTableColumn<IssueSummary>[] = [
           </Badge>
         )}
         {i.filedOnBehalf && <Badge tone="neutral">대리 등록</Badge>}
+        {i.openTaskCount > 0 && <Badge tone="neutral">{`작업 ${String(i.openTaskCount)}`}</Badge>}
       </span>
     ),
   },
