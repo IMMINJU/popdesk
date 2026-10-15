@@ -45,7 +45,17 @@ export const KIND_GROUPS: readonly { group: string; kinds: Readonly<Record<strin
       INVITATION_LINK_CREATED: '초대 링크 복사',
     },
   },
-  { group: '고객사', kinds: { COMPANY_CREATED: '고객사 만들기', COMPANY_UPDATED: '고객사 고치기', COMPANY_STATUS_CHANGED: '고객사 상태 바꾸기' } },
+  {
+    group: '고객사',
+    kinds: {
+      COMPANY_CREATED: '고객사 만들기',
+      COMPANY_UPDATED: '고객사 고치기',
+      COMPANY_STATUS_CHANGED: '고객사 상태 바꾸기',
+      LABEL_CREATED: '라벨 만들기',
+      LABEL_UPDATED: '라벨 고치기',
+      LABEL_DELETED: '라벨 지우기',
+    },
+  },
   {
     group: '소속·배정',
     kinds: {

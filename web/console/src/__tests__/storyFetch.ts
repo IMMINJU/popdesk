@@ -77,6 +77,7 @@ export function summary(from: Issue): IssueSummary {
     labels,
     dueDate,
     overdue,
+    openTaskCount: 0,
   };
 }
 
