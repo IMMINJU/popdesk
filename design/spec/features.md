@@ -68,7 +68,7 @@
 
 ## 8-1. 문의 연결 (LINK)
 
-→ `../slices/6c-links/rules.md`로 옮김(6c 묶음). LINK-2·7의 휴지통 몫은 7번 묶음이 그 파일에서 가져간다.
+→ `../archive/6c-links/rules.md`로 옮김(6c 묶음). LINK-2·7의 휴지통 몫은 7번 묶음이 그 파일에서 가져간다.
 
 ## 9. 이력과 휴지통 (HIST, TRASH)
 

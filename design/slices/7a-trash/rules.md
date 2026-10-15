@@ -1,7 +1,7 @@
 # 7a 묶음 규칙: 휴지통과 자동 종료 (TRASH, STATUS-5)
 
 > `design/spec/features.md` 4절(STATUS-5)과 9절(TRASH)에서 옮겼다(2026-10-15). 글은 옮길 때 그대로다.
-> 이 묶음이 함께 채우는 앞 규칙의 몫: LINK-2·7의 휴지통 몫(`slices/6c-links/rules.md`, 6c가 끝나면 `archive/6c-links/`), AUDIT-1의 "문의 삭제·복구·영구 삭제(사람이 한 것)"(`archive/1b-audit/rules.md`), HIST-1의 칸 "삭제"(`archive/3-issues/rules.md`), MAIL-4의 "문의가 휴지통에 있지 않은지"(`archive/4-talk/rules.md`), OPS-2의 정리 작업 "휴지통 영구 삭제".
+> 이 묶음이 함께 채우는 앞 규칙의 몫: LINK-2·7의 휴지통 몫(`archive/6c-links/rules.md`), AUDIT-1의 "문의 삭제·복구·영구 삭제(사람이 한 것)"(`archive/1b-audit/rules.md`), HIST-1의 칸 "삭제"(`archive/3-issues/rules.md`), MAIL-4의 "문의가 휴지통에 있지 않은지"(`archive/4-talk/rules.md`), OPS-2의 정리 작업 "휴지통 영구 삭제".
 > 관계있는 앞 묶음 규칙: RULE-03(볼 수 있는 문의), STATUS-7(문의 아래의 쓰기는 문의 행을 잠그고 휴지통 여부를 다시 본다), ATT-10(첨부 파일 지우기), INBOX-2(알림함은 지금 볼 수 있는 문의만).
 > 메인이 규칙과 다르게 정한 것: TRASH-3의 제목("Deleted issue"/"삭제된 문의")은 저장하지 않고 빈 글로 둔다(`acceptance.md` 5절 12).
 > 미루는 것: SLA-3(휴지통 동안 SLA 시계 멈춤)은 SLA가 생기는 8번, PII-6(문의 자동 정리)은 10번, STATS와 정리 작업 멈춤 경보(OPS-1의 한 줄)는 7b다.
