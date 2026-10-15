@@ -55,7 +55,7 @@ class TrashedIssueNotifyTest extends ConnectedAppTest {
     }
 
     @Test
-    @DisplayName("S7A-AC-10 deleting an issue deletes its webhook rows in the send queue, the failed one and the one waiting for its next attempt, in the same request; once the receiver works no webhook about it goes, while the other issue's waiting row is sent")
+    @DisplayName("S7A-AC-10 deleting an issue deletes its webhook rows in the send queue, the failed one and the one waiting for its next attempt, in the same request; once the receiver works no webhook about it goes, while the other issue's waiting row is sent; restoring it and moving the clock 11 minutes sends no webhook and no mail about it")
     void deleteDropsTheQueuedRows() {
         Session admin = fixtures.admin(flow.admin());
         Company company = fixtures.createCompany(admin);
@@ -97,7 +97,26 @@ class TrashedIssueNotifyTest extends ConnectedAppTest {
                         .isEmpty() ? null : Boolean.TRUE);
         assertThat(webhooksOf(gone)).as("webhook requests about the deleted issue after the receiver works")
                 .isEqualTo(goneSent);
-        assertThat(rows.outbox(gone.key())).as("send queue rows of the deleted issue at the end").isEmpty();
+        assertThat(rows.outbox(gone.key())).as("send queue rows of the deleted issue before the restore").isEmpty();
+
+        // A delete that only hides the rows while the issue is in the trash sends them once it is restored.
+        int goneMails = mailsAbout(gone);
+        TrashSteps.restore(fixtures.signInAgain(admin), gone.key());
+        clock.advance(Duration.ofMinutes(11));
+        // A row queued after the restore and sent shows that the sending ran past any row of the deleted issue.
+        Issue later = fixtures.fileIssue(customer, company.code());
+        Wait.until("the webhook of " + later.key() + ", filed after the restore",
+                () -> webhooksOf(later) > 0 ? Boolean.TRUE : null);
+        assertThat(webhooksOf(gone)).as("webhook requests about the deleted issue 11 minutes after its restore")
+                .isEqualTo(goneSent);
+        assertThat(mailsAbout(gone)).as("mails about the deleted issue 11 minutes after its restore")
+                .isEqualTo(goneMails);
+        assertThat(rows.outbox(gone.key())).as("send queue rows of the restored issue at the end").isEmpty();
+    }
+
+    /** Mails whose subject names the issue, as {@code [KEY]}. */
+    private int mailsAbout(Issue issue) {
+        return (int) mail().messages().stream().filter(m -> m.subject().contains("[" + issue.key() + "]")).count();
     }
 
     @Test

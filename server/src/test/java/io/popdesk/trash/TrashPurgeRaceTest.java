@@ -26,8 +26,8 @@ import tools.jackson.databind.JsonNode;
  * A restore and a purge of the same issue at the same time (S7A-AC-34, TRASH-2, TRASH-3, TM-61), made to overlap as
  * {@code acceptance.md} 4절 says: the test holds the issue row {@code FOR UPDATE} on a connection of its own
  * ({@link RowLock}), sends the first request (or moves the app clock past the 30 days, for the {@code trash-purge}
- * job) and waits until it reaches the row, sends the second, and lets the row go once the second waits too (or a
- * short time passed).
+ * job) and waits until it reaches the row, sends the second, and lets the row go once the second waits too or
+ * finished.
  *
  * <p>Which one wins is not fixed. The end is one of two: the restore won, so the issue is live and everything is as
  * it was (the purge, if a person sent it, is 404); or the purge won, so the restore is 404 and the issue is empty.
@@ -35,9 +35,6 @@ import tools.jackson.databind.JsonNode;
  * restore just brought back: a live issue without its content.
  */
 class TrashPurgeRaceTest extends BareAppTest {
-
-    /** How long the row is held when the second step neither waits for it nor finishes. */
-    private static final Duration HELD_AT_MOST = Duration.ofSeconds(3);
 
     @Autowired
     PostgreSQLContainer postgres;
@@ -58,11 +55,15 @@ class TrashPurgeRaceTest extends BareAppTest {
         PURGE_THEN_RESTORE
     }
 
+    /**
+     * Holds the row until the second step waits for it or finished. There is no shorter bound than a job run: the
+     * cleanup jobs run one after another on one thread, so after the 30 days the {@code trash-purge} job may reach this
+     * row only after the other jobs and the other issues. A right purge waits for the row or skips it and leaves its
+     * run record, so this ends; letting the row go earlier would let a purge that does not lock pass.
+     */
     private static void holdUntil(RowLock lock, long waiting, BooleanSupplier done) {
-        long heldUntil = System.nanoTime() + HELD_AT_MOST.toNanos();
-        Wait.until("the second step waits for the row, finished, or had " + HELD_AT_MOST,
-                () -> lock.waitingForALock() >= waiting || done.getAsBoolean() || System.nanoTime() > heldUntil
-                        ? Boolean.TRUE : null);
+        Wait.until("the second step waits for the row or finished", TrashJobs.RUN,
+                () -> lock.waitingForALock() >= waiting || done.getAsBoolean() ? Boolean.TRUE : null);
     }
 
     @ParameterizedTest(name = "{0}")

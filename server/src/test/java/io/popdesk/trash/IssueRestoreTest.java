@@ -27,7 +27,7 @@ import tools.jackson.databind.node.ObjectNode;
 /**
  * Restoring an issue from the trash ({@code POST /api/console/trash/{key}/restore}, TRASH-2): everything is as it was
  * before the delete (S7A-AC-21), and a {@code RESOLVED} issue closes 7 days after the restore, not 7 days after it
- * was resolved (S7A-AC-22).
+ * was resolved (S7A-AC-22). The restore leaves its own history entry and raises the version (S7A-AC-06).
  */
 class IssueRestoreTest extends BareAppTest {
 
@@ -97,6 +97,31 @@ class IssueRestoreTest extends BareAppTest {
         assertThat(s.agent().client().get("/api/console/issues/" + key + "/attachments/" + s.commentFile().id())
                 .expect(200).body()).as("the file of the staff comment").isEqualTo(s.commentFile().content());
         assertThat(TrashSteps.entry(s.admin(), key)).as("trash entry after the restore").isNull();
+    }
+
+    @Test
+    @DisplayName("S7A-AC-06 restoring adds one TRASH entry to the issue's history, from TRASHED to null, by the admin at the time of the restore, and raises the version by 1")
+    void restoreLeavesATrashEntry() {
+        TrashScene s = TrashScene.build(fixtures, flow, clock, "IN_PROGRESS");
+        TrashSteps.delete(s.admin(), s.key());
+        long version = rows.version(s.key());
+        int entries = rows.history(s.key()).size();
+        Instant at = flow.tick();
+
+        JsonNode restored = TrashSteps.restore(s.admin(), s.key());
+
+        List<Map<String, Object>> history = rows.history(s.key());
+        assertThat(history).as("history rows after the restore").hasSize(entries + 1);
+        Map<String, Object> last = history.getLast();
+        assertThat(last.get("field")).as("field of " + last).isEqualTo(TrashSteps.FIELD);
+        assertThat(last.get("old_value")).as("old value of " + last).isEqualTo(TrashSteps.TRASHED);
+        assertThat(last.get("new_value")).as("new value of " + last).isNull();
+        assertThat(((Number) last.get("actor_id")).longValue()).as("actor of " + last)
+                .isEqualTo(s.admin().accountId());
+        assertThat(TrashRows.instant(last.get("created_at"))).as("time of " + last).isEqualTo(at);
+        assertThat(rows.version(s.key())).as("version after the restore").isEqualTo(version + 1);
+        assertThat(restored.path("version").asLong(-1)).as("version in the answer of the restore")
+                .isEqualTo(version + 1);
     }
 
     @Test

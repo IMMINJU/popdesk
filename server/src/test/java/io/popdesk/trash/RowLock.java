@@ -22,6 +22,7 @@ public final class RowLock implements AutoCloseable {
 
     private final DbInspector db;
     private final Connection connection;
+    private final int pid;
     private boolean held;
 
     /** Locks the issue row with ID {@code issueId}; fails when there is no such row. */
@@ -39,16 +40,27 @@ public final class RowLock implements AutoCloseable {
                     }
                 }
             }
+            try (PreparedStatement self = connection.prepareStatement("select pg_backend_pid()");
+                    ResultSet rs = self.executeQuery()) {
+                rs.next();
+                pid = rs.getInt(1);
+            }
             held = true;
         } catch (SQLException e) {
             throw new AssertionError("Could not lock the issue row " + issueId, e);
         }
     }
 
-    /** How many statements of this database wait for a lock right now. */
+    /**
+     * How many statements wait right now for the held row: blocked by this connection, or queued behind one that is
+     * (a second write of the same row waits for the tuple lock of the first, not for this connection). Waits of other
+     * statements, another job or another test, are not counted.
+     */
     public long waitingForALock() {
-        return db.count("select count(*) from pg_stat_activity where wait_event_type = 'Lock' "
-                + "and pid <> pg_backend_pid() and datname = current_database()");
+        return db.count("with recursive behind(pid) as ("
+                + " select a.pid from pg_stat_activity a where ? = any(pg_blocking_pids(a.pid))"
+                + " union select a.pid from pg_stat_activity a join behind b on b.pid = any(pg_blocking_pids(a.pid))"
+                + ") select count(*) from behind", pid);
     }
 
     /** Waits until at least {@code n} statements wait for a lock: the requests sent so far reached the row. */

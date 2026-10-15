@@ -101,8 +101,15 @@ class TrashListTest extends BareAppTest {
         ApiResponse page2 = TrashSteps.list(admin, 2, 2);
         assertThat(keys(page1)).as("page 1 of size 2").containsExactly(third.key(), second.key());
         assertThat(keys(page2).getFirst()).as("first of page 2 of size 2").isEqualTo(first.key());
-        assertThat(page1.jsonLong("totalElements")).as("totalElements").isEqualTo(all.size());
-        assertThat(page1.jsonLong("totalPages")).as("totalPages of size 2").isEqualTo((all.size() + 1) / 2);
+        // totalElements and its items from one read: the trash-purge job may empty other tests' old entries between
+        // two reads.
+        ApiResponse whole = TrashSteps.list(admin, 1, 100);
+        long total = whole.jsonLong("totalElements");
+        assertThat(keys(whole)).as("items of page 1 of size 100 when totalElements is " + total)
+                .hasSize((int) Math.min(total, 100));
+        assertThat(whole.jsonLong("totalPages")).as("totalPages of size 100").isEqualTo((total + 99) / 100);
+        assertThat(page1.jsonLong("totalPages")).as("totalPages of size 2, against totalElements of the same read")
+                .isEqualTo((page1.jsonLong("totalElements") + 1) / 2);
 
         ApiResponse byAgent = TrashSteps.listRequest(agent, "page", 1).send();
         assertThat(byAgent.status()).as("agent: " + byAgent.snippet()).isEqualTo(403);
