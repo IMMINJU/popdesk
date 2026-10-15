@@ -223,6 +223,18 @@ def fill(project):
     agent.json("POST", "/api/console/issues",
                {"companyCode": "ACME", "reporterId": customer_id, "channel": "PHONE",
                 "title": "Reported by phone", "content": "The **scanner** stops after one page."}, expect=201)
+    # What slice 7a added (S7A-AC-60). The first issue is RESOLVED, so it has its time to close from
+    # (issue.auto_close_from). Two new issues of ACME with a comment each: the admin deletes the first
+    # (issue.deleted_at, deleted_by) and leaves it in the trash, and deletes and purges the second
+    # (purged_at, an empty title and content).
+    trashed = [customer.json("POST", "/api/portal/issues",
+                             {"companyCode": "ACME", "title": title, "content": "Sent by mistake."},
+                             expect=201)["key"] for title in ("Filed twice", "Test, please delete")]
+    for key in trashed:
+        customer.json("POST", f"/api/portal/issues/{key}/comments", {"content": "Please ignore this."},
+                      expect=201)
+        admin.request("DELETE", f"/api/console/issues/{key}", expect=204)
+    admin.request("DELETE", f"/api/console/trash/{trashed[1]}", expect=204)
 
     # Mail rows of this run are sent (SMTP is off: one log line each) and deleted. Wait for that, so the
     # queue holds only the failed row added below when it is dumped.
