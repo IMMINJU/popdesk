@@ -12,3 +12,4 @@ server io/popdesk/link/LinkCustomerTest.java
 web **/C4IssueDetail.6c.test.tsx
 web **/C7Inbox.6c.test.tsx
 web ../../../console/**/Screens6c.overflow.stories.tsx
+server io/popdesk/deploy/LinkSampleTest.java
