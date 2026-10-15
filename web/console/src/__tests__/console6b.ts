@@ -66,9 +66,12 @@ export function doneTask(over: Partial<Task> = {}): Task {
   return task({ status: 'DONE', doneBy: ADMIN_PERSON, doneAt: DONE_AT, ...over });
 }
 
-/** A deleted task as the contract gives it: no title, no assignee, no due date, no notes (S6B-AC-10). */
+/**
+ * A deleted task as the contract gives it: no title, no assignee, no due date, no notes (S6B-AC-10).
+ * 이상담 made it and deleted it: `deletedBy` is the creator or an admin.
+ */
 export function deletedTask(over: Partial<Task> = {}): Task {
-  return task({ title: '', deleted: true, deletedBy: AGENT_PERSON, deletedAt: DELETED_AT, ...over, assignee: null, dueDate: null, overdue: false, notes: [] });
+  return task({ title: '', createdBy: AGENT_PERSON, deleted: true, deletedBy: AGENT_PERSON, deletedAt: DELETED_AT, ...over, assignee: null, dueDate: null, overdue: false, notes: [] });
 }
 
 /** A note 이상담 wrote. */
@@ -182,6 +185,20 @@ function save(key: PathValue, next: Task): Task {
   return next;
 }
 
+/**
+ * The system entries a change of a task adds: one `CHANGE` for each field that changed, by the
+ * caller (the contract of `updateTask`).
+ */
+function changesOf(old: Task, next: Task): TaskNote[] {
+  const entry = (field: string, over: Partial<TaskNote>) => change(field, { id: s6b.nextNoteId++, author: me(), createdAt: '2026-10-08T05:00:00Z', ...over });
+  const out: TaskNote[] = [];
+  if (next.title !== old.title) out.push(entry('TITLE', { oldValue: old.title, newValue: next.title }));
+  if (next.status !== old.status) out.push(entry('STATUS', { oldValue: old.status, newValue: next.status }));
+  if ((next.assignee?.accountId ?? null) !== (old.assignee?.accountId ?? null)) out.push(entry('ASSIGNEE', { oldPerson: old.assignee, newPerson: next.assignee }));
+  if (next.dueDate !== old.dueDate) out.push(entry('DUE_DATE', { oldValue: old.dueDate, newValue: next.dueDate }));
+  return out;
+}
+
 async function jsonOf(request: Request): Promise<Record<string, unknown>> {
   const raw = await request.text();
   return raw === '' ? {} : (JSON.parse(raw) as Record<string, unknown>);
@@ -229,6 +246,7 @@ const handlers6b = [
       const due = body['dueDate'];
       next = { ...next, dueDate: typeof due === 'string' ? due : null, overdue: false };
     }
+    next = { ...next, notes: [...next.notes, ...changesOf(old, next)] };
     return HttpResponse.json(contract('updateTask', 200, save(params.key, next)));
   }),
   http.delete('*/api/console/issues/:key/tasks/:id', ({ params }) => {
@@ -352,6 +370,16 @@ export function outerLine(root: HTMLElement, part: string): HTMLElement | null {
 export function innerLine(root: HTMLElement, part: string): HTMLElement | null {
   const all = Array.from(root.querySelectorAll<HTMLElement>(LINE)).filter((el) => text(el).includes(part));
   return all.find((el) => !all.some((other) => other !== el && el.contains(other))) ?? null;
+}
+
+/**
+ * The text of a task line without the lines nested in it (its notes and system entries, when the
+ * screen opens them inside the line): what the line itself shows, such as its assignee and due date.
+ */
+export function ownText(line: HTMLElement): string {
+  const copy = line.cloneNode(true) as HTMLElement;
+  for (const nested of Array.from(copy.querySelectorAll(LINE))) nested.remove();
+  return text(copy);
 }
 
 /** The line of the task titled `title` in the 작업 구역, waited for. */

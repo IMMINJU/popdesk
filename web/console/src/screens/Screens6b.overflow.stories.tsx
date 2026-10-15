@@ -45,7 +45,7 @@ const MIXED = [
   task({ id: 42, title: '고객에게 전화하기', assignee: null, dueDate: null, overdue: false }),
   task({ id: 43, title: '재현 절차 정리', status: 'DONE', doneBy: CHOI, doneAt: '2026-10-09T02:00:00Z', overdue: false }),
   task({ id: 44, title: LONG_TITLE, assignee: CHOI, dueDate: '2099-12-31', overdue: false }),
-  task({ id: 45, title: '', assignee: null, dueDate: null, overdue: false, deleted: true, deletedBy: LEE, deletedAt: '2026-10-10T04:05:06Z' }),
+  task({ id: 45, title: '', assignee: null, dueDate: null, overdue: false, createdBy: LEE, deleted: true, deletedBy: LEE, deletedAt: '2026-10-10T04:05:06Z' }),
 ];
 
 const NONE = data({ tasks: [] });
