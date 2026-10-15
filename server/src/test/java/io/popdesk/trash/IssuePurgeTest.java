@@ -155,7 +155,7 @@ class IssuePurgeTest extends BareAppTest {
         assertThat(historyAfter.stream().map(r -> r.get("id")).toList()).as("history entry IDs after the purge")
                 .containsAll(historyBefore.stream().map(r -> r.get("id")).toList());
         List<Map<String, Object>> texts = historyAfter.stream()
-                .filter(r -> List.of("TITLE", "CONTENT").contains(r.get("field"))).toList();
+                .filter(r -> "TITLE".equals(r.get("field")) || "CONTENT".equals(r.get("field"))).toList();
         assertThat(texts.stream().map(r -> r.get("field")).distinct().toList()).as("fields of the text entries")
                 .containsExactlyInAnyOrder("TITLE", "CONTENT");
         assertThat(texts).as("TITLE and CONTENT entries").allSatisfy(r -> {

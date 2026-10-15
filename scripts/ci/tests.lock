@@ -512,7 +512,7 @@ b7fc8df7055b82fe6892830ec6f03a261857a3219ce77116c8b0e4c45a9af3fc  server/src/tes
 7ddc3a95bb876656882cd74b9a0d33ab27392cba8b4693777d02c0d36cdd4a3a  server/src/test/java/io/popdesk/trash/AutoCloseRaceTest.java
 1d6438d693bd6b17b6db07a8cf4c70b45607314296900ab8daaca0aecb3af7e4  server/src/test/java/io/popdesk/trash/AutoCloseTest.java
 f23443c3ae372c1b3f82047ad44348908d05782a91e82ed45c2e795418249006  server/src/test/java/io/popdesk/trash/IssueDeleteTest.java
-6f97668128905ecbdb270b1e4aa9f13101b4cf695fbfdf5a0ca61ebb02de26d6  server/src/test/java/io/popdesk/trash/IssuePurgeTest.java
+f0adebb83d0545a55a09e882813b231ca6943389d48902f7d2ca7da35fe4cf59  server/src/test/java/io/popdesk/trash/IssuePurgeTest.java
 310829225825f67cbe746e76422754dcf4ae499e1937cfba33186cce1f6c8804  server/src/test/java/io/popdesk/trash/IssueRestoreTest.java
 2fe5e933bbc5b79372fbc14873e1af7be894ab853314e693b655f07e8fbe24ff  server/src/test/java/io/popdesk/trash/RowLock.java
 9006296add3d66e76677bed82e0961caf0deef6ff42f394bf3487b187b9a13bc  server/src/test/java/io/popdesk/trash/TrashJobs.java
