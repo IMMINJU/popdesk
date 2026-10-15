@@ -6,6 +6,8 @@ import io.popdesk.PatchText;
 import io.popdesk.Transactions;
 import io.popdesk.helpdesk.CompanyStatus;
 import io.popdesk.helpdesk.Viewer;
+import io.popdesk.helpdesk.audit.AuditAction;
+import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.company.CompanyRepository;
 import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
 import io.popdesk.helpdesk.label.LabelRepository.LabelRow;
@@ -13,7 +15,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -33,12 +37,15 @@ public class LabelService {
 
     private final LabelRepository labels;
     private final CompanyRepository companies;
+    private final AuditLog audit;
     private final Transactions transactions;
     private final Clock clock;
 
-    LabelService(LabelRepository labels, CompanyRepository companies, Transactions transactions, Clock clock) {
+    LabelService(LabelRepository labels, CompanyRepository companies, AuditLog audit, Transactions transactions,
+            Clock clock) {
         this.labels = labels;
         this.companies = companies;
+        this.audit = audit;
         this.transactions = transactions;
         this.clock = clock;
     }
@@ -54,12 +61,13 @@ public class LabelService {
      * Creates a label (S6A-AC-01). The company row is locked first, so the count of its labels holds until
      * the new one is in (S6A-AC-09); two creations of one name at once are told apart by the unique key,
      * not by a count, and the second gets 409 (S6A-AC-03). Then the input (every invalid field at once),
-     * then the company's status (S6A-AC-08) and the limit.
+     * then the company's status (S6A-AC-08) and the limit. The new label is audited in the same
+     * transaction with its name and color (S6B-AC-80).
      *
      * @param name the name as sent, or null
      * @param color the color as sent, or null for the default gray
      */
-    public LabelRow create(Viewer viewer, String code, String name, String color) {
+    public LabelRow create(Viewer viewer, AuditLog.Actor admin, String code, String name, String color) {
         return transactions.run(() -> {
             CompanyRow company = companies.lockByCode(viewer, code).orElseThrow(ApiException::notFound);
             adminOnly(viewer);
@@ -85,6 +93,8 @@ public class LabelService {
             } catch (DuplicateKeyException e) {
                 throw nameTaken();
             }
+            audit.record(admin, AuditAction.LABEL_CREATED, target(company.code(), id),
+                    values(labelName.name(), labelColor));
             return new LabelRow(id, labelName.name(), labelColor, 0);
         });
     }
@@ -93,9 +103,11 @@ public class LabelService {
      * Changes the name or the color of a label, whichever were sent; neither can be cleared, so
      * {@code null} is {@code REQUIRED} (S6A-AC-02, S6A-AC-04). A name another label of the company has,
      * whatever the case, is 409; the label's own name in other case is not (S6A-AC-03). Works in an
-     * {@code ARCHIVED} company too (S6A-AC-08).
+     * {@code ARCHIVED} company too (S6A-AC-08). A change is audited with the changed fields alone as
+     * {@code {from, to}}; an edit that changes nothing is not (S6B-AC-80).
      */
-    public LabelRow update(Viewer viewer, String code, long id, PatchText name, PatchText color) {
+    public LabelRow update(Viewer viewer, AuditLog.Actor admin, String code, long id, PatchText name,
+            PatchText color) {
         return transactions.run(() -> {
             CompanyRow company = companies.findByCode(viewer, code).orElseThrow(ApiException::notFound);
             LabelRow label = labels.find(company.id(), id).orElseThrow(ApiException::notFound);
@@ -127,19 +139,59 @@ public class LabelService {
             } catch (DuplicateKeyException e) {
                 throw nameTaken();
             }
+            Map<String, Object> changes = new LinkedHashMap<>();
+            if (!labelName.name().equals(label.name())) {
+                changes.put("name", change(label.name(), labelName.name()));
+            }
+            if (!labelColor.equals(label.color())) {
+                changes.put("color", change(label.color(), labelColor));
+            }
+            audit.record(admin, AuditAction.LABEL_UPDATED, target(company.code(), id), changes);
             return new LabelRow(id, labelName.name(), labelColor, label.issueCount());
         });
     }
 
-    /** Deletes a label of the company and so takes it off every issue, without history (LBL-3, S6A-AC-06). */
-    public void delete(Viewer viewer, String code, long id) {
+    /**
+     * Deletes a label of the company and so takes it off every issue, without history (LBL-3, S6A-AC-06).
+     * The deleted label's name and color are audited (S6B-AC-80).
+     */
+    public void delete(Viewer viewer, AuditLog.Actor admin, String code, long id) {
         transactions.run(() -> {
             CompanyRow company = companies.findByCode(viewer, code).orElseThrow(ApiException::notFound);
             adminOnly(viewer);
+            LabelRow label = labels.find(company.id(), id).orElseThrow(ApiException::notFound);
             if (!labels.delete(company.id(), id)) {
                 throw ApiException.notFound();
             }
+            audit.record(admin, AuditAction.LABEL_DELETED, target(company.code(), id),
+                    values(label.name(), label.color()));
         });
+    }
+
+    /**
+     * The target of a label's audit entry (S6B-AC-80): the company as every company entry has it, so the
+     * audit log's company filters find it, and the label.
+     */
+    private static Map<String, Object> target(String code, long labelId) {
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put("type", "COMPANY");
+        target.put("code", code);
+        target.put("labelId", labelId);
+        return target;
+    }
+
+    private static Map<String, Object> values(String name, String color) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("name", name);
+        values.put("color", color);
+        return values;
+    }
+
+    private static Map<String, Object> change(String from, String to) {
+        Map<String, Object> change = new LinkedHashMap<>();
+        change.put("from", from);
+        change.put("to", to);
+        return change;
     }
 
     /** The security configuration lets only admins reach the writes; this holds should a path slip out of it. */

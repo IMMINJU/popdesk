@@ -151,8 +151,10 @@ class MyTasksTest extends BareAppTest {
         long task = taskFor(s, issue.key(), s.agent(), today());
 
         clock.advance(Duration.ofDays(2));
+        // A session ends 8 hours after sign-in on the app's clock (AUTH-4).
+        Session agent = fixtures.signInAgain(s.agent());
 
-        JsonNode item = TaskSteps.myTasks(s.agent()).json().path("items").path(0);
+        JsonNode item = TaskSteps.myTasks(agent).json().path("items").path(0);
         assertThat(id(item)).as("the agent's task").isEqualTo(task);
         assertThat(item.path("overdue").asBoolean(false)).as("overdue of %s", item).isTrue();
     }

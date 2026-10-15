@@ -84,7 +84,8 @@ class ConsoleNotificationController {
         return new Notification(item.id(), NotificationKind.valueOf(item.kind()),
                 item.issue() == null ? null : new NotificationIssue(item.issue().key(), item.issue().title()),
                 item.companyCode(), item.commentId(), actor(item.actor()), utc(item.createdAt()),
-                utc(item.readAt()), null); // task: null until slice 6b makes TASK_ASSIGNED items (S6B-AC-33).
+                utc(item.readAt()), item.task() == null ? null
+                        : new NotificationTask(item.task().id(), item.task().title()));
     }
 
     private static NotificationActor actor(Actor actor) {

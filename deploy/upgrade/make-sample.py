@@ -176,6 +176,24 @@ def fill(project):
     agent.json("PUT", f"/api/console/issues/{keys[1]}/labels/{labels[0]['id']}")
     due = datetime.datetime.now(datetime.timezone.utc).date() + datetime.timedelta(days=30)
     agent.json("PUT", f"/api/console/issues/{keys[1]}/due-date", {"dueDate": due.isoformat()})
+    # What slice 6b added (S6B-AC-95). An OPEN task the admin gives the agent (task.assignee_id, and an
+    # unread TASK_ASSIGNED item in the agent's inbox with its task_id), whose due date the agent then sets
+    # (a DUE_DATE change in task_note).
+    tasks = f"/api/console/issues/{keys[1]}/tasks"
+    given = admin.json("POST", tasks, {"title": "Check the invoice run", "assigneeId": agent_id}, expect=201)
+    agent.json("PATCH", f"{tasks}/{given['id']}", {"dueDate": due.isoformat()})
+    # A DONE task (done_at, done_by, a STATUS change) with a note its author edited (edited_at) and a
+    # note its author deleted (deleted_at, deleted_by, an empty content).
+    done = agent.json("POST", tasks, {"title": "Call the customer back"}, expect=201)
+    note = agent.json("POST", f"{tasks}/{done['id']}/notes", {"content": "Left a message."}, expect=201)
+    agent.json("PATCH", f"{tasks}/{done['id']}/notes/{note['id']}", {"content": "Left a message at 10:00."})
+    wrong = agent.json("POST", f"{tasks}/{done['id']}/notes", {"content": "Wrong task, sorry."}, expect=201)
+    agent.request("DELETE", f"{tasks}/{done['id']}/notes/{wrong['id']}", expect=204)
+    agent.json("PATCH", f"{tasks}/{done['id']}", {"status": "DONE"})
+    # A deleted task (an empty title, deleted_at, deleted_by) with its note emptied.
+    mistake = agent.json("POST", tasks, {"title": "Made twice"}, expect=201)
+    agent.json("POST", f"{tasks}/{mistake['id']}/notes", {"content": "Same as the other one."}, expect=201)
+    agent.request("DELETE", f"{tasks}/{mistake['id']}", expect=204)
     # A filing with a key (issue_idempotency), which its reporter then closes.
     once = customer.json("POST", "/api/portal/issues",
                          {"companyCode": "ACME", "title": "Filed once", "content": "Sent with a key."},

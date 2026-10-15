@@ -38,8 +38,22 @@ class IssueInboxService implements IssueInbox {
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
+    public void addAboutTask(long recipientAccountId, UUID issueId, long taskId, long actorId) {
+        ops.insertInboxAboutTask(recipientAccountId, Kind.TASK_ASSIGNED.name(), issueId, taskId, actorId,
+                clock.instant().truncatedTo(ChronoUnit.MICROS));
+        mail.queueAboutTask(MailKind.TASK_ASSIGNED, recipientAccountId, issueId, taskId);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
     public void deleteOfComment(long commentId) {
         ops.deleteInboxOfComment(commentId);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void deleteOfTask(long taskId) {
+        ops.deleteInboxOfTask(taskId);
     }
 
     @Override

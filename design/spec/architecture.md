@@ -150,6 +150,11 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 | 라벨 떼기, 마감일 정하기·지우기(6a) | 문의 행 | | `issue_label` DELETE 또는 문의 UPDATE(`due_date`, `version`) → 이력 | | |
 | 라벨 만들기(6a) | 고객사 행 `FOR NO KEY UPDATE` → 라벨 수를 센다(200) | | `label` INSERT. 같은 이름은 유니크 위반에서 409 | | |
 | 라벨 고치기·지우기(6a) | 잠그지 않는다. `label` UPDATE나 DELETE 한 문장(지우기는 `issue_label`이 CASCADE로 따라간다). 붙이기가 쥔 `FOR KEY SHARE`를 지우기가 기다린다 | | | | |
+| 작업 만들기(6b) | 문의 행 | | 담당자 자격 읽기(잠그지 않음) → 작업 수 세기 → `task` INSERT → `notification`·`outbox` INSERT | | 담당자 자격 |
+| 작업 고치기(6b) | 문의 행 | | 작업 행 읽기 → 항목 수 세기 → `task` UPDATE → `task_note` INSERT(바뀐 칸마다) → `notification`·`outbox` INSERT | | 작업 행, 담당자 자격 |
+| 작업 지우기(6b) | 문의 행 | | `task` UPDATE → 그 작업의 `task_note` UPDATE 둘 → 그 작업의 `notification` DELETE | | |
+| 작업 기록 남기기·고치기·지우기(6b) | 문의 행 | | 작업·기록 읽기 → (남기기만) 수 세기 → `task_note` INSERT/UPDATE | | 작업 행, 기록 행 |
+| 담당 비우기의 작업 몫(6b) | 문의 비우기와 같은 트랜잭션. 문의 행을 잠그지 않는다 | | 문의 비우기 뒤 `task` 조건부 UPDATE(`OPEN`, 지우지 않음, `CLOSED`가 아닌 문의) → 돌아온 작업마다 `task_note` INSERT | | |
 
 문의 행을 잠근다는 것은 `FOR NO KEY UPDATE`다. 표의 차례에 붙는 까닭과 남는 틈은 아래와 같다.
 

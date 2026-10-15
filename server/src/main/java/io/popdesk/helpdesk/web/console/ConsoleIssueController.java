@@ -14,6 +14,7 @@ import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.helpdesk.issue.IssueService;
 import io.popdesk.helpdesk.label.LabelRepository.IssueLabel;
+import io.popdesk.helpdesk.task.TaskService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -53,9 +54,11 @@ class ConsoleIssueController {
             "reporter", "q", "label", "sort");
 
     private final IssueService issues;
+    private final TaskService tasks;
 
-    ConsoleIssueController(IssueService issues) {
+    ConsoleIssueController(IssueService issues, TaskService tasks) {
         this.issues = issues;
+        this.tasks = tasks;
     }
 
     /**
@@ -73,12 +76,11 @@ class ConsoleIssueController {
                 row.version(), utc(row.createdAt()), utc(row.updatedAt()));
     }
 
-    private IssueSummary summary(IssueRow row, Map<UUID, List<IssueLabel>> labels) {
+    private IssueSummary summary(IssueRow row, Map<UUID, List<IssueLabel>> labels, Map<UUID, Long> openTasks) {
         return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
                 row.createdBy() != null, person(row.assignee()), row.assigneeUnavailable(), labels(labels, row.id()),
-                row.dueDate(), issues.overdue(row), utc(row.createdAt()),
-                0); // openTaskCount: 0 until slice 6b counts tasks (S6B-AC-70).
+                row.dueDate(), issues.overdue(row), utc(row.createdAt()), openTasks.getOrDefault(row.id(), 0L));
     }
 
     /** The labels of one issue, in the name order they were read in; empty without labels. */
@@ -170,8 +172,11 @@ class ConsoleIssueController {
         Paged<IssueRow> rows = issues.list(CurrentAccount.get().viewer(),
                 new IssueService.Filters(status, companyCode, assignee, reporter, q, label, sort), page, size);
         // The labels of the whole page in one read, not one for each issue (slice 6a design section 4).
-        Map<UUID, List<IssueLabel>> labels = issues.labels(rows.items().stream().map(IssueRow::id).toList());
-        return rows.map(row -> summary(row, labels));
+        List<UUID> ids = rows.items().stream().map(IssueRow::id).toList();
+        Map<UUID, List<IssueLabel>> labels = issues.labels(ids);
+        // Open tasks of the page the same way (slice 6b design section 4, S6B-AC-70).
+        Map<UUID, Long> openTasks = tasks.openCounts(ids);
+        return rows.map(row -> summary(row, labels, openTasks));
     }
 
     @Operation(operationId = "createIssue", summary = "File an issue on behalf of a customer",

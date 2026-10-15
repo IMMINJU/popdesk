@@ -50,10 +50,27 @@ public interface IssueInbox {
             @Nullable MailKind mail);
 
     /**
+     * Adds a {@link Kind#TASK_ASSIGNED} item about a task to the recipient's inbox and queues its email
+     * (S6B-AC-33). The item and the email row hold the task's ID; its title is read when the inbox is
+     * read and when the email is sent (S6B-AC-34). Joins the caller's transaction; fails when there is
+     * none.
+     *
+     * @param issueId the issue the task belongs to
+     * @param actorId the account that made the recipient the assignee
+     */
+    void addAboutTask(long recipientAccountId, UUID issueId, long taskId, long actorId);
+
+    /**
      * Deletes every item about the comment, read or not, whoever has it (S4-AC-16): the comment was
      * deleted. Joins the caller's transaction.
      */
     void deleteOfComment(long commentId);
+
+    /**
+     * Deletes every item about the task, read or not, whoever has it (S6B-AC-36): the task was deleted.
+     * Joins the caller's transaction.
+     */
+    void deleteOfTask(long taskId);
 
     /**
      * Deletes the account's unread {@link Kind#MENTIONED} items about the comment: an edit took the

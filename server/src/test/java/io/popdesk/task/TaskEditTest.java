@@ -217,10 +217,12 @@ class TaskEditTest extends BareAppTest {
                 body("title", TaskSteps.title("Today"), "dueDate", today.toString()));
         assertThat(task.path("overdue").asBoolean(true)).as("overdue on the day").isFalse();
         clock.advance(Duration.ofDays(1));
+        // A session ends 8 hours after sign-in on the app's clock (AUTH-4).
+        Session agent = fixtures.signInAgain(w.agent());
 
-        ApiResponse again = TaskSteps.updateRequest(w.agent(), issue.key(), id(task),
+        ApiResponse again = TaskSteps.updateRequest(agent, issue.key(), id(task),
                 body("dueDate", today.toString())).send();
-        JsonNode renamed = TaskSteps.update(w.agent(), issue.key(), id(task), body("title", "Renamed"));
+        JsonNode renamed = TaskSteps.update(agent, issue.key(), id(task), body("title", "Renamed"));
 
         assertInvalid(again, "dueDate", "OUT_OF_RANGE");
         assertThat(text(renamed, "dueDate")).as("dueDate after renaming").isEqualTo(today.toString());
@@ -234,19 +236,22 @@ class TaskEditTest extends BareAppTest {
     @DisplayName("S6B-AC-06, S6B-AC-07 DONE records who and when and ends overdue; DONE again changes nothing; OPEN clears both and is overdue again")
     void doneAndOpenAgain() {
         World w = flow.world();
-        Session admin = fixtures.admin(w.admin());
+        Session firstAdmin = fixtures.admin(w.admin());
         Issue issue = fixtures.fileIssue(w.reporter(), w.code());
         JsonNode task = TaskSteps.create(w.agent(), issue.key(),
                 body("title", TaskSteps.title("Overdue"), "dueDate", today().toString()));
         clock.advance(Duration.ofDays(2));
-        assertThat(TaskSteps.task(w.agent(), issue.key(), id(task)).path("overdue").asBoolean(false))
+        // A session ends 8 hours after sign-in on the app's clock (AUTH-4): sign in again after moving it.
+        Session admin = fixtures.signInAgain(firstAdmin);
+        Session agent = fixtures.signInAgain(w.agent());
+        assertThat(TaskSteps.task(agent, issue.key(), id(task)).path("overdue").asBoolean(false))
                 .as("overdue of the OPEN task after its date").isTrue();
         Instant doneAt = clock.advance(Duration.ofMinutes(1));
 
         JsonNode done = TaskSteps.update(admin, issue.key(), id(task), body("status", "DONE"));
         clock.advance(Duration.ofMinutes(1));
-        JsonNode doneAgain = TaskSteps.update(w.agent(), issue.key(), id(task), body("status", "DONE"));
-        JsonNode reopened = TaskSteps.update(w.agent(), issue.key(), id(task), body("status", "OPEN"));
+        JsonNode doneAgain = TaskSteps.update(agent, issue.key(), id(task), body("status", "DONE"));
+        JsonNode reopened = TaskSteps.update(agent, issue.key(), id(task), body("status", "OPEN"));
 
         assertThat(text(done, "status")).isEqualTo("DONE");
         assertThat(IssueFlow.time(done, "doneAt")).as("doneAt").isEqualTo(doneAt);

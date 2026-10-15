@@ -12,6 +12,7 @@ import io.popdesk.notification.PasswordResetLinks;
 import io.popdesk.notification.Recipients;
 import io.popdesk.notification.Recipients.Recipient;
 import io.popdesk.notification.Recipients.Status;
+import io.popdesk.notification.TaskFacts;
 import io.popdesk.notification.outbox.MailText.Message;
 import io.popdesk.notification.outbox.OutboxRepository.OutboxRow;
 import java.util.Map;
@@ -27,7 +28,7 @@ import org.springframework.stereotype.Component;
  * (MAIL-5, S0-AC-66), and drops the email when it is no longer to be sent (MAIL-4): the account is not
  * {@code ACTIVE} ({@code INVITED} for an invitation), or may no longer see the issue (S0-AC-69,
  * S4-AC-54), the comment it is about was deleted (S4-AC-55), a mention was taken out of the comment
- * (S4-AC-56), or the recipient of a membership request is no admin any more. Without SMTP, and in a
+ * (S4-AC-56), the task it is about was deleted or has another assignee (S6B-AC-34), or the recipient of a membership request is no admin any more. Without SMTP, and in a
  * sandbox without an address, it writes one log line, the address masked, in place of the email
  * (S0-AC-73, S4B-AC-03). All of that is decided for the account the email is for; where a sandbox sends
  * the email instead is {@link SmtpMail}'s business (S4B-AC-05).
@@ -48,6 +49,7 @@ class MailSender implements Sender {
     private final IssueFacts issues;
     private final IssueAccess access;
     private final CommentFacts comments;
+    private final TaskFacts tasks;
     private final OutboxRepository outbox;
     private final InvitationLinks invitations;
     private final PasswordResetLinks passwordResets;
@@ -56,12 +58,13 @@ class MailSender implements Sender {
     private final Map<Long, String> links = new ConcurrentHashMap<>();
 
     MailSender(Recipients recipients, IssueFacts issues, IssueAccess access, CommentFacts comments,
-            OutboxRepository outbox, InvitationLinks invitations, PasswordResetLinks passwordResets,
+            TaskFacts tasks, OutboxRepository outbox, InvitationLinks invitations, PasswordResetLinks passwordResets,
             PublicAddress address, SmtpMail smtp) {
         this.recipients = recipients;
         this.issues = issues;
         this.access = access;
         this.comments = comments;
+        this.tasks = tasks;
         this.outbox = outbox;
         this.invitations = invitations;
         this.passwordResets = passwordResets;
@@ -91,6 +94,14 @@ class MailSender implements Sender {
                 || kind == MailKind.MENTIONED && !comments.mentions(row.commentId(), row.recipientAccountId()))) {
             return Attempt.dropped();
         }
+        String task = null;
+        if (kind == MailKind.TASK_ASSIGNED) {
+            task = row.taskId() == null || issue == null ? null
+                    : tasks.titleForAssignee(row.taskId(), row.recipientAccountId()).orElse(null);
+            if (task == null) {
+                return Attempt.dropped();
+            }
+        }
         String company = kind == MailKind.MEMBERSHIP_REQUESTED ? outbox.findCompanyCode(row.id()).orElse(null) : null;
         if (kind == MailKind.MEMBERSHIP_REQUESTED
                 && (company == null || !recipients.activeAdmins().contains(row.recipientAccountId()))) {
@@ -117,8 +128,8 @@ class MailSender implements Sender {
             case ASSIGNED -> Optional.of(MailText.assigned(locale, issue, issueLink));
             case MEMBERSHIP_REQUESTED -> Optional.of(MailText.membershipRequested(locale, company,
                     address.origin(App.CONSOLE) + "/companies/" + company));
-            // Nothing queues this kind yet; slice 6b writes its email (S6B-AC-34).
-            case TASK_ASSIGNED -> Optional.empty();
+            case TASK_ASSIGNED -> Optional.of(MailText.taskAssigned(locale, issue, task,
+                    issueLink + "#task-" + row.taskId()));
         };
         if (message.isEmpty()) {
             return Attempt.dropped();

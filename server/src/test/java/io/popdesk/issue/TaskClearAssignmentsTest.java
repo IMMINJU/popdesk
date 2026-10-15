@@ -148,8 +148,10 @@ class TaskClearAssignmentsTest extends BareAppTest {
         }
         assertThat(TaskSteps.changes(TaskSteps.task(s.admin(), s.issueB(), s.ofB()))).as("changes of B's task")
                 .noneMatch(c -> clears(c, id));
+        // The inbox shows only items of issues the agent can see now (S4-AC-42), so the items of A's issues
+        // leave the list; no item is added.
         assertThat(TalkFlow.ids(TalkFlow.inbox(s.agent()))).as("the agent's items after")
-                .isEqualTo(TalkFlow.ids(agentItems));
+                .isSubsetOf(TalkFlow.ids(agentItems));
         assertThat(TalkFlow.ids(TalkFlow.inbox(s.other()))).as("the other agent's items after")
                 .isEqualTo(TalkFlow.ids(otherItems));
         assertThat(accountCount(s.admin(), id).expect(200).jsonLong("tasks")).as("open tasks of the account after")
