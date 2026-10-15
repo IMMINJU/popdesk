@@ -176,6 +176,8 @@ const handlers6c = [
     const other = issueOf(otherKey);
     if (!other) return errors.notFound();
     const type = body['type'];
+    // The contract: `type` missing or null is REQUIRED, a word it does not know UNKNOWN_VALUE.
+    if (type === undefined || type === null) return rejectedWith('createIssueLink', 'INVALID_INPUT', 400, [{ field: 'type', code: 'REQUIRED' }]);
     if (typeof type !== 'string' || !TYPES.includes(type)) return rejectedWith('createIssueLink', 'INVALID_INPUT', 400, [{ field: 'type', code: 'UNKNOWN_VALUE' }]);
     const k = keyOf(params.key);
     if (other.key === k) return rejectedWith('createIssueLink', 'LINK_TO_SELF');
@@ -232,6 +234,21 @@ export function linkRegionNow(): HTMLElement | null {
 
 export function linkRegion(): Promise<HTMLElement> {
   return found(linkRegionNow, '구역 "연결된 문의"');
+}
+
+/** The heading of the 연결 구역 ("연결된 문의" with or without its count), or null now. */
+export function linkHeadingNow(): HTMLElement | null {
+  const region = linkRegionNow();
+  return region ? (within(region).queryAllByRole('heading').find((h) => text(h).startsWith('연결된 문의')) ?? null) : null;
+}
+
+/** Waits until focus sits on the heading of the 연결 구역 (screens.md 5절, the shape of the 6b 작업 구역). */
+export function focusOnLinkHeading(): Promise<void> {
+  return eventually(() => {
+    const heading = linkHeadingNow();
+    expect(heading, '제목 "연결된 문의"').not.toBeNull();
+    expect(document.activeElement, '초점').toBe(heading);
+  });
 }
 
 const LINE = 'li, tr, article, [role="listitem"], [role="row"], [role="article"]';

@@ -53,10 +53,13 @@ describe('C-7 알림함 연결 알림 (6c 묶음)', () => {
     expect(text(a), '모르는 종류의 문장').not.toContain('새 알림이 있습니다');
   });
 
-  test('S6C-AC-54 C-7 연결 알림 누르기: 읽음을 보내고 바뀐 문의 /issues/BETA-3으로 간다', async () => {
-    showItems([linkedItem({})]);
+  test.each([
+    { kind: 'LINKED_ISSUE_RESOLVED' as const, says: '연결된 문의를 해결했습니다' },
+    { kind: 'LINKED_ISSUE_CLOSED' as const, says: '연결된 문의를 종료했습니다' },
+  ])('S6C-AC-54 C-7 연결 알림 누르기($kind): 읽음을 보내고 바뀐 문의 /issues/BETA-3으로 간다', async ({ kind, says }) => {
+    showItems([linkedItem({ kind })]);
     const { user } = renderAt('/inbox');
-    const a = await item('연결된 문의를 해결했습니다');
+    const a = await item(says);
     expect(new URL(a.href).pathname).toBe('/issues/BETA-3');
     await expectNoAxeViolations();
 
