@@ -258,6 +258,48 @@ def fill(project):
     for status in ("IN_PROGRESS", "RESOLVED"):
         agent.json("PUT", f"/api/console/issues/{under_sla[1]}/status", {"status": status})
     admin.request("DELETE", f"/api/console/issues/{under_sla[2]}", expect=204)
+    # What slice 8b added (S8B-AC-27). Goals of a minute on all 24 hours of every day, so sla-recalculate (every
+    # minute) alerts a new issue's first response in warning and then overdue (issue.fr_alerted, an
+    # SLA_RESPONSE_BREACHED item and its mail row). Then a change that shortens the HIGH first response goal of
+    # another running issue to a minute: the recalculation counts it as newly overdue, and when it ends the admins
+    # get an SLA_RECALCULATED item with the counts (sla_recalc_report closed, notification.sla_became_breached).
+    def sla_policy(high_first_response):
+        policy = admin.json("GET", "/api/console/sla-policy")
+        admin.json("PUT", "/api/console/sla-policy", {
+            "version": policy["version"],
+            "targets": [{"priority": p,
+                         "firstResponseMinutes": {"NORMAL": 1, "HIGH": high_first_response}.get(p),
+                         "resolutionMinutes": 600} for p in ("LOW", "NORMAL", "HIGH", "URGENT")],
+            "hours": [{"weekday": d, "opens": "00:00", "closes": "24:00"} for d in weekdays],
+            "holidays": []})
+
+    def wait_for(what, sql):
+        """Waits until the query, a boolean, is true."""
+        end = time.monotonic() + 180
+        while project.sql(sql) != "t":
+            if time.monotonic() > end:
+                raise HarnessError(f"{what} did not come within 3 minutes.")
+            time.sleep(2)
+
+    sla_policy(600)
+    alerted, recounted = [agent.json("POST", "/api/console/issues",
+                                     {"companyCode": "ACME", "reporterId": customer_id, "channel": "PHONE",
+                                      "title": title, "content": "Filed under a short SLA.", "priority": priority},
+                                     expect=201)["key"] for title, priority in (("Keyboard beeps", "NORMAL"),
+                                                                                ("Printer offline", "HIGH"))]
+    wait_for(f"The overdue alert of {alerted}",
+             "select exists (select 1 from notification n join issue i on i.id = n.issue_id join company c on "
+             f"c.id = i.company_id where n.kind = 'SLA_RESPONSE_BREACHED' and c.code || '-' || i.number = '{alerted}')")
+    # The first change may have counted the running issue of slice 8a; its summary ends before the second change.
+    wait_for("The end of the first recalculation",
+             "select not exists (select 1 from sla_recalc_report where closed_at is null) "
+             "and not exists (select 1 from issue i where i.sla_version < (select max(version) from sla_policy) "
+             "and (i.fr_since is not null or i.res_since is not null) and i.deleted_at is null)")
+    summaries = project.sql("select count(*) from notification where kind = 'SLA_RECALCULATED'")
+    sla_policy(1)
+    wait_for(f"The summary of the recalculation that made {recounted} overdue",
+             "select count(*) > " + summaries + " from notification where kind = 'SLA_RECALCULATED' "
+             "and sla_became_breached > 0")
 
     # Mail rows of this run are sent (SMTP is off: one log line each) and deleted. Wait for that, so the
     # queue holds only the failed row added below when it is dumped.
