@@ -34,3 +34,29 @@ export const DueDate: Story = {
 export const DueDatePast: Story = {
   args: { label: '마감일', type: 'date', value: '2026-10-01', min: '2026-10-14', autoComplete: 'off', error: '오늘이나 그 뒤의 날짜를 고르세요.' },
 };
+/** 시각 (C-13 업무 시간): the browser's time field. The value is `HH:MM`. */
+export const TimeEmpty: Story = {
+  args: { label: '월요일 시작', type: 'time', value: '', autoComplete: 'off' },
+};
+export const Time: Story = {
+  args: { label: '월요일 시작', type: 'time', value: '09:00', autoComplete: 'off' },
+};
+export const TimeError: Story = {
+  args: { label: '월요일 끝', type: 'time', value: '08:00', autoComplete: 'off', error: '끝 시각은 시작 시각보다 늦어야 합니다.' },
+};
+export const TimeWithHelp: Story = {
+  args: { label: '월요일 끝', type: 'time', value: '18:00', autoComplete: 'off', helpText: '자정까지는 24:00' },
+};
+/** 숫자 (C-13 목표 분): `min`·`max` are hints, the server decides. */
+export const NumberEmpty: Story = {
+  args: { label: '높음 첫 응답(분)', type: 'number', value: '', min: 1, max: 525600, autoComplete: 'off' },
+};
+export const NumberValue: Story = {
+  args: { label: '높음 첫 응답(분)', type: 'number', value: '480', min: 1, max: 525600, autoComplete: 'off' },
+};
+export const NumberError: Story = {
+  args: { label: '높음 첫 응답(분)', type: 'number', value: '0', min: 1, max: 525600, autoComplete: 'off', error: '1분에서 525,600분 사이로 정합니다.' },
+};
+export const NumberWithHelp: Story = {
+  args: { label: '높음 해결(분)', type: 'number', value: '3120', min: 1, max: 525600, autoComplete: 'off', helpText: '= 2일 4시간' },
+};

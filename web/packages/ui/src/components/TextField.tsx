@@ -9,13 +9,19 @@ export interface TextFieldProps {
   onChange: (value: string) => void;
   id?: string;
   name?: string;
-  /** Default `text`. `date` takes and gives `YYYY-MM-DD`, or an empty string. */
-  type?: 'text' | 'email' | 'url' | 'search' | 'date';
+  /**
+   * Default `text`. `date` takes and gives `YYYY-MM-DD`, `time` takes and gives `HH:MM`
+   * (00:00 to 23:59; the browser drops `24:00`), `number` gives the digits as typed.
+   * Each gives an empty string when the field is empty or the browser finds the value invalid.
+   */
+  type?: 'text' | 'email' | 'url' | 'search' | 'date' | 'time' | 'number';
   /**
    * With `date`: the earliest day the browser lets one pick, `YYYY-MM-DD` (e.g. today for 마감일).
-   * A hint only; the server decides. Default: none.
+   * With `number`: the smallest number (e.g. 1 for SLA 목표 분). A hint only; the server decides. Default: none.
    */
-  min?: string;
+  min?: string | number;
+  /** With `number`: the largest number (e.g. 525600). With `date`: the latest day. A hint only. Default: none. */
+  max?: string | number;
   autoComplete?: string;
   placeholder?: string;
   /** 도움말 under the field, joined with `aria-describedby`. */
@@ -61,6 +67,7 @@ export function TextField({ ref, ...props }: TextFieldProps) {
         name={props.name}
         type={props.type ?? 'text'}
         min={props.min}
+        max={props.max}
         value={props.value}
         onChange={(e) => {
           props.onChange(e.target.value);
