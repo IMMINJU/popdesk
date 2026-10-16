@@ -9,6 +9,17 @@ server io/popdesk/sla/SlaFieldsTest.java
 server io/popdesk/sla/SlaListTest.java
 server io/popdesk/sla/SlaHiddenFromCustomerTest.java
 server io/popdesk/ops/CleanupStalledTest.java
+server io/popdesk/sla/SlaBusinessHoursTest.java
+server io/popdesk/sla/SlaDaylightSavingTest.java
+server io/popdesk/sla/SlaFirstResponseTest.java
+server io/popdesk/sla/SlaResolutionClockTest.java
+server io/popdesk/sla/SlaTrashClockTest.java
+server io/popdesk/sla/SlaPriorityTest.java
+server io/popdesk/sla/SlaStateTest.java
+server io/popdesk/sla/SlaRecalculationTest.java
+server io/popdesk/sla/SlaRaceTest.java
+server io/popdesk/deploy/SlaSampleTest.java
+server io/popdesk/deploy/SlaTimeZoneTest.java
 web **/C13SlaPolicy.8a.test.tsx
 web **/C3IssueList.8a.test.tsx
 web **/C4IssueDetail.8a.test.tsx
