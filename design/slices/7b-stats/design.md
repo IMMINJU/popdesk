@@ -42,6 +42,9 @@ order by open desc, c.code
 - 기록이 없는 작업은 이 인스턴스가 잠금을 처음 쥔 회차의 시각(메모리)부터 잰다. 앱이 뜬 시각은 어디에도 남지 않는다.
 - `OpsAlertService`가 생성자로 `List<CleanupJob>`을 받으면 빈 순환이 생겨 앱이 뜨지 않는다(`OpsAlertService → TrashPurgeJob → TrashService → AttachmentService → OpsAlerts`). 작업 목록을 이미 가진 `Housekeeping`이 `review`에 작업의 이름과 주기를 넘기거나 그 쪽에서 판정한다. 잠금을 처음 쥔 회차의 시각은 `Housekeeping`의 새 메모리 칸이다(C-4 탭이 찾음, 2026-10-16 메인이 정함).
 - `지금 - 마지막 > 주기 + 24시간`인 작업이 하나라도 있으면 `raise(CLEANUP_STALLED)`, 없으면 `resolve`.
+- 회차 처음에 앱 시계를 한 번 읽어 그 `now`를 작업과 판정에 같이 넘긴다. 작업마다 시계를 따로 읽으면 테스트가 회차 중간에 시계를 옮길 때 1분 주기 작업이 늦었다고 잘못 볼 수 있다(C-7 점검 F1, 2026-10-16 메인이 정함).
+- 판정과 풀기는 `review`의 24시간 반복 알림보다 앞에 둔다. 뒤에 두면 풀릴 회차에 반복 항목이 한 건 먼저 나간다(C-7 점검, 메인이 정함).
+- 실패한 작업은 WARN 줄 하나에 작업 이름과 `failed`를 남긴다(지금 `Scheduled work '<이름>' failed (…)`). 운영자가 보는 줄이라 `docs/operate`에 적는다. 서버 테스트가 이 줄로 실패를 기다린다(실패는 시스템 상태와 기록 어디에도 남지 않는다, C-7 점검 F2, 메인이 정함).
 
 ## 5. 웹
 
