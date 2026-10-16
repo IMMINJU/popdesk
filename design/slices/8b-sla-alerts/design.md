@@ -10,20 +10,20 @@
 
 | # | 정한 것 | 까닭 |
 |---|---|---|
-| 1 | 알렸음 표시 둘과 첫 응답 확정 시각은 `IssueClocks`에 더해 시계 칸과 같은 쓰기로 쓴다. 사람의 쓰기는 `IssueClocks.SET`·`INSERT`·`COLUMNS`를 거치고, 작업의 `updateClocks`는 칸을 손으로 나열하므로 같은 칸을 거기에도 더한다. `SlaClocks.Clock`은 바꾸지 않는다 | 사람의 쓰기는 `IssueRepository` 376·387줄에서 `IssueClocks`를 쓴다. 작업 쪽은 `SlaIssueRepository` 58-85줄이 칸과 `unnest` 배열을 손으로 적는다[소스]. 같은 한 UPDATE로 써야 8a 0절 8b를 지킨다. `Clock`은 잠긴 `SlaClocksTest`가 125번 만드는 record라 칸을 더하면 컴파일이 깨진다. `IssueClocks`를 쓰는 테스트는 없다 |
+| 1 | 알렸음 표시 둘과 첫 응답 확정 시각은 `IssueClocks`에 더해 시계 칸과 같은 쓰기로 쓴다. 사람의 쓰기는 `IssueClocks.SET`·`INSERT`·`COLUMNS`를 거치고, 작업의 `updateClocks`는 칸을 손으로 나열하므로 같은 칸을 거기에도 더한다. `SlaClocks.Clock`은 바꾸지 않는다 | 사람의 쓰기는 `IssueRepository` 376줄(`INSERT`)과 387줄(`SET`), 읽기는 89·531줄과 `SlaIssueRepository` 38줄(`COLUMNS`)이다. 새 칸은 `IssueClocks.params()`와 `read()`에도 더한다. 작업 쪽은 `SlaIssueRepository` 58-85줄이 칸과 `unnest` 배열을 손으로 적는다[소스]. 같은 한 UPDATE로 써야 8a 0절 8b를 지킨다. `Clock`은 잠긴 `SlaClocksTest`가 125번 만드는 record라 칸을 더하면 컴파일이 깨진다. `IssueClocks`를 쓰는 테스트는 없다 |
 | 2 | 다음 알림 시각은 칸으로 저장하지 않고 식 색인으로 둔다(1절). 목표마다 "시계가 멈췄으면 없음, 표시가 `null`이면 경고 시각, `WARNING`이면 기한, `BREACHED`면 없음" 가운데 이른 것(`least`는 null을 건너뛴다). 알림 단계는 같은 식으로 `<= now`와 `order by`를 쓴다 | 저장한 파생 칸은 쓰기마다 다시 정해야 하고, 하나라도 빠지면 어긋난 행이 맨 앞을 막는다(서버 검토 4). 식이면 어긋날 일이 없다. 멈춘 시계도 경고·기한 시각을 남기므로 `since is null` 갈래가 있어야 한다[소스: `SlaClocks.stop` 111줄] |
 | 3 | 넘김 판정은 8a대로 `now > dueAt`이다. 기한과 같은 순간에 읽힌 행은 보낼 것이 없고 다음 회차에 다시 읽힌다. 그 행은 식 값이 `now`라 차례의 맨 뒤라 다른 알림을 막지 않는다 | 8a의 판정을 바꾸지 않는다 |
 | 4 | 알림 단계는 단계를 시작할 때 `clock.instant()`를 다시 읽는다. 묶음은 100건, 한 트랜잭션, `for no key update of i skip locked`. 문의마다 표시를 `where id = ? and sla_version = ?`로 먼저 쓰고 1행일 때만 알림함·메일·웹훅을 넣는다. 묶음이 100건보다 적거나 한 회차 10묶음이면 멈춘다 | 회차 시각은 회차 처음에 한 번 읽어 앞 작업만큼 낡는다(서버 검토 5). 연결마다 `lock_timeout` 5초라 500건을 쥐고 있으면 사람의 쓰기가 5초를 넘겨 기다릴 수 있다(서버 검토 10, 자동 종료도 100건이다). 표시와 알림이 한 트랜잭션이라 "한 번만"이 커밋 하나로 선다 |
-| 5 | 받는 사람은 묶음마다 한 번 읽는다: `ACTIVE` 관리자 목록, 묶음에 든 고객사마다 `ACTIVE` 배정 상담원, 담당자의 상태. 담당자가 볼 수 있는지는 관리자면 늘 보고, 상담원이면 그 고객사 배정으로 본다(`ASSIGNEE_UNAVAILABLE`와 같은 뜻) | 알림 하나마다 `findById`와 `visible`을 부르면 넘김 500건에 쿼리가 만 개를 넘는다(서버 검토 10). 판정은 helpdesk의 `IssueNotifications`에 새 메서드로 둔다(누구에게 보낼지는 한 곳이 정한다[소스: `IssueNotifications` 25-58줄]). 고객사의 `ACTIVE` 상담원을 주는 메서드는 지금 없다(`listAssignable`은 관리자가 섞이고 `listMembers`는 상태를 거르지 않고 고객도 든다) |
+| 5 | 받는 사람은 묶음마다 한 번 읽는다: `ACTIVE` 관리자 목록, 묶음에 든 고객사마다 `ACTIVE` 배정 상담원, 담당자의 상태. 담당자가 볼 수 있는지는 관리자면 늘 보고, 상담원이면 그 고객사 배정으로 본다(`ASSIGNEE_UNAVAILABLE`와 같은 뜻) | 알림 하나마다 `findById`와 `visible`을 부르면 넘김 500건에 쿼리가 만 개를 넘는다(서버 검토 10). 판정은 helpdesk의 `IssueNotifications`에 새 메서드로 둔다(누구에게 보낼지는 한 곳이 정한다[소스: `IssueNotifications` 25-58줄]). 고객사의 `ACTIVE` 상담원을 주는 메서드는 지금 없다(`listAssignable`은 관리자가 섞이고, `listMembers`는 상태를 거르지 않고 쪽을 나누고 읽는 사람의 범위로 묶인다) |
 | 6 | 알림 단계는 정책 행을 잠그지 않는다 | 시계를 바꾸지 않고 표시만 쓴다. 정책 저장이 그 사이 버전을 올려도 읽은 버전 조건으로 쓰고, 다시 계산이 새 버전으로 옮긴다 |
-| 7 | 시계를 쓰는 모든 일(`SlaWrite`의 `filed`, `answered`, `moved`, `reprioritized`, `deleted`, `restored`, 작업의 다시 계산)은 `SlaAlerts`로 표시와 첫 응답 확정 시각을 정한다. 쓰기가 받은 시계의 버전이 지금보다 낮으면(`caughtUp`이 옮김) 그 일을 하기 전에 따라잡기만 한 시계와 앞 시계를 견주어 다시 계산과 똑같이 표시를 올리고 요약 행에 더한다 | 5절 5. 8a의 쓰기는 모두 먼저 `caughtUp`을 부른다[소스: `SlaWrite` 45·57·72·78·85줄] |
+| 7 | 시계를 쓰는 모든 일(`SlaWrite`의 `filed`, `answered`, `moved`, `reprioritized`, `deleted`, `restored`, 작업의 다시 계산)은 `SlaAlerts`로 표시와 첫 응답 확정 시각을 정한다. 쓰기가 받은 시계의 버전이 지금보다 낮으면(`caughtUp`이 옮김) 그 일을 하기 전에 따라잡기만 한 시계와 앞 시계를 견주어 다시 계산과 똑같이 표시를 올리고 요약 행에 더한다 | 5절 5. 앞 시계를 받는 다섯(`filed` 빼고)은 먼저 `caughtUp`을 부른다[소스: `SlaWrite` 45·57·72·78·85줄]. `filed`는 새 시계라 따라잡을 것이 없다 |
 | 8 | 요약 행에 더하기는 `insert … on conflict (tenant_id) where closed_at is null do update set became_breached = sla_recalc_report.became_breached + excluded.became_breached, …` 한 문장이다. 사람의 쓰기는 정책 `FOR KEY SHARE` → 문의 행 → 요약 행 차례로 잡는다. 작업의 묶음은 문의 → 요약 행이다 | 순환이 없다. 수가 모두 0이면 문장을 보내지 않는다 |
 | 9 | 요약 닫기는 회차의 다시 계산이 끝난 뒤 따로 트랜잭션에서: 정책 지금 버전 행 `FOR KEY SHARE` → 열린 요약 행 `for update` → 옛 버전의 돌고 있는 문의 수를 다시 셈 → 0이면 `closed_at`을 쓰고 세 수 가운데 0이 아닌 것이 있으면 `ACTIVE` 관리자 전부에게 `SLA_RECALCULATED`(세 수를 알림 행 칸에 적음) | 정책 저장(`FOR UPDATE`)이 닫기 뒤로 줄을 서서 "끝났다"를 본 뒤 새 버전이 끼지 않는다(서버 검토 13). 그래도 닫은 바로 뒤에 다시 계산이 시작되면 그것은 다음 요약이다 |
 | 10 | 다시 계산 작업의 `updateClocks`는 `returning id`로 쓴 문의를 돌려준다. 조건에서 빠진 문의는 세지 않는다 | 지금은 합계 `int` 하나라 어느 문의가 빠졌는지 모른다[소스: `SlaIssueRepository` 54-86줄] |
 | 11 | 회차의 두 단계는 서로 막지 않는다: 알림 단계를 `try`로 감싸 실패를 기억하고 다시 계산을 하고, 끝에 실패가 있었으면 예외를 낸다(회차가 기록되지 않고 1분 뒤 다시) | S8B-AC-28. 같은 행에서 늘 실패하면 하루 뒤 `CLEANUP_STALLED`가 된다(사전 부검 3절) |
 | 12 | 항목은 있는 `IssueInbox.add`로 넣고 `actorId`는 `Viewer.SYSTEM_ACCOUNT_ID`(0)다. 요약은 `AdminInbox`에 새 메서드 | 자동 종료와 같다. 화면 문장은 "누가"를 쓰지 않는다(`screens.md` 1절) |
 | 13 | 새 종류: `IssueInbox.Kind`에 넷, `MailKind`에 둘(`SLA_RESPONSE_BREACHED`, `SLA_RESOLUTION_BREACHED`), `WebhookKind`에 같은 둘, 콘솔 `NotificationKind`에 다섯. 포털 허용 목록은 그대로 | 저장 이름이 콘솔 enum에 없으면 읽기가 실패한다[소스: `ConsoleNotificationController` 83-91줄]. `SLA_WARNING`이라는 이름은 쓰지 않는다: 잠긴 C-7·P-7 테스트가 그 이름을 "모르는 종류"로 쓴다 |
-| 14 | 첫 응답 확정 시각 `fr_settled_at`은 확정이 `null`에서 `MET`·`MISSED`가 되는 쓰기의 시각이다. 응답으로 확정될 때는 `first_response_at`과 같은 값(`CommentService.add`의 `now`, 초로 자르지 않음)을 쓴다. `NONE`은 확정 시각을 두지 않는다. 한 번 정하면 바뀌지 않는다 | 통계가 `first_response_at = fr_settled_at`으로 "응답으로 확정"을 가른다(5절 12). 시계 시각은 `SlaClocks.truncate`로 자르지만 `first_response_at`은 자르지 않는다[소스: 서버 검토 1] |
+| 14 | 첫 응답 확정 시각 `fr_settled_at`은 확정이 `null`에서 `MET`·`MISSED`가 되는 쓰기의 시각이다. 응답으로 확정될 때는 `first_response_at`과 같은 값(`CommentService.add`의 `now`, 마이크로초로 자른 것. `SlaClocks.truncate`의 초 단위가 아님)을 쓴다. `NONE`은 확정 시각을 두지 않는다. 한 번 정하면 바뀌지 않는다 | 통계가 `first_response_at = fr_settled_at`으로 "응답으로 확정"을 가른다(5절 12). 시계 시각은 `SlaClocks.truncate`로 자르지만 `first_response_at`은 자르지 않는다[소스: 서버 검토 1] |
 | 15 | 통계 SLA 칸은 있는 고객사 쿼리에 `filter` 집계를 더한다. 첫 응답: `count(*) filter (where i.fr_outcome = 'MET' and i.fr_settled_at >= :since)`, 중앙값 `percentile_disc(0.5) within group (order by i.fr_spent) filter (where i.fr_outcome in ('MET','MISSED') and i.fr_settled_at >= :since and i.first_response_at = i.fr_settled_at)`. 해결은 `coalesce(i.resolved_at, i.closed_at) >= :since`와 `res_outcome`. 정책이 꺼져 있으면 쿼리를 바꾸지 않고 `sla`를 `null`로 준다. 새 색인은 두지 않는다 | STATS-3(문의 표를 바로 센다). 한 번에 읽는 쿼리라 확정 시각 색인을 타지 않는다(서버 검토 15). 200 ms 참고 값을 넘으면 그때 SLA 칸을 따로 쿼리로 뗀다 |
 
 ## 1. 표 (V20)
@@ -98,17 +98,17 @@ alter table notification
 
 ## 5. C-4·C-5에서 맞출 잠긴 테스트
 
-조사 메모와 검토 둘에서 grep으로 찾은 것이다. 잠금 여부는 `tests.lock`으로 C-4 탭이 다시 본다.
+C-4 탭 보고(`tasks/s8b-c4-server-report.md` 4절)로 고쳤다. 모두 잠겨 있다. 웹훅 스냅숏은 종류마다 줄을 요구하는 테스트가 없어 깨지지 않는다(새 줄은 S8B-AC-18의 테스트가 더한다).
 
 | 테스트 | 왜 |
 |---|---|
-| `notification/outbox/WebhookTextTest`(`@CsvSource` 여섯 줄)와 `notify/__snapshots__` | 새 웹훅 종류 둘의 스냅숏 줄 |
-| `notify/SandboxMailTest`(59-61, 164-182줄) | `MailKind` 전부와 종류마다 시나리오를 요구한다. 새 메일 종류 둘의 시나리오에는 SLA 정책이 켜져야 한다. 그 앱 컨텍스트를 같이 쓰는 클래스를 grep으로 보고, 정책을 켠 채 끝나지 않게 한다(테스트 쪽이 정하고 C-7이 본다) |
-| `inbox/InboxSteps.CONSOLE_ITEM_FIELDS`(40-41줄), `inbox/InboxReadTest`(156줄), `inbox/TaskInboxTest`(195-196줄) | 콘솔 항목 칸 집합에 `slaSummary` |
-| `stats/CompanyStatsTest`(134-136줄 최상위 칸, 61-63줄 항목 칸)와 `stats/StatsSteps.FIELDS` | 항목에 `sla` 칸 |
-| `web/packages/api/src/testing/contract.test.ts`(432·450-460·465-468줄 견본) | `Notification.slaSummary`, `CompanyStat.sla` 필수 칸 |
-| `web/console/src/__tests__/console4.ts`의 `notification()`, `storyFetch7b.ts`의 `stat()` | 필수 칸이 늘면 `pnpm typecheck`가 실패한다 |
-| `web/console/src/screens/C5Stats.7b.test.tsx`와 `__tests__/console7b.ts` | 견본에 `sla: null`. 열 머리와 안내 줄 단언은 `sla`가 `null`이면 그대로라 바꾸지 않는다 |
+| `notify/SandboxMailTest`(59-61, 164-182줄) | `MailKind` 전부와 종류마다 시나리오를 요구한다(소스를 글로 읽어 C-9에서 깨진다). 새 메일 종류 둘의 시나리오에는 SLA 정책이 켜져야 한다. 그 앱 컨텍스트를 같이 쓰는 클래스를 grep으로 보고, 정책을 켠 채 끝나지 않게 한다(테스트 쪽이 정하고 C-7이 본다) |
+| `inbox/InboxSteps.CONSOLE_ITEM_FIELDS`(40-41줄) | 콘솔 항목 칸 집합에 `slaSummary`. 이것으로 `InboxReadTest` 156줄과 `TaskInboxTest` 195-196줄이 지난다 |
+| `stats/StatsSteps.FIELDS`(22-23줄) | 항목에 `sla`. `CompanyStatsTest`는 고치지 않는다(최상위 칸은 그대로) |
+| `web/packages/api/src/testing/contract.test.ts` 견본 셋(`item()` 419-431, `stat()` 441-450, CLEANUP_STALLED 466-477) | `slaSummary: null`, `sla: null` |
+| `web/console/src/__tests__/console4.ts` 51-64 `notification()` | `slaSummary: null`. 타입 오류이자 계약 검사로 `C7Inbox.6b`·`6c`·`7a`·`7b` 테스트가 실행에서 깨진다 |
+| `web/console/src/__tests__/console7b.ts` 37-40 `stat()` | `sla: null`. 고치기 전에는 `statsResponse`의 계약 검사로 C5Stats 테스트 전부가 깨진다 |
+| `web/console/src/__tests__/storyFetch7b.ts` 12-15 `stat()` | `sla: null`(`Screens7b.overflow.stories.tsx`가 씀) |
 | C-4 뒤 한 번 돌릴 것 | `project.NoStoreTest`, `ops.CheckOrderTest`, `ops.EndpointMappingsTest`, `boundary.BoundaryListTest`(process.md C-4), `start.TimeTest`, `start.TenantIdTest`, `db.tables()`를 쓰는 클래스(`grep -rln "db.tables()" server/src/test`) |
 | `sla-recalculate`를 쓰는 8a 테스트 | `SlaRecalculationTest`, `SlaRaceTest`, `SlaPriorityTest`, `SlaUntouchedInstallTest`, `deploy/SlaTimeZoneTest`. 작업 이름과 수의 뜻을 바꾸지 않으므로 그대로 지나야 한다. C-5 탭이 한 번 돈다 |
 
