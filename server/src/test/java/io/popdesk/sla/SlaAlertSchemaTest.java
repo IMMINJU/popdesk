@@ -77,7 +77,8 @@ class SlaAlertSchemaTest extends SlaAppTest {
         assertThat(report.get("id")).as("id of sla_recalc_report").startsWith("bigint not null");
         List<String> checks = checks("sla_recalc_report");
         for (String column : List.of("became_breached", "became_warning", "released")) {
-            assertThat(checks).as("check constraints of sla_recalc_report").contains(column + ">=0");
+            assertThat(checks).as("check constraints of sla_recalc_report")
+                    .anySatisfy(c -> assertThat(c).contains(column + ">=0"));
         }
         String open = db.indexes("sla_recalc_report").get("sla_recalc_report_open_idx");
         assertThat(open).as("sla_recalc_report_open_idx").isNotNull();

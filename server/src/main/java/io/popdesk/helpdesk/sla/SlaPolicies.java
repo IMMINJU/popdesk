@@ -35,11 +35,13 @@ public class SlaPolicies {
     public record SlaView(GoalView firstResponse, GoalView resolution) {}
 
     private final SlaPolicyRepository repository;
+    private final SlaReportRepository reports;
     private final InstallationZone zone;
     private final Map<Integer, SlaVersion> versions = new ConcurrentHashMap<>();
 
-    SlaPolicies(SlaPolicyRepository repository, InstallationZone zone) {
+    SlaPolicies(SlaPolicyRepository repository, SlaReportRepository reports, InstallationZone zone) {
         this.repository = repository;
+        this.reports = reports;
         this.zone = zone;
     }
 
@@ -51,7 +53,12 @@ public class SlaPolicies {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public SlaWrite begin() {
-        return new SlaWrite(this, version(repository.lockCurrent("key share")));
+        return new SlaWrite(this, reports, version(repository.lockCurrent("key share")));
+    }
+
+    /** Whether SLA is on now: the current version has a goal (S8B-AC-22). Not locked. */
+    public boolean on() {
+        return version(repository.current()).on();
     }
 
     /** The version with this number, which exists. */
@@ -73,7 +80,8 @@ public class SlaPolicies {
     /**
      * The clocks brought to {@code current} (S8A-AC-20): the time up to each later version's start counts with the
      * version before, and the running goals get the warning and due times of {@code current}'s goals of the
-     * priority. Clocks of {@code current} already are given as they are.
+     * priority. Clocks of {@code current} already are given as they are. The marks and the settling time stay; the
+     * caller decides them ({@link SlaAlerts#recalculated}).
      */
     IssueClocks recalculated(IssueClocks clocks, Priority priority, SlaVersion current) {
         if (clocks.version() == current.number()) {
@@ -85,7 +93,8 @@ public class SlaPolicies {
         return new IssueClocks(current.number(),
                 SlaClocks.deadlines(SlaClocks.catchUp(clocks.firstResponse(), stretches), goals.firstResponse(),
                         calendar),
-                SlaClocks.deadlines(SlaClocks.catchUp(clocks.resolution(), stretches), goals.resolution(), calendar));
+                SlaClocks.deadlines(SlaClocks.catchUp(clocks.resolution(), stretches), goals.resolution(), calendar),
+                clocks.firstResponseAlerted(), clocks.resolutionAlerted(), clocks.firstResponseSettledAt());
     }
 
     /**
@@ -98,7 +107,8 @@ public class SlaPolicies {
         }
         List<Stretch> stretches = stretches(clocks.version(), current.number());
         return new IssueClocks(current.number(), SlaClocks.catchUp(clocks.firstResponse(), stretches),
-                SlaClocks.catchUp(clocks.resolution(), stretches));
+                SlaClocks.catchUp(clocks.resolution(), stretches), clocks.firstResponseAlerted(),
+                clocks.resolutionAlerted(), clocks.firstResponseSettledAt());
     }
 
     /**
@@ -115,7 +125,13 @@ public class SlaPolicies {
 
     private static GoalView goal(Clock clock, Integer minutes, BusinessCalendar calendar, Instant now) {
         Instant due = clock.outcome() == Outcome.NONE ? null : clock.dueAt();
-        return new GoalView(SlaClocks.state(clock, now), due,
+        State state = SlaClocks.state(clock, now);
+        if (state == State.WARNING && minutes != null && clock.running() && clock.spent() > minutes * 60L) {
+            // Ran on with more than the goal used (a restore, a reopening): overdue from that instant, as stopping it
+            // then settles it MISSED (slice 8b, S8B-AC-04).
+            state = State.BREACHED;
+        }
+        return new GoalView(state, due,
                 due == null ? null : SlaClocks.remainingMinutes(clock, now, minutes, calendar));
     }
 }

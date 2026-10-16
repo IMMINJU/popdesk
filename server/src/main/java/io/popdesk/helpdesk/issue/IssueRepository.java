@@ -333,9 +333,42 @@ public class IssueRepository {
                 .query(Long.class).single();
     }
 
-    /** The issue counts of one company (STATS-1): every issue, then by status, open being {@code RECEIVED} and {@code CONFIRMED}. */
+    /**
+     * The issue counts of one company (STATS-1): every issue, then by status, open being {@code RECEIVED} and
+     * {@code CONFIRMED}. {@code sla} is null when the SLA goals were not asked for (S8B-AC-22).
+     */
     public record CompanyCounts(String code, String name, CompanyStatus status, long total, long open,
-            long inProgress, long resolved, long closed) {}
+            long inProgress, long resolved, long closed, CompanySla sla) {}
+
+    /** The two SLA goals of a company's issues settled since a time (SLA-7, S8B-AC-23). */
+    public record CompanySla(GoalCounts firstResponse, GoalCounts resolution) {}
+
+    /**
+     * One SLA goal of a company's issues (S8B-AC-23, S8B-AC-24).
+     *
+     * @param medianMinutes the lower median of the business time, in whole minutes rounded down; null without any
+     */
+    public record GoalCounts(Long medianMinutes, long met, long missed) {}
+
+    /**
+     * The SLA columns of {@link #countByCompany}, on the issue alias {@code i}, each with the parameter
+     * {@code since} (slice 8b design.md 0절 15). A goal counts when it was settled as {@code MET} or {@code MISSED}
+     * at or after {@code since}: the first response at {@code fr_settled_at}, the resolution when the issue was
+     * resolved or closed, which a reopening clears (S8B-AC-23). The first response median takes only the goals a
+     * response settled, whose settling time is the first response time (S8B-AC-24). {@code percentile_disc(0.5)}
+     * is the lower median. An issue not under SLA has no outcome and counts nowhere.
+     */
+    private static final String SLA_COUNTS = ", "
+            + "count(i.id) filter (where i.fr_outcome = 'MET' and i.fr_settled_at >= ?) as fr_met, "
+            + "count(i.id) filter (where i.fr_outcome = 'MISSED' and i.fr_settled_at >= ?) as fr_missed, "
+            + "percentile_disc(0.5) within group (order by i.fr_spent) filter (where i.fr_outcome in ('MET', 'MISSED') "
+            + "and i.fr_settled_at >= ? and i.first_response_at = i.fr_settled_at) as fr_median, "
+            + "count(i.id) filter (where i.res_outcome = 'MET' and coalesce(i.resolved_at, i.closed_at) >= ?) "
+            + "as res_met, "
+            + "count(i.id) filter (where i.res_outcome = 'MISSED' and coalesce(i.resolved_at, i.closed_at) >= ?) "
+            + "as res_missed, "
+            + "percentile_disc(0.5) within group (order by i.res_spent) filter (where i.res_outcome in ('MET', "
+            + "'MISSED') and coalesce(i.resolved_at, i.closed_at) >= ?) as res_median ";
 
     /**
      * The issue counts of every company the viewer may see (STATS-1, STATS-2): every company for an admin, the
@@ -343,23 +376,41 @@ public class IssueRepository {
      * {@link IssueScope}; it sits on the company rather than the issue, so that a company without issues has an
      * item of zeros. Issues in the trash and purged ones are not counted, as {@link IssueScope} does not see them.
      * By open issues, the most first, then by code (S7B-AC-04).
+     *
+     * <p>With {@code slaSince}, each company also has its SLA goals settled since then ({@link #SLA_COUNTS}), counted
+     * from the same issues in the same query; without it the query is that of slice 7b and {@code sla} is null.
      */
-    public List<CompanyCounts> countByCompany(Viewer viewer) {
+    public List<CompanyCounts> countByCompany(Viewer viewer, Instant slaSince) {
         String role = viewer.role().name();
+        List<Object> params = new ArrayList<>();
+        if (slaSince != null) {
+            for (int i = 0; i < 6; i++) {
+                params.add(Timestamp.from(slaSince));
+            }
+        }
+        params.addAll(List.of(role, role, viewer.accountId()));
         return jdbc.sql("select c.code, c.name, c.status, count(i.id) as total, "
                         + "count(i.id) filter (where i.status in ('RECEIVED', 'CONFIRMED')) as open, "
                         + "count(i.id) filter (where i.status = 'IN_PROGRESS') as in_progress, "
                         + "count(i.id) filter (where i.status = 'RESOLVED') as resolved, "
                         + "count(i.id) filter (where i.status = 'CLOSED') as closed "
+                        + (slaSince == null ? "" : SLA_COUNTS)
                         + "from company c left join issue i on i.company_id = c.id and i.deleted_at is null "
                         + "where (? = 'ADMIN' or (? = 'AGENT' and exists (select 1 from company_agent ca "
                         + "where ca.company_id = c.id and ca.account_id = ?))) "
                         + "group by c.id order by open desc, c.code")
-                .params(role, role, viewer.accountId())
+                .params(params)
                 .query((rs, row) -> new CompanyCounts(rs.getString("code"), rs.getString("name"),
                         CompanyStatus.valueOf(rs.getString("status")), rs.getLong("total"), rs.getLong("open"),
-                        rs.getLong("in_progress"), rs.getLong("resolved"), rs.getLong("closed")))
+                        rs.getLong("in_progress"), rs.getLong("resolved"), rs.getLong("closed"),
+                        slaSince == null ? null : new CompanySla(goal(rs, "fr_"), goal(rs, "res_"))))
                 .list();
+    }
+
+    private static GoalCounts goal(ResultSet rs, String prefix) throws SQLException {
+        Long seconds = rs.getObject(prefix + "median", Long.class);
+        return new GoalCounts(seconds == null ? null : Math.floorDiv(seconds, 60L), rs.getLong(prefix + "met"),
+                rs.getLong(prefix + "missed"));
     }
 
     // Writes

@@ -8,12 +8,19 @@ import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.account.AccountRepository;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
+import io.popdesk.helpdesk.sla.SlaAlerts;
+import io.popdesk.helpdesk.sla.SlaNotices;
 import io.popdesk.notification.IssueInbox;
 import io.popdesk.notification.IssueInbox.Kind;
 import io.popdesk.notification.MailKind;
+import io.popdesk.notification.WebhookKind;
+import io.popdesk.notification.WebhookQueue;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -44,6 +51,10 @@ import org.springframework.transaction.annotation.Transactional;
  *       <td>yes</td></tr>
  *   <tr><td>a linked issue is resolved or closed</td><td>the assignee of each issue linked to it</td>
  *       <td>LINKED_ISSUE_RESOLVED, LINKED_ISSUE_CLOSED</td><td>no</td></tr>
+ *   <tr><td>an SLA goal passes 80% (slice 8b)</td><td>the assignee, else the company's agents, else every admin</td>
+ *       <td>SLA_RESPONSE_WARNING, SLA_RESOLUTION_WARNING</td><td>no</td></tr>
+ *   <tr><td>an SLA goal runs out (slice 8b)</td><td>the same people and every admin</td>
+ *       <td>SLA_RESPONSE_BREACHED, SLA_RESOLUTION_BREACHED</td><td>yes, and a webhook message</td></tr>
  * </table>
  *
  * <p>Left out, in this order (S4-AC-34 to S4-AC-36): the person who did it; an account that is not
@@ -57,18 +68,21 @@ import org.springframework.transaction.annotation.Transactional;
  * foreign keys: step 3 of the lock order in architecture.md.
  */
 @Service
-public class IssueNotifications {
+public class IssueNotifications implements SlaNotices {
 
     /** One thing to tell one person: the kind of the inbox item, and the email with it or null. */
     private record Notice(long recipientId, Kind kind, MailKind mail) {}
 
     private final IssueInbox inbox;
+    private final WebhookQueue webhooks;
     private final AccountRepository accounts;
     private final IssueRepository issues;
     private final LinkedIssues linked;
 
-    IssueNotifications(IssueInbox inbox, AccountRepository accounts, IssueRepository issues, LinkedIssues linked) {
+    IssueNotifications(IssueInbox inbox, WebhookQueue webhooks, AccountRepository accounts, IssueRepository issues,
+            LinkedIssues linked) {
         this.inbox = inbox;
+        this.webhooks = webhooks;
         this.accounts = accounts;
         this.issues = issues;
         this.linked = linked;
@@ -217,6 +231,57 @@ public class IssueNotifications {
     @Transactional(propagation = Propagation.MANDATORY)
     public void taskDeleted(long taskId) {
         inbox.deleteOfTask(taskId);
+    }
+
+    /**
+     * The SLA goals the alert step found in warning or overdue (S8B-AC-01 to S8B-AC-03, S8B-AC-20). The people
+     * around an issue: its assignee, when {@code ACTIVE} and able to see it now (an admin always is, an agent while
+     * assigned to the issue's company, as {@link IssueRepository#ASSIGNEE_UNAVAILABLE} says); else the
+     * {@code ACTIVE} agents assigned to its company. A warning goes to them, or to every {@code ACTIVE} admin when
+     * there are none (acceptance.md 5절 3); an overdue goal to them and every {@code ACTIVE} admin, each once, with
+     * an email, and one webhook message per goal. A customer is never told, also not one of the company. Nobody is
+     * left out for having caused it (S8B-AC-10), and the actor is popdesk itself: the item's {@code actor} is null.
+     *
+     * <p>Who the people are is read once for the whole batch (slice 8b design.md 0절 5).
+     */
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void tell(List<SlaNotices.Alert> alerts) {
+        List<Long> admins = accounts.listActiveAdmins();
+        Map<Long, List<Long>> agents = accounts.listActiveAgents(alerts.stream().map(SlaNotices.Alert::companyId)
+                .collect(Collectors.toSet()));
+        Map<Long, Role> assignees = accounts.listActiveStaff(alerts.stream().map(SlaNotices.Alert::assigneeId)
+                .filter(Objects::nonNull).collect(Collectors.toSet()));
+        for (SlaNotices.Alert alert : alerts) {
+            List<Long> around = around(alert, assignees, agents);
+            boolean breached = alert.step() == SlaAlerts.Mark.BREACHED;
+            Set<Long> told = new LinkedHashSet<>(around);
+            if (breached || told.isEmpty()) {
+                told.addAll(admins);
+            }
+            boolean response = alert.goal() == SlaNotices.Goal.FIRST_RESPONSE;
+            Kind kind = response ? (breached ? Kind.SLA_RESPONSE_BREACHED : Kind.SLA_RESPONSE_WARNING)
+                    : (breached ? Kind.SLA_RESOLUTION_BREACHED : Kind.SLA_RESOLUTION_WARNING);
+            MailKind mail = !breached ? null : response ? MailKind.SLA_RESPONSE_BREACHED : MailKind.SLA_RESOLUTION_BREACHED;
+            for (long recipient : told) {
+                inbox.add(kind, recipient, alert.issueId(), null, Viewer.SYSTEM_ACCOUNT_ID, mail);
+            }
+            if (breached) {
+                webhooks.queue(response ? WebhookKind.SLA_RESPONSE_BREACHED : WebhookKind.SLA_RESOLUTION_BREACHED,
+                        alert.issueId(), null);
+            }
+        }
+    }
+
+    /** The assignee who can see the issue now, or else the company's active agents; possibly nobody. */
+    private static List<Long> around(SlaNotices.Alert alert, Map<Long, Role> assignees, Map<Long, List<Long>> agents) {
+        List<Long> ofCompany = agents.getOrDefault(alert.companyId(), List.of());
+        Long assignee = alert.assigneeId();
+        Role role = assignee == null ? null : assignees.get(assignee);
+        if (role == Role.ADMIN || role == Role.AGENT && ofCompany.contains(assignee)) {
+            return List.of(assignee);
+        }
+        return ofCompany;
     }
 
     private static List<Notice> mentions(Collection<Long> accountIds) {

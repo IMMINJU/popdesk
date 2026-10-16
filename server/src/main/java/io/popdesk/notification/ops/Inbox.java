@@ -9,6 +9,7 @@ import io.popdesk.notification.InboxFacts.Reader;
 import io.popdesk.notification.IssueFacts.Issue;
 import io.popdesk.notification.IssueInbox;
 import io.popdesk.notification.ops.OpsRepository.InboxRow;
+import io.popdesk.notification.ops.OpsRepository.SlaCounts;
 import io.popdesk.notification.ops.OpsRepository.Shown;
 import java.time.Clock;
 import java.time.Instant;
@@ -51,9 +52,10 @@ public class Inbox {
      * the reader may see them; both null for an item about no issue. {@code companyCode} is the issue's
      * company, or the company a membership request is about. {@code linkedIssue} is the linked issue that
      * changed, as it is now, of the items {@code LINKED_ISSUE_*}; null for the other kinds (S6C-AC-33).
+     * {@code slaSummary} is the counts of a {@code SLA_RECALCULATED} item; null for the other kinds (S8B-AC-15).
      */
     public record Item(long id, String kind, Issue issue, String companyCode, Long commentId, Actor actor,
-            Instant createdAt, Instant readAt, Task task, Issue linkedIssue) {}
+            Instant createdAt, Instant readAt, Task task, Issue linkedIssue, SlaCounts slaSummary) {}
 
     /** The task an item is about, with its title as it is now (S6B-AC-33). */
     public record Task(long id, String title) {}
@@ -123,7 +125,7 @@ public class Inbox {
         return new Item(row.id(), row.kind(), issue, issue == null ? row.companyCode() : issue.companyCode(),
                 row.commentId(), row.actorId() == null ? null : actors.get(row.actorId()), row.createdAt(),
                 row.readAt(), taskTitle == null ? null : new Task(row.taskId(), taskTitle),
-                row.linkedIssueId() == null ? null : issues.get(row.linkedIssueId()));
+                row.linkedIssueId() == null ? null : issues.get(row.linkedIssueId()), row.slaSummary());
     }
 
     private static <T> Set<T> distinct(List<InboxRow> rows, Function<InboxRow, T> value) {

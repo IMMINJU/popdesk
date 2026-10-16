@@ -18,6 +18,9 @@ class AdminInboxService implements AdminInbox {
     /** The inbox item's {@code kind}, as the contract names it. */
     static final String MEMBERSHIP_REQUESTED = "MEMBERSHIP_REQUESTED";
 
+    /** The inbox item's {@code kind} of an SLA summary (S8B-AC-14). */
+    static final String SLA_RECALCULATED = "SLA_RECALCULATED";
+
     private final OpsRepository ops;
     private final Recipients recipients;
     private final MailQueue mail;
@@ -39,6 +42,15 @@ class AdminInboxService implements AdminInbox {
             if (admin != aboutAccountId) {
                 mail.queueAboutCompany(MailKind.MEMBERSHIP_REQUESTED, admin, companyCode);
             }
+        }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void slaRecalculated(int becameBreached, int becameWarning, int released) {
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        for (long admin : recipients.activeAdmins()) {
+            ops.insertInboxSlaSummary(admin, SLA_RECALCULATED, becameBreached, becameWarning, released, now);
         }
     }
 }

@@ -38,7 +38,15 @@ public interface IssueInbox {
         /** An issue linked to the recipient's issue became {@code RESOLVED}, to its assignee (S6C-AC-31). */
         LINKED_ISSUE_RESOLVED,
         /** An issue linked to the recipient's issue became {@code CLOSED}, to its assignee (S6C-AC-31). */
-        LINKED_ISSUE_CLOSED
+        LINKED_ISSUE_CLOSED,
+        /** The first response goal of the issue passed 80% as time went by (S8B-AC-01). */
+        SLA_RESPONSE_WARNING,
+        /** The first response goal of the issue passed its due time (S8B-AC-02). */
+        SLA_RESPONSE_BREACHED,
+        /** The resolution goal of the issue passed 80% as time went by (S8B-AC-01). */
+        SLA_RESOLUTION_WARNING,
+        /** The resolution goal of the issue passed its due time (S8B-AC-02). */
+        SLA_RESOLUTION_BREACHED
     }
 
     /**

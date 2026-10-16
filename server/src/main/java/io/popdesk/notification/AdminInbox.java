@@ -17,4 +17,15 @@ public interface AdminInbox {
      * @param aboutAccountId the account the manager asked for
      */
     void membershipRequested(String companyCode, long aboutAccountId);
+
+    /**
+     * A recalculation of the SLA due times ended and changed something (S8B-AC-14): a {@code SLA_RECALCULATED} item
+     * with the three counts for each admin who is {@code ACTIVE} now, about no issue, without an email. Joins the
+     * caller's transaction, so the closed summary and its items are kept or lost together.
+     *
+     * @param becameBreached issues that became overdue, 0 or more
+     * @param becameWarning issues that came into warning from OK or from no goal, 0 or more
+     * @param released issues that moved back from overdue or warning, 0 or more
+     */
+    void slaRecalculated(int becameBreached, int becameWarning, int released);
 }

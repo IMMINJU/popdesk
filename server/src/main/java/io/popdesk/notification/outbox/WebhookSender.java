@@ -95,6 +95,9 @@ class WebhookSender implements Sender {
             case ISSUE_REOPENED -> korean ? "문의 다시 열림 " + which : "Issue " + which + " reopened";
             // One wording for an assignee set, changed, and cleared; it names nobody (S3-AC-74).
             case ASSIGNEE_CHANGED -> korean ? "담당자 변경 " + which : "Assignee of " + which + " changed";
+            // One message per goal that ran out (S8B-AC-18).
+            case SLA_RESPONSE_BREACHED -> (korean ? "SLA 첫 응답 기한 넘김 " : "SLA first response overdue ") + which;
+            case SLA_RESOLUTION_BREACHED -> (korean ? "SLA 해결 기한 넘김 " : "SLA resolution overdue ") + which;
         };
         return what + ": " + title + "\n" + link;
     }

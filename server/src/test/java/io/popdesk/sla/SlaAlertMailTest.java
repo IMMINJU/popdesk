@@ -8,6 +8,10 @@ import static io.popdesk.sla.SlaAlertSteps.assertSnapshot;
 import static io.popdesk.sla.SlaAlertSteps.consoleLink;
 import static io.popdesk.sla.SlaAlertSteps.mailAbout;
 import static io.popdesk.sla.SlaAlertSteps.portalItems;
+import static io.popdesk.sla.SlaAlertSteps.slaRowsOf;
+import static io.popdesk.sla.SlaSteps.FIRST_RESPONSE;
+import static io.popdesk.sla.SlaSteps.goal;
+import static io.popdesk.sla.SlaSteps.state;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.issue.TalkFlow;
@@ -210,6 +214,46 @@ class SlaAlertMailTest extends SlaMailAppTest {
                 .hasSize(meanwhile == Meanwhile.TRASHED ? 0 : 1);
     }
 
+    // S8B-AC-04, S8B-AC-05
+
+    @Test
+    @DisplayName("S8B-AC-04, S8B-AC-05 an overdue first response goal keeps its mark while the issue is in the "
+            + "trash: put in the trash, restored still overdue, and two more runs on, the assignee and an admin still "
+            + "have one SLA_RESPONSE_BREACHED item and one mail each, and there is one webhook message")
+    void theTrashKeepsTheMark() {
+        Desk d = sla.desk();
+        Session admin = alerts.newAdmin(d.admin());
+        SlaSteps.change(d.admin(), Policy.off().target("NORMAL", 10, null));
+        Issue issue = file(d, Unique.text("Word"));
+        String key = issue.key();
+        flow.assign(d.admin(), key, d.agent().accountId());
+        sla.recalculateNow(d.admin());
+        alerts.runAfterFiling(d.admin(), issue, 11);
+        for (Session person : List.of(d.agent(), admin)) {
+            assertThat(alertKinds(person, key)).as("SLA items of %s past the due time", person.role())
+                    .containsExactly(RESPONSE_BREACHED);
+            Wait.untilAsserted("the overdue mail to " + person.email(),
+                    () -> assertThat(mailAbout(mail().messagesTo(person.email()), key)).hasSize(1));
+        }
+
+        TrashSteps.delete(d.admin(), key);
+        alerts.runs(d.admin(), 2);
+        TrashSteps.restore(d.admin(), key);
+        assertThat(state(goal(SlaSteps.sla(d.agent(), key), FIRST_RESPONSE))).as("first response after the restore")
+                .isEqualTo("BREACHED");
+        alerts.runs(d.admin(), 2);
+
+        TalkFlow.awaitALaterMail(fixtures, d.admin());
+        awaitALaterWebhook(d);
+        for (Session person : List.of(d.agent(), admin)) {
+            assertThat(alertKinds(person, key)).as("SLA items of %s after the trash and two runs", person.role())
+                    .containsExactly(RESPONSE_BREACHED);
+            assertThat(mailAbout(mail().messagesTo(person.email()), key)).as("mail about %s to %s", key,
+                    person.role()).hasSize(1);
+        }
+        assertThat(slaWebhooks(key)).as("SLA webhook messages about %s", key).hasSize(1);
+    }
+
     // S8B-AC-20
 
     @Test
@@ -245,6 +289,9 @@ class SlaAlertMailTest extends SlaMailAppTest {
                     .isEqualTo(unread.get(customer.accountId()));
             assertThat(mailAbout(mail().messagesTo(customer.email()), key)).as("mail about %s to %s", key,
                     customer.email()).isEmpty();
+            // The portal hides kinds not meant for customers, so only the table shows an SLA row given to one.
+            assertThat(slaRowsOf(db, customer)).as("SLA rows of %s in the notification table", customer.email())
+                    .isZero();
         }
     }
 }

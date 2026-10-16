@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.popdesk.issue.IssueFlow;
 import io.popdesk.issue.TalkFlow;
 import io.popdesk.support.AppTest;
+import io.popdesk.support.DbInspector;
 import io.popdesk.support.Fixtures;
 import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.Session;
@@ -167,6 +168,16 @@ public final class SlaAlertSteps {
     /** The customer's portal items about the issue, of any kind. */
     public static List<JsonNode> portalItems(Session customer, String key) {
         return TalkFlow.inboxOf(customer, key);
+    }
+
+    /**
+     * Rows of the {@code notification} table of an SLA kind ({@code SLA_%}) for the account, read from the database.
+     * The portal shows a customer only the kinds meant for customers, so an SLA row given to a customer never shows
+     * in the portal inbox or its unread count; only the table shows it.
+     */
+    public static long slaRowsOf(DbInspector db, Session person) {
+        return db.count("select count(*) from notification where account_id = ? and kind like 'SLA\\_%'",
+                person.accountId());
     }
 
     // People

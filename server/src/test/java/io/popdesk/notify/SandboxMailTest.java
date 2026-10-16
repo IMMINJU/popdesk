@@ -168,8 +168,8 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
         SlaSteps.awaitRecalculation(c.admin(), clock.advance(Duration.ofSeconds(1)));
         clock.advance(Duration.ofSeconds(59));
         int before = mail().messagesTo(SANDBOX_TO).size();
-        Instant at = tick();
         gate.hold();
+        Instant at = tick();
 
         long invited = c.admin().client().post("/api/console/invitations")
                 .json(Map.of("email", invitedEmail, "name", Unique.text("Invited"), "role", "AGENT"))
