@@ -16,4 +16,8 @@ public record CompanyStat(
         @Schema(description = "Issues that are `RECEIVED` or `CONFIRMED`.") long open,
         @Schema(description = "Issues that are `IN_PROGRESS`.") long inProgress,
         @Schema(description = "Issues that are `RESOLVED`.") long resolved,
-        @Schema(description = "Issues that are `CLOSED`.") long closed) {}
+        @Schema(description = "Issues that are `CLOSED`.") long closed,
+        @Schema(description = "The SLA goals over the chosen `days`, counted from the same issues the caller "
+                + "can see. Null while the SLA policy is off; in one answer every item is null or none is "
+                + "(S8B-AC-22). The counts above do not depend on `days` (S8B-AC-21).", nullable = true)
+                CompanySlaStat sla) {}

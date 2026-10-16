@@ -44,5 +44,24 @@ public enum NotificationKind {
      */
     LINKED_ISSUE_RESOLVED,
     /** An issue linked to the caller's issue became {@code CLOSED}, like {@link #LINKED_ISSUE_RESOLVED}. */
-    LINKED_ISSUE_CLOSED
+    LINKED_ISSUE_CLOSED,
+    /**
+     * The first response goal of the issue passed 80% as time went by (S8B-AC-01). To the assignee, else the
+     * agents of the company, else every admin (S8B-AC-03). No email, no webhook; {@code actor} is null.
+     */
+    SLA_RESPONSE_WARNING,
+    /**
+     * The first response goal of the issue passed its due time (S8B-AC-02). To the people of
+     * {@link #SLA_RESPONSE_WARNING} and every admin, with an email; {@code actor} is null.
+     */
+    SLA_RESPONSE_BREACHED,
+    /** The resolution goal of the issue passed 80%, like {@link #SLA_RESPONSE_WARNING}. */
+    SLA_RESOLUTION_WARNING,
+    /** The resolution goal of the issue passed its due time, like {@link #SLA_RESPONSE_BREACHED}. */
+    SLA_RESOLUTION_BREACHED,
+    /**
+     * Working the SLA due times out again finished and changed something; to every admin, about no issue.
+     * The item's {@code slaSummary} has the counts (S8B-AC-14, S8B-AC-15). No email, no webhook.
+     */
+    SLA_RECALCULATED
 }

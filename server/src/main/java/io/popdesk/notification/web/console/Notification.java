@@ -9,7 +9,8 @@ public record Notification(
         NotificationKind kind,
         @Schema(description = "The issue the item is about, as it is now; null for `DELIVERY_FAILED`, "
                 + "`ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, "
-                + "`CLEANUP_STALLED`, and `MEMBERSHIP_REQUESTED` (S4-AC-40).", nullable = true)
+                + "`CLEANUP_STALLED`, `MEMBERSHIP_REQUESTED` (S4-AC-40), and `SLA_RECALCULATED` (S8B-AC-15).",
+                nullable = true)
                 NotificationIssue issue,
         @Schema(description = "The company of the issue, or the company a `MEMBERSHIP_REQUESTED` item is about; "
                 + "null for the other kinds.", nullable = true) String companyCode,
@@ -27,4 +28,8 @@ public record Notification(
                 + "resolved or closed, with its key and title as they are now; `issue` is the caller's own issue "
                 + "it is linked to (S6C-AC-31). Such an item is listed only while the caller can see both issues "
                 + "(S6C-AC-33). Null for the other kinds (S6C-AC-34).", nullable = true)
-                NotificationIssue linkedIssue) {}
+                NotificationIssue linkedIssue,
+        @Schema(description = "For `SLA_RECALCULATED`: how many issues working the SLA due times out again "
+                + "made overdue, due soon, or no longer either, counted as changes to an issue (S8B-AC-12). "
+                + "Null for the other kinds (S8B-AC-15).", nullable = true)
+                SlaSummary slaSummary) {}

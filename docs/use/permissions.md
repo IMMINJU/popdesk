@@ -214,6 +214,7 @@ Staff see how many issues each customer company has: all of them, open (received
 - Private issues are counted. Issues in the trash and purged ones are not.
 - Archived and suspended companies are listed too; archived ones are marked. A company without issues shows zeros.
 - The company with the most open issues comes first, then by company code.
+- While the SLA policy is on, each company also shows, for the last 7, 30, or 90 days, how many first response and resolution goals were met and missed and the median business time. An agent gets these only from the issues of their assigned companies (`STATS-4`).
 
 ## SLA
 
@@ -230,6 +231,8 @@ Admins set one SLA policy for the whole installation: a first response goal and 
 - Changing the policy needs the version the admin read; when another admin saved in between, the change is refused and nothing changes. Each change that makes a new version leaves an audit entry with what changed. A version popdesk makes because `POPDESK_TIMEZONE` changed leaves none, and the policy shows "System" as who changed it.
 - Only issues filed while at least one goal was set are under SLA (`SLA-8`). Changing the policy works out the due times of running clocks again within minutes; it does not change the issue's `version`, so nobody editing the issue gets a conflict from it.
 
+When a running goal passes 80% or its due time, popdesk tells staff once in the inbox (`SLA-5`). It tells the assignee when the assignee is active and can see the issue; otherwise every active agent assigned to the company; and when there is none of them either, a warning goes to every active admin. A goal past its due time also goes to every active admin, with an email to each person told and a webhook message. Customers are never told, also when the issue's company has nobody assigned. Changing the policy does not alert each issue it moves: admins get one summary item with how many issues became overdue, due soon, or neither.
+
 ## Other areas
 
 | Area | Customer | Agent | Admin |
@@ -242,7 +245,7 @@ Admins set one SLA policy for the whole installation: a first response goal and 
 | Audit log: view, export, integrity check | – | – | Yes |
 | System status: channels, failed messages, cleanup jobs; send a failed message again; send a test email to oneself | – | – | Yes |
 
-The inbox is per account. An item of another account is 404, also for a colleague of the same company or another agent who sees the same issue. A customer's inbox holds only what a customer is told (a staff answer, the issue resolved, closed, or reopened by staff, an issue filed for them, a mention); what staff did shows as the support team, without a name. Items about an assignment, a customer's comment, an operational alert, or a membership request go to staff only (`INBOX-1` to `INBOX-3`).
+The inbox is per account. An item of another account is 404, also for a colleague of the same company or another agent who sees the same issue. A customer's inbox holds only what a customer is told (a staff answer, the issue resolved, closed, or reopened by staff, an issue filed for them, a mention); what staff did shows as the support team, without a name. Items about an assignment, a customer's comment, SLA, an operational alert, or a membership request go to staff only (`INBOX-1` to `INBOX-3`).
 
 ## Email
 
