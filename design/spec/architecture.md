@@ -163,11 +163,16 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 | 사람의 영구 삭제(7a) | 휴지통에서 찾은 뒤 문의 행 → 휴지통에 있는지 다시 본다 | 그 문의의 첨부 → `purging`, ID순 | `notification`, `outbox`, `comment_mention`, `comment`, `task_note`, `task`, `issue_link`(상대 쪽 포함), `issue_label`, 등록 키 DELETE → 이력 값 비우기 → 문의 UPDATE → `TRASH` 이력. 커밋 뒤 트랜잭션 밖에서 파일과 첨부 행을 지운다 | | |
 | 시스템 영구 삭제 `trash-purge`(7a, 1시간) | 대상은 잠그지 않고 고른다(100개씩). 문의마다 트랜잭션 하나: 문의 행 → 휴지통인지와 30일이 지났는지 다시 본다 | 위와 같다 | 위와 같다. 감사는 없다 | | 대상 목록 |
 | 자동 종료 `issue-auto-close`(7a, 10분) | 대상 100개를 ID 차례로 `FOR NO KEY UPDATE SKIP LOCKED`. 묶음마다 트랜잭션 하나, 대상이 없을 때까지 | | 같은 조건의 조건부 UPDATE → 바뀐 문의마다 이력 → 웹훅 대기 행 → `notification`·`outbox` → 이어진 문의의 알림 | | 이어진 문의의 담당자 |
+| SLA 시계를 쓰는 사람의 쓰기(8a, 8b) | 지금 정책 버전 행 `FOR KEY SHARE` → 문의 행 | | 문의 UPDATE(시계, 표시, `fr_settled_at`) → 옛 버전을 따라잡았으면 열린 요약 행 `INSERT … ON CONFLICT … DO UPDATE` | | |
+| SLA 다시 계산 묶음 `sla-recalculate`(8a, 8b, 1분) | 정책 행은 잠그지 않는다. 옛 버전의 돌고 있는 문의 500개를 ID 차례로 `FOR NO KEY UPDATE SKIP LOCKED`. 묶음마다 트랜잭션 하나, 한 회차 10묶음 | | 계산 버전이 읽은 그대로일 때만 문의 UPDATE → 바뀐 수를 열린 요약 행에 더한다(`INSERT … ON CONFLICT … DO UPDATE`) | | 정책 버전 |
+| SLA 알림 묶음 `sla-recalculate`(8b, 다시 계산 앞) | 정책 행은 잠그지 않는다. 지금 버전의 알릴 때가 된 문의 100개를 알림 시각 차례로 `FOR NO KEY UPDATE OF i SKIP LOCKED`. 묶음마다 트랜잭션 하나, 한 회차 10묶음 | | 문의 UPDATE(표시, 조건 `id`와 `sla_version`) → 1행일 때만 `notification`·`outbox`(메일, 웹훅) | | 받는 사람의 계정, 배정 행 |
+| SLA 요약 닫기(8b) | 지금 정책 버전 행 `FOR KEY SHARE` → 열린 요약 행 `FOR UPDATE` → 옛 버전의 돌고 있는 문의 수(잠그지 않음) | | 0이면 요약 행 UPDATE(`closed_at`) → 수가 있으면 관리자마다 `notification` | | 관리자 계정 |
 
 문의 행을 잠근다는 것은 `FOR NO KEY UPDATE`다. 표의 차례에 붙는 까닭과 남는 틈은 아래와 같다.
 
 - 문의 잇기·끊기(6c)는 두 행을 같은 차례로 잡으므로 잇기끼리는 서로 기다리다 멈추지 않는다. 여러 문의를 힙 차례로 잡는 담당 비우기와는 교착할 수 있고, 그때 앱이 트랜잭션을 한 번 다시 한다(`Transactions`).
 - 휴지통(7a): 지우기, 복구, 영구 삭제는 모두 문의 행을 잠근 뒤 휴지통 상태를 다시 보므로, 같은 문의의 복구와 영구 삭제는 하나가 먼저 된 것처럼 끝난다. 복구가 잡는 여러 문의는 잇기와 같은 ID 차례다. 영구 삭제는 발송기가 쥔 `outbox` 행을 기다린다. 자동 종료는 다른 트랜잭션이 쥔 문의를 건너뛰고 다음 회차에 닫는다. 시스템 영구 삭제의 한 문의가 계속 실패하면 그 회차의 나머지도 멈춘다(정리 작업 실패로 남는다).
+- SLA(8a, 8b): 사람의 쓰기와 요약 닫기는 정책 행을 `FOR KEY SHARE`로 잡아 정책 바꿈(`FOR UPDATE`)과만 서로 기다린다. 다시 계산과 알림 묶음은 정책 행을 잡지 않고 문의를 `SKIP LOCKED`로 건너뛰므로 사람의 쓰기나 서로를 기다리지 않는다. 요약 행은 늘 정책 행과 문의 행 뒤에 잡는다. 건너뛴 문의는 다음 회차에 다룬다.
 
 소속과 소속 요청(2번 묶음):
 
