@@ -22,6 +22,7 @@ function menu(me: Me, requests: number): Omit<NavItem, 'current'>[] {
   const items: Omit<NavItem, 'current'>[] = [
     { href: MY_ISSUES_HREF, label: '문의' },
     { href: '/tasks', label: '내 작업' },
+    { href: '/stats', label: '통계' },
   ];
   if (me.role === 'ADMIN') {
     items.push(
