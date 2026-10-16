@@ -8,6 +8,7 @@ import io.popdesk.helpdesk.Priority;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.account.AccountRepository;
+import io.popdesk.helpdesk.sla.IssueClocks;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -15,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -37,14 +39,14 @@ public class IssueRepository {
      * {@code createdBy} is the staff member who filed it for the reporter, null when the reporter filed it
      * (ISSUE-9). {@code assignee} is null when nobody is assigned; {@code assigneeUnavailable} says that
      * the assignee can no longer see the issue ({@link #ASSIGNEE_UNAVAILABLE}). {@code dueDate} is null
-     * without a due date (DUE-1).
+     * without a due date (DUE-1). {@code sla} is null when the issue is not under SLA (S8A-AC-11).
      */
     public record IssueRow(UUID id, long companyId, String companyCode, String companyName, int number, String title,
             String content, IssueStatus status, Priority priority, boolean privateIssue, long reporterId,
             String reporterName, Role reporterRole, Instant reporterPhotoUpdatedAt, Staff createdBy, String channel,
             Staff assignee, boolean assigneeUnavailable, Instant firstResponseAt,
             Instant resolvedAt, Instant closedAt, long version, Instant createdAt, Instant updatedAt,
-            LocalDate dueDate) {
+            LocalDate dueDate, IssueClocks sla) {
 
         public String key() {
             return companyCode + "-" + number;
@@ -83,7 +85,8 @@ public class IssueRepository {
             + "i.created_by, cb.name as created_by_name, cb.role as created_by_role, "
             + "cbp.updated_at as created_by_photo_updated_at, "
             + "i.assignee_id, asg.name as assignee_name, asg.role as assignee_role, "
-            + "asgp.updated_at as assignee_photo_updated_at, " + ASSIGNEE_UNAVAILABLE + " as assignee_unavailable";
+            + "asgp.updated_at as assignee_photo_updated_at, " + ASSIGNEE_UNAVAILABLE + " as assignee_unavailable, "
+            + IssueClocks.COLUMNS;
 
     /** The joins of {@link #COLUMNS} to the issue {@code i}. */
     private static final String JOINS = "join company c on c.id = i.company_id "
@@ -96,21 +99,32 @@ public class IssueRepository {
 
     private static final String SELECT = "select " + COLUMNS + " from issue i " + JOINS;
 
-    private static final String NEWEST_FIRST = " order by i.created_at desc, i.number desc, i.id";
-
     /**
-     * {@code sort=dueDate} (S6A-AC-53): the earliest due date first and issues without one last, then
-     * newest first as {@link #NEWEST_FIRST}. The ID last makes the order total, so a page boundary
-     * neither repeats nor misses an issue (S6A-AC-54).
+     * The order of a list (S6A-AC-53). Each order ends newest first, then by the ID, which makes it total, so a
+     * page boundary neither repeats nor misses an issue (S6A-AC-54).
      */
-    private static final String DUE_FIRST = " order by i.due_date asc nulls last, i.created_at desc, i.number desc, i.id";
-
-    /** The order of a list (S6A-AC-53). */
     public enum Order {
         /** Newest first, the order without {@code sort}. */
-        CREATED_AT,
-        /** Earliest due date first. */
-        DUE_DATE
+        CREATED_AT(""),
+        /** {@code sort=dueDate}: the earliest due date first and issues without one last. */
+        DUE_DATE("due_date asc nulls last, "),
+        /**
+         * {@code sort=slaDue} (S8A-AC-32): the earliest running SLA due time of either goal first, and issues
+         * without one last.
+         */
+        SLA_DUE("sla_due_at asc nulls last, ");
+
+        private final String first;
+
+        Order(String first) {
+            this.first = first;
+        }
+
+        /** The ORDER BY list on the columns of {@code alias}, or on bare columns for an empty alias. */
+        String by(String alias) {
+            String a = alias.isEmpty() ? "" : alias + ".";
+            return (first.isEmpty() ? "" : a + first) + a + "created_at desc, " + a + "number desc, " + a + "id";
+        }
     }
 
     /** One page of a search and how many issues the search found in all. */
@@ -202,12 +216,10 @@ public class IssueRepository {
      */
     public List<IssueRow> list(Viewer viewer, IssueFilter filter, Order order, long offset, int limit) {
         Condition where = condition(viewer, filter);
-        boolean due = order == Order.DUE_DATE;
         return jdbc.sql("with page as (select i.id from issue i join company c on c.id = i.company_id where "
-                        + where.sql() + " order by " + (due ? "i.due_date asc nulls last, " : "")
-                        + "i.created_at desc, i.number desc, i.id offset ? limit ?) "
+                        + where.sql() + " order by " + order.by("i") + " offset ? limit ?) "
                         + "select " + COLUMNS + " from page p join issue i on i.id = p.id " + JOINS
-                        + (due ? DUE_FIRST : NEWEST_FIRST))
+                        + " order by " + order.by("i"))
                 .params(concat(where.params(), offset, limit))
                 .query(IssueRepository::issue).list();
     }
@@ -234,13 +246,11 @@ public class IssueRepository {
     public Found search(Viewer viewer, IssueFilter filter, Order order, long offset, int limit) {
         Condition where = condition(viewer, filter);
         long[] total = {0};
-        boolean due = order == Order.DUE_DATE;
-        List<IssueRow> rows = jdbc.sql("with found as materialized (select i.id, i.created_at, i.number, i.due_date "
-                        + "from issue i join company c on c.id = i.company_id where " + where.sql() + "), "
-                        + "page as (select id from found order by " + (due ? "due_date asc nulls last, " : "")
-                        + "created_at desc, number desc, id offset ? limit ?) "
+        List<IssueRow> rows = jdbc.sql("with found as materialized (select i.id, i.created_at, i.number, i.due_date, "
+                        + "i.sla_due_at from issue i join company c on c.id = i.company_id where " + where.sql() + "), "
+                        + "page as (select id from found order by " + order.by("") + " offset ? limit ?) "
                         + "select " + COLUMNS + ", (select count(*) from found) as total "
-                        + "from page p join issue i on i.id = p.id " + JOINS + (due ? DUE_FIRST : NEWEST_FIRST))
+                        + "from page p join issue i on i.id = p.id " + JOINS + " order by " + order.by("i"))
                 .params(concat(where.params(), offset, limit))
                 .query((rs, n) -> {
                     total[0] = rs.getLong("total");
@@ -292,6 +302,21 @@ public class IssueRepository {
             sql.append(" and exists (select 1 from issue_label il where il.issue_id = i.id and il.label_id = any(?))");
             params.add(filter.labelIds().toArray(Long[]::new));
         }
+        if (filter.sla() != null) {
+            // The earliest due and warning times of the running goals are kept on the row (slice 8a design 0절 3).
+            Timestamp now = Timestamp.from(filter.sla().now());
+            switch (filter.sla().kind()) {
+                case BREACHED -> {
+                    sql.append(" and i.sla_due_at < ?");
+                    params.add(now);
+                }
+                case WARNING -> {
+                    sql.append(" and i.sla_warn_at <= ? and i.sla_due_at >= ?");
+                    params.add(now);
+                    params.add(now);
+                }
+            }
+        }
         return new Condition(sql.toString(), params.toArray());
     }
 
@@ -341,17 +366,31 @@ public class IssueRepository {
 
     /**
      * A new issue with the number the company counter gave it (ISSUE-3), and the text the search looks in.
-     * {@code createdBy} is the staff member who files it for the reporter, or null (ISSUE-9).
+     * {@code createdBy} is the staff member who files it for the reporter, or null (ISSUE-9). {@code sla} is
+     * null for an issue filed while SLA is off (S8A-AC-11).
      */
     void insert(UUID id, long companyId, int number, String title, String content, Priority priority,
-            boolean privateIssue, long reporterId, Long createdBy, String channel, Instant now) {
+            boolean privateIssue, long reporterId, Long createdBy, String channel, Instant now, IssueClocks sla) {
         jdbc.sql("insert into issue (id, tenant_id, company_id, number, title, content, status, priority, is_private, "
-                        + "reporter_id, created_by, channel, version, created_at, updated_at, search_text) "
-                        + "values (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)")
-                .params(id, companyId, number, title, content, IssueStatus.RECEIVED.name(), priority.name(),
-                        privateIssue, reporterId, createdBy, channel, Timestamp.from(now), Timestamp.from(now),
-                        SearchText.of(title, content))
+                        + "reporter_id, created_by, channel, version, created_at, updated_at, search_text"
+                        + (sla == null ? "" : ", " + IssueClocks.INSERT) + ") "
+                        + "values (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?"
+                        + (sla == null ? "" : ", ?".repeat(sla.params().length)) + ")")
+                .params(withClocks(new Object[] {id, companyId, number, title, content, IssueStatus.RECEIVED.name(),
+                        priority.name(), privateIssue, reporterId, createdBy, channel, Timestamp.from(now),
+                        Timestamp.from(now), SearchText.of(title, content)}, sla))
                 .update();
+    }
+
+    /** {@code , <the SLA columns> = ?} for an UPDATE that also writes the clocks, or nothing without them. */
+    private static String clocks(IssueClocks sla) {
+        return sla == null ? "" : ", " + IssueClocks.SET;
+    }
+
+    /** {@code first}, then the parameters of the clocks when there are any, then {@code last}. */
+    private static Object[] withClocks(Object[] first, IssueClocks sla, Object... last) {
+        Object[] middle = sla == null ? new Object[0] : sla.params();
+        return concat(concat(first, middle), last);
     }
 
     /**
@@ -406,12 +445,13 @@ public class IssueRepository {
 
     /**
      * Sets the first response time once (S0-AC-46): only while it is empty, so a later staff comment
-     * changes nothing. A change to the row raises its version (S0-AC-45).
+     * changes nothing. A change to the row raises its version (S0-AC-45). With {@code sla}, the SLA clocks
+     * are written in the same UPDATE (S8A-AC-13); the caller has locked the row.
      */
-    public void updateFirstResponse(UUID id, Instant at) {
-        jdbc.sql("update issue set first_response_at = ?, updated_at = ?, version = version + 1 "
-                        + "where id = ? and first_response_at is null")
-                .params(Timestamp.from(at), Timestamp.from(at), id)
+    public void updateFirstResponse(UUID id, Instant at, IssueClocks sla) {
+        jdbc.sql("update issue set first_response_at = ?, updated_at = ?, version = version + 1" + clocks(sla)
+                        + " where id = ? and first_response_at is null")
+                .params(withClocks(new Object[] {Timestamp.from(at), Timestamp.from(at)}, sla, id))
                 .update();
     }
 
@@ -425,9 +465,12 @@ public class IssueRepository {
      *
      * @param closedAfter for a reopening: a {@code CLOSED} issue only changes when it was closed after
      *     this time; null for every other change
+     * @param sla the SLA clocks after the change, written in the same UPDATE (S8A-AC-14, S8A-AC-15); null for
+     *     an issue not under SLA
      * @return whether the issue changed
      */
-    boolean updateStatus(UUID id, IssueStatus from, IssueStatus to, Instant now, Instant closedAfter) {
+    boolean updateStatus(UUID id, IssueStatus from, IssueStatus to, Instant now, Instant closedAfter,
+            IssueClocks sla) {
         Timestamp at = Timestamp.from(now);
         List<Object> params = new ArrayList<>(List.of(to.name()));
         String times = switch (to) {
@@ -442,26 +485,32 @@ public class IssueRepository {
             }
             default -> "resolved_at = null, closed_at = null, auto_close_from = null";
         };
-        params.addAll(List.of(at, id, from.name()));
+        params.add(at);
+        if (sla != null) {
+            params.addAll(Arrays.asList(sla.params()));
+        }
+        params.addAll(List.of(id, from.name()));
         String stillOpenable = "";
         if (closedAfter != null) {
             stillOpenable = " and (status <> 'CLOSED' or closed_at > ?)";
             params.add(Timestamp.from(closedAfter));
         }
-        return jdbc.sql("update issue set status = ?, " + times + ", updated_at = ?, version = version + 1 "
-                        + "where id = ? and status = ? and deleted_at is null" + stillOpenable)
+        return jdbc.sql("update issue set status = ?, " + times + ", updated_at = ?, version = version + 1"
+                        + clocks(sla) + " where id = ? and status = ? and deleted_at is null" + stillOpenable)
                 .params(params)
                 .update() == 1;
     }
 
     /**
      * Stores the title, the content, and the priority of an edit, and the text the search looks in
-     * (S3-AC-16). The caller has locked the issue row and checked its version.
+     * (S3-AC-16). The caller has locked the issue row and checked its version. With {@code sla}, the SLA
+     * clocks of the new priority are written in the same UPDATE (S8A-AC-17).
      */
-    void updateFields(UUID id, String title, String content, Priority priority, Instant now) {
+    void updateFields(UUID id, String title, String content, Priority priority, Instant now, IssueClocks sla) {
         jdbc.sql("update issue set title = ?, content = ?, priority = ?, search_text = ?, updated_at = ?, "
-                        + "version = version + 1 where id = ?")
-                .params(title, content, priority.name(), SearchText.of(title, content), Timestamp.from(now), id)
+                        + "version = version + 1" + clocks(sla) + " where id = ?")
+                .params(withClocks(new Object[] {title, content, priority.name(), SearchText.of(title, content),
+                        Timestamp.from(now)}, sla, id))
                 .update();
     }
 
@@ -479,6 +528,7 @@ public class IssueRepository {
             + "and i.deleted_at is null";
 
     private static final String TRASH_SELECT = "select i.id, c.code, c.name, i.number, i.title, i.status, "
+            + "i.priority, " + IssueClocks.COLUMNS + ", "
             + "i.deleted_at, i.purged_at, i.deleted_by, db.name as deleted_by_name, db.role as deleted_by_role, "
             + "dbp.updated_at as deleted_by_photo_updated_at from issue i join company c on c.id = i.company_id "
             + "left join account db on db.id = i.deleted_by "
@@ -491,10 +541,11 @@ public class IssueRepository {
     /**
      * An issue as the trash sees it: its key, title, company, status, and when and by whom it was deleted
      * ({@code deletedBy} null when it is not deleted). {@code deletedAt} is null for a live issue and
-     * {@code purgedAt} null unless it was purged.
+     * {@code purgedAt} null unless it was purged. {@code sla} is null when the issue is not under SLA.
      */
     public record TrashedRow(UUID id, String companyCode, String companyName, int number, String title,
-            IssueStatus status, Instant deletedAt, Staff deletedBy, Instant purgedAt) {
+            IssueStatus status, Priority priority, IssueClocks sla, Instant deletedAt, Staff deletedBy,
+            Instant purgedAt) {
 
         public String key() {
             return companyCode + "-" + number;
@@ -560,24 +611,26 @@ public class IssueRepository {
 
     /**
      * Moves a live issue to the trash (S7A-AC-01): the time, the admin, and a new version. The caller has
-     * locked the row in its scope.
+     * locked the row in its scope. With {@code sla}, the paused SLA clocks are written in the same UPDATE
+     * (S8A-AC-16).
      */
-    public void updateDeleted(UUID id, long deletedBy, Instant now) {
-        jdbc.sql("update issue set deleted_at = ?, deleted_by = ?, updated_at = ?, version = version + 1 "
-                        + "where id = ? and deleted_at is null")
-                .params(Timestamp.from(now), deletedBy, Timestamp.from(now), id)
+    public void updateDeleted(UUID id, long deletedBy, Instant now, IssueClocks sla) {
+        jdbc.sql("update issue set deleted_at = ?, deleted_by = ?, updated_at = ?, version = version + 1"
+                        + clocks(sla) + " where id = ? and deleted_at is null")
+                .params(withClocks(new Object[] {Timestamp.from(now), deletedBy, Timestamp.from(now)}, sla, id))
                 .update();
     }
 
     /**
      * Takes an issue out of the trash (S7A-AC-21) with a new version. A {@code RESOLVED} issue closes 7
      * days after now, not 7 days after it was resolved (S7A-AC-22). The caller has locked the row and seen
-     * it in the trash.
+     * it in the trash. With {@code sla}, the SLA clocks running on are written in the same UPDATE (S8A-AC-16).
      */
-    public void updateRestored(UUID id, Instant now) {
+    public void updateRestored(UUID id, Instant now, IssueClocks sla) {
         jdbc.sql("update issue i set deleted_at = null, deleted_by = null, updated_at = ?, version = version + 1, "
-                        + "auto_close_from = case when i.status = 'RESOLVED' then cast(? as timestamptz) end where i.id = ? and " + IN_TRASH)
-                .params(Timestamp.from(now), Timestamp.from(now), id)
+                        + "auto_close_from = case when i.status = 'RESOLVED' then cast(? as timestamptz) end"
+                        + clocks(sla) + " where i.id = ? and " + IN_TRASH)
+                .params(withClocks(new Object[] {Timestamp.from(now), Timestamp.from(now)}, sla, id))
                 .update();
     }
 
@@ -627,6 +680,7 @@ public class IssueRepository {
         Timestamp purged = rs.getTimestamp("purged_at");
         return new TrashedRow(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("name"),
                 rs.getInt("number"), rs.getString("title"), IssueStatus.valueOf(rs.getString("status")),
+                Priority.valueOf(rs.getString("priority")), IssueClocks.read(rs),
                 deleted == null ? null : deleted.toInstant(), staff(rs, "deleted_by", "deleted_by"),
                 purged == null ? null : purged.toInstant());
     }
@@ -647,7 +701,7 @@ public class IssueRepository {
                 resolved == null ? null : resolved.toInstant(), closed == null ? null : closed.toInstant(),
                 rs.getLong("version"),
                 rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(),
-                rs.getObject("due_date", LocalDate.class));
+                rs.getObject("due_date", LocalDate.class), IssueClocks.read(rs));
     }
 
     /** The account in column {@code id}, with its name, role, and photo time under {@code prefix}; null when empty. */

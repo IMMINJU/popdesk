@@ -20,6 +20,8 @@ import io.popdesk.helpdesk.label.LabelRepository;
 import io.popdesk.helpdesk.link.LinkRepository;
 import io.popdesk.helpdesk.link.LinkRules.Link;
 import io.popdesk.helpdesk.link.RestoreLinkCheck;
+import io.popdesk.helpdesk.sla.SlaPolicies;
+import io.popdesk.helpdesk.sla.SlaWrite;
 import io.popdesk.helpdesk.task.TaskRepository;
 import io.popdesk.notification.IssueInbox;
 import io.popdesk.notification.MailQueue;
@@ -69,12 +71,13 @@ public class TrashService {
     private final WebhookQueue webhooks;
     private final AuditLog audit;
     private final Transactions transactions;
+    private final SlaPolicies sla;
     private final Clock clock;
 
     TrashService(IssueRepository issues, IssueHistoryRepository history, AttachmentService attachments,
             CommentRepository comments, TaskRepository tasks, LinkRepository links, LabelRepository labels,
             IdempotencyKeyRepository keys, IssueInbox inbox, MailQueue mail, WebhookQueue webhooks, AuditLog audit,
-            Transactions transactions, Clock clock) {
+            Transactions transactions, SlaPolicies sla, Clock clock) {
         this.issues = issues;
         this.history = history;
         this.attachments = attachments;
@@ -88,6 +91,7 @@ public class TrashService {
         this.webhooks = webhooks;
         this.audit = audit;
         this.transactions = transactions;
+        this.sla = sla;
         this.clock = clock;
     }
 
@@ -96,15 +100,19 @@ public class TrashService {
      * retried once on a lock conflict: the issue row locked in the scope (404 for an issue in the trash or
      * purged, S7A-AC-03), then the time and the admin with a new version, then every row of the send queue
      * about it goes, so nothing about it is sent, not after a restore either (S7A-AC-10), then its history
-     * entry (S7A-AC-06) and the audit entry (S7A-AC-07). Nothing under the issue changes.
+     * entry (S7A-AC-06) and the audit entry (S7A-AC-07). Nothing under the issue changes. The SLA policy's
+     * version is held {@code FOR KEY SHARE} before the issue row (slice 8a design 0절 8b), and the running SLA
+     * goals pause in the same UPDATE (S8A-AC-16).
      */
     public void delete(Viewer viewer, AuditLog.Actor admin, String key) {
         adminOnly(viewer);
         IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
         transactions.run(() -> {
+            SlaWrite slaWrite = sla.begin();
             IssueRow issue = issues.lockByKey(viewer, issueKey).orElseThrow(ApiException::notFound);
             Instant now = now();
-            issues.updateDeleted(issue.id(), viewer.accountId(), now);
+            issues.updateDeleted(issue.id(), viewer.accountId(), now,
+                    issue.sla() == null ? null : slaWrite.deleted(issue.sla(), issue.priority(), now));
             mail.dropAbout(issue.id());
             webhooks.dropAbout(issue.id());
             history.insertChanged(issue.id(), Field.TRASH, null, Field.TRASHED, viewer.accountId(), now);
@@ -128,6 +136,8 @@ public class TrashService {
      * (S7A-AC-23, S7A-AC-34). With the links read under those locks, a link that would break the link
      * rules is 409 and nothing changes (S7A-AC-24). Then the issue is live with a new version, a
      * {@code RESOLVED} one closes 7 days from now (S7A-AC-22), and its history and audit entries follow.
+     * The SLA policy's version is held {@code FOR KEY SHARE} before any issue row (slice 8a design 0절 8b), and the
+     * SLA goals that ran when the issue was deleted run on from now in the same UPDATE (S8A-AC-16).
      *
      * @return the issue as it is now
      */
@@ -135,6 +145,7 @@ public class TrashService {
         adminOnly(viewer);
         IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
         return transactions.run(() -> {
+            SlaWrite slaWrite = sla.begin();
             TrashedRow found = issues.findInTrash(viewer, issueKey).orElseThrow(ApiException::notFound);
             UUID id = found.id();
             Set<UUID> locking = new LinkedHashSet<>();
@@ -158,7 +169,8 @@ public class TrashService {
                         .filter(Objects::nonNull).toList());
             }
             Instant now = now();
-            issues.updateRestored(id, now);
+            issues.updateRestored(id, now,
+                    issue.sla() == null ? null : slaWrite.restored(issue.sla(), issue.priority(), now));
             history.insertChanged(id, Field.TRASH, Field.TRASHED, null, viewer.accountId(), now);
             audit.record(admin, AuditAction.ISSUE_RESTORED, target(issue.companyCode(), issue.key()), null);
             return issues.findById(viewer, id).orElseThrow();

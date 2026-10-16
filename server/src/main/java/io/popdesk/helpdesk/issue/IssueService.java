@@ -22,6 +22,9 @@ import io.popdesk.helpdesk.issue.IssueHistoryRepository.HistoryRow;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.helpdesk.label.LabelRepository;
 import io.popdesk.helpdesk.label.LabelRepository.IssueLabel;
+import io.popdesk.helpdesk.sla.IssueClocks;
+import io.popdesk.helpdesk.sla.SlaPolicies;
+import io.popdesk.helpdesk.sla.SlaWrite;
 import io.popdesk.notification.WebhookKind;
 import io.popdesk.notification.WebhookQueue;
 import java.time.Clock;
@@ -81,6 +84,11 @@ public class IssueService {
     /** The values {@code sort} takes (S6A-AC-53); without it, {@link #SORT_CREATED_AT}. */
     static final String SORT_CREATED_AT = "createdAt";
     static final String SORT_DUE_DATE = "dueDate";
+    static final String SORT_SLA_DUE = "slaDue";
+
+    /** The values the {@code sla} filter takes (S8A-AC-31). */
+    static final String SLA_WARNING = "warning";
+    static final String SLA_BREACHED = "breached";
 
     /** An account ID as the assignee filter gets it: a positive number that fits a {@code bigint}. */
     private static final Pattern ACCOUNT_ID = Pattern.compile("[1-9][0-9]{0,17}");
@@ -138,14 +146,14 @@ public class IssueService {
      * The filters of a list request, as received; a null one was not sent (ISSUE-5). {@code assignee}
      * is an account ID or one of the words {@code me}, {@code none}, {@code unavailable}; {@code q} is
      * the search text; {@code labelIds} the labels, any of which an issue must have (S6A-AC-51);
-     * {@code sort} the order as sent (S6A-AC-53).
+     * {@code sort} the order as sent (S6A-AC-53); {@code sla} the SLA state as sent (S8A-AC-31).
      */
     public record Filters(List<IssueStatus> statuses, String companyCode, String assignee, Long reporterId,
-            String q, List<Long> labelIds, String sort) {
+            String q, List<Long> labelIds, String sort, String sla) {
 
-        /** The filters of a list that takes no label and no order: the portal's (S6A-AC-42). */
+        /** The filters of a list that takes no label, no order, and no SLA state: the portal's (S6A-AC-42). */
         public Filters(List<IssueStatus> statuses, String companyCode, String assignee, Long reporterId, String q) {
-            this(statuses, companyCode, assignee, reporterId, q, null, null);
+            this(statuses, companyCode, assignee, reporterId, q, null, null, null);
         }
     }
 
@@ -168,12 +176,14 @@ public class IssueService {
     private final AccountRateLimit rateLimit;
     private final Transactions transactions;
     private final InstallationZone zone;
+    private final SlaPolicies sla;
     private final Clock clock;
 
     IssueService(IssueRepository issues, IssueHistoryRepository history, LabelRepository labels,
             IdempotencyKeyRepository keys, ReporterAccess reporters, CompanyRepository companies,
             IssueAttachments attachments, WebhookQueue webhooks, IssueNotifications notifications,
-            AccountRateLimit rateLimit, Transactions transactions, InstallationZone zone, Clock clock) {
+            AccountRateLimit rateLimit, Transactions transactions, InstallationZone zone, SlaPolicies sla,
+            Clock clock) {
         this.issues = issues;
         this.history = history;
         this.labels = labels;
@@ -186,6 +196,7 @@ public class IssueService {
         this.rateLimit = rateLimit;
         this.transactions = transactions;
         this.zone = zone;
+        this.sla = sla;
         this.clock = clock;
     }
 
@@ -326,6 +337,10 @@ public class IssueService {
      * company since {@link #prepareOnBehalf} gets nothing filed in their name (S3-AC-33). It posts the
      * same webhook message (S3-AC-75), and the reporter's inbox item and email are written with the other
      * new rows (S3-AC-37, S4-AC-32). The staff member is the one the history names.
+     *
+     * <p>Before all of it the SLA policy's current version is held {@code FOR KEY SHARE} and the time is read
+     * after it (slice 8a design 0절 8): while SLA is on the issue is under SLA and both clocks run from its
+     * filing (S8A-AC-10); else it never is (S8A-AC-11).
      */
     public IssueRow file(Viewer viewer, Draft draft, Runnable storeAttachments) {
         try {
@@ -338,6 +353,7 @@ public class IssueService {
 
     private IssueRow write(Viewer viewer, Draft draft, Runnable storeAttachments) {
         return transactions.run(() -> {
+            SlaWrite slaWrite = sla.begin();
             Instant now = now();
             boolean onBehalf = draft.createdBy() != null;
             if (onBehalf && !companies.isReporter(viewer, draft.company().id(), draft.reporterId())) {
@@ -356,7 +372,8 @@ public class IssueService {
             }
             int number = companies.updateNextIssueNumber(draft.company().id());
             issues.insert(draft.id(), draft.company().id(), number, draft.title(), draft.content(), draft.priority(),
-                    draft.privateIssue(), draft.reporterId(), draft.createdBy(), draft.channel(), now);
+                    draft.privateIssue(), draft.reporterId(), draft.createdBy(), draft.channel(), now,
+                    slaWrite.filed(draft.priority(), now));
             history.insertCreated(draft.id(), viewer.accountId(), now);
             return issues.findByKey(viewer, new IssueKey(draft.company().code(), number)).orElseThrow();
         });
@@ -428,6 +445,12 @@ public class IssueService {
      * the inbox item and email of whoever is told are written only after the UPDATE changed the row
      * (S3-AC-51, S3-AC-63, S3-AC-73, S4-AC-37).
      *
+     * <p>An issue under SLA is different (slice 8a design 0절 4, 8b): its clocks are worked out from what the row
+     * holds, so the SLA policy's version is held {@code FOR KEY SHARE} and then the row is locked
+     * {@code FOR NO KEY UPDATE} and read again before anything else, and the clocks go in the same UPDATE as the
+     * status (S8A-AC-14, S8A-AC-15). Under the lock the UPDATE does not lose. Whether an issue is under SLA never
+     * changes after it was filed.
+     *
      * @param target given the issue and the time of this try, throws when the caller may not do this or
      *     the status does not allow it; else the status to set
      */
@@ -435,13 +458,20 @@ public class IssueService {
         IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
         return transactions.run(() -> {
             IssueRow issue = issues.findByKey(viewer, issueKey).orElseThrow(ApiException::notFound);
+            SlaWrite slaWrite = null;
+            if (issue.sla() != null) {
+                slaWrite = sla.begin();
+                issue = issues.lockByKey(viewer, issueKey).orElseThrow(ApiException::notFound);
+            }
             int tries = 0;
             while (true) {
                 Instant now = now();
                 IssueStatus to = target.apply(issue, now);
                 boolean reopening = to == IssueStatus.RECEIVED;
+                IssueClocks clocks = slaWrite == null ? null
+                        : slaWrite.moved(issue.sla(), issue.priority(), issue.status(), to, now);
                 if (issues.updateStatus(issue.id(), issue.status(), to, now,
-                        reopening ? now.minus(IssueRepository.REOPEN_WINDOW) : null)) {
+                        reopening ? now.minus(IssueRepository.REOPEN_WINDOW) : null, clocks)) {
                     history.insertChanged(issue.id(), Field.STATUS, issue.status().name(), to.name(),
                             viewer.accountId(), now);
                     switch (to) {
@@ -472,10 +502,15 @@ public class IssueService {
      * issue's is 409 (S3-AC-19). Then the images of the edit are attached, before anything is inserted;
      * attaching does not raise the version (S5-AC-20). Values the issue already has change nothing, not
      * the version either (S3-AC-22). Each field that changed gets a history entry (S3-AC-62).
+     *
+     * <p>When a priority was sent, the SLA policy's version is held {@code FOR KEY SHARE} before the issue row
+     * (slice 8a design 0절 8b), and another priority of an issue under SLA works out its running goals again in
+     * the same UPDATE (S8A-AC-17).
      */
     public IssueRow edit(Viewer viewer, String key, Edit input) {
         IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
         return transactions.run(() -> {
+            SlaWrite slaWrite = input.priority().sent() ? sla.begin() : null;
             IssueRow issue = issues.lockByKey(viewer, issueKey).orElseThrow(ApiException::notFound);
             if (viewer.customer() && !reporters.writes(viewer, issue)) {
                 throw ApiException.forbidden();
@@ -515,7 +550,9 @@ public class IssueService {
             if (!titleChanged && !contentChanged && !priorityChanged) {
                 return issue;
             }
-            issues.updateFields(issue.id(), title, content, priority, now);
+            IssueClocks clocks = priorityChanged && issue.sla() != null
+                    ? slaWrite.reprioritized(issue.sla(), priority) : null;
+            issues.updateFields(issue.id(), title, content, priority, now, clocks);
             if (titleChanged) {
                 history.insertChanged(issue.id(), Field.TITLE, issue.title(), title, viewer.accountId(), now);
             }
@@ -770,6 +807,7 @@ public class IssueService {
                 : assignee(viewer, filters.assignee(), errors);
         String q = filters.q() == null ? null : searchText(filters.q(), errors);
         IssueRepository.Order order = order(filters.sort(), errors);
+        IssueFilter.Sla slaState = filters.sla() == null ? null : slaState(filters.sla(), errors);
         if (!errors.isEmpty()) {
             throw ApiException.invalid(errors);
         }
@@ -778,7 +816,7 @@ public class IssueService {
                 filters.statuses() == null ? List.of() : filters.statuses().stream().filter(Objects::nonNull).toList(),
                 filters.companyCode(), assignee, filters.reporterId(), q,
                 filters.labelIds() == null ? List.of()
-                        : filters.labelIds().stream().filter(Objects::nonNull).distinct().toList());
+                        : filters.labelIds().stream().filter(Objects::nonNull).distinct().toList(), slaState);
         if (q == null) {
             return request.of(issues.list(viewer, filter, order, request.offset(), request.size()),
                     issues.count(viewer, filter));
@@ -789,8 +827,8 @@ public class IssueService {
 
     /**
      * The order of a list (S6A-AC-53): none or {@code createdAt} is newest first, {@code dueDate} the
-     * earliest due date first. Any other value, in other case or with a direction, is
-     * {@code UNKNOWN_VALUE} in {@code errors}.
+     * earliest due date first, {@code slaDue} the earliest running SLA due time first (S8A-AC-32). Any other
+     * value, in other case or with a direction, is {@code UNKNOWN_VALUE} in {@code errors}.
      */
     private static IssueRepository.Order order(String sort, List<ApiError.FieldError> errors) {
         if (sort == null || sort.equals(SORT_CREATED_AT)) {
@@ -799,8 +837,35 @@ public class IssueService {
         if (sort.equals(SORT_DUE_DATE)) {
             return IssueRepository.Order.DUE_DATE;
         }
+        if (sort.equals(SORT_SLA_DUE)) {
+            return IssueRepository.Order.SLA_DUE;
+        }
         errors.add(new ApiError.FieldError("sort", "UNKNOWN_VALUE"));
         return IssueRepository.Order.CREATED_AT;
+    }
+
+    /**
+     * The SLA filter of a list (S8A-AC-31), judged at the time of the request: {@code warning} or
+     * {@code breached} as written. Any other value is {@code UNKNOWN_VALUE} in {@code errors}.
+     */
+    private IssueFilter.Sla slaState(String value, List<ApiError.FieldError> errors) {
+        IssueFilter.Sla.Kind kind = switch (value) {
+            case SLA_WARNING -> IssueFilter.Sla.Kind.WARNING;
+            case SLA_BREACHED -> IssueFilter.Sla.Kind.BREACHED;
+            default -> null;
+        };
+        if (kind == null) {
+            errors.add(new ApiError.FieldError("sla", "UNKNOWN_VALUE"));
+            return null;
+        }
+        return new IssueFilter.Sla(kind, now());
+    }
+
+    /**
+     * The SLA goals of an issue under SLA as staff see them now (S8A-AC-30); null for an issue that is not.
+     */
+    public SlaPolicies.SlaView sla(IssueRow issue) {
+        return issue.sla() == null ? null : sla.view(issue.sla(), issue.priority(), now());
     }
 
     /**

@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.issue;
 
 import io.popdesk.helpdesk.IssueStatus;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -14,9 +15,23 @@ import java.util.List;
  * @param reporterId this account reported the issue
  * @param q the title or the shown content holds this text, searched as it is (COM-5)
  * @param labelIds the issue has one of these labels; empty leaves this part out (S6A-AC-51)
+ * @param sla the SLA state the issue is in (S8A-AC-31)
  */
 public record IssueFilter(List<IssueStatus> statuses, String companyCode, Assignee assignee, Long reporterId,
-        String q, List<Long> labelIds) {
+        String q, List<Long> labelIds, Sla sla) {
+
+    /**
+     * The SLA state an issue must be in at {@code now}, by the worse of its running goals (S8A-AC-31, acceptance.md
+     * 5절 12): {@link Kind#BREACHED} when one is past its due time, {@link Kind#WARNING} when none is and one is
+     * past its warning time.
+     */
+    public record Sla(Kind kind, Instant now) {
+
+        public enum Kind {
+            WARNING,
+            BREACHED
+        }
+    }
 
     /** The assignee an issue must have. {@code accountId} is set for {@link Kind#ACCOUNT} only. */
     public record Assignee(Kind kind, Long accountId) {

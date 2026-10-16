@@ -19,6 +19,8 @@ import io.popdesk.helpdesk.issue.IssueNotifications;
 import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.helpdesk.issue.ReporterAccess;
+import io.popdesk.helpdesk.sla.SlaPolicies;
+import io.popdesk.helpdesk.sla.SlaWrite;
 import io.popdesk.notification.WebhookKind;
 import io.popdesk.notification.WebhookQueue;
 import java.time.Clock;
@@ -68,11 +70,13 @@ public class CommentService {
     private final WebhookQueue webhooks;
     private final AccountRateLimit rateLimit;
     private final Transactions transactions;
+    private final SlaPolicies sla;
     private final Clock clock;
 
     CommentService(CommentRepository comments, IssueRepository issues, ReporterAccess reporters,
             CompanyRepository companies, IssueAttachments attachments, IssueNotifications notifications,
-            WebhookQueue webhooks, AccountRateLimit rateLimit, Transactions transactions, Clock clock) {
+            WebhookQueue webhooks, AccountRateLimit rateLimit, Transactions transactions, SlaPolicies sla,
+            Clock clock) {
         this.comments = comments;
         this.issues = issues;
         this.reporters = reporters;
@@ -82,6 +86,7 @@ public class CommentService {
         this.webhooks = webhooks;
         this.rateLimit = rateLimit;
         this.transactions = transactions;
+        this.sla = sla;
         this.clock = clock;
     }
 
@@ -95,6 +100,9 @@ public class CommentService {
      * the webhook row, and the inbox items and emails of whoever {@link IssueNotifications} tells. A
      * public staff comment sets the first response time once (S0-AC-46) and tells the reporter
      * (S0-AC-70); an internal one does neither (S0-AC-53). A customer's comment goes to the webhook.
+     * For a public staff comment the SLA policy's version is held {@code FOR KEY SHARE} before the issue row
+     * (slice 8a design 0절 8b), and the first one stops the first response goal of an issue under SLA in the same
+     * UPDATE as the first response time (S8A-AC-13).
      *
      * @param mentions the accounts staff mention with the comment (S4-AC-19), or null; a customer's
      *     are ignored (S4-AC-25)
@@ -104,7 +112,9 @@ public class CommentService {
             JsonNode imageIds) {
         rateLimit.count(AccountRateLimit.Action.COMMENT, viewer.accountId());
         IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
+        boolean answer = viewer.staff() && !internal;
         return transactions.run(() -> {
+            SlaWrite slaWrite = answer ? sla.begin() : null;
             IssueRow issue = issues.lockByKey(viewer, issueKey).orElseThrow(ApiException::notFound);
             if (viewer.customer() && (internal || !reporters.writes(viewer, issue))) {
                 throw ApiException.forbidden();
@@ -129,8 +139,9 @@ public class CommentService {
                 webhooks.queue(WebhookKind.CUSTOMER_COMMENT, issue.id(), id);
             }
             notifications.commented(viewer, issue, id, internal, mentioned);
-            if (viewer.staff() && !internal) {
-                issues.updateFirstResponse(issue.id(), now);
+            if (answer) {
+                issues.updateFirstResponse(issue.id(), now, issue.sla() == null || issue.firstResponseAt() != null
+                        ? null : slaWrite.answered(issue.sla(), issue.priority(), now));
             }
             return comments.find(viewer, issue.id(), id).orElseThrow();
         });
