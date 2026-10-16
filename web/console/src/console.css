@@ -1001,3 +1001,129 @@
   flex: 1;
   min-width: 0;
 }
+
+/* Slice 8a: C-13 SLA 설정 (8a-sla screens.md 1절). The goal table names its fields in the column heads,
+   so a field's own label is kept for screen readers only; at 360 the table scrolls inside its wrap. */
+.pd-sla-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.pd-sla-status p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.pd-sla-goals .pd-field-head {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.pd-sla-goals .pd-field {
+  min-width: 8rem;
+}
+
+.pd-sla-goals .pd-field-help {
+  white-space: nowrap;
+}
+
+/* A weekday on one line: 업무일, 시작, 끝, 자정까지. A narrow window puts the times under the day. */
+.pd-sla-days {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pd-sla-day,
+.pd-sla-times {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-4);
+}
+
+.pd-sla-day > .pd-check {
+  min-width: 9rem;
+  padding-bottom: var(--space-2);
+}
+
+.pd-sla-times > .pd-field {
+  width: 8rem;
+}
+
+.pd-sla-times > .pd-check {
+  padding-bottom: var(--space-2);
+}
+
+@media (max-width: 600px) {
+  .pd-sla-day {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.pd-sla-holiday-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.pd-sla-holiday-add > .pd-field {
+  width: 12rem;
+}
+
+.pd-sla-holidays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.pd-sla-holidays li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Slice 8a: the SLA part of C-4 (8a-sla screens.md 3절), under the side values, named like them. */
+.pd-sla-part {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.pd-sla-part-title {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs-line);
+  font-weight: 400;
+}
+
+.pd-sla-part ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-wrap: anywhere;
+}
+
+/* C-3 SLA: the badge and the time left stay on one line; the table scrolls sideways when it must. */
+.pd-sla-cell {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
