@@ -195,6 +195,53 @@ class SlaClocksTest {
     }
 
     @Test
+    @DisplayName("S8A-AC-13 the goal used exactly: MET at the instant it ran out, MISSED within the second after")
+    void stopAtGoalInstant() {
+        // goal 1 min from T0 all day: warning at 48 s, due at 60 s
+        Clock clock = new Clock(0, T0, null, at(48), at(60));
+        assertThat(SlaClocks.stop(clock, at(60), 1, ALL_DAY)).isEqualTo(new Clock(60, null, Outcome.MET, at(48), at(60)));
+        // 60.5 s counts 60 whole seconds, the goal, but the goal ran out half a second before
+        assertThat(SlaClocks.stop(clock, at(60).plusMillis(500), 1, ALL_DAY))
+                .isEqualTo(new Clock(60, null, Outcome.MISSED, at(48), at(60)));
+        assertThat(SlaClocks.stop(clock, at(60).plusNanos(1), 1, ALL_DAY))
+                .isEqualTo(new Clock(60, null, Outcome.MISSED, at(48), at(60)));
+        assertThat(SlaClocks.stop(clock, at(60).minusMillis(500), 1, ALL_DAY))
+                .isEqualTo(new Clock(59, null, Outcome.MET, at(48), at(60)));
+        // with time counted before since: 600 + 3000 = 3600, the goal of 60 minutes, due at 3000 s
+        Clock spent = new Clock(600, T0, null, at(2280), at(3000));
+        assertThat(SlaClocks.stop(spent, at(3000), 60, ALL_DAY))
+                .isEqualTo(new Clock(3600, null, Outcome.MET, at(2280), at(3000)));
+        assertThat(SlaClocks.stop(spent, at(3000).plusMillis(500), 60, ALL_DAY))
+                .isEqualTo(new Clock(3600, null, Outcome.MISSED, at(2280), at(3000)));
+    }
+
+    @Test
+    @DisplayName("S8A-AC-13 a goal that ran out at the closing is MISSED when stopped that night, MET at the closing")
+    void stopOvernightAfterGoalAtClosing() {
+        // Monday 17:00 KST, goal 60 min: due at the closing, Monday 18:00; warning 17:48
+        Instant warn = kst("2026-10-12T17:48:00");
+        Instant due = kst("2026-10-12T18:00:00");
+        Clock clock = new Clock(0, kst("2026-10-12T17:00:00"), null, warn, due);
+        assertThat(SlaClocks.stop(clock, due, 60, WEEKDAYS)).isEqualTo(new Clock(3600, null, Outcome.MET, warn, due));
+        assertThat(SlaClocks.stop(clock, kst("2026-10-12T17:59:59"), 60, WEEKDAYS))
+                .isEqualTo(new Clock(3599, null, Outcome.MET, warn, due));
+        for (Instant night : List.of(
+                due.plusMillis(1),
+                kst("2026-10-12T18:00:01"),
+                kst("2026-10-12T23:00:00"),
+                kst("2026-10-13T09:00:00"))) {
+            assertThat(SlaClocks.stop(clock, night, 60, WEEKDAYS))
+                    .as("%s", night)
+                    .isEqualTo(new Clock(3600, null, Outcome.MISSED, warn, due));
+        }
+        // a weekend after a Friday closing likewise
+        Instant fridayDue = kst("2026-10-16T18:00:00");
+        Clock friday = new Clock(0, kst("2026-10-16T17:00:00"), null, kst("2026-10-16T17:48:00"), fridayDue);
+        assertThat(SlaClocks.stop(friday, kst("2026-10-18T12:00:00"), 60, WEEKDAYS))
+                .isEqualTo(new Clock(3600, null, Outcome.MISSED, kst("2026-10-16T17:48:00"), fridayDue));
+    }
+
+    @Test
     @DisplayName("S8A-AC-13 stopping without a goal settles as no goal")
     void stopWithoutGoal() {
         Clock clock = new Clock(600, T0, null, null, null);
@@ -513,6 +560,53 @@ class SlaClocksTest {
         // the night does not count: at Monday 23:00 still 60 minutes left
         assertThat(SlaClocks.remainingMinutes(weekday, kst("2026-10-12T23:00:00"), 120, WEEKDAYS)).isEqualTo(60L);
         assertThat(SlaClocks.remainingMinutes(weekday, kst("2026-10-13T10:00:30"), 120, WEEKDAYS)).isEqualTo(-1L);
+    }
+
+    @Test
+    @DisplayName("S8A-AC-19 within the second after the due time it is already -1, at the due time 0")
+    void remainingJustAfterDue() {
+        // goal 1 min from T0 all day: warning at 48 s, due at 60 s
+        Clock clock = new Clock(0, T0, null, at(48), at(60));
+        assertThat(SlaClocks.remainingMinutes(clock, at(60), 1, ALL_DAY)).isEqualTo(0L);
+        assertThat(SlaClocks.state(clock, at(60))).isEqualTo(State.WARNING);
+        assertThat(SlaClocks.remainingMinutes(clock, at(60).plusMillis(500), 1, ALL_DAY)).isEqualTo(-1L);
+        assertThat(SlaClocks.remainingMinutes(clock, at(60).plusNanos(1), 1, ALL_DAY)).isEqualTo(-1L);
+        assertThat(SlaClocks.state(clock, at(60).plusMillis(500))).isEqualTo(State.BREACHED);
+        assertThat(SlaClocks.remainingMinutes(clock, at(61), 1, ALL_DAY)).isEqualTo(-1L);
+        // inside business hours too: Monday 17:00 KST, goal 30 min, due 17:30
+        Clock weekday = new Clock(
+                0, kst("2026-10-12T17:00:00"), null, kst("2026-10-12T17:24:00"), kst("2026-10-12T17:30:00"));
+        assertThat(SlaClocks.remainingMinutes(weekday, kst("2026-10-12T17:30:00"), 30, WEEKDAYS)).isEqualTo(0L);
+        assertThat(SlaClocks.remainingMinutes(weekday, kst("2026-10-12T17:30:00").plusMillis(500), 30, WEEKDAYS))
+                .isEqualTo(-1L);
+    }
+
+    @Test
+    @DisplayName("S8A-AC-19 a goal that runs out at the closing is -1 through the night, as it is breached")
+    void remainingOvernightAfterDueAtClosing() {
+        // Monday 17:00 KST, goal 60 min: due at the closing, Monday 18:00; warning 17:48
+        Instant since = kst("2026-10-12T17:00:00");
+        Instant due = kst("2026-10-12T18:00:00");
+        Clock clock = new Clock(0, since, null, kst("2026-10-12T17:48:00"), due);
+        assertThat(SlaClocks.deadlines(new Clock(0, since, null, null, null), 60, WEEKDAYS)).isEqualTo(clock);
+        assertThat(SlaClocks.remainingMinutes(clock, kst("2026-10-12T17:59:59"), 60, WEEKDAYS)).isEqualTo(0L);
+        assertThat(SlaClocks.remainingMinutes(clock, due, 60, WEEKDAYS)).isEqualTo(0L);
+        for (Instant night : List.of(
+                due.plusMillis(1),
+                kst("2026-10-12T18:00:01"),
+                kst("2026-10-12T23:00:00"),
+                kst("2026-10-13T08:59:59"),
+                kst("2026-10-13T09:00:00"))) {
+            assertThat(SlaClocks.state(clock, night)).as("%s", night).isEqualTo(State.BREACHED);
+            assertThat(SlaClocks.remainingMinutes(clock, night, 60, WEEKDAYS)).as("%s", night).isEqualTo(-1L);
+        }
+        // the next morning business time counts again: 30 s past is -1, 61 s past is -2
+        assertThat(SlaClocks.remainingMinutes(clock, kst("2026-10-13T09:00:30"), 60, WEEKDAYS)).isEqualTo(-1L);
+        assertThat(SlaClocks.remainingMinutes(clock, kst("2026-10-13T09:01:01"), 60, WEEKDAYS)).isEqualTo(-2L);
+        // the weekend after a Friday closing likewise
+        Clock friday = new Clock(
+                0, kst("2026-10-16T17:00:00"), null, kst("2026-10-16T17:48:00"), kst("2026-10-16T18:00:00"));
+        assertThat(SlaClocks.remainingMinutes(friday, kst("2026-10-18T12:00:00"), 60, WEEKDAYS)).isEqualTo(-1L);
     }
 
     @Test

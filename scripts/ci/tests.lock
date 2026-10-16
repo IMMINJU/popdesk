@@ -224,7 +224,7 @@ e500e9a5f26f41aa893e3ae74fdcde2f6785680ff7144ed2017f83874a2470a9  server/src/tes
 32ad754207b6dc78e94302328e0f46ac6e2503bc6af994439b349a6ad4423010  server/src/test/java/io/popdesk/helpdesk/link/RestoreLinkCheckTest.java
 2fff15b4c150c092c5f4c0fce02261cb3546c5201ef56d9973d781732c5aa250  server/src/test/java/io/popdesk/helpdesk/photo/PhotoImagesTest.java
 2132e05a198d44dc69ee29e9381cbdebe81d1990fcc2f669d4f5197132f0a565  server/src/test/java/io/popdesk/helpdesk/sla/BusinessCalendarTest.java
-e961d337921c81a4103cf061fe364d980f640210905bbb0b75c557d2c3b29519  server/src/test/java/io/popdesk/helpdesk/sla/SlaClocksTest.java
+6bd4353de0e8f3657523ec95a56c42b9990d1df0daf4067d8cd1ee37254dc156  server/src/test/java/io/popdesk/helpdesk/sla/SlaClocksTest.java
 980fd4d9203ada8c7702dd176c01d245709cf201da977cfba6b122effe1445d9  server/src/test/java/io/popdesk/helpdesk/task/TaskChangesTest.java
 45db1c0f81bcf6065434e010fb4fdcfd0f8e62d0da052be7a7637f30f1a4f831  server/src/test/java/io/popdesk/helpdesk/trash/TrashTimesTest.java
 21517e5a550060bf6467bdbe7e0823c7da7dfba5622a031d6da86004134b712c  server/src/test/java/io/popdesk/inbox/AdminInboxItemsTest.java
