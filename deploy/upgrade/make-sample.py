@@ -295,7 +295,8 @@ def fill(project):
              "select not exists (select 1 from sla_recalc_report where closed_at is null) "
              "and not exists (select 1 from issue i where i.sla_version < (select max(version) from sla_policy) "
              "and (i.fr_since is not null or i.res_since is not null) and i.deleted_at is null)")
-    summaries = project.sql("select count(*) from notification where kind = 'SLA_RECALCULATED'")
+    summaries = project.sql("select count(*) from notification where kind = 'SLA_RECALCULATED' "
+                            "and sla_became_breached > 0")
     sla_policy(1)
     wait_for(f"The summary of the recalculation that made {recounted} overdue",
              "select count(*) > " + summaries + " from notification where kind = 'SLA_RECALCULATED' "
