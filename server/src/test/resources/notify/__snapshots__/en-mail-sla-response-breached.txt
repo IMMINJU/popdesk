@@ -1,0 +1,11 @@
+Subject: [{key}] SLA first response overdue: Printer "B2" jams after toner change
+
+The first response to an issue is past its SLA due time.
+
+Issue: {key}
+Company: {code}
+Title: Printer "B2" jams after toner change
+
+Read it in the console:
+
+{link}

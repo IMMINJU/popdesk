@@ -1,0 +1,11 @@
+Subject: [{key}] SLA resolution overdue: Printer "B2" jams after toner change
+
+The resolution of an issue is past its SLA due time.
+
+Issue: {key}
+Company: {code}
+Title: Printer "B2" jams after toner change
+
+Read it in the console:
+
+{link}

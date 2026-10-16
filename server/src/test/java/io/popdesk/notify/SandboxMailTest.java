@@ -11,9 +11,12 @@ import io.popdesk.manager.ManagerSteps;
 import io.popdesk.notify.NotifySteps.Scene;
 import io.popdesk.notify.SmtpGate.Held;
 import io.popdesk.notify.TalkMails.Mail;
+import io.popdesk.sla.SlaSteps;
+import io.popdesk.sla.SlaSteps.Policy;
 import io.popdesk.support.AppTest;
 import io.popdesk.support.Fixtures.Comment;
 import io.popdesk.support.Fixtures.Company;
+import io.popdesk.support.Fixtures.NewIssue;
 import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.ReceivedMail;
@@ -27,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,6 +39,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -47,7 +52,7 @@ import tools.jackson.databind.JsonNode;
  * was for, it says so in its subject and first line, and a mail that is no longer to be sent is not
  * sent there either.
  *
- * <p>The kinds of mail are the eleven names in {@link #KINDS}. A test here reads the list of kinds from
+ * <p>The kinds of mail are the thirteen names in {@link #KINDS}. A test here reads the list of kinds from
  * the app's source as text ({@link #KIND_SOURCE}) and fails when the two differ, so a new kind of mail
  * cannot be added without a scenario here. It also reads the kind of each queued row in the
  * {@code outbox} table while the mail server refuses mail, to see that each scenario queues the kind
@@ -58,7 +63,7 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
     /** Every kind of mail the send queue holds, by the name in {@code outbox.kind}. */
     static final Set<String> KINDS = Set.of("INVITATION", "PASSWORD_RESET", "STAFF_COMMENT", "ISSUE_FILED_ON_BEHALF",
             "ISSUE_RESOLVED", "ISSUE_CLOSED", "ISSUE_REOPENED", "MENTIONED", "ASSIGNED", "MEMBERSHIP_REQUESTED",
-            "TASK_ASSIGNED");
+            "TASK_ASSIGNED", "SLA_RESPONSE_BREACHED", "SLA_RESOLUTION_BREACHED");
 
     /** Where the app lists its kinds of mail, from the module's folder. */
     static final Path KIND_SOURCE = Path.of("src", "main", "java", "io", "popdesk", "notification", "MailKind.java");
@@ -68,10 +73,21 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
     private IssueFlow flow;
     private SmtpGate gate;
 
+    /** Whether this test turned the SLA policy on; it is turned off after it, so no other class files issues under it. */
+    private boolean slaOn;
+
     @BeforeEach
     void setUp() {
         flow = new IssueFlow(fixtures, clock);
         gate = SmtpGate.shared();
+        slaOn = false;
+    }
+
+    @AfterEach
+    void turnSlaOff() {
+        if (slaOn) {
+            SlaSteps.turnOff(admin());
+        }
     }
 
     /** The constants of the enum in {@link #KIND_SOURCE}, read as text. */
@@ -141,6 +157,16 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
         for (Session person : people) {
             redirectedBefore.put(person.accountId(), Delivery.redirected(mail(), person.accountId()).size());
         }
+        // Two overdue SLA goals, alerted by the run of sla-recalculate at the time "at" below: the run before is 60
+        // seconds earlier, the issue filed a second before that run, and both goals of 1 minute due at at - 1 s. The
+        // company has no agent, so only the admins are mailed; this context has the first admin only.
+        slaOn = true;
+        SlaSteps.change(c.admin(), Policy.off().target("NORMAL", 1, 1));
+        new SlaSteps(fixtures, clock, ZoneOffset.UTC).recalculateNow(c.admin());
+        clock.advance(Duration.ofSeconds(59));
+        fixtures.fileIssue(wanted, NewIssue.in(elsewhere.code()).priority("NORMAL"));
+        SlaSteps.awaitRecalculation(c.admin(), clock.advance(Duration.ofSeconds(1)));
+        clock.advance(Duration.ofSeconds(59));
         int before = mail().messagesTo(SANDBOX_TO).size();
         Instant at = tick();
         gate.hold();
@@ -171,7 +197,9 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
                 new Queued("MENTIONED", mentioned.accountId()),
                 new Queued("ASSIGNED", c.agent().accountId()),
                 new Queued("MEMBERSHIP_REQUESTED", c.admin().accountId()),
-                new Queued("TASK_ASSIGNED", c.agent().accountId()));
+                new Queued("TASK_ASSIGNED", c.agent().accountId()),
+                new Queued("SLA_RESPONSE_BREACHED", c.admin().accountId()),
+                new Queued("SLA_RESOLUTION_BREACHED", c.admin().accountId()));
         Set<Long> accounts = new TreeSet<>(expected.stream().map(Queued::recipient).toList());
         accounts.add(manager.accountId());
         Wait.untilAsserted("one queued mail row per kind", () -> assertThat(queuedAt(at, accounts))
@@ -205,7 +233,7 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
         assertThat(Delivery.redirected(mail(), invited)).as("mail whose first line names the invited account")
                 .hasSize(1);
         assertThat(Delivery.redirected(mail(), c.admin().accountId())).as("mail whose first line names the admin")
-                .hasSize(1);
+                .hasSize((int) expected.stream().filter(q -> q.recipient() == c.admin().accountId()).count());
         for (String address : addresses) {
             assertThat(mail().messagesTo(address)).as("mail to %s", address).isEmpty();
         }

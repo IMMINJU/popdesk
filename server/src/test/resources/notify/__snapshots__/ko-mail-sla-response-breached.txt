@@ -1,0 +1,11 @@
+Subject: [{key}] SLA 첫 응답 기한 넘김: Printer "B2" jams after toner change
+
+문의의 첫 응답이 SLA 기한을 넘겼습니다.
+
+문의: {key}
+고객사: {code}
+제목: Printer "B2" jams after toner change
+
+콘솔에서 문의를 볼 수 있습니다.
+
+{link}
