@@ -8,7 +8,7 @@ package io.popdesk.notification;
  * while it stays raised, the admins get one more item every 24 hours of the app clock. Once resolved,
  * the next raise gives items again at once.
  *
- * <p>Notification raises and resolves {@link Kind#DELIVERY_FAILED} and the three {@code _STALLED} kinds
+ * <p>Notification raises and resolves {@link Kind#DELIVERY_FAILED} and the four {@code _STALLED} kinds
  * itself. The module that knows the condition of another kind raises it and resolves it.
  */
 public interface OpsAlerts {
@@ -27,7 +27,12 @@ public interface OpsAlerts {
         /** As {@link #MAIL_STALLED}, for the webhook. */
         WEBHOOK_STALLED,
         /** As {@link #MAIL_STALLED}, for the outside copy of the audit log. */
-        AUDIT_FORWARD_STALLED;
+        AUDIT_FORWARD_STALLED,
+        /**
+         * A cleanup job has not succeeded for its interval plus 24 hours since its last success (S7B-AC-10);
+         * one alert for any number of such jobs. Resolved when no job is that late (S7B-AC-11).
+         */
+        CLEANUP_STALLED;
 
         /** The kind for a channel that only fails; {@code channel} as the outbox names it. */
         public static Kind stalled(String channel) {

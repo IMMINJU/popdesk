@@ -266,6 +266,8 @@ The response is:
 
 A `page` past the last page returns an empty `items`. A `page` below 1 or a `size` outside 1 to 100 is 400.
 
+Some lists are short by rule and come all at once, as `{"items": [...]}` without paging, for example the links of an issue (at most 50), the labels of a company (at most 200), and the issue counts per company (`GET /api/console/stats`, one item per company the caller can see).
+
 The staff issue list also takes `sort`. Both orders end with a key that is unique to each issue, so issues with the same due date and the same filing time neither repeat nor go missing across pages:
 
 | `sort` | Order |
@@ -325,6 +327,7 @@ Each app has the inbox of the signed-in account: `/api/portal/notifications` and
 - When an issue becomes `RESOLVED` or `CLOSED`, the assignee of each issue linked to it gets an item `LINKED_ISSUE_RESOLVED` or `LINKED_ISSUE_CLOSED`. The item's `issue` is the assignee's own issue and `linkedIssue` the one that changed. No email goes with it. Nobody gets one who cannot see both issues, whose own issue is `CLOSED`, who made the change, or who is not active, and an issue without an assignee tells nobody. While the same item is still unread, another one of the same kind about the same two issues is not made. The item is listed only while the caller can see both issues. Customers never get an item about a link.
 - The portal's items have their own type and their own kinds, only those a customer gets. What an agent or an admin did has the actor `SUPPORT_TEAM`, without a name, an email, or an account ID (D-49). The console gives the actor's account ID, name, and role.
 - Items about no issue (operational alerts, membership requests) go to admins only and have `null` for the issue, the comment, and the actor.
+- The kinds of operational alert are `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, and `CLEANUP_STALLED` (a cleanup job has not succeeded for its interval plus 24 hours). Each goes to every active admin. While one is not resolved it is not made again, except once every 24 hours; when it is resolved, the next one is made at once ([configuration.md](../operate/configuration.md)). An alert names no job, channel, or row; the console's system status shows them.
 - What popdesk itself did, such as closing a `RESOLVED` issue after 7 days, has `null` for the actor in the console's items too.
 - Nothing is sent about an issue in the trash: no inbox item, email, or webhook message. Deleting an issue deletes its waiting messages, so restoring it sends none of them. Its inbox items are kept, left out of the list and the unread count, and listed again after a restore.
 
