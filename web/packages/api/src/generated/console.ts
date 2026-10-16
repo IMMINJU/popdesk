@@ -1283,6 +1283,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/console/sla-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The SLA policy
+         * @description The current version (S8A-AC-01). Checks, in this order: role (403).
+         */
+        get: operations["getSlaPolicy"];
+        /**
+         * Change the SLA policy
+         * @description Replaces the goals, business hours, and holidays as a whole and makes the next version (S8A-AC-02). Issues filed from then on get due times; issues filed while SLA was off never do (S8A-AC-11). The due times of running clocks are worked out again within minutes: what counted before the new version stays, and the rest of the goal counts from then by the new version (S8A-AC-20, S8A-AC-22). Sending what the policy has already is 200 with the policy as it is and no new version. A new version leaves an audit entry `SLA_POLICY_CHANGED` with the target `{"type": "SLA_POLICY", "version": …}` (the new version) and, in `changes`, `targets`, `hours`, or `holidays` from before to after for each that changed (S8A-AC-06). Checks, in this order: role (403), the body (400), `version` (409).
+         */
+        put: operations["updateSlaPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/console/stats": {
         parameters: {
             query?: never;
@@ -1697,7 +1721,7 @@ export interface components {
              * @description The entry's place in the hash chain, from 1.
              */
             seq: number;
-            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`) and the keys that name it (`accountId`, `code`). An issue deleted, restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is `{"type": "COMPANY", "code": …, "issueKey": …}`, with the issue's company and key and never its title, and `changes` is null (S7A-AC-07). */
+            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`, `SLA_POLICY`) and the keys that name it (`accountId`, `code`). An issue deleted, restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is `{"type": "COMPANY", "code": …, "issueKey": …}`, with the issue's company and key and never its title, and `changes` is null (S7A-AC-07). A change of the SLA policy (`SLA_POLICY_CHANGED`) is `{"type": "SLA_POLICY", "version": …}` with the new version (S8A-AC-06). */
             target: {
                 [key: string]: unknown;
             } | null;
@@ -1737,6 +1761,19 @@ export interface components {
              * @enum {string}
              */
             role: "CUSTOMER" | "AGENT" | "ADMIN";
+        };
+        ChangeSlaPolicyRequest: {
+            /** @description `YYYY-MM-DD`, in any order, at most 500, no day twice; popdesk keeps them earliest first. */
+            holidays: string[];
+            /** @description Seven items, one for each weekday, in any order. `opens` and `closes` both null for a day without business hours. */
+            hours: components["schemas"]["SlaHours"][];
+            /** @description Four items, one for each priority, in any order. A goal left null is no goal. */
+            targets: components["schemas"]["SlaTarget"][];
+            /**
+             * Format: int32
+             * @description The `version` of the policy as the caller read it (S8A-AC-03).
+             */
+            version: number;
         };
         ChannelStatus: {
             /** @description Configured, and not turned off by the sandbox (S4B-AC-08). */
@@ -2054,6 +2091,8 @@ export interface components {
              * @description When the issue became `RESOLVED`; null when it is not resolved (S3-AC-59).
              */
             resolvedAt: string | null;
+            /** @description The SLA goals of the issue; null when it is not under SLA: it was filed while no SLA goal was set, and stays so whatever the policy becomes (S8A-AC-11, S8A-AC-30). */
+            sla: components["schemas"]["IssueSla"] | null;
             /** @enum {string} */
             status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
             title: string;
@@ -2061,7 +2100,7 @@ export interface components {
             updatedAt: string;
             /**
              * Format: int64
-             * @description Goes up by 1 on every change to the issue (S0-AC-45).
+             * @description Goes up by 1 on every change to the issue (S0-AC-45). Not when popdesk works out its SLA due times again after a policy change; `sla` and `updatedAt` stay too (S8A-AC-21).
              */
             version: number;
         };
@@ -2141,6 +2180,10 @@ export interface components {
             /** @description The title as it is now, not as it was when the item was made. */
             title: string;
         };
+        IssueSla: {
+            firstResponse: components["schemas"]["SlaGoal"];
+            resolution: components["schemas"]["SlaGoal"];
+        };
         IssueSummary: {
             /** @description Null when nobody is assigned (S3-AC-28). */
             assignee: components["schemas"]["Person"] | null;
@@ -2172,6 +2215,8 @@ export interface components {
             priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
             private: boolean;
             reporter: components["schemas"]["Person"];
+            /** @description The SLA goals of the issue; null when it is not under SLA (S8A-AC-30). The worse of the two running goals decides the `sla` filter (S8A-AC-31). */
+            sla: components["schemas"]["IssueSla"] | null;
             /** @enum {string} */
             status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
             title: string;
@@ -2672,6 +2717,67 @@ export interface components {
             /** @description Leading and trailing whitespace and case are ignored. */
             email: string;
             password: string;
+        };
+        SlaGoal: {
+            /**
+             * Format: date-time
+             * @description When the goal runs out, to the second. Still given after `MET` or `MISSED`, as it was when the clock stopped. Null without a goal.
+             */
+            dueAt: string | null;
+            /**
+             * Format: int64
+             * @description Business minutes left while the clock runs, rounded down; after `dueAt` a negative number of business minutes past it, rounded up (S8A-AC-19). Null while the clock is stopped and without a goal.
+             */
+            remainingMinutes: number | null;
+            /**
+             * @description `MET` or `MISSED` once the clock stopped for good; otherwise `BREACHED` after `dueAt`, `WARNING` from 80% of the goal on, `OK` before that. At `dueAt` itself the goal is not breached yet. Null when the issue's priority has no such goal (S8A-AC-10).
+             * @enum {string|null}
+             */
+            state: "OK" | "WARNING" | "BREACHED" | "MET" | "MISSED" | null;
+        };
+        SlaHours: {
+            /** @description `HH:MM`, later than `opens`; `24:00` is the end of the day. A span never goes past midnight. Null, together with `opens`, on a day without business hours. */
+            closes: string | null;
+            /** @description `HH:MM`, from `00:00` to `23:59`, in whole minutes. Null, together with `closes`, on a day without business hours. */
+            opens: string | null;
+            /** @enum {string} */
+            weekday: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
+        };
+        SlaPolicy: {
+            /**
+             * Format: date-time
+             * @description When this version was made.
+             */
+            changedAt: string;
+            /** @description The admin who made this version; null when popdesk made it: version 1, and a version made because the time zone changed (S8A-AC-07). */
+            changedBy: components["schemas"]["Person"] | null;
+            /** @description Days that count no business time, even when every day counts 24 hours: `YYYY-MM-DD` in the installation time zone, earliest first, at most 500 (S8A-AC-12). */
+            holidays: string[];
+            /** @description Seven items, one for each weekday, from `MONDAY` to `SUNDAY`. When no day has business hours, every day counts all 24 hours; otherwise a day without them counts none (S8A-AC-12). */
+            hours: components["schemas"]["SlaHours"][];
+            /** @description Four items, one for each priority, from `LOW` to `URGENT`. */
+            targets: components["schemas"]["SlaTarget"][];
+            /** @description The time zone the business hours and holidays are read in: the installation's `POPDESK_TIMEZONE`, for example `Asia/Seoul`. Set by popdesk, not by this endpoint; when the setting changes, popdesk makes a new version within a minute (S8A-AC-07). */
+            timeZone: string;
+            /**
+             * Format: int32
+             * @description Goes up by 1 when the goals, the business hours, the holidays, or the time zone change (SLA-1). Send it back with `updateSlaPolicy`.
+             */
+            version: number;
+        };
+        SlaTarget: {
+            /**
+             * Format: int32
+             * @description Business minutes from filing to the first public comment of staff, 1 to 525,600 (365 days of 24 hours); null without this goal (S8A-AC-01).
+             */
+            firstResponseMinutes: number | null;
+            /** @enum {string} */
+            priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+            /**
+             * Format: int32
+             * @description Business minutes from filing to `RESOLVED` or `CLOSED`, 1 to 525,600; not shorter than `firstResponseMinutes` when both are set. Null without this goal (S8A-AC-01, S8A-AC-04).
+             */
+            resolutionMinutes: number | null;
         };
         StreamingResponseBody: unknown;
         SuspendedAccount: {
@@ -3328,11 +3434,11 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
-                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG";
+                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG" | "SLA_POLICY";
                 /** @description Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account. */
                 targetAccountId?: number;
                 /** @description Only entries whose target names this customer company (`code` of the target). */
@@ -3396,11 +3502,11 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
-                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG";
+                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG" | "SLA_POLICY";
                 /** @description Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account. */
                 targetAccountId?: number;
                 /** @description Only entries whose target names this customer company (`code` of the target). */
@@ -3476,11 +3582,11 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
-                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG";
+                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG" | "SLA_POLICY";
                 /** @description Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account. */
                 targetAccountId?: number;
                 /** @description Only entries whose target names this customer company (`code` of the target). */
@@ -5170,8 +5276,10 @@ export interface operations {
                 q?: string;
                 /** @description Only issues that have one of these labels: label IDs, given once for each label. Works with or without `companyCode`. An ID that does not exist, or a label of a company the caller cannot see, matches nothing, so with only such IDs the page is empty (S6A-AC-51, S6A-AC-52). */
                 label?: number[];
-                /** @description `createdAt` (the default): newest first. `dueDate`: earliest due date first, issues without one last, and issues with the same due date newest first (S6A-AC-53). Works with `q`. */
-                sort?: "createdAt" | "dueDate";
+                /** @description Only issues with a running SLA goal in this state: `breached` for a goal past its due time, `warning` for one past 80% and not breached. An issue counts by the worse of its two running goals, so `warning` leaves out an issue with a breached goal. Issues not under SLA, and those whose clocks are stopped, match neither (S8A-AC-31). */
+                sla?: "warning" | "breached";
+                /** @description `createdAt` (the default): newest first. `dueDate`: earliest due date first, issues without one last, and issues with the same due date newest first (S6A-AC-53). `slaDue`: earliest running SLA due time first, of either goal; issues without one last, newest first (S8A-AC-32). Works with `q`. */
+                sort?: "createdAt" | "dueDate" | "slaDue";
                 /** @description Page number, from 1. */
                 page?: number;
                 /** @description 1 to 100. */
@@ -5192,7 +5300,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedIssueSummary"];
                 };
             };
-            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `status`, `assignee`, or `sort` (`UNKNOWN_VALUE`), `reporter` or a `label` not a number (`INVALID_FORMAT`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14) or with a character that cannot be stored (`INVALID_FORMAT`), or a parameter this list does not take (`UNKNOWN_PARAMETER`, S3-AC-07). */
+            /** @description `INVALID_INPUT`: `page` or `size` out of range (`OUT_OF_RANGE`), unknown `status`, `assignee`, `sla`, or `sort` (`UNKNOWN_VALUE`), `reporter` or a `label` not a number (`INVALID_FORMAT`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14) or with a character that cannot be stored (`INVALID_FORMAT`), or a parameter this list does not take (`UNKNOWN_PARAMETER`, S3-AC-07). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -7827,6 +7935,104 @@ export interface operations {
             };
             /** @description `NOT_FOUND`: no such account, the caller cannot see it, or it has no photo. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getSlaPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The policy. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlaPolicy"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, agents too (S8A-AC-05). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateSlaPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeSlaPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description The policy as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlaPolicy"];
+                };
+            };
+            /** @description `INVALID_INPUT`, nothing changed (S8A-AC-04); `fields` lists all, named with the place in the list, for example `targets[2].resolutionMinutes`: a goal out of 1 to 525,600 (`targets[i].firstResponseMinutes` or `targets[i].resolutionMinutes`, `OUT_OF_RANGE`); a resolution goal shorter than the first response goal (`targets[i].resolutionMinutes`, `OUT_OF_RANGE`); priorities not the four, one twice, or one unknown (`targets`, `UNKNOWN_VALUE`); weekdays not the seven, one twice, or one unknown (`hours`, `UNKNOWN_VALUE`); only one of `opens` and `closes` (the empty one, `hours[i].opens` or `hours[i].closes`, `REQUIRED`); a time not `HH:MM` in whole minutes, or `24:00` in `opens` (`hours[i].opens` or `hours[i].closes`, `INVALID_FORMAT`); `closes` not later than `opens` (`hours[i].closes`, `OUT_OF_RANGE`); over 500 holidays (`holidays`, `TOO_MANY`); a day twice (`holidays[i]`, the later one, `UNKNOWN_VALUE`); `version` missing (`version`, `REQUIRED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, agents too (S8A-AC-05). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `VERSION_CONFLICT`: `version` is not the policy's current one, for example because another admin saved first; nothing changed. Read the policy again (S8A-AC-03). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

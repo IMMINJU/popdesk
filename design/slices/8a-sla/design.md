@@ -98,7 +98,7 @@ create index issue_sla_running_idx on issue (sla_version)
 |---|---|---|
 | 등록 | `IssueService.file` 330줄의 `issues.insert` 358줄(고객 등록과 대리 등록 모두) | 정책이 켜져 있으면 대상, 둘 다 `resume(올라온 시각)` |
 | 첫 응답 | `CommentService` 132-133줄 → `updateFirstResponse` | 첫 응답 `stop`(`RESOLVED` 문의에 단 첫 댓글은 이미 멈춰 아무것도 하지 않음) |
-| 해결·종료 | `IssueService.move` 434줄 → `updateStatus` | 열린 상태에서 갈 때 해결 `stop`, 첫 응답 `stop`(5절 4). `RESOLVED`→`CLOSED`는 아무것도 하지 않음 |
+| 해결·종료 | `IssueService.move` 434줄 → `updateStatus`. 부르는 곳은 상담 쪽 `changeStatus` 371줄, 고객의 `close` 394줄(열린 어느 상태에서든 `CLOSED`), `reopen` 410줄. `move`가 조건부 UPDATE에 세 번 지면 `lockByKey`로 잠그고 다시 한다(92줄, 459-460줄): SLA 잠금이 이 길과 겹치지 않게 | 열린 상태에서 갈 때 해결 `stop`, 첫 응답 `stop`(5절 4). `RESOLVED`→`CLOSED`는 아무것도 하지 않음 |
 | 열린 상태로 | `IssueService.reopen` 409줄(`RECEIVED`로), `move`의 `RESOLVED`→`IN_PROGRESS` [소스: `IssueStatus` 24줄] | 해결 `resume` |
 | 자동 종료 | `IssueRepository.updateClosedAutomatically` 619줄 | 바꿀 것 없음(`RESOLVED`에서 이미 멈춤) |
 | 우선순위 | `IssueService.edit` 476-533줄(고객도) | 돌고 있는 시계의 기한을 새 목표로 |
@@ -122,6 +122,7 @@ create index issue_sla_running_idx on issue (sla_version)
 | `PUT /api/console/sla-policy` | 관리자 | 본문 `SlaPolicyChange`(`version`, `targets`, `hours`, `holidays`), 답 `SlaPolicy` |
 | `GET /api/console/issues` | 상담 쪽 | 매개변수 `sla`(`warning`·`breached`), `sort`에 `slaDue` |
 
+- 계약 탭이 바꾼 이름(2026-10-16): 요청 타입은 `ChangeSlaPolicyRequest`(`OpenApiConfig`는 `Request`로 끝나는 타입만 요청으로 본다), `weekday`는 `MONDAY`~`SUNDAY`, `changedBy`는 있는 `Person`. `SlaTarget`, `SlaHours`는 요청과 응답이 함께 쓴다. `timeZone`은 늘 글자다.
 - `SlaPolicy`: `version`, `targets`(우선순위 넷, `LOW`부터: `priority`, `firstResponseMinutes`, `resolutionMinutes`), `hours`(요일 일곱, 월요일부터: `weekday`, `opens`, `closes`, `"HH:MM"`, 업무 시간이 없으면 둘 다 `null`, `closes`는 `"24:00"`까지), `holidays`(날짜, 오름차순), `timeZone`(버전 1의 첫 회차 전에는 앱의 시간대), `changedAt`, `changedBy`(`{id, name}`, 시스템이면 `null`).
 - 콘솔 `Issue`와 `IssueSummary`에 `sla`(`IssueSla | null`): `firstResponse`, `resolution`(`SlaGoal`: `state`, `dueAt`, `remainingMinutes`). 확정 `NONE`은 `state: null`이다.
 - 감사: 동작 `SLA_POLICY_CHANGED`, 대상 꼴 `{type: "SLA_POLICY", version}`(새 버전). `changes`는 `targets`, `hours`, `holidays` 가운데 바뀐 것의 앞뒤(각각 위 계약의 배열 꼴).
@@ -143,6 +144,8 @@ create index issue_sla_running_idx on issue (sla_version)
 | 쉬는 날이 500개를 넘음 | `holidays` | `TOO_MANY` |
 | 같은 날짜가 둘 | `holidays[i]`(뒤의 것) | `UNKNOWN_VALUE` |
 | `version` 없음 | `version` | `REQUIRED` |
+| `targets`, `hours`, `holidays`가 없거나 `null` | 그 칸 | `REQUIRED` |
+| 날짜나 숫자의 꼴이 틀림(`"2026-13-01"`, 목표에 글자) | 배열 칸 이름(`holidays`, `targets`, 있는 예외 처리가 첫 칸 이름을 쓴다) | `INVALID_FORMAT` |
 
 ## 6. 웹
 
