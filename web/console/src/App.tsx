@@ -16,6 +16,7 @@ import { C1Login } from './screens/C1Login';
 import { C2InviteAccept } from './screens/C2InviteAccept';
 import { C3IssueList } from './screens/C3IssueList';
 import { C4IssueDetail } from './screens/C4IssueDetail';
+import { C5Stats } from './screens/C5Stats';
 import { C6MyInfo } from './screens/C6MyInfo';
 import { C7Inbox } from './screens/C7Inbox';
 import { C8CompanyList } from './screens/C8CompanyList';
@@ -30,6 +31,7 @@ import { C9CompanyDetail } from './screens/C9CompanyDetail';
 // Slice 4 adds C-7 (every role).
 // Slice 6b adds C-15 (every role).
 // Slice 7a adds C-11 (admin only).
+// Slice 7b adds C-5 (every role).
 const routes: RouteObject[] = [
   { index: true, element: <Navigate to={MY_ISSUES_HREF} replace /> },
   { path: '/login', element: <C1Login /> },
@@ -43,6 +45,7 @@ const routes: RouteObject[] = [
       { path: '/issues/new', element: <C19IssueCreate /> },
       { path: '/issues/:issueKey', element: <C4IssueDetail /> },
       { path: '/tasks', element: <C15MyTasks /> },
+      { path: '/stats', element: <C5Stats /> },
       { path: '/me', element: <C6MyInfo /> },
       { path: '/inbox', element: <C7Inbox /> },
       { path: '/companies', element: <AdminOnly><C8CompanyList /></AdminOnly> },

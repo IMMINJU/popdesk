@@ -56,6 +56,8 @@ function sentence(n: Notification): string {
       return t('inbox.webhookStalled');
     case 'AUDIT_FORWARD_STALLED':
       return t('inbox.auditForwardStalled');
+    case 'CLEANUP_STALLED':
+      return t('inbox.cleanupStalled');
     default:
       return t('inbox.other');
   }
@@ -79,6 +81,7 @@ function hrefOf(n: Notification): string | undefined {
     case 'MAIL_STALLED':
     case 'WEBHOOK_STALLED':
     case 'AUDIT_FORWARD_STALLED':
+    case 'CLEANUP_STALLED':
       return '/system';
     default:
       return undefined;

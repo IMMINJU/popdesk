@@ -153,6 +153,7 @@ export const ko = {
   'inbox.mailStalled': '메일 보내기가 한 시간 넘게 실패하고 있습니다',
   'inbox.webhookStalled': '웹훅 보내기가 한 시간 넘게 실패하고 있습니다',
   'inbox.auditForwardStalled': '감사 바깥 사본 보내기가 한 시간 넘게 실패하고 있습니다',
+  'inbox.cleanupStalled': '정리 작업이 하루 넘게 돌지 않았습니다',
   'inbox.other': '새 알림이 있습니다',
   // The portal's sentences: whoever did it is "지원팀", never a name (S4-AC-68).
   'inbox.portal.staffComment': '지원팀이 답변했습니다',
