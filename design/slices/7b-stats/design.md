@@ -1,7 +1,7 @@
 # 7b 묶음 설계
 
 > 수용 기준은 같은 폴더 `acceptance.md`, 사고와 막는 것은 `premortem.md`, 화면은 `screens.md`다.
-> 지금 코드에 대한 문장은 2026-10-15 `37a96a4`에서 읽은 것이다. 7a가 합쳐진 뒤 계약 단계에서 다시 읽는다.
+> 지금 코드에 대한 문장은 2026-10-15 `37a96a4`에서 읽었고, 2026-10-16 계약 탭이 `3310a57`(7a 합침)에서 다시 읽었다(맞지 않은 둘을 3절, 4절에 더함).
 > 상태: **메인이 정함, 사용자 확인 전**(2026-10-15).
 
 ## 1. 표
@@ -32,6 +32,7 @@ order by open desc, c.code
 ```
 
 - 보기 범위는 고객사로 건다(배정). 문의 쪽 조건은 휴지통뿐이다(관리자와 배정된 상담원은 그 고객사의 문의를 모두 본다, RULE-03). `IssueScope.SQL`을 쓰지 않는 까닭은 고객사가 문의 없이도 나와야 하기 때문이다(`left join`). 구현 탭이 같은 조건인지 `IssueScope`와 견줘 본다.
+- 쿼리는 `helpdesk`의 저장소(`…Repository`)에 두고 공개 메서드가 `Viewer`를 받는다(`ScopedReadRulesTest`, C-4 탭이 찾음, 2026-10-16).
 - 색인: 새로 더하지 않는다. `issue(company_id, created_at)`이 이미 있다(V2). 구현 탭이 재서 150 ms를 넘으면 멈추고 알린다(그때 메인이 마이그레이션을 정한다).
 
 ## 4. 정리 작업 멈춤 경보
@@ -39,6 +40,7 @@ order by open desc, c.code
 - `OpsAlertService.review()`에 정리 작업 검사를 더한다. `review`는 `Housekeeping`의 한 스레드에서, 같은 회차의 작업 다음에, 인스턴스 잠금을 쥔 동안만 돈다 [소스: `Housekeeping.round()`].
 - 작업 목록은 `CleanupJob` 빈들(`name()`, `interval()`)이고, 마지막 성공 시각은 `CleanupRecords.lastRun(name)`이다. `CleanupJobs.list()`는 쓰지 않는다(주기가 없고, 빈이 없어진 옛 기록 행도 돌려준다).
 - 기록이 없는 작업은 이 인스턴스가 잠금을 처음 쥔 회차의 시각(메모리)부터 잰다. 앱이 뜬 시각은 어디에도 남지 않는다.
+- `OpsAlertService`가 생성자로 `List<CleanupJob>`을 받으면 빈 순환이 생겨 앱이 뜨지 않는다(`OpsAlertService → TrashPurgeJob → TrashService → AttachmentService → OpsAlerts`). 작업 목록을 이미 가진 `Housekeeping`이 `review`에 작업의 이름과 주기를 넘기거나 그 쪽에서 판정한다. 잠금을 처음 쥔 회차의 시각은 `Housekeeping`의 새 메모리 칸이다(C-4 탭이 찾음, 2026-10-16 메인이 정함).
 - `지금 - 마지막 > 주기 + 24시간`인 작업이 하나라도 있으면 `raise(CLEANUP_STALLED)`, 없으면 `resolve`.
 
 ## 5. 웹
