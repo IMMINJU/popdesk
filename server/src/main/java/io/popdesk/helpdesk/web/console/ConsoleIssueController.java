@@ -52,7 +52,7 @@ class ConsoleIssueController {
 
     /** Query parameters of the list; any other name is 400, so a mistyped filter is not ignored (S3-AC-07). */
     private static final Set<String> LIST_PARAMETERS = Set.of("page", "size", "status", "companyCode", "assignee",
-            "reporter", "q", "label", "sort");
+            "reporter", "q", "label", "sla", "sort");
 
     private final IssueService issues;
     private final TaskService tasks;
@@ -74,7 +74,7 @@ class ConsoleIssueController {
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
                 person(row.createdBy()), IssueChannel.valueOf(row.channel()), person(row.assignee()),
-                row.assigneeUnavailable(), labels, row.dueDate(), issues.overdue(row), row.status().next(),
+                row.assigneeUnavailable(), labels, row.dueDate(), issues.overdue(row), null, row.status().next(),
                 issues.reopenable(row), utc(row.firstResponseAt()), utc(row.resolvedAt()), utc(row.closedAt()),
                 row.version(), utc(row.createdAt()), utc(row.updatedAt()));
     }
@@ -83,7 +83,7 @@ class ConsoleIssueController {
         return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
                 row.createdBy() != null, person(row.assignee()), row.assigneeUnavailable(), labels(labels, row.id()),
-                row.dueDate(), issues.overdue(row), utc(row.createdAt()), openTasks.getOrDefault(row.id(), 0L));
+                row.dueDate(), issues.overdue(row), null, utc(row.createdAt()), openTasks.getOrDefault(row.id(), 0L));
     }
 
     /** The labels of one issue, in the name order they were read in; empty without labels. */
@@ -139,7 +139,7 @@ class ConsoleIssueController {
                     + "all of them (S3-AC-06). `sort` changes the order and nothing else (S6A-AC-54).")
     @ApiResponse(responseCode = "200", description = "One page.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `page` or `size` out of range "
-            + "(`OUT_OF_RANGE`), unknown `status`, `assignee`, or `sort` (`UNKNOWN_VALUE`), `reporter` or a "
+            + "(`OUT_OF_RANGE`), unknown `status`, `assignee`, `sla`, or `sort` (`UNKNOWN_VALUE`), `reporter` or a "
             + "`label` not a number (`INVALID_FORMAT`), `q` empty or over 100 characters (`TOO_SHORT`, `TOO_LONG`, S3-AC-14) or with a "
             + "character that cannot be stored (`INVALID_FORMAT`), or a parameter this list does not take "
             + "(`UNKNOWN_PARAMETER`, S3-AC-07).")
@@ -166,10 +166,17 @@ class ConsoleIssueController {
                     + "company the caller cannot see, matches nothing, so with only such IDs the page is empty "
                     + "(S6A-AC-51, S6A-AC-52).")
                     @RequestParam(required = false) @Nullable List<Long> label,
+            @Parameter(description = "Only issues with a running SLA goal in this state: `breached` for a goal "
+                    + "past its due time, `warning` for one past 80% and not breached. An issue counts by the "
+                    + "worse of its two running goals, so `warning` leaves out an issue with a breached goal. "
+                    + "Issues not under SLA, and those whose clocks are stopped, match neither (S8A-AC-31).",
+                    schema = @Schema(type = "string", allowableValues = {"warning", "breached"}))
+                    @RequestParam(required = false) @Nullable String sla,
             @Parameter(description = "`createdAt` (the default): newest first. `dueDate`: earliest due date "
                     + "first, issues without one last, and issues with the same due date newest first "
-                    + "(S6A-AC-53). Works with `q`.", schema = @Schema(type = "string",
-                    allowableValues = {"createdAt", "dueDate"}, defaultValue = "createdAt"))
+                    + "(S6A-AC-53). `slaDue`: earliest running SLA due time first, of either goal; issues "
+                    + "without one last, newest first (S8A-AC-32). Works with `q`.", schema = @Schema(type = "string",
+                    allowableValues = {"createdAt", "dueDate", "slaDue"}, defaultValue = "createdAt"))
                     @RequestParam(required = false) @Nullable String sort,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size,
@@ -180,8 +187,11 @@ class ConsoleIssueController {
         if (!unknown.isEmpty()) {
             throw ApiException.invalid(unknown);
         }
+        // The contract of slice 8a takes `sla` and `sort=slaDue`; filtering and ordering by SLA come with its
+        // build, so until then they change nothing.
+        String order = "slaDue".equals(sort) ? null : sort;
         Paged<IssueRow> rows = issues.list(CurrentAccount.get().viewer(),
-                new IssueService.Filters(status, companyCode, assignee, reporter, q, label, sort), page, size);
+                new IssueService.Filters(status, companyCode, assignee, reporter, q, label, order), page, size);
         // The labels of the whole page in one read, not one for each issue (slice 6a design section 4).
         List<UUID> ids = rows.items().stream().map(IssueRow::id).toList();
         Map<UUID, List<IssueLabel>> labels = issues.labels(ids);

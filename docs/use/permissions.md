@@ -215,13 +215,29 @@ Staff see how many issues each customer company has: all of them, open (received
 - Archived and suspended companies are listed too; archived ones are marked. A company without issues shows zeros.
 - The company with the most open issues comes first, then by company code.
 
+## SLA
+
+Admins set one SLA policy for the whole installation: a first response goal and a resolution goal for each priority, business hours, and holidays (`SLA-1`, `SLA-2`). Staff see where each issue stands against it (`SLA-6`).
+
+| Action | Customer | Agent | Admin |
+|---|---|---|---|
+| Read and change the SLA policy | – | – (403) | Yes |
+| See the SLA goals of an issue, filter and sort the issue list by them | – | Issues they can see | All issues |
+
+- Agents get 403 for the policy, also for reading it. Customers never reach it: it is a console path, so a customer gets the same answer as for any other console path.
+- **Customers never see SLA.** Portal issues and the portal issue list have no SLA fields, the portal list does not take the SLA filter or order, and no customer email or notification mentions it.
+- The SLA filter and order work within the issues the caller can see: an agent never finds an issue of a company they are not assigned to through them (`RULE-03`).
+- Changing the policy needs the version the admin read; when another admin saved in between, the change is refused and nothing changes. Each change that makes a new version leaves an audit entry with what changed. A version popdesk makes because `POPDESK_TIMEZONE` changed leaves none, and the policy shows "System" as who changed it.
+- Only issues filed while at least one goal was set are under SLA (`SLA-8`). Changing the policy works out the due times of running clocks again within minutes; it does not change the issue's `version`, so nobody editing the issue gets a conflict from it.
+
 ## Other areas
 
 | Area | Customer | Agent | Admin |
 |---|---|---|---|
 | Notification inbox: list, unread count, mark read, mark all read | Own items, only for issues they can still see | Same | Same |
 | Statistics | – | Assigned companies | All companies |
-| SLA policy and business hours | – | – | Edit |
+| SLA policy and business hours | – | – | Read and edit |
+| SLA goals of issues | – | Issues they can see | All issues |
 | Branding | Read (public, also before sign-in) | Read | Edit |
 | Audit log: view, export, integrity check | – | – | Yes |
 | System status: channels, failed messages, cleanup jobs; send a failed message again; send a test email to oneself | – | – | Yes |
