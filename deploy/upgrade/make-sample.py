@@ -250,9 +250,11 @@ def fill(project):
             "hours": [{"weekday": d, "opens": None if d == "SUNDAY" else "09:00",
                        "closes": None if d == "SUNDAY" else closes} for d in weekdays],
             "holidays": holidays})
-    under_sla = [customer.json("POST", "/api/portal/issues",
-                               {"companyCode": "ACME", "title": title, "content": "Filed under SLA."},
-                               expect=201)["key"] for title in ("Monitor flickers", "Mouse is slow", "Filed in error")]
+    # Filed by the agent for the customer: the customer has used up the hour's ten portal filings above.
+    under_sla = [agent.json("POST", "/api/console/issues",
+                            {"companyCode": "ACME", "reporterId": customer_id, "channel": "PHONE", "title": title,
+                             "content": "Filed under SLA."},
+                            expect=201)["key"] for title in ("Monitor flickers", "Mouse is slow", "Filed in error")]
     for status in ("IN_PROGRESS", "RESOLVED"):
         agent.json("PUT", f"/api/console/issues/{under_sla[1]}/status", {"status": status})
     admin.request("DELETE", f"/api/console/issues/{under_sla[2]}", expect=204)
