@@ -76,9 +76,8 @@ describe('C-3 문의 목록', () => {
     for (const h of ['키', '제목', '고객사', '상태', '우선순위', '올린 사람', '담당자']) {
       expect(headers.some((x) => x.includes(h)), `열 머리 "${h}"`).toBe(true);
     }
-    for (const h of ['SLA']) {
-      expect(headers.some((x) => x.includes(h)), `첫 묶음에 없는 열 "${h}"`).toBe(false);
-    }
+    // 8a 묶음이 "SLA" 열을 맨 끝("올린 시각" 다음)에 더했다(8a screens.md 0절·2절).
+    expect(headers.at(-1), '맨 끝 열 "SLA"').toBe('SLA');
   });
 
   test('C-3 상태 말: 다섯 상태를 상담용 말(접수, 확인, 처리 중, 해결, 종료)로 그린다', async () => {

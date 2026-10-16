@@ -80,6 +80,7 @@ export function issue(over: Partial<Issue> = {}): Issue {
     labels: [],
     dueDate: null,
     overdue: false,
+    sla: null,
     ...over,
   };
 }
@@ -102,6 +103,7 @@ export function summary(over: Partial<IssueSummary> = {}): IssueSummary {
     labels: [],
     dueDate: null,
     overdue: false,
+    sla: null,
     openTaskCount: 0,
     ...over,
   };

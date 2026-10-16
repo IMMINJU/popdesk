@@ -55,12 +55,13 @@ export function issue(over: Partial<Issue> = {}): Issue {
     labels: [],
     dueDate: null,
     overdue: false,
+    sla: null,
     ...over,
   };
 }
 
 export function summary(from: Issue): IssueSummary {
-  const { key, title, status, priority, reporter, companyCode, companyName, createdAt, assignee, assigneeUnavailable, labels, dueDate, overdue } = from;
+  const { key, title, status, priority, reporter, companyCode, companyName, createdAt, assignee, assigneeUnavailable, labels, dueDate, overdue, sla } = from;
   return {
     key,
     title,
@@ -77,6 +78,7 @@ export function summary(from: Issue): IssueSummary {
     labels,
     dueDate,
     overdue,
+    sla,
     openTaskCount: 0,
   };
 }
