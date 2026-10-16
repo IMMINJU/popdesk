@@ -129,10 +129,12 @@ class SlaRecalculationTest extends SlaAppTest {
 
         SlaSteps.change(d.admin(), OFFICE);
         sla.advanceTo(sla.at(friday, LocalTime.of(23, 0)));
-        SlaSteps.change(d.admin(), ROUND_THE_CLOCK);
-        sla.recalculateNow(d.admin());
+        // The sessions of 15:00 ended at 23:00 (8 hours).
+        Desk again = sla.signInAgain(d);
+        SlaSteps.change(again.admin(), ROUND_THE_CLOCK);
+        sla.recalculateNow(again.admin());
 
-        assertGoal(goal(sla(d.agent(), issue.key()), RESOLUTION), "OK",
+        assertGoal(goal(sla(again.agent(), issue.key()), RESOLUTION), "OK",
                 sla.at(friday.plusDays(1), LocalTime.of(6, 0)), 419L, "resolution at 23:01");
     }
 
@@ -181,8 +183,10 @@ class SlaRecalculationTest extends SlaAppTest {
         assertGoal(goal(restored, FIRST_RESPONSE), "OK", restartedAt.plus(Duration.ofMinutes(30)), 30L,
                 "first response after the restore");
         assertGoal(goal(restored, RESOLUTION), "OK", resolutionDue, 570L, "resolution after the restore");
-        assertGoal(goal(sla(d.agent(), resolved.key()), RESOLUTION), "OK", resolutionDue, 570L,
-                "resolution after reopening");
+        JsonNode reopened = sla(d.agent(), resolved.key());
+        assertGoal(goal(reopened, FIRST_RESPONSE), "MET", createdAt(resolved).plus(Duration.ofMinutes(60)), null,
+                "first response after reopening, settled by the resolution");
+        assertGoal(goal(reopened, RESOLUTION), "OK", resolutionDue, 570L, "resolution after reopening");
         for (Issue issue : new Issue[] {resolved, trashed}) {
             assertThat(((Number) slaVersion(rows, issue)).intValue()).as("sla_version of %s running again",
                     issue.key()).isEqualTo(SlaSteps.version(office));

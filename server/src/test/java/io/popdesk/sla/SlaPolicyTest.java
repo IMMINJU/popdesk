@@ -111,7 +111,7 @@ class SlaPolicyTest extends SlaAppTest {
 
     @Test
     @DisplayName("S8A-AC-03 two changes sent with the same version: the first makes the next version, the second is "
-            + "409 VERSION_CONFLICT and changes nothing")
+            + "409 VERSION_CONFLICT and changes nothing, and so is the second one sending the values already saved")
     void staleVersionIsAConflict() {
         Session admin = fixtures.signInAdmin();
         Session otherAdmin = fixtures.admin(admin);
@@ -121,9 +121,11 @@ class SlaPolicyTest extends SlaAppTest {
 
         JsonNode saved = changeRequest(admin, first.body(read)).expect(200).json();
         ApiResponse late = changeRequest(otherAdmin, second.body(read)).send();
+        ApiResponse lateButSame = changeRequest(otherAdmin, first.body(read)).send();
 
         assertThat(version(saved)).as("version of the first change").isEqualTo(read + 1);
         assertRefused(late, 409, "VERSION_CONFLICT");
+        assertRefused(lateButSame, 409, "VERSION_CONFLICT");
         JsonNode now = policy(admin);
         assertThat(version(now)).as("version after the conflict").isEqualTo(read + 1);
         assertHolds(now, first, "the policy after the conflict");
@@ -169,6 +171,10 @@ class SlaPolicyTest extends SlaAppTest {
                     at(b, "hours", 2).put("opens", "24:00");
                     at(b, "hours", 2).put("closes", "24:00");
                 }, "hours[2].opens", "INVALID_FORMAT"),
+                refused("closes at 24:30", b -> at(b, "hours", 5).put("closes", "24:30"), "hours[5].closes",
+                        "INVALID_FORMAT"),
+                refused("closes at 25:00", b -> at(b, "hours", 5).put("closes", "25:00"), "hours[5].closes",
+                        "INVALID_FORMAT"),
                 refused("closes at opens", b -> at(b, "hours", 3).put("closes", "09:00"), "hours[3].closes",
                         "OUT_OF_RANGE"),
                 refused("closes before opens", b -> at(b, "hours", 4).put("closes", "08:00"), "hours[4].closes",
