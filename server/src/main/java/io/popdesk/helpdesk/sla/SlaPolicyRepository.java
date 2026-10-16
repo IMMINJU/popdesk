@@ -100,13 +100,10 @@ class SlaPolicyRepository {
 
     private Map<DayOfWeek, Span> hours(int version) {
         Map<DayOfWeek, Span> out = new EnumMap<>(DayOfWeek.class);
-        // As text: a time of 24:00:00 has no LocalTime.
-        jdbc.sql("select weekday, cast(opens as text) as opens, cast(closes as text) as closes from sla_hours "
-                        + "where version = ?")
+        jdbc.sql("select weekday, opens, closes from sla_hours where version = ?")
                 .param(version)
                 .query(rs -> {
-                    out.put(DayOfWeek.of(rs.getInt("weekday")),
-                            new Span(minutes(rs.getString("opens")), minutes(rs.getString("closes"))));
+                    out.put(DayOfWeek.of(rs.getInt("weekday")), new Span(rs.getInt("opens"), rs.getInt("closes")));
                 });
         return out;
     }
@@ -114,16 +111,6 @@ class SlaPolicyRepository {
     private List<LocalDate> holidays(int version) {
         return jdbc.sql("select day from sla_holiday where version = ? order by day").param(version)
                 .query((rs, n) -> rs.getObject("day", LocalDate.class)).list();
-    }
-
-    /** Minutes of the day of a time as the database writes it, {@code HH:MM:SS}. */
-    private static int minutes(String time) {
-        return Integer.parseInt(time.substring(0, 2)) * 60 + Integer.parseInt(time.substring(3, 5));
-    }
-
-    /** {@code HH:MM:00} of minutes of the day, {@code 24:00:00} for the end of the day. */
-    private static String time(int minutes) {
-        return String.format("%02d:%02d:00", minutes / 60, minutes % 60);
     }
 
     /**
@@ -146,8 +133,8 @@ class SlaPolicyRepository {
                     .update();
         }
         hours.forEach((day, span) -> jdbc.sql("insert into sla_hours (version, tenant_id, weekday, opens, closes) "
-                        + "values (?, 1, ?, cast(? as time), cast(? as time))")
-                .params(version, day.getValue(), time(span.opens()), time(span.closes()))
+                        + "values (?, 1, ?, ?, ?)")
+                .params(version, day.getValue(), span.opens(), span.closes())
                 .update());
         if (!holidays.isEmpty()) {
             jdbc.sql("insert into sla_holiday (version, tenant_id, day) "

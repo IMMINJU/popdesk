@@ -21,6 +21,7 @@
 | 8b | 정책 행 잠금은 문의 행 잠금(`lockByKey`)보다 먼저 한다. 쓰는 쪽은 `FOR KEY SHARE`를 얻은 뒤 지금 버전을 다시 읽어 그 버전으로 계산한다(정책 저장을 기다렸다면 새 버전). 다시 계산 작업의 시간대 견주기와 새 버전 넣기는 묶음과 다른 트랜잭션에서 한다. 시계 칸은 그 일의 UPDATE와 같은 한 UPDATE로 쓴다(지우기의 `updateDeleted`와 SLA를 두 번 나눠 쓰며 시계를 다시 읽지 않는다) | READ COMMITTED에서 `FOR KEY SHARE`로 기다린 SELECT는 처음 고른 옛 행을 돌려준다. 그대로 계산하면 저장 뒤의 쓰기가 옛 버전으로 남는다(`SlaRaceTest#writeMeetsAPolicyChange`). 지금 쓰기들은 맨 처음 `lockByKey`를 하므로[소스: `CommentService` 108줄, `TrashService` 104줄, `IssueService` 483줄] 정책 읽기를 그 뒤에 붙이면 차례가 거꾸로 되어 작업과 교착이 난다(C-7 서버 점검) |
 | 9 | 다시 계산은 `version`과 `updated_at`을 올리지 않는다. 계약의 `Issue.version` 설명에 그 예외를 적는다 | 작업이 버전을 올리면 그 사이 고치던 상담원이 409를 받는다 [소스: `IssueService.edit` 510줄대] |
 | 10 | SLA 테스트는 따로 띄운 앱(별도 컨텍스트, `@TestPropertySource`)에서 돈다 | 정책은 설치에 하나다. 같은 앱을 쓰는 다른 클래스가 정책을 켜면 S8A-AC-01·11을 볼 수 없고, 다른 클래스의 문의가 SLA 대상이 된다(앞 꼴: `due/KiritimatiZoneTest`) |
+| 11 | `sla_hours.opens`·`closes`는 하루 안의 분(smallint, 0~1440)이다. V18이 `time`으로 만들었으나 C-10의 local-ci에서 잠긴 `TimeTest#timeColumnsAreTimestamptz`(S0-AC-12, 업무 표에 시간대 없는 시각 칸 금지)가 걸려 V19로 바꿨다(2026-10-16 메인, crosscheck). V18은 합친 마이그레이션이라 고치지 않고, 잠긴 테스트도 고치지 않는다 | 계산(`Span`)이 이미 분으로 세서 `24:00`을 글로 오가던 읽기·쓰기가 없어진다. C-7 점검이 이 잠긴 테스트를 '맞출 테스트'에 넣지 못했다 |
 
 ## 1. 표 (V18)
 
@@ -45,8 +46,8 @@ create table sla_hours (
     version integer not null references sla_policy(version),
     tenant_id bigint not null,
     weekday smallint not null check (weekday between 1 and 7),   -- ISO, 1은 월요일
-    opens time not null,
-    closes time not null check (closes > opens),                  -- '24:00'은 자정까지
+    opens time not null,                                          -- V19에서 smallint 분(0~1440)으로 바꿈
+    closes time not null check (closes > opens),                  -- '24:00'은 자정까지, V19에서 1440
     primary key (version, weekday)
 );
 create table sla_holiday (
