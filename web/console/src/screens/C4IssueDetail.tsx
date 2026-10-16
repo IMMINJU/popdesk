@@ -7,6 +7,7 @@
 // Slice 6a (6a-labels screens.md 1절) adds the 라벨 and 마감일 lines after 담당자.
 // Slice 6b (6b-tasks screens.md 1절) adds the 작업 구역 between the attachments and the comments.
 // Slice 7a (7a-trash screens.md 1절) adds 문의 지우기 (admins) at the end of the action row.
+// Slice 8a (8a-sla screens.md 3절) adds the SLA part under the side values.
 import {
   Alert,
   AttachmentList,
@@ -64,6 +65,7 @@ import { useLiveNavigate } from '../app/navigate';
 import { t, tf } from '../app/locale';
 import { MentionPicker } from '../app/MentionPicker';
 import { useMentions } from '../app/mentions';
+import { IssueSlaPart } from '../app/IssueSlaPart';
 import { failureText, rateLimitedText, TEXT } from '../app/messages';
 import { photoUrl } from '../app/photos';
 import { call, type Failure, type Result } from '../app/result';
@@ -754,6 +756,7 @@ function IssueDetail(props: { issueKey: string }) {
             </div>
           )}
         </dl>
+        {issue.sla !== null && <IssueSlaPart sla={issue.sla} />}
         {issue.assigneeUnavailable && (
           <p className="pd-detail-note">
             <WarningIcon size={14} />
