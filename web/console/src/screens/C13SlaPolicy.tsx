@@ -30,6 +30,9 @@ const DAY_WORDS: Readonly<Record<Weekday, string>> = {
 
 const MAX_HOLIDAYS = 500;
 const MIDNIGHT = '24:00';
+/** The hours a workday starts with when it is first turned on. */
+const DEFAULT_OPENS = '09:00';
+const DEFAULT_CLOSES = '18:00';
 const NOTICE = '목표를 하나라도 정하면 그때부터 올라오는 문의에 기한이 붙습니다. 이미 있는 문의에는 붙지 않습니다.';
 const ALL_DAY = '업무일을 하나도 고르지 않으면 하루 24시간으로 셉니다.';
 const HOLIDAY_LIMIT = '쉬는 날은 500개까지입니다.';
@@ -78,7 +81,7 @@ function draftOf(policy: SlaPolicy): Draft {
     const work = h !== undefined && h.opens !== null && h.closes !== null;
     hours[d] = work
       ? { work, opens: h.opens ?? '', closes: h.closes === MIDNIGHT ? '' : (h.closes ?? ''), midnight: h.closes === MIDNIGHT }
-      : { work, opens: '09:00', closes: '18:00', midnight: false };
+      : { work, opens: DEFAULT_OPENS, closes: DEFAULT_CLOSES, midnight: false };
   }
   return { targets, hours, holidays: [...policy.holidays].sort() };
 }
@@ -390,7 +393,8 @@ export function C13SlaPolicy() {
                           label={`${DAY_WORDS[d]} 자정까지`}
                           checked={day.midnight}
                           onChange={(midnight) => {
-                            editDay(d, { midnight });
+                            // A day read as 24:00 has no end time of its own: turning 자정까지 off starts at 18:00, as a new workday does.
+                            editDay(d, midnight || day.closes !== '' ? { midnight } : { midnight, closes: DEFAULT_CLOSES });
                           }}
                         />
                       </div>

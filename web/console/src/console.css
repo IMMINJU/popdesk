@@ -1127,3 +1127,11 @@
   flex-wrap: nowrap;
   white-space: nowrap;
 }
+
+/* Slice 8a: the lines of C-13 and of the C-4 SLA part break between words, not inside one. */
+.pd-sla > p,
+.pd-sla-status p,
+.pd-sla .pd-section > p,
+.pd-sla-part ul {
+  word-break: keep-all;
+}
