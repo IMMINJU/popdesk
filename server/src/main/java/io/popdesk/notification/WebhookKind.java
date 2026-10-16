@@ -23,5 +23,11 @@ public enum WebhookKind {
     ISSUE_REOPENED,
 
     /** A person set, changed, or cleared the assignee of an issue (S3-AC-73). */
-    ASSIGNEE_CHANGED
+    ASSIGNEE_CHANGED,
+
+    /** The first response goal of an issue passed its due time; one message per goal (S8B-AC-18). */
+    SLA_RESPONSE_BREACHED,
+
+    /** The resolution goal of an issue passed its due time; one message per goal (S8B-AC-18). */
+    SLA_RESOLUTION_BREACHED
 }

@@ -23,10 +23,14 @@ public class OpsRepository {
      * {@code IssueInbox.Kind} name. {@code companyCode} is the company a membership request is about,
      * null for the other kinds. {@code issueId}, {@code commentId}, and {@code actorId} are those of an
      * item about an issue; all null for the items of admins that are about none. {@code linkedIssueId} is the
-     * linked issue that changed, of the items {@code LINKED_ISSUE_*} only (S6C-AC-31).
+     * linked issue that changed, of the items {@code LINKED_ISSUE_*} only (S6C-AC-31). {@code slaSummary} holds the
+     * counts of a {@code SLA_RECALCULATED} item, null for the other kinds (S8B-AC-15).
      */
     public record InboxRow(long id, String kind, String companyCode, UUID issueId, Long commentId, Long actorId,
-            Instant createdAt, Instant readAt, Long taskId, UUID linkedIssueId) {}
+            Instant createdAt, Instant readAt, Long taskId, UUID linkedIssueId, SlaCounts slaSummary) {}
+
+    /** The three counts of a {@code SLA_RECALCULATED} item (S8B-AC-14). */
+    public record SlaCounts(int becameBreached, int becameWarning, int released) {}
 
     /**
      * Which of an account's items a read is about: every kind or only {@code kinds}, and of the items
@@ -97,6 +101,14 @@ public class OpsRepository {
                 .params(accountId, kind, companyCode, Timestamp.from(now)).update();
     }
 
+    /** A {@code SLA_RECALCULATED} item: about no issue, with the counts of the summary (S8B-AC-14). */
+    void insertInboxSlaSummary(long accountId, String kind, int becameBreached, int becameWarning, int released,
+            Instant now) {
+        jdbc.sql("insert into notification (tenant_id, account_id, kind, sla_became_breached, sla_became_warning, "
+                        + "sla_released, created_at) values (1, ?, ?, ?, ?, ?, ?)")
+                .params(accountId, kind, becameBreached, becameWarning, released, Timestamp.from(now)).update();
+    }
+
     /** An item about an issue: the issue, the comment if it is about one, and who did it. */
     void insertInbox(long accountId, String kind, UUID issueId, Long commentId, long actorId, Instant now) {
         jdbc.sql("insert into notification (tenant_id, account_id, kind, issue_id, comment_id, actor_id, "
@@ -129,7 +141,8 @@ public class OpsRepository {
      */
     List<InboxRow> listInbox(Shown shown, long offset, int limit) {
         return jdbc.sql("select id, kind, company_code, issue_id, comment_id, actor_id, created_at, read_at, task_id, "
-                        + "linked_issue_id from notification where " + Shown.SQL
+                        + "linked_issue_id, sla_became_breached, sla_became_warning, sla_released from notification "
+                        + "where " + Shown.SQL
                         + " order by account_id desc, id desc offset ? limit ?")
                 .params(with(shown.params(), offset, limit)).query(OpsRepository::inbox).list();
     }
@@ -225,11 +238,13 @@ public class OpsRepository {
     }
 
     private static InboxRow inbox(ResultSet rs, int n) throws SQLException {
+        Integer breached = rs.getObject("sla_became_breached", Integer.class);
         return new InboxRow(rs.getLong("id"), rs.getString("kind"), rs.getString("company_code"),
                 rs.getObject("issue_id", UUID.class), rs.getObject("comment_id", Long.class),
                 rs.getObject("actor_id", Long.class), instant(rs.getTimestamp("created_at")),
                 instant(rs.getTimestamp("read_at")), rs.getObject("task_id", Long.class),
-                rs.getObject("linked_issue_id", UUID.class));
+                rs.getObject("linked_issue_id", UUID.class), breached == null ? null
+                        : new SlaCounts(breached, rs.getInt("sla_became_warning"), rs.getInt("sla_released")));
     }
 
     private static Object[] with(Object[] first, Object... more) {

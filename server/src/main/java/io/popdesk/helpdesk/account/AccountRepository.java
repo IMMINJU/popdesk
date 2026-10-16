@@ -6,8 +6,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -90,6 +94,45 @@ public class AccountRepository {
         return jdbc.sql("select " + ACCOUNT_COLUMNS + " from account a where a.id = ? or (a.role = ? and a.status = ?) "
                         + "order by a.id for no key update")
                 .params(id, Role.ADMIN.name(), AccountStatus.ACTIVE.name()).query(AccountRepository::account).list();
+    }
+
+    /** The {@code ACTIVE} admins, in ID order (S8B-AC-02). */
+    public List<Long> listActiveAdmins() {
+        return jdbc.sql("select a.id from account a where a.role = ? and a.status = ? order by a.id")
+                .params(Role.ADMIN.name(), AccountStatus.ACTIVE.name()).query(Long.class).list();
+    }
+
+    /**
+     * The {@code ACTIVE} agents assigned to each of these companies, in ID order; a company without one has no
+     * entry (S8B-AC-03). Agents only: no admin and no customer of the company.
+     */
+    public Map<Long, List<Long>> listActiveAgents(Collection<Long> companyIds) {
+        Map<Long, List<Long>> out = new HashMap<>();
+        if (companyIds.isEmpty()) {
+            return out;
+        }
+        jdbc.sql("select ca.company_id, a.id from company_agent ca join account a on a.id = ca.account_id "
+                        + "where ca.company_id = any(?) and a.role = ? and a.status = ? order by ca.company_id, a.id")
+                .params(companyIds.toArray(Long[]::new), Role.AGENT.name(), AccountStatus.ACTIVE.name())
+                .query(rs -> {
+                    out.computeIfAbsent(rs.getLong("company_id"), k -> new ArrayList<>()).add(rs.getLong("id"));
+                });
+        return out;
+    }
+
+    /** The role of each of these accounts that is {@code ACTIVE} staff; the others have no entry (S8B-AC-03). */
+    public Map<Long, Role> listActiveStaff(Collection<Long> accountIds) {
+        Map<Long, Role> out = new HashMap<>();
+        if (accountIds.isEmpty()) {
+            return out;
+        }
+        jdbc.sql("select a.id, a.role from account a where a.id = any(?) and a.status = ? and a.role in (?, ?)")
+                .params(accountIds.toArray(Long[]::new), AccountStatus.ACTIVE.name(), Role.ADMIN.name(),
+                        Role.AGENT.name())
+                .query(rs -> {
+                    out.put(rs.getLong("id"), Role.valueOf(rs.getString("role")));
+                });
+        return out;
     }
 
     /** A new {@code INVITED} account; empty when an account has this email, ignoring case (409). */

@@ -88,7 +88,8 @@ class ConsoleNotificationController {
                         : new NotificationTask(item.task().id(), item.task().title()),
                 item.linkedIssue() == null ? null
                         : new NotificationIssue(item.linkedIssue().key(), item.linkedIssue().title()),
-                null);
+                item.slaSummary() == null ? null : new SlaSummary(item.slaSummary().becameBreached(),
+                        item.slaSummary().becameWarning(), item.slaSummary().released()));
     }
 
     private static NotificationActor actor(Actor actor) {

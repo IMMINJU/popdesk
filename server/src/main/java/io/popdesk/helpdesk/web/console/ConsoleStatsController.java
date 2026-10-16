@@ -2,6 +2,7 @@ package io.popdesk.helpdesk.web.console;
 
 import io.popdesk.ApiException;
 import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -52,9 +53,14 @@ class ConsoleStatsController {
         if (!DAYS.contains(days)) {
             throw ApiException.invalid("days", "UNKNOWN_VALUE");
         }
-        return new CompanyStats(issues.companyStats(CurrentAccount.get().viewer()).stream()
+        return new CompanyStats(issues.companyStats(CurrentAccount.get().viewer(), days).stream()
                 .map(c -> new CompanyStat(c.code(), c.name(), c.status(), c.total(), c.open(), c.inProgress(),
-                        c.resolved(), c.closed(), null))
+                        c.resolved(), c.closed(), c.sla() == null ? null
+                                : new CompanySlaStat(goal(c.sla().firstResponse()), goal(c.sla().resolution()))))
                 .toList());
+    }
+
+    private static SlaGoalStat goal(IssueRepository.GoalCounts goal) {
+        return new SlaGoalStat(goal.medianMinutes(), goal.met(), goal.missed());
     }
 }

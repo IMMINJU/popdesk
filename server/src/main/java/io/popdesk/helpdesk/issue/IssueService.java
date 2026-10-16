@@ -28,6 +28,7 @@ import io.popdesk.helpdesk.sla.SlaWrite;
 import io.popdesk.notification.WebhookKind;
 import io.popdesk.notification.WebhookQueue;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -551,7 +552,7 @@ public class IssueService {
                 return issue;
             }
             IssueClocks clocks = priorityChanged && issue.sla() != null
-                    ? slaWrite.reprioritized(issue.sla(), priority) : null;
+                    ? slaWrite.reprioritized(issue.sla(), issue.priority(), priority, now) : null;
             issues.updateFields(issue.id(), title, content, priority, now, clocks);
             if (titleChanged) {
                 history.insertChanged(issue.id(), Field.TITLE, issue.title(), title, viewer.accountId(), now);
@@ -779,10 +780,14 @@ public class IssueService {
         return issue.reopenable(now());
     }
 
-    /** The issue counts of every company the viewer may see, counted now (STATS-1 to STATS-3). */
+    /**
+     * The issue counts of every company the viewer may see, counted now (STATS-1 to STATS-3), and while the SLA
+     * policy is on the SLA goals settled in the last {@code days} times 24 hours (S8B-AC-22, S8B-AC-23); with the
+     * policy off every company's {@code sla} is null.
+     */
     @Transactional(readOnly = true)
-    public List<IssueRepository.CompanyCounts> companyStats(Viewer viewer) {
-        return issues.countByCompany(viewer);
+    public List<IssueRepository.CompanyCounts> companyStats(Viewer viewer, int days) {
+        return issues.countByCompany(viewer, sla.on() ? now().minus(Duration.ofDays(days)) : null);
     }
 
     /** The issue with this key, if the viewer may see it; else 404 (COM-1). */

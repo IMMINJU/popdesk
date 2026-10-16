@@ -28,7 +28,9 @@ import org.springframework.stereotype.Component;
  * (MAIL-5, S0-AC-66), and drops the email when it is no longer to be sent (MAIL-4): the account is not
  * {@code ACTIVE} ({@code INVITED} for an invitation), or may no longer see the issue (S0-AC-69,
  * S4-AC-54), the comment it is about was deleted (S4-AC-55), a mention was taken out of the comment
- * (S4-AC-56), the task it is about was deleted or has another assignee (S6B-AC-34), or the recipient of a membership request is no admin any more. Without SMTP, and in a
+ * (S4-AC-56), the task it is about was deleted or has another assignee (S6B-AC-34), or the recipient of a membership request is no admin any more.
+ * An overdue SLA mail is checked as any mail about an issue: in the trash, not seen, or not {@code ACTIVE} drops it,
+ * and a goal that stopped meanwhile does not (S8B-AC-17). Without SMTP, and in a
  * sandbox without an address, it writes one log line, the address masked, in place of the email
  * (S0-AC-73, S4B-AC-03). All of that is decided for the account the email is for; where a sandbox sends
  * the email instead is {@link SmtpMail}'s business (S4B-AC-05).
@@ -130,6 +132,8 @@ class MailSender implements Sender {
                     address.origin(App.CONSOLE) + "/companies/" + company));
             case TASK_ASSIGNED -> Optional.of(MailText.taskAssigned(locale, issue, task,
                     issueLink + "#task-" + row.taskId()));
+            case SLA_RESPONSE_BREACHED -> Optional.of(MailText.slaBreached(locale, issue, true, issueLink));
+            case SLA_RESOLUTION_BREACHED -> Optional.of(MailText.slaBreached(locale, issue, false, issueLink));
         };
         if (message.isEmpty()) {
             return Attempt.dropped();

@@ -166,6 +166,36 @@ final class MailText {
     }
 
     /**
+     * A goal of the issue passed its SLA due time, to staff (S8B-AC-16): the key and the goal in the subject, then
+     * the key, the company code, the title, and the console link. Nothing the issue says and nothing of the
+     * customer.
+     *
+     * @param firstResponse the first response goal; else the resolution goal
+     */
+    static Message slaBreached(String locale, Issue issue, boolean firstResponse, String link) {
+        String title = oneLine(issue.title());
+        if (korean(locale)) {
+            String goal = firstResponse ? "첫 응답" : "해결";
+            return new Message("[" + issue.key() + "] SLA " + goal + " 기한 넘김: " + title,
+                    "문의의 " + goal + "이 SLA 기한을 넘겼습니다.\n\n"
+                            + "문의: " + issue.key() + "\n"
+                            + "고객사: " + oneLine(issue.companyCode()) + "\n"
+                            + "제목: " + title + "\n\n"
+                            + "콘솔에서 문의를 볼 수 있습니다.\n\n"
+                            + link + "\n");
+        }
+        return new Message("[" + issue.key() + "] SLA " + (firstResponse ? "first response" : "resolution")
+                        + " overdue: " + title,
+                (firstResponse ? "The first response to" : "The resolution of") + " an issue is past its SLA due "
+                        + "time.\n\n"
+                        + "Issue: " + issue.key() + "\n"
+                        + "Company: " + oneLine(issue.companyCode()) + "\n"
+                        + "Title: " + title + "\n\n"
+                        + "Read it in the console:\n\n"
+                        + link + "\n");
+    }
+
+    /**
      * A customer manager asked for an existing account to join a company, to an admin (S4-AC-51). Only
      * the company's code: not the name and the email the manager typed, and not whose account it is.
      */

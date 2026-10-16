@@ -43,5 +43,11 @@ public enum MailKind {
     MEMBERSHIP_REQUESTED,
 
     /** The recipient became the assignee of a task (S6B-AC-33, S6B-AC-34). */
-    TASK_ASSIGNED
+    TASK_ASSIGNED,
+
+    /** The first response goal of an issue passed its due time, to staff (S8B-AC-02, S8B-AC-16). */
+    SLA_RESPONSE_BREACHED,
+
+    /** The resolution goal of an issue passed its due time, to staff (S8B-AC-02, S8B-AC-16). */
+    SLA_RESOLUTION_BREACHED
 }
