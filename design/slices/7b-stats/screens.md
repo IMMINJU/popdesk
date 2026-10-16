@@ -30,4 +30,4 @@
 
 | 종류 | 문장 | 누르면 |
 |---|---|---|
-| `CLEANUP_STALLED` | "정리 작업이 하루 넘게 돌지 않았습니다" | `/system` (C-18, 있는 운영 경보와 같다) |
+| `CLEANUP_STALLED` | "정리 작업이 하루 넘게 돌지 않았습니다"(영어 "A cleanup job has not run for over a day", 구현이 정함) | `/system` (C-18, 있는 운영 경보와 같다) |

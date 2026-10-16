@@ -2,8 +2,3 @@
 # 구현 탭이 이 테스트들을 통과시키고 병합되면 메인이 그 줄을 지운다. 묶음이 끝나면 파일이 빈다.
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
-web **/C5Stats.7b.test.tsx
-web **/C7Inbox.7b.test.tsx
-web **/layout.inbox.test.tsx
-web **/adminOnly.1b.test.tsx
-web ../../../console/**/Screens7b.overflow.stories.tsx
