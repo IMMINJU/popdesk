@@ -1316,7 +1316,7 @@ export interface paths {
         };
         /**
          * Issue counts per company
-         * @description One item for each company the caller can see: every company for admins, assigned ones for agents (S7B-AC-03). A company the caller is not assigned to has no item, and its issues are in no count. Companies of every status are listed, archived ones too, and a company without issues has an item with zeros (S7B-AC-01). Issues in the trash and purged ones are not counted; private issues are (S7B-AC-02). Ordered by `open`, the most first, then by `companyCode` (S7B-AC-04). Not paged: every item at once.
+         * @description One item for each company the caller can see: every company for admins, assigned ones for agents (S7B-AC-03). A company the caller is not assigned to has no item, and its issues are in no count. Companies of every status are listed, archived ones too, and a company without issues has an item with zeros (S7B-AC-01). Issues in the trash and purged ones are not counted; private issues are (S7B-AC-02). Ordered by `open`, the most first, then by `companyCode` (S7B-AC-04). Not paged: every item at once. While the SLA policy is on, each item has the SLA goals of its issues over the last `days` (S8B-AC-22).
          */
         get: operations["getCompanyStats"];
         put?: never;
@@ -1884,6 +1884,10 @@ export interface components {
              */
             photoUpdatedAt: string | null;
         };
+        CompanySlaStat: {
+            firstResponse: components["schemas"]["SlaGoalStat"];
+            resolution: components["schemas"]["SlaGoalStat"];
+        };
         CompanyStat: {
             /**
              * Format: int64
@@ -1912,6 +1916,8 @@ export interface components {
              * @description Issues that are `RESOLVED`.
              */
             resolved: number;
+            /** @description The SLA goals over the chosen `days`, counted from the same issues the caller can see. Null while the SLA policy is off; in one answer every item is null or none is (S8B-AC-22). The counts above do not depend on `days` (S8B-AC-21). */
+            sla: components["schemas"]["CompanySlaStat"] | null;
             /**
              * Format: int64
              * @description Every issue, in any status; the sum of the four counts below.
@@ -2338,10 +2344,10 @@ export interface components {
             createdAt: string;
             /** Format: int64 */
             id: number;
-            /** @description The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, `CLEANUP_STALLED`, and `MEMBERSHIP_REQUESTED` (S4-AC-40). */
+            /** @description The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, `CLEANUP_STALLED`, `MEMBERSHIP_REQUESTED` (S4-AC-40), and `SLA_RECALCULATED` (S8B-AC-15). */
             issue: components["schemas"]["NotificationIssue"] | null;
             /** @enum {string} */
-            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MAIL_STALLED" | "WEBHOOK_STALLED" | "AUDIT_FORWARD_STALLED" | "CLEANUP_STALLED" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED" | "TASK_ASSIGNED" | "LINKED_ISSUE_RESOLVED" | "LINKED_ISSUE_CLOSED";
+            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MAIL_STALLED" | "WEBHOOK_STALLED" | "AUDIT_FORWARD_STALLED" | "CLEANUP_STALLED" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED" | "TASK_ASSIGNED" | "LINKED_ISSUE_RESOLVED" | "LINKED_ISSUE_CLOSED" | "SLA_RESPONSE_WARNING" | "SLA_RESPONSE_BREACHED" | "SLA_RESOLUTION_WARNING" | "SLA_RESOLUTION_BREACHED" | "SLA_RECALCULATED";
             /** @description For `LINKED_ISSUE_RESOLVED` and `LINKED_ISSUE_CLOSED`: the linked issue that was resolved or closed, with its key and title as they are now; `issue` is the caller's own issue it is linked to (S6C-AC-31). Such an item is listed only while the caller can see both issues (S6C-AC-33). Null for the other kinds (S6C-AC-34). */
             linkedIssue: components["schemas"]["NotificationIssue"] | null;
             /**
@@ -2349,6 +2355,8 @@ export interface components {
              * @description When the caller marked it read.
              */
             readAt: string | null;
+            /** @description For `SLA_RECALCULATED`: how many issues working the SLA due times out again made overdue, due soon, or no longer either, counted as changes to an issue (S8B-AC-12). Null for the other kinds (S8B-AC-15). */
+            slaSummary: components["schemas"]["SlaSummary"] | null;
             /** @description The task a `TASK_ASSIGNED` item is about, with its title as it is now; null for the other kinds (S6B-AC-33). Deleting the task deletes its items (S6B-AC-36). */
             task: components["schemas"]["NotificationTask"] | null;
         };
@@ -2735,6 +2743,23 @@ export interface components {
              */
             state: "OK" | "WARNING" | "BREACHED" | "MET" | "MISSED" | null;
         };
+        SlaGoalStat: {
+            /**
+             * Format: int64
+             * @description The lower median of the business time the counted issues took, in minutes rounded down: of an even number of values, the smaller of the middle two. For first response only issues stopped by a response count here; issues resolved or closed without one count only in `met` and `missed`. Null when there is nothing to take the median of (S8B-AC-24).
+             */
+            medianMinutes: number | null;
+            /**
+             * Format: int64
+             * @description Issues whose goal stopped as `MET`.
+             */
+            met: number;
+            /**
+             * Format: int64
+             * @description Issues whose goal stopped as `MISSED`. Issues without a goal (`NONE`) are in neither count.
+             */
+            missed: number;
+        };
         SlaHours: {
             /** @description `HH:MM`, later than `opens`; `24:00` is the end of the day. A span never goes past midnight. Null, together with `opens`, on a day without business hours. */
             closes: string | null;
@@ -2764,6 +2789,23 @@ export interface components {
              * @description Goes up by 1 when the goals, the business hours, the holidays, or the time zone change (SLA-1). Send it back with `updateSlaPolicy`.
              */
             version: number;
+        };
+        SlaSummary: {
+            /**
+             * Format: int64
+             * @description Issues that became `BREACHED`; 0 or more.
+             */
+            becameBreached: number;
+            /**
+             * Format: int64
+             * @description Issues that became `WARNING` from `OK` or from having no goal; 0 or more.
+             */
+            becameWarning: number;
+            /**
+             * Format: int64
+             * @description Issues that moved back from `BREACHED` or `WARNING`, losing their goal included; 0 or more.
+             */
+            released: number;
         };
         SlaTarget: {
             /**
@@ -8044,7 +8086,10 @@ export interface operations {
     };
     getCompanyStats: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The SLA columns count goals that stopped within the last `days` × 24 hours: 7, 30, or 90 (S8B-AC-21, S8B-AC-23). The issue counts are as they are now whatever it is. */
+                days?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -8058,6 +8103,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompanyStats"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `days` is not 7, 30, or 90 (`UNKNOWN_VALUE`), or not a number (`INVALID_FORMAT`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             /** @description `UNAUTHENTICATED`. */
