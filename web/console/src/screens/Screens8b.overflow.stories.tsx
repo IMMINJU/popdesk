@@ -45,7 +45,7 @@ const STATS_ON = data(
     stats: [
       slaStat({ firstResponse: { medianMinutes: 4260, met: 249, missed: 1 }, resolution: { medianMinutes: 4260, met: 123456, missed: 98765 } }, { companyName: LONG_COMPANY }),
       slaStat(
-        { firstResponse: { medianMinutes: null, met: 0, missed: 0 }, resolution: { medianMinutes: null, met: 2, missed: 1 } },
+        { firstResponse: { medianMinutes: null, met: 2, missed: 1 }, resolution: { medianMinutes: null, met: 0, missed: 0 } },
         { companyCode: 'OLD', companyName: `${LONG_COMPANY} 옛 법인`, companyStatus: 'ARCHIVED', open: 0, inProgress: 0, closed: 31 },
       ),
       slaStat({ firstResponse: { medianMinutes: 95, met: 25, missed: 0 }, resolution: { medianMinutes: 525599, met: 7, missed: 3 } }, { companyCode: 'BETA', companyName: '베타상사', open: 123456 }),

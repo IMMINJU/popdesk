@@ -29,8 +29,8 @@ import {
 
 /** 2일 23시간 = 4,260분. 지킴 249/250은 99.6%라 내리면 99%다. */
 const ACME_30 = slaStat({ firstResponse: goal(4260, 249, 1), resolution: goal(95, 25, 0) });
-/** 셀 것이 없는 첫 응답("없음")과, 응답 없이 닫힌 것만 있어 중앙값만 없는 해결. */
-const BETA_30 = slaStat({ firstResponse: goal(null, 0, 0), resolution: goal(null, 2, 1) }, { companyCode: 'BETA', companyName: '베타상사', open: 2, inProgress: 0, resolved: 1, closed: 0 });
+/** 응답 없이 닫힌 것만 있어 중앙값만 없는 첫 응답(S8B-AC-24)과, 셀 것이 없는 해결("없음"). */
+const BETA_30 = slaStat({ firstResponse: goal(null, 2, 1), resolution: goal(null, 0, 0) }, { companyCode: 'BETA', companyName: '베타상사', open: 2, inProgress: 0, resolved: 1, closed: 0 });
 const ACME_7 = slaStat({ firstResponse: goal(480, 3, 1), resolution: goal(1500, 1, 1) });
 const ACME_90 = slaStat({ firstResponse: goal(20, 9, 0), resolution: goal(2880, 7, 3) });
 
@@ -92,8 +92,8 @@ describe('C-5 통계의 SLA 칸 (8b 묶음)', () => {
     expect(linesOf(slaCellOf(acme, '첫 응답 SLA')), 'ACME 첫 응답').toEqual(['중앙값 2일 23시간', '지킴 99% (249/250)']);
     expect(linesOf(slaCellOf(acme, '해결 SLA')), 'ACME 해결').toEqual(['중앙값 1시간 35분', '지킴 100% (25/25)']);
     const beta = await statsRow('BETA');
-    expect(linesOf(slaCellOf(beta, '첫 응답 SLA')), '셀 것이 없음').toEqual(['없음']);
-    expect(linesOf(slaCellOf(beta, '해결 SLA')), '중앙값만 없음, 2/3은 66%').toEqual(['중앙값 없음', '지킴 66% (2/3)']);
+    expect(linesOf(slaCellOf(beta, '첫 응답 SLA')), '중앙값만 없음, 2/3은 66%').toEqual(['중앙값 없음', '지킴 66% (2/3)']);
+    expect(linesOf(slaCellOf(beta, '해결 SLA')), '셀 것이 없음').toEqual(['없음']);
     expect(text(slaCellOf(acme, '종료')), '있는 수는 그대로').toBe('4');
 
     const shown = notices();

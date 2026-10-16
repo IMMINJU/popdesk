@@ -644,7 +644,7 @@ describe('계약 검증기 checkResponse: 8b 묶음 웹 테스트의 견본', ()
     const stats = {
       items: [
         stat({ firstResponse: { medianMinutes: 4260, met: 249, missed: 1 }, resolution: { medianMinutes: 95, met: 23, missed: 2 } }),
-        stat({ firstResponse: { medianMinutes: null, met: 0, missed: 0 }, resolution: { medianMinutes: null, met: 0, missed: 3 } }),
+        stat({ firstResponse: { medianMinutes: null, met: 0, missed: 3 }, resolution: { medianMinutes: null, met: 0, missed: 0 } }),
       ],
     };
 
