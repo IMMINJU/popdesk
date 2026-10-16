@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.issue.IssueService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/console/stats")
 class ConsoleStatsController {
 
+    private final IssueService issues;
+
+    ConsoleStatsController(IssueService issues) {
+        this.issues = issues;
+    }
+
     @Operation(operationId = "getCompanyStats", summary = "Issue counts per company",
             description = "One item for each company the caller can see: every company for admins, assigned ones "
                     + "for agents (S7B-AC-03). A company the caller is not assigned to has no item, and its issues "
@@ -29,6 +36,9 @@ class ConsoleStatsController {
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @GetMapping
     CompanyStats getCompanyStats() {
-        throw new NotImplementedException();
+        return new CompanyStats(issues.companyStats(CurrentAccount.get().viewer()).stream()
+                .map(c -> new CompanyStat(c.code(), c.name(), c.status(), c.total(), c.open(), c.inProgress(),
+                        c.resolved(), c.closed()))
+                .toList());
     }
 }
