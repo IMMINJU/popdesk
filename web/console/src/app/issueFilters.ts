@@ -3,6 +3,7 @@
 // `reporter`), so a reload or 뒤로 가기 shows the same list.
 // Slice 6a adds `label` (given once for each label, only with `companyCode`) and `sort`. The sort
 // is not a filter: it does not make a list "filtered", and clearing the filters keeps it.
+// Slice 8a adds the filter `sla` (`warning`, `breached`) and the sort `slaDue`.
 import type { Schemas } from '../api';
 
 export type IssueStatus = Schemas['Issue']['status'];
@@ -23,11 +24,15 @@ export interface IssueFilters {
   reporter: number | null;
   /** Label IDs of the chosen company. Empty without `companyCode`: a label belongs to one company. */
   label: number[];
+  /** `warning` or `breached`: the worse running SLA goal of the issue. Empty: any. */
+  sla: SlaFilter;
 }
 
-export const NO_FILTERS: IssueFilters = { q: '', status: [], companyCode: '', assignee: '', reporter: null, label: [] };
+export type SlaFilter = '' | 'warning' | 'breached';
 
-export type IssueSort = 'createdAt' | 'dueDate';
+export const NO_FILTERS: IssueFilters = { q: '', status: [], companyCode: '', assignee: '', reporter: null, label: [], sla: '' };
+
+export type IssueSort = 'createdAt' | 'dueDate' | 'slaDue';
 export const DEFAULT_SORT: IssueSort = 'createdAt';
 
 const ACCOUNT_ID = /^[1-9]\d{0,14}$/;
@@ -44,6 +49,7 @@ export function readIssueFilters(params: URLSearchParams): IssueFilters {
   const reporter = params.get('reporter') ?? '';
   const companyCode = (params.get('companyCode') ?? '').trim();
   const labels = companyCode === '' ? [] : params.getAll('label').filter((l) => ACCOUNT_ID.test(l)).map(Number);
+  const sla = params.get('sla');
   return {
     q: (params.get('q') ?? '').trim().slice(0, 100),
     status: ISSUE_STATUSES.filter((s) => given.includes(s)),
@@ -51,12 +57,14 @@ export function readIssueFilters(params: URLSearchParams): IssueFilters {
     assignee: assignee === 'me' || assignee === 'none' || assignee === 'unavailable' || isPerson(assignee) ? assignee : '',
     reporter: ACCOUNT_ID.test(reporter) ? Number(reporter) : null,
     label: [...new Set(labels)],
+    sla: sla === 'warning' || sla === 'breached' ? sla : '',
   };
 }
 
 /** The sort of an address; an unknown value is the default. */
 export function readIssueSort(params: URLSearchParams): IssueSort {
-  return params.get('sort') === 'dueDate' ? 'dueDate' : DEFAULT_SORT;
+  const sort = params.get('sort');
+  return sort === 'dueDate' || sort === 'slaDue' ? sort : DEFAULT_SORT;
 }
 
 export function writeIssueFilters(filters: IssueFilters, sort: IssueSort = DEFAULT_SORT): URLSearchParams {
@@ -67,6 +75,7 @@ export function writeIssueFilters(filters: IssueFilters, sort: IssueSort = DEFAU
   if (filters.assignee !== '') params.set('assignee', filters.assignee);
   for (const status of filters.status) params.append('status', status);
   if (filters.reporter !== null) params.set('reporter', String(filters.reporter));
+  if (filters.sla !== '') params.set('sla', filters.sla);
   if (sort !== DEFAULT_SORT) params.set('sort', sort);
   return params;
 }
