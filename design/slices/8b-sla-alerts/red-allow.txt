@@ -1,3 +1,10 @@
 # 구현 전에 통과해도 되는 테스트. `<테스트 이름> | <까닭>`
 src/screens/C5Stats.8b.test.tsx.C-5 통계의 SLA 칸 (8b 묶음) > S8B-AC-26 C-5 정책이 꺼져 있으면(주소에 기간 없음) 7b 화면 그대로다: 열 여섯, 기간 고르기와 새 안내 줄이 없다 | 정책 꺼짐은 7b 화면 그대로라 지금 화면이 이미 그렇다(바뀌지 않음을 고정하는 테스트)
 src/screens/C5Stats.8b.test.tsx.C-5 통계의 SLA 칸 (8b 묶음) > S8B-AC-26 C-5 정책이 꺼져 있으면(주소의 days=7을 무시) 7b 화면 그대로다: 열 여섯, 기간 고르기와 새 안내 줄이 없다 | 지금 화면은 주소의 days를 읽지 않으므로 이미 무시한다(바뀌지 않음을 고정하는 테스트)
+io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[1] | C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[2] | C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[3] | C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[4] | C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[5] | C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[6] | C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[7] | C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
