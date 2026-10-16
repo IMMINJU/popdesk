@@ -40,9 +40,10 @@ function data(items: StatsScenario['items']): Data {
 }
 
 const NAMES = ['에이크미', '베타상사', '감마물산', '델타테크', '엡실론', '제타소프트', '에타로지스', '세타유통', '이오타랩', '카파금융', '람다식품', '뮤헬스'];
+// 계약 차례(열림이 많은 순)로 두되 코드는 거꾸로다: 열림이 가장 많은 곳이 C12다.
 const MANY = NAMES.map((name, i) =>
   stat({
-    companyCode: `C${String(i + 1).padStart(2, '0')}`,
+    companyCode: `C${String(NAMES.length - i).padStart(2, '0')}`,
     companyName: name,
     companyStatus: i === 10 ? 'ARCHIVED' : i === 11 ? 'SUSPENDED' : 'ACTIVE',
     open: 12 - i,

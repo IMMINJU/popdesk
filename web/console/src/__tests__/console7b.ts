@@ -43,6 +43,10 @@ export const ACME_STAT = stat();
 export const BETA_STAT = stat({ companyCode: 'BETA', companyName: '베타상사', open: 2, inProgress: 0, resolved: 1, closed: 0 });
 /** An archived company: listed with "보관", no open issues. */
 export const OLD_STAT = stat({ companyCode: 'OLD', companyName: '옛상사', companyStatus: 'ARCHIVED', open: 0, inProgress: 0, resolved: 0, closed: 7 });
+/** A suspended company with the most open issues: its code comes last, so the contract order is not the code order. */
+export const ZETA_STAT = stat({ companyCode: 'ZETA', companyName: '제타소프트', companyStatus: 'SUSPENDED', open: 9, inProgress: 1, resolved: 0, closed: 2 });
+/** A company with no issues: listed with 0 everywhere (S7B-AC-01). */
+export const NEW_STAT = stat({ companyCode: 'NEW', companyName: '새상사', open: 0, inProgress: 0, resolved: 0, closed: 0 });
 
 // ---------------------------------------------------------------------------
 // Fake server
