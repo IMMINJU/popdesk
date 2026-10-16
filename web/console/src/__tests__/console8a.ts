@@ -9,7 +9,7 @@ import type { ConsoleComponents } from '@popdesk/api/console';
 import { waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw/http';
 import { beforeEach, expect } from 'vitest';
-import { ADMIN_PERSON, T0, errors, found, issue, screen, server, state, summary, text, within, type Issue, type IssueSummary } from './console';
+import { ADMIN_PERSON, T0, errors, found, issue, screen, server, spokenText, state, summary, text, within, type Issue, type IssueSummary } from './console';
 import { contract, rejectedWith } from './console6a';
 
 type Schemas = ConsoleComponents['schemas'];
@@ -323,10 +323,9 @@ export function midnightBoxNow(day: Weekday): HTMLInputElement | null {
   return screen.queryByRole<HTMLInputElement>('checkbox', { name: new RegExp(`^${dayPattern(day)} 자정까지$`) });
 }
 
-/** The ways a holiday may be written on the screen: 2026-12-25, 2026년 12월 25일, 2026. 12. 25. */
+/** A holiday as the screen writes it, for a RegExp: only the 2026-12-25 form (screens.md 1절). */
 export function dayWords(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
-  return `(${iso}|${String(y)}년 ${String(m)}월 ${String(d)}일|${String(y)}\\. ${String(m)}\\. ${String(d)}\\.?)`;
+  return `(${iso})`;
 }
 
 /** The "{날짜} 빼기" button of `iso`, or null now. */
@@ -350,14 +349,7 @@ export function holidayField(): Promise<HTMLInputElement> {
 /** What a screen reader gets from `el`: its text without `aria-hidden` parts, and the `aria-label`s inside. */
 export function speechOf(el: Element): string {
   const labels = [el, ...Array.from(el.querySelectorAll('[aria-label]'))].map((e) => e.getAttribute('aria-label') ?? '').filter(Boolean);
-  const parts: string[] = [];
-  const walk = (node: Node) => {
-    if (node instanceof Element && node.getAttribute('aria-hidden') === 'true') return;
-    if (node.nodeType === Node.TEXT_NODE) parts.push(node.textContent ?? '');
-    node.childNodes.forEach(walk);
-  };
-  walk(el);
-  return [parts.join(''), ...labels].join(' ').replace(/\s+/g, ' ').trim();
+  return [spokenText(el), ...labels].join(' ').replace(/\s+/g, ' ').trim();
 }
 
 /** The badges (`Badge`) inside `el`: their text and tone. */

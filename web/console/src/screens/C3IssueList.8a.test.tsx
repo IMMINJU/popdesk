@@ -8,7 +8,10 @@ import { ISSUES, addressQuery, chosen, issueRow, lastList, optionLabels, select 
 import { NO_GOAL, badgesIn, goal, listResponse, sla, speechOf, withSla, type IssueSla } from '../__tests__/console8a';
 
 const URL_ALL = '/issues';
-/** Three days from the fake now: far from every remainingMinutes below, so a screen that counts from dueAt shows something else. */
+/**
+ * Three days after T0 of the fake server. These tests run on the real clock, so dueAt is far from every
+ * remainingMinutes below whatever the date: a screen that counts from dueAt shows something else.
+ */
 const FAR = '2026-10-11T03:15:00Z';
 
 /** The "SLA" cell of `row`: the cell under the last column head "SLA". */
@@ -41,6 +44,13 @@ describe('C-3 문의 목록 SLA 칸 (8a 묶음)', () => {
     {
       what: '곧 넘김이 괜찮음보다 나쁨(해결)',
       value: sla(goal('OK', 30, FAR), goal('WARNING', 50, FAR)),
+      shows: '50분 남음',
+      goalName: '해결',
+      badge: { text: '곧 넘김', tone: 'neutral' },
+    },
+    {
+      what: '못 지킴(멈춤)과 곧 넘김이 섞임: 돌고 있는 목표만 본다(해결)',
+      value: sla(goal('MISSED', null), goal('WARNING', 50, FAR)),
       shows: '50분 남음',
       goalName: '해결',
       badge: { text: '곧 넘김', tone: 'neutral' },

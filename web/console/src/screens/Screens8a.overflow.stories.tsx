@@ -147,7 +147,11 @@ async function listWithSla(canvas: HTMLElement, width: Width): Promise<Found> {
   await waitFor(() => (textOf(main).includes('ACME-12345') ? true : null), 'C-3의 ACME-12345 줄');
   const heads = Array.from(main.querySelectorAll('th')).map(textOf);
   if (heads.at(-1) !== 'SLA') throw new Error(`C-3의 맨 끝 열이 "SLA"가 아니다: ${heads.join(', ')}`);
-  await waitFor(() => (textOf(main).includes('넘김') ? true : null), 'C-3의 "넘김"');
+  // 필터 "SLA"의 선택지도 "넘김"이라 표 칸에서 기다린다: ACME-12345 줄의 SLA 칸(맨 끝)에 긴 넘김 글이 그려질 때까지.
+  await waitFor(() => {
+    const row = Array.from(main.querySelectorAll('tr')).find((r) => textOf(r).includes('ACME-12345'));
+    return row?.lastElementChild && textOf(row.lastElementChild).includes('넘김') ? true : null;
+  }, 'C-3 ACME-12345 줄 SLA 칸의 "넘김"');
   if (width === 360) expectScrollsInside(main, main.querySelector('table'), 'C-3의 표');
   return [{ el: main, what: 'C-3의 main' }];
 }
