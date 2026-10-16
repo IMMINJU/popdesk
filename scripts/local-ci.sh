@@ -42,7 +42,7 @@ PART_1="notify root"
 PART_2="ops audit due task link"
 PART_3="auth start photo trash"
 PART_4="issue inbox boundary manager label"
-PART_5="attachment project helpdesk notification support"
+PART_5="attachment project helpdesk notification support stats"
 
 TESTS="$ROOT/server/src/test/java/io/popdesk"
 

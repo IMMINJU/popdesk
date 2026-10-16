@@ -7,3 +7,6 @@ web **/C7Inbox.7b.test.tsx
 web **/layout.inbox.test.tsx
 web **/adminOnly.1b.test.tsx
 web ../../../console/**/Screens7b.overflow.stories.tsx
+server io/popdesk/stats/CompanyStatsTest.java
+server io/popdesk/stats/StatsScopeTest.java
+server io/popdesk/ops/CleanupStalledTest.java

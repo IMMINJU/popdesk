@@ -1,0 +1,2 @@
+# 구현 전에 통과해도 되는 테스트. `<테스트 이름> | <까닭>`
+io.popdesk.stats.StatsScopeTest.customerGetsTheConsoleAnswer | 고객은 컨트롤러 앞에서 포털 404, 콘솔 401로 막힌다(있는 콘솔 경로와 같은 답, S7B-AC-03). 구현이 이 답을 바꾸지 않는지 지킨다
