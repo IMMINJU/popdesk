@@ -55,7 +55,7 @@ class IdempotencyKeyTest extends BareAppTest {
      */
     private static final Set<String> EARLIER_JOBS = Set.of("outbox-failed-cleanup", "attachment-cleanup",
             "session-cleanup", "password-reset-cleanup", "audit-retention", "temporary-image-cleanup",
-            "trash-purge", "issue-auto-close");
+            "trash-purge", "issue-auto-close", "sla-recalculate");
 
     /** The three ways to file an issue. */
     enum Way {

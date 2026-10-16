@@ -116,6 +116,11 @@ Use `Wait.until`, `Wait.untilAsserted`, and `Wait.holds` (or the `await...` meth
 
 `new CleanupRecords(db).ofNewJob(earlierJobs, since, atLeast)` finds the record a new cleanup job left (OPS-2) without naming its table or the job: the table is the one that names a job of an earlier slice, the record a row there that names none of them, ran at or after `since`, and deleted at least `atLeast` rows. It gives null while there is none, so call it in `Wait.until`.
 
+### SLA
+
+SLA tests extend `sla.SlaAppTest`: a context and database of their own with `POPDESK_TIMEZONE=Asia/Seoul`, so the one SLA policy reaches no other class; each test first sets the whole policy it needs.
+`sla.SlaSteps` reads and changes the policy (`policy`, `change` with a short `Policy`, `turnOff`), reads an issue's `sla` (`sla`, `listedSla`, `goal`, `state`, `dueAt`, `remainingMinutes`), moves the clock to a wall-clock time of the zone (`moveToNext`, `advanceMinutes`), and waits for `sla-recalculate` (`recalculateNow`, `awaitRecalculation`).
+
 ### Log
 
 `log.all()` holds everything since the context started, including the startup log. Take `AppLog.Mark m = log.mark()` before the request and read `log.since(m)` or `log.jsonLines(m)`. Other contexts' background work can write between, so search for your own values.

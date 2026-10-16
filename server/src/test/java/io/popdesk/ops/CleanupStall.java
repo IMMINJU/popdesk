@@ -58,7 +58,7 @@ public final class CleanupStall {
     /** Every cleanup job of the app (docs/operate/configuration.md), each at most a day apart. */
     public static final List<String> JOBS = List.of("outbox-failed-cleanup", "attachment-cleanup", "session-cleanup",
             "password-reset-cleanup", "audit-retention", "idempotency-key-cleanup", "temporary-image-cleanup",
-            "trash-purge", "issue-auto-close");
+            "trash-purge", "issue-auto-close", "sla-recalculate");
 
     /** A failed run waits for locks one after another (5 seconds each); allow several. */
     private static final Duration FAILURE = Duration.ofSeconds(60);
