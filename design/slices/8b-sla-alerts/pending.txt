@@ -5,12 +5,3 @@
 web **/C7Inbox.8b.test.tsx
 web **/C5Stats.8b.test.tsx
 web ../../../console/**/Screens8b.overflow.stories.tsx
-server io/popdesk/sla/SlaAlertTest.java
-server io/popdesk/sla/SlaAlertMailTest.java
-server io/popdesk/notification/outbox/SlaWebhookTextTest.java
-server io/popdesk/notify/SandboxMailTest.java
-server io/popdesk/sla/SlaSummaryTest.java
-server io/popdesk/sla/SlaRunStepsTest.java
-server io/popdesk/sla/SlaStatsTest.java
-server io/popdesk/sla/SlaAlertSchemaTest.java
-server io/popdesk/deploy/SlaAlertSampleTest.java
