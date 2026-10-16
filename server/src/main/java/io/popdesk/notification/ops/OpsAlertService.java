@@ -46,7 +46,10 @@ class OpsAlertService implements OpsAlerts {
     @Override
     @Transactional
     public void raise(Kind kind) {
-        Instant now = now();
+        raise(kind, now());
+    }
+
+    private void raise(Kind kind, Instant now) {
         if (ops.insertAlert(kind.name(), now)) {
             log.warn("Operations alert {} raised; the admins have an item in their inbox.", kind);
             notifyAdmins(kind, now);
@@ -61,21 +64,30 @@ class OpsAlertService implements OpsAlerts {
 
     /**
      * Once a scheduler round: resolves {@link Kind#DELIVERY_FAILED} when no failed outbox row is left,
-     * raises or resolves the alert of each channel by whether it only fails ({@link #stalled}), and
-     * tells the admins again of each alert raised for 24 hours since they last heard of it.
+     * raises or resolves the alert of each channel by whether it only fails ({@link #stalled}), raises or
+     * resolves {@link Kind#CLEANUP_STALLED} by {@code cleanupStalled} (S7B-AC-10, S7B-AC-11), and then
+     * tells the admins again of each alert raised for 24 hours since they last heard of it. An alert
+     * resolved in this round is not among those.
+     *
+     * @param now the time of the round, read once for its jobs and this review
+     * @param cleanupStalled whether a cleanup job is late ({@link StalledCleanup}); null leaves that alert as it is
      */
     @Transactional
-    public void review() {
+    public void review(Instant now, Boolean cleanupStalled) {
         if (!outbox.anyFailed()) {
             ops.deleteAlert(Kind.DELIVERY_FAILED.name());
         }
-        Instant now = now();
         for (String channel : OutboxRepository.CHANNELS) {
             if (stalled(channel, now)) {
-                raise(Kind.stalled(channel));
+                raise(Kind.stalled(channel), now);
             } else {
                 ops.deleteAlert(Kind.stalled(channel).name());
             }
+        }
+        if (Boolean.TRUE.equals(cleanupStalled)) {
+            raise(Kind.CLEANUP_STALLED, now);
+        } else if (Boolean.FALSE.equals(cleanupStalled)) {
+            ops.deleteAlert(Kind.CLEANUP_STALLED.name());
         }
         for (String kind : ops.lockAlertsNotifiedBefore(now.minus(REPEAT))) {
             notifyAdmins(Kind.valueOf(kind), now);
