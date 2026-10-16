@@ -1,9 +1,15 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.helpdesk.Priority;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.sla.SlaPolicyService;
+import io.popdesk.helpdesk.sla.SlaVersion;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.DayOfWeek;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -24,6 +30,12 @@ class ConsoleSlaController {
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only, agents too (S8A-AC-05).";
 
+    private final SlaPolicyService policies;
+
+    ConsoleSlaController(SlaPolicyService policies) {
+        this.policies = policies;
+    }
+
     @Operation(operationId = "getSlaPolicy", summary = "The SLA policy",
             description = "The current version (S8A-AC-01). Checks, in this order: role (403).")
     @ApiResponse(responseCode = "200", description = "The policy.")
@@ -31,7 +43,7 @@ class ConsoleSlaController {
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY)
     @GetMapping
     SlaPolicy getSlaPolicy() {
-        throw new NotImplementedException();
+        return policy(policies.get(CurrentAccount.get().viewer()));
     }
 
     @Operation(operationId = "updateSlaPolicy", summary = "Change the SLA policy",
@@ -59,10 +71,39 @@ class ConsoleSlaController {
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "409", description = "`VERSION_CONFLICT`: `version` is not the policy's current "
-            + "one, for example because another admin saved first; nothing changed. Read the policy again "
-            + "(S8A-AC-03).")
+            + "one, for example because another admin saved first; also when the values sent are the ones the "
+            + "policy has now. Nothing changed. Read the policy again (S8A-AC-03).")
     @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     SlaPolicy updateSlaPolicy(@RequestBody ChangeSlaPolicyRequest request) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        List<SlaPolicyService.TargetInput> targets = request.targets() == null ? null : request.targets().stream()
+                .map(t -> t == null ? null : new SlaPolicyService.TargetInput(t.priority(), t.firstResponseMinutes(),
+                        t.resolutionMinutes()))
+                .toList();
+        List<SlaPolicyService.HoursInput> hours = request.hours() == null ? null : request.hours().stream()
+                .map(h -> h == null ? null : new SlaPolicyService.HoursInput(h.weekday(), h.opens(), h.closes()))
+                .toList();
+        return policy(policies.change(admin.viewer(), admin.actor(), new SlaPolicyService.Change(request.version(),
+                targets, hours, request.holidays())));
+    }
+
+    /** A version in the shape of the API: the four priorities and the seven weekdays always there (S8A-AC-01). */
+    private static SlaPolicy policy(SlaPolicyService.Policy policy) {
+        SlaVersion version = policy.version();
+        List<SlaTarget> targets = new ArrayList<>();
+        for (Priority priority : Priority.values()) {
+            SlaVersion.Goals goals = version.goals(priority);
+            targets.add(new SlaTarget(priority, goals.firstResponse(), goals.resolution()));
+        }
+        List<SlaHours> hours = new ArrayList<>();
+        for (DayOfWeek day : DayOfWeek.values()) {
+            var span = version.hours().get(day);
+            hours.add(span == null ? new SlaHours(day, null, null)
+                    : new SlaHours(day, SlaPolicyService.time(span.opens()), SlaPolicyService.time(span.closes())));
+        }
+        SlaVersion.Changer by = version.changedBy();
+        return new SlaPolicy(version.number(), targets, hours, version.holidays(), policy.timeZone(),
+                ConsoleIssueController.utc(version.changedAt()), by == null ? null
+                        : ConsoleIssueController.person(by.accountId(), by.name(), by.role(), by.photoUpdatedAt()));
     }
 }
