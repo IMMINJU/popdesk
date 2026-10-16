@@ -77,6 +77,7 @@ describe('changeLines', () => {
       'BACKUP_CREATED',
       'DATABASE_RESTORED',
       'AUDIT_EXPORTED',
+      'SLA_POLICY_CHANGED',
       'DELIVERY_RESENT',
       'TEST_MAIL_SENT',
     ];

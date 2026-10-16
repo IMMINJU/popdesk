@@ -480,3 +480,129 @@ describe('계약 검증기 checkResponse: 7b 묶음 웹 테스트의 견본', ()
     expect(checkResponse('console', 'listNotifications', 200, page)).toBe(page);
   });
 });
+
+describe('계약 검증기 checkResponse: 8a 묶음 웹 테스트의 견본', () => {
+  const T0 = '2026-10-08T03:15:00Z';
+  const ADMIN_PERSON = { accountId: 1, name: '최관리', role: 'ADMIN', photoUpdatedAt: null };
+  const CUSTOMER_PERSON = { accountId: 11, name: '김고객', role: 'CUSTOMER', photoUpdatedAt: null };
+  const PRIORITIES = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
+  const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+
+  /** `offPolicy()` of console8a.ts: an installation that never set one. */
+  const offPolicy = () => ({
+    version: 1,
+    targets: PRIORITIES.map((priority) => ({ priority, firstResponseMinutes: null, resolutionMinutes: null })),
+    hours: WEEKDAYS.map((weekday) => ({ weekday, opens: null, closes: null })),
+    holidays: [],
+    timeZone: 'Asia/Seoul',
+    changedAt: T0,
+    changedBy: null,
+  });
+  /** `onPolicy()` of console8a.ts, with Friday to midnight as storyFetch8a.ts has it. */
+  const onPolicy = (over: Record<string, unknown> = {}) => ({
+    version: 3,
+    targets: [
+      { priority: 'LOW', firstResponseMinutes: 480, resolutionMinutes: 2880 },
+      { priority: 'NORMAL', firstResponseMinutes: 240, resolutionMinutes: 1440 },
+      { priority: 'HIGH', firstResponseMinutes: 60, resolutionMinutes: 480 },
+      { priority: 'URGENT', firstResponseMinutes: 20, resolutionMinutes: null },
+    ],
+    hours: WEEKDAYS.map((weekday) =>
+      weekday === 'SATURDAY' || weekday === 'SUNDAY' ? { weekday, opens: null, closes: null } : { weekday, opens: '09:00', closes: weekday === 'FRIDAY' ? '24:00' : '18:00' },
+    ),
+    holidays: ['2026-12-25'],
+    timeZone: 'Asia/Seoul',
+    changedAt: '2026-10-07T01:00:00Z',
+    changedBy: ADMIN_PERSON,
+    ...over,
+  });
+  /** `sla()` and `goal()` of console8a.ts: one goal of each kind. */
+  const SLA = {
+    firstResponse: { state: 'BREACHED', dueAt: '2026-10-11T03:15:00Z', remainingMinutes: -1560 },
+    resolution: { state: 'WARNING', dueAt: '2026-10-11T03:15:00Z', remainingMinutes: 50 },
+  };
+  const STOPPED = {
+    firstResponse: { state: 'MET', dueAt: '2026-10-11T03:15:00Z', remainingMinutes: null },
+    resolution: { state: null, dueAt: null, remainingMinutes: null },
+  };
+  /** `summary()` of console.ts with `sla`. */
+  const summary = (sla: unknown) => ({
+    key: 'ACME-7',
+    title: '로그인이 안 됩니다',
+    status: 'RECEIVED',
+    priority: 'NORMAL',
+    private: false,
+    reporter: CUSTOMER_PERSON,
+    companyCode: 'ACME',
+    companyName: '에이크미',
+    filedOnBehalf: false,
+    assignee: null,
+    assigneeUnavailable: false,
+    createdAt: T0,
+    labels: [],
+    dueDate: null,
+    overdue: false,
+    sla,
+    openTaskCount: 0,
+  });
+  /** `issue()` of console.ts with `sla`. */
+  const issue = (sla: unknown) => ({
+    key: 'ACME-7',
+    title: '로그인이 안 됩니다',
+    content: '어제부터 **로그인**이 안 됩니다.',
+    status: 'RECEIVED',
+    priority: 'NORMAL',
+    private: false,
+    reporter: CUSTOMER_PERSON,
+    companyCode: 'ACME',
+    companyName: '에이크미',
+    channel: 'PORTAL',
+    createdBy: null,
+    assignee: null,
+    assigneeUnavailable: false,
+    nextStatuses: [],
+    reopenable: false,
+    firstResponseAt: null,
+    resolvedAt: null,
+    closedAt: null,
+    createdAt: T0,
+    updatedAt: T0,
+    version: 1,
+    labels: [],
+    dueDate: null,
+    overdue: false,
+    sla,
+  });
+
+  test('console: 정책 읽기(getSlaPolicy 200)의 견본(정한 적 없음, 켜짐, 시스템이 바꿈)이 계약에 맞고, 칸은 모두 필수다', () => {
+    for (const policy of [offPolicy(), onPolicy(), onPolicy({ version: 4, changedBy: null, timeZone: 'America/New_York' })]) {
+      expect(checkResponse('console', 'getSlaPolicy', 200, policy)).toBe(policy);
+    }
+    const withoutZone = Object.fromEntries(Object.entries(onPolicy()).filter(([name]) => name !== 'timeZone'));
+    expect(() => checkResponse('console', 'getSlaPolicy', 200, withoutZone)).toThrow('$.timeZone: required, but missing');
+    expect(() => checkResponse('console', 'getSlaPolicy', 200, onPolicy({ hours: [{ weekday: 'MON', opens: null, closes: null }] }))).toThrow('$.hours[0].weekday');
+  });
+
+  test('console: 정책 저장(updateSlaPolicy)의 200, 칸 이름에 자리가 든 400, 409 VERSION_CONFLICT 견본이 계약에 맞는다', () => {
+    const saved = onPolicy({ version: 4 });
+    const invalid = { code: 'INVALID_INPUT', message: 'INVALID_INPUT (server text).', fields: [{ field: 'targets[1].resolutionMinutes', code: 'OUT_OF_RANGE' }, { field: 'holidays[1]', code: 'UNKNOWN_VALUE' }] };
+    const conflict = { code: 'VERSION_CONFLICT', message: 'VERSION_CONFLICT (server text).' };
+
+    expect(checkResponse('console', 'updateSlaPolicy', 200, saved)).toBe(saved);
+    expect(checkResponse('console', 'updateSlaPolicy', 400, invalid)).toBe(invalid);
+    expect(checkResponse('console', 'updateSlaPolicy', 409, conflict)).toBe(conflict);
+  });
+
+  test('console: SLA가 든 문의(getIssue 200)와 목록 항목(listIssues 200)의 견본이 계약에 맞는다. sla는 필수이고 null일 수 있다', () => {
+    const paged = (items: unknown[]) => ({ items, page: 1, size: 20, totalElements: items.length, totalPages: 1 });
+    for (const sla of [SLA, STOPPED, null]) {
+      const one = issue(sla);
+      const page = paged([summary(sla)]);
+      expect(checkResponse('console', 'getIssue', 200, one)).toBe(one);
+      expect(checkResponse('console', 'listIssues', 200, page)).toBe(page);
+    }
+    const withoutSla = Object.fromEntries(Object.entries(issue(null)).filter(([name]) => name !== 'sla'));
+    expect(() => checkResponse('console', 'getIssue', 200, withoutSla)).toThrow('$.sla: required, but missing');
+    expect(() => checkResponse('console', 'getIssue', 200, issue({ ...SLA, resolution: { ...SLA.resolution, state: 'LATE' } }))).toThrow('$.sla');
+  });
+});
