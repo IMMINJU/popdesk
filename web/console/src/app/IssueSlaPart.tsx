@@ -1,12 +1,24 @@
 // The SLA part of C-4 (8a-sla screens.md 3절): a box of its own under the side values, one line for
 // each goal. The minutes left are the server's as the issue was read; they change when it is read again.
-import { RelativeTime } from '@popdesk/ui';
 import type { Schemas } from '../api';
 import { slaWords } from './messages';
 import { SlaBadge } from './SlaBadge';
 import { runs, type GoalName } from './slaGoals';
 
 type SlaGoal = Schemas['SlaGoal'];
+
+/** "10월 19일 (월) 오후 6:00": the due time itself, since the words after it already say how far it is. */
+function dueText(iso: string): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return iso;
+  return new Intl.DateTimeFormat(document.documentElement.lang || 'ko', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(at);
+}
 
 function GoalLine(props: { name: GoalName; goal: SlaGoal }) {
   const { name, goal } = props;
@@ -21,7 +33,7 @@ function GoalLine(props: { name: GoalName; goal: SlaGoal }) {
   }
   return (
     <li>
-      {name}: {goal.dueAt !== null && <RelativeTime dateTime={goal.dueAt} />} 까지
+      {name}: {goal.dueAt !== null && <time dateTime={goal.dueAt}>{dueText(goal.dueAt)}</time>}까지
       {goal.remainingMinutes !== null && `, ${slaWords(goal.remainingMinutes)}`} <SlaBadge state={goal.state} />
     </li>
   );
