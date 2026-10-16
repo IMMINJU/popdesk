@@ -2,6 +2,7 @@ package io.popdesk.helpdesk.issue;
 
 import static io.popdesk.helpdesk.issue.IssueScope.concat;
 
+import io.popdesk.helpdesk.CompanyStatus;
 import io.popdesk.helpdesk.IssueStatus;
 import io.popdesk.helpdesk.Priority;
 import io.popdesk.helpdesk.Role;
@@ -305,6 +306,35 @@ public class IssueRepository {
                         + (companyId == null ? "" : " and i.company_id = ?"))
                 .params(companyId == null ? params : concat(params, companyId))
                 .query(Long.class).single();
+    }
+
+    /** The issue counts of one company (STATS-1): every issue, then by status, open being {@code RECEIVED} and {@code CONFIRMED}. */
+    public record CompanyCounts(String code, String name, CompanyStatus status, long total, long open,
+            long inProgress, long resolved, long closed) {}
+
+    /**
+     * The issue counts of every company the viewer may see (STATS-1, STATS-2): every company for an admin, the
+     * assigned ones for an agent, none for a customer. The company condition is the agent condition of
+     * {@link IssueScope}; it sits on the company rather than the issue, so that a company without issues has an
+     * item of zeros. Issues in the trash and purged ones are not counted, as {@link IssueScope} does not see them.
+     * By open issues, the most first, then by code (S7B-AC-04).
+     */
+    public List<CompanyCounts> countByCompany(Viewer viewer) {
+        String role = viewer.role().name();
+        return jdbc.sql("select c.code, c.name, c.status, count(i.id) as total, "
+                        + "count(i.id) filter (where i.status in ('RECEIVED', 'CONFIRMED')) as open, "
+                        + "count(i.id) filter (where i.status = 'IN_PROGRESS') as in_progress, "
+                        + "count(i.id) filter (where i.status = 'RESOLVED') as resolved, "
+                        + "count(i.id) filter (where i.status = 'CLOSED') as closed "
+                        + "from company c left join issue i on i.company_id = c.id and i.deleted_at is null "
+                        + "where (? = 'ADMIN' or (? = 'AGENT' and exists (select 1 from company_agent ca "
+                        + "where ca.company_id = c.id and ca.account_id = ?))) "
+                        + "group by c.id order by open desc, c.code")
+                .params(role, role, viewer.accountId())
+                .query((rs, row) -> new CompanyCounts(rs.getString("code"), rs.getString("name"),
+                        CompanyStatus.valueOf(rs.getString("status")), rs.getLong("total"), rs.getLong("open"),
+                        rs.getLong("in_progress"), rs.getLong("resolved"), rs.getLong("closed")))
+                .list();
     }
 
     // Writes
