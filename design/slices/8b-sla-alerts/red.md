@@ -1,0 +1,84 @@
+# 실패 확인
+
+- 단언 실패 65, 통과 0, 허용한 통과 9, 오류 0, 건너뜀 0
+- 판정: 통과
+
+## 처음부터 통과해도 된다고 허용한 테스트 (점검에서 이유를 본다)
+
+- `src/screens/C5Stats.8b.test.tsx.C-5 통계의 SLA 칸 (8b 묶음) > S8B-AC-26 C-5 정책이 꺼져 있으면(주소에 기간 없음) 7b 화면 그대로다: 열 여섯, 기간 고르기와 새 안내 줄이 없다`: 정책 꺼짐은 7b 화면 그대로라 지금 화면이 이미 그렇다(바뀌지 않음을 고정하는 테스트)
+- `src/screens/C5Stats.8b.test.tsx.C-5 통계의 SLA 칸 (8b 묶음) > S8B-AC-26 C-5 정책이 꺼져 있으면(주소의 days=7을 무시) 7b 화면 그대로다: 열 여섯, 기간 고르기와 새 안내 줄이 없다`: 지금 화면은 주소의 days를 읽지 않으므로 이미 무시한다(바뀌지 않음을 고정하는 테스트)
+- `io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[1]`: C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+- `io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[2]`: C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+- `io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[3]`: C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+- `io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[4]`: C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+- `io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[5]`: C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+- `io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[6]`: C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+- `io.popdesk.sla.SlaStatsTest.otherDaysAreRefused(String)[7]`: C-4 계약 껍데기가 days 값을 검사해 400을 낸다(S8B-AC-21). 구현이 이 검사를 지우지 않는지 지킨다
+
+## 단언에서 실패한 테스트
+
+- `src/screens/C5Stats.8b.test.tsx.C-5 통계의 SLA 칸 (8b 묶음) > S8B-AC-22 S8B-AC-26 C-5 정책이 켜져 있으면 표 위 "SLA 기간"(최근 30일)과 "종료" 다음 열 둘, 칸 두 줄(중앙값과 지킴 비율 내림), "없음", "중앙값 없음", 있는 안내 다음의 새 안내 줄이고 캡션은 그대로다`: 고르기 "SLA 기간": expected null not to be null  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<head>[39m     [36m
+- `src/screens/C5Stats.8b.test.tsx.C-5 SLA 기간과 주소 (8b 묶음) > S8B-AC-21 S8B-AC-26 C-5 기간을 "최근 7일"로 바꾸면 days=7로 다시 읽어 그 수를 보이고 주소에 ?days=7을 남긴다. 초점은 고르기에 남는다. "최근 30일"로 돌리면 주소에서 days가 빠진다`: expected [] to deeply equal [ '중앙값 2일 23시간', '지킴 99% (249/250)' ]  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   
+- `src/screens/C5Stats.8b.test.tsx.C-5 SLA 기간과 주소 (8b 묶음) > S8B-AC-26 C-5 주소의 ?days=90으로 열면 "최근 90일"이 골라져 있고 days=90으로 읽는다`: expected [] to deeply equal [ '중앙값 20분', '지킴 100% (9/9)' ]  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<he
+- `src/screens/C5Stats.8b.test.tsx.C-5 SLA 기간과 주소 (8b 묶음) > S8B-AC-26 C-5 주소의 모르는 값 ?days=14는 30으로 읽고, 주소를 고쳐 쓴다(새 기록을 쌓지 않는다)`: expected [] to deeply equal [ '중앙값 2일 23시간', '지킴 99% (249/250)' ]  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   
+- `src/screens/C5Stats.8b.test.tsx.C-5 기간을 바꾸는 동안과 실패 (8b 묶음) > S8B-AC-26 C-5 기간을 바꾸고 답을 기다리는 동안 표를 감싼 틀이 aria-busy="true"이고, 답이 오면 풀리고 새 수다`: expected [] to deeply equal [ '중앙값 2일 23시간', '지킴 99% (249/250)' ]  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   
+- `src/screens/C5Stats.8b.test.tsx.C-5 기간을 바꾸는 동안과 실패 (8b 묶음) > S8B-AC-26 C-5 늦게 온 앞 기간의 답은 버린다: 7일을 기다리는 동안 90일로 바꾸면, 뒤에 온 7일 답이 90일 수를 덮지 않는다`: expected [] to deeply equal [ '중앙값 2일 23시간', '지킴 99% (249/250)' ]  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   
+- `src/screens/C5Stats.8b.test.tsx.C-5 기간을 바꾸는 동안과 실패 (8b 묶음) > S8B-AC-26 C-5 기간을 바꿔 다시 읽기가 실패하면(500) 앞 기간의 수를 두지 않고 표를 감춘 채 "통계를 읽지 못했습니다. 다시 해 보세요."다`: expected [] to deeply equal [ '중앙값 2일 23시간', '지킴 99% (249/250)' ]  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   
+- `src/screens/C7Inbox.8b.test.tsx.C-7 알림함의 SLA 항목 (8b 묶음) > S8B-AC-19 C-7 SLA_RESPONSE_WARNING: "첫 응답 기한을 곧 넘깁니다"이고 "누가"가 없다. 문의 키와 제목이 함께 있고 /issues/ACME-7 로 간다`: 알림 항목 "첫 응답 기한을 곧 넘깁니다": expected undefined to be defined  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<hea
+- `src/screens/C7Inbox.8b.test.tsx.C-7 알림함의 SLA 항목 (8b 묶음) > S8B-AC-19 C-7 SLA_RESPONSE_BREACHED: "첫 응답 기한을 넘겼습니다"이고 "누가"가 없다. 문의 키와 제목이 함께 있고 /issues/ACME-7 로 간다`: 알림 항목 "첫 응답 기한을 넘겼습니다": expected undefined to be defined  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<head
+- `src/screens/C7Inbox.8b.test.tsx.C-7 알림함의 SLA 항목 (8b 묶음) > S8B-AC-19 C-7 SLA_RESOLUTION_WARNING: "해결 기한을 곧 넘깁니다"이고 "누가"가 없다. 문의 키와 제목이 함께 있고 /issues/ACME-7 로 간다`: 알림 항목 "해결 기한을 곧 넘깁니다": expected undefined to be defined  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<head>
+- `src/screens/C7Inbox.8b.test.tsx.C-7 알림함의 SLA 항목 (8b 묶음) > S8B-AC-19 C-7 SLA_RESOLUTION_BREACHED: "해결 기한을 넘겼습니다"이고 "누가"가 없다. 문의 키와 제목이 함께 있고 /issues/ACME-7 로 간다`: 알림 항목 "해결 기한을 넘겼습니다": expected undefined to be defined  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<head>[
+- `src/screens/C7Inbox.8b.test.tsx.C-7 알림함의 SLA 항목 (8b 묶음) > S8B-AC-19 C-7 문의 항목(해결 넘김)을 누르면 읽음 요청을 보내고 그 문의로 간다. 화면에 axe 위반이 없다`: 알림 항목 "해결 기한을 넘겼습니다": expected undefined to be defined  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<head>[
+- `src/screens/C7Inbox.8b.test.tsx.C-7 알림함의 SLA 항목 (8b 묶음) > S8B-AC-19 C-7 SLA_RECALCULATED(셋 다): "SLA 기한을 다시 계산했습니다: 새로 넘김 3건, 새로 곧 넘김 2건…"이고 0인 수는 쓰지 않는다. 문의가 없는 항목이고 /issues?sort=slaDue 로 간다`: 알림 항목 "SLA 기한을 다시 계산했습니다": expected undefined to be defined  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<h
+- `src/screens/C7Inbox.8b.test.tsx.C-7 알림함의 SLA 항목 (8b 묶음) > S8B-AC-19 C-7 SLA_RECALCULATED(새로 넘김 0): "SLA 기한을 다시 계산했습니다: 새로 곧 넘김 5건, 넘김·곧 넘김에…"이고 0인 수는 쓰지 않는다. 문의가 없는 항목이고 /issues?sort=slaDue 로 간다`: 알림 항목 "SLA 기한을 다시 계산했습니다": expected undefined to be defined  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<h
+- `src/screens/C7Inbox.8b.test.tsx.C-7 알림함의 SLA 항목 (8b 묶음) > S8B-AC-19 C-7 SLA_RECALCULATED(벗어남만): "SLA 기한을 다시 계산했습니다: 넘김·곧 넘김에서 벗어남 7건"이고 0인 수는 쓰지 않는다. 문의가 없는 항목이고 /issues?sort=slaDue 로 간다`: 알림 항목 "SLA 기한을 다시 계산했습니다": expected undefined to be defined  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<h
+- `src/screens/C7Inbox.8b.test.tsx.C-7 알림함의 SLA 항목 (8b 묶음) > S8B-AC-19 C-7 SLA_RECALCULATED(1,234건): "SLA 기한을 다시 계산했습니다: 새로 넘김 1,234건"이고 0인 수는 쓰지 않는다. 문의가 없는 항목이고 /issues?sort=slaDue 로 간다`: 알림 항목 "SLA 기한을 다시 계산했습니다": expected undefined to be defined  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<h
+- `src/screens/C7Inbox.8b.test.tsx.C-7 알림함의 SLA 항목 (8b 묶음) > S8B-AC-19 C-7 SLA_RECALCULATED를 누르면 읽음 요청을 보내고 기한순 문의 목록(/issues?sort=slaDue)으로 간다`: 알림 항목 "SLA 기한을 다시 계산했습니다": expected undefined to be defined  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<h
+- `/../../console/src/screens/Screens8b.overflow.stories.tsx.C 5 Sla On 360 Light`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-8b-콘솔-화면--c-5-sla-on-360-light&addonPanel=storybook/interactions
+- `/../../console/src/screens/Screens8b.overflow.stories.tsx.C 5 Sla On 360 Dark`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-8b-콘솔-화면--c-5-sla-on-360-dark&addonPanel=storybook/interactions/
+- `/../../console/src/screens/Screens8b.overflow.stories.tsx.C 5 Sla On 820 Light`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-8b-콘솔-화면--c-5-sla-on-820-light&addonPanel=storybook/interactions
+- `/../../console/src/screens/Screens8b.overflow.stories.tsx.C 5 Sla On 820 Dark`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-8b-콘솔-화면--c-5-sla-on-820-dark&addonPanel=storybook/interactions/
+- `/../../console/src/screens/Screens8b.overflow.stories.tsx.C 5 Sla On 1280 Light`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-8b-콘솔-화면--c-5-sla-on-1280-light&addonPanel=storybook/interaction
+- `/../../console/src/screens/Screens8b.overflow.stories.tsx.C 5 Sla On 1280 Dark`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-8b-콘솔-화면--c-5-sla-on-1280-dark&addonPanel=storybook/interactions
+- `/../../console/src/screens/Screens8b.overflow.stories.tsx.C 7 Sla Items 360 Light`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-8b-콘솔-화면--c-7-sla-items-360-light&addonPanel=storybook/interacti
+- `/../../console/src/screens/Screens8b.overflow.stories.tsx.C 7 Sla Items 360 Dark`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-8b-콘솔-화면--c-7-sla-items-360-dark&addonPanel=storybook/interactio
+- `/../../console/src/screens/Screens8b.overflow.stories.tsx.C 7 Sla Items 820 Light`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-8b-콘솔-화면--c-7-sla-items-820-light&addonPanel=storybook/interacti
+- `/../../console/src/screens/Screens8b.overflow.stories.tsx.C 7 Sla Items 820 Dark`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-8b-콘솔-화면--c-7-sla-items-820-dark&addonPanel=storybook/interactio
+- `/../../console/src/screens/Screens8b.overflow.stories.tsx.C 7 Sla Items 1280 Light`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-8b-콘솔-화면--c-7-sla-items-1280-light&addonPanel=storybook/interact
+- `/../../console/src/screens/Screens8b.overflow.stories.tsx.C 7 Sla Items 1280 Dark`: [34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/overflow-8b-콘솔-화면--c-7-sla-items-1280-dark&addonPanel=storybook/interacti
+- `io.popdesk.notification.outbox.SlaWebhookTextTest.bodyIsTheSnapshot(String, String, String)[1]`: [webhook kind SLA_RESPONSE_BREACHED] 
+- `io.popdesk.notification.outbox.SlaWebhookTextTest.bodyIsTheSnapshot(String, String, String)[2]`: [webhook kind SLA_RESPONSE_BREACHED] 
+- `io.popdesk.notification.outbox.SlaWebhookTextTest.bodyIsTheSnapshot(String, String, String)[3]`: [webhook kind SLA_RESOLUTION_BREACHED] 
+- `io.popdesk.notification.outbox.SlaWebhookTextTest.bodyIsTheSnapshot(String, String, String)[4]`: [webhook kind SLA_RESOLUTION_BREACHED] 
+- `io.popdesk.sla.SlaAlertMailTest.noAgentMeansAdminsOnly`: [SLA items of the admin] 
+- `io.popdesk.sla.SlaAlertMailTest.overdueMailInTheRecipientsLanguage(String)[1]`: Timed out after PT15S waiting for two overdue mails to the assignee
+- `io.popdesk.sla.SlaAlertMailTest.overdueMailInTheRecipientsLanguage(String)[2]`: Timed out after PT15S waiting for two overdue mails to the assignee
+- `io.popdesk.sla.SlaAlertMailTest.onlyOverdueGoalsSendMailAndOneMessagePerGoal`: [SLA items of the assignee at 9 minutes] 
+- `io.popdesk.sla.SlaAlertMailTest.queuedOverdueMailIsCheckedAgain(Meanwhile)[1]`: Timed out after PT15S waiting for a mail to agent-231@example.test at the scripted SMTP port
+- `io.popdesk.sla.SlaAlertMailTest.queuedOverdueMailIsCheckedAgain(Meanwhile)[2]`: Timed out after PT15S waiting for a mail to agent-240@example.test at the scripted SMTP port
+- `io.popdesk.sla.SlaAlertMailTest.queuedOverdueMailIsCheckedAgain(Meanwhile)[3]`: Timed out after PT15S waiting for a mail to agent-249@example.test at the scripted SMTP port
+- `io.popdesk.sla.SlaAlertMailTest.queuedOverdueMailIsCheckedAgain(Meanwhile)[4]`: Timed out after PT15S waiting for a mail to agent-258@example.test at the scripted SMTP port
+- `io.popdesk.sla.SlaAlertSchemaTest.summaryTableAndNotificationCounts`: [columns of sla_recalc_report] 
+- `io.popdesk.sla.SlaAlertSchemaTest.issueHasTheAlertColumnsAndIndex`: [columns of issue] 
+- `io.popdesk.sla.SlaAlertTest.trashSettledAndNoGoalAreNotAlerted`: [SLA items about the issue that kept running, at 60 seconds] 
+- `io.popdesk.sla.SlaAlertTest.warningIsAlertedWithinTwoRuns`: [SLA items of the assignee two runs after 16 minutes] 
+- `io.popdesk.sla.SlaAlertTest.breachSkippingTheWarningIsOneItemPerGoal`: [SLA items of AGENT] 
+- `io.popdesk.sla.SlaAlertTest.oneGoalOneStepOnce`: [SLA items of the assignee after the due time] 
+- `io.popdesk.sla.SlaAlertTest.slaItemsFollowTheInboxRules`: [SLA items of the agent] 
+- `io.popdesk.sla.SlaAlertTest.aRaisedPriorityIsAlertedOneByOne`: [SLA items of AGENT after HIGH] 
+- `io.popdesk.sla.SlaAlertTest.aGoalBackToOkIsAlertedAgain`: [SLA items past the goal of 10] 
+- `io.popdesk.sla.SlaAlertTest.aLongerGoalIsAlertedByItsNewTimes`: [SLA items past 48 minutes] 
+- `io.popdesk.sla.SlaAlertTest.recipientsOfTheAlerts(Side)[1]`: [SLA items of AGENT agent-135@example.test] 
+- `io.popdesk.sla.SlaAlertTest.recipientsOfTheAlerts(Side)[2]`: [SLA items of AGENT agent-147@example.test] 
+- `io.popdesk.sla.SlaAlertTest.recipientsOfTheAlerts(Side)[3]`: [SLA items of AGENT agent-163@example.test] 
+- `io.popdesk.sla.SlaAlertTest.recipientsOfTheAlerts(Side)[4]`: [SLA items of AGENT agent-175@example.test] 
+- `io.popdesk.sla.SlaAlertTest.recipientsOfTheAlerts(Side)[5]`: [SLA items of ADMIN admin-182@example.test] 
+- `io.popdesk.sla.SlaAlertTest.recipientsOfTheAlerts(Side)[6]`: [SLA items of ADMIN admin-193@example.test] 
+- `io.popdesk.sla.SlaRunStepsTest.oneFailingStepLeavesTheOther(Failing)[1]`: Could not lock [sla_recalc_report]
+- `io.popdesk.sla.SlaRunStepsTest.oneFailingStepLeavesTheOther(Failing)[2]`: Timed out after PT1M waiting for a failed run of sla-recalculate at 2026-10-08T03:28:00Z while notification is locked
+- `io.popdesk.sla.SlaStatsTest.agentGetsTheSlaOfTheAssignedCompanyOnly`: No goal firstResponse in the sla of {"companyCode":"C000T","companyName":"Company C000T","companyStatus":"ACTIVE","total":1,"open":0,"inProgress":0,"resolved":1
+- `io.popdesk.sla.SlaStatsTest.lowerMedianInWholeMinutes`: No goal firstResponse in the sla of {"companyCode":"C0016","companyName":"Company C0016","companyStatus":"ACTIVE","total":5,"open":0,"inProgress":0,"resolved":5
+- `io.popdesk.sla.SlaStatsTest.daysNarrowsTheSlaNotTheCounts`: No goal firstResponse in the sla of {"companyCode":"C001K","companyName":"Company C001K","companyStatus":"ACTIVE","total":1,"open":0,"inProgress":0,"resolved":0
+- `io.popdesk.sla.SlaStatsTest.goalsSettledInThePeriodCountOnce`: No goal firstResponse in the sla of {"companyCode":"C001Q","companyName":"Company C001Q","companyStatus":"ACTIVE","total":5,"open":1,"inProgress":0,"resolved":4
+- `io.popdesk.sla.SlaStatsTest.slaIsNullOnlyWhileThePolicyIsOff`: [items without both goals and their three fields with the policy on] 
+- `io.popdesk.sla.SlaSummaryTest.aPolicyChangeIsOneSummary`: [SLA items of the URGENT issue before the change] 
