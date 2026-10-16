@@ -1,7 +1,8 @@
 // Korean words for the audit log (1b screens.md C-12): the kinds of action and
 // their groups, what an action was done to, and the changed values. A name the
 // screen does not know shows as the server gave it.
-import { ACCOUNT_STATUS_WORDS, PROJECT_STATUS_WORDS } from '@popdesk/ui';
+import { ACCOUNT_STATUS_WORDS, PRIORITY_WORDS, PROJECT_STATUS_WORDS } from '@popdesk/ui';
+import { slaLength } from './messages';
 
 export interface KindGroup {
   /** The value of the group's choice in the 종류 filter. No kind has this name. */
@@ -70,6 +71,8 @@ export const KIND_GROUPS: readonly KindGroup[] = [
   },
   { key: 'OPERATION', name: '운영 명령', kinds: { ADMIN_PASSWORD_RESET: '관리자 비밀번호 복구', BACKUP_CREATED: '백업', DATABASE_RESTORED: '복원' } },
   { key: 'EXPORT', name: '내보내기', kinds: { AUDIT_EXPORTED: '감사 로그 내보내기' } },
+  // Slice 8a: settings of the whole installation, before 보내기 (8a-sla screens.md 4절).
+  { key: 'SETTINGS', name: '설정', kinds: { SLA_POLICY_CHANGED: 'SLA 정책 바꾸기' } },
   { key: 'DELIVERY', name: '보내기', kinds: { DELIVERY_RESENT: '다시 보내기', TEST_MAIL_SENT: '시험 메일' } },
 ];
 
@@ -104,6 +107,8 @@ export interface Target {
   labelId?: number;
   /** An issue of the company `code` deleted, restored, or purged (slice 7a). */
   issueKey?: string;
+  /** The version of the SLA policy a change made (slice 8a). */
+  version?: number;
 }
 
 /** Reads a stored target (a free JSON object); null when it names nothing. */
@@ -115,11 +120,13 @@ export function targetOf(stored: Readonly<Record<string, unknown>> | null): Targ
     ...(typeof stored.code === 'string' ? { code: stored.code } : {}),
     ...(typeof stored.labelId === 'number' ? { labelId: stored.labelId } : {}),
     ...(typeof stored.issueKey === 'string' ? { issueKey: stored.issueKey } : {}),
+    ...(typeof stored.version === 'number' ? { version: stored.version } : {}),
   };
 }
 
-/** "계정 12", "고객사 ACME", "고객사 ACME · 계정 12", "고객사 ACME · 라벨 61", "고객사 ACME · 문의 ACME-7", "데이터베이스", "감사 로그". */
+/** "계정 12", "고객사 ACME", "고객사 ACME · 계정 12", "고객사 ACME · 라벨 61", "고객사 ACME · 문의 ACME-7", "데이터베이스", "감사 로그", "SLA 정책 버전 4". */
 export function targetWord(target: Target): string {
+  if (target.type === 'SLA_POLICY' && target.version !== undefined) return `SLA 정책 버전 ${String(target.version)}`;
   const account = target.accountId === undefined ? null : `계정 ${String(target.accountId)}`;
   const company = target.code === undefined ? null : `고객사 ${target.code}`;
   const label = target.labelId === undefined ? null : `라벨 ${String(target.labelId)}`;
@@ -157,6 +164,9 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
   kind: '종류',
   ok: '보냄',
   errorKind: '오류 종류',
+  targets: '목표',
+  hours: '업무 시간',
+  holidays: '쉬는 날',
 };
 
 /** Fields that hold a time. */
@@ -255,9 +265,99 @@ function isFromTo(value: unknown): value is { from: unknown; to: unknown } {
   return isRecord(value) && Object.keys(value).length === 2 && 'from' in value && 'to' in value;
 }
 
+// The parts of an SLA policy change (8a-sla screens.md 4절): each part is a list, and only what
+// differs between before and after is written.
+const WEEKDAY_WORDS: Readonly<Record<string, string>> = {
+  MONDAY: '월요일',
+  TUESDAY: '화요일',
+  WEDNESDAY: '수요일',
+  THURSDAY: '목요일',
+  FRIDAY: '금요일',
+  SATURDAY: '토요일',
+  SUNDAY: '일요일',
+};
+const SHOWN_DAYS = 10;
+
+function records(value: unknown): Record<string, unknown>[] | null {
+  return Array.isArray(value) && value.every(isRecord) ? value : null;
+}
+
+function goalWord(minutes: unknown): string {
+  return typeof minutes === 'number' ? slaLength(minutes) : NONE;
+}
+
+/** "보통 첫 응답 4시간 → 2시간, 해결 12시간 → 10시간 · 높음 첫 응답 1시간 → 없음": changed goals only. */
+function targetsWord(from: Record<string, unknown>[], to: Record<string, unknown>[]): string {
+  const parts: string[] = [];
+  for (const after of to) {
+    const before = from.find((t) => t.priority === after.priority);
+    const goals: string[] = [];
+    for (const [key, name] of [
+      ['firstResponseMinutes', '첫 응답'],
+      ['resolutionMinutes', '해결'],
+    ] as const) {
+      const was = before?.[key] ?? null;
+      const is = after[key] ?? null;
+      if (was !== is) goals.push(`${name} ${goalWord(was)} → ${goalWord(is)}`);
+    }
+    if (goals.length > 0) parts.push(`${word(PRIORITY_WORDS, String(after.priority))} ${goals.join(', ')}`);
+  }
+  return parts.length === 0 ? NONE : parts.join(' · ');
+}
+
+function spanWord(day: Record<string, unknown> | undefined): string {
+  if (day === undefined || typeof day.opens !== 'string' || typeof day.closes !== 'string') return '쉼';
+  return `${day.opens}–${day.closes}`;
+}
+
+/** "수요일 09:00–18:00 → 쉼": changed weekdays only. */
+function hoursWord(from: Record<string, unknown>[], to: Record<string, unknown>[]): string {
+  const parts: string[] = [];
+  for (const after of to) {
+    const was = spanWord(from.find((d) => d.weekday === after.weekday));
+    const is = spanWord(after);
+    if (was !== is) parts.push(`${word(WEEKDAY_WORDS, String(after.weekday))} ${was} → ${is}`);
+  }
+  return parts.length === 0 ? NONE : parts.join(' · ');
+}
+
+function daysWord(days: string[]): string {
+  const shown = days.slice(0, SHOWN_DAYS).join(', ');
+  return days.length > SHOWN_DAYS ? `${shown} 외 ${String(days.length - SHOWN_DAYS)}개` : shown;
+}
+
+/** "더함 2027-01-01, 뺌 2026-12-25": the days are written as they are stored, with the year. */
+function holidaysWord(from: string[], to: string[]): string {
+  const added = to.filter((d) => !from.includes(d)).sort();
+  const removed = from.filter((d) => !to.includes(d)).sort();
+  const parts = [added.length > 0 ? `더함 ${daysWord(added)}` : '', removed.length > 0 ? `뺌 ${daysWord(removed)}` : ''].filter(Boolean);
+  return parts.length === 0 ? NONE : parts.join(', ');
+}
+
+function strings(value: unknown): string[] | null {
+  return Array.isArray(value) && value.every((d) => typeof d === 'string') ? value : null;
+}
+
+/** The words of one part of an SLA policy change, or null when the value is not in the shape the screen knows. */
+function slaPartWord(field: string, from: unknown, to: unknown): string | null {
+  if (field === 'holidays') {
+    const before = strings(from);
+    const after = strings(to);
+    return before && after ? holidaysWord(before, after) : null;
+  }
+  const before = records(from);
+  const after = records(to);
+  if (!before || !after) return null;
+  if (field === 'targets') return targetsWord(before, after);
+  if (field === 'hours') return hoursWord(before, after);
+  return null;
+}
+
 /** One line for each changed field: "역할: 상담원 → 관리자", or "칸: 값" for a value that is not from and to. */
 export function changeLines(action: string, changes: Readonly<Record<string, unknown>> | null): string[] {
   return Object.entries(changes ?? {}).map(([field, value]) => {
+    const sla = action === 'SLA_POLICY_CHANGED' && isFromTo(value) ? slaPartWord(field, value.from, value.to) : null;
+    if (sla !== null) return `${word(FIELD_WORDS, field)}: ${sla}`;
     // An export's filter may hold just 부터 and 까지: it is not a change from one value to another.
     const shown = field !== 'filter' && isFromTo(value) ? `${valueWord(action, field, value.from)} → ${valueWord(action, field, value.to)}` : valueWord(action, field, value);
     return `${word(FIELD_WORDS, field)}: ${shown}`;

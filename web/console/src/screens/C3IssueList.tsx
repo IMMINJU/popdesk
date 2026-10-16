@@ -1,8 +1,9 @@
 // C-3 문의 목록 (screens.md 4절, 3-issues screens.md 2절). Newest first, 20 a page.
 // 보기 고르기 and the filter row keep their state in the address (app/issueFilters.ts).
 // Slice 6a (6a-labels screens.md 2절) adds the 라벨 and 마감일 columns, the 라벨 filter once a company
-// is chosen, and 정렬. No SLA column yet.
+// is chosen, and 정렬.
 // Slice 6b (6b-tasks screens.md 4절) adds "작업 n" beside the title of an issue with open tasks.
+// Slice 8a (8a-sla screens.md 2절) adds the SLA column at the end, the SLA filter, and "SLA 기한순".
 import {
   Alert,
   Badge,
@@ -44,15 +45,18 @@ import {
   readIssueSort,
   writeIssueFilters,
   type IssueFilters,
+  type IssueSort,
 } from '../app/issueFilters';
 import { LoadFailed, PageTitle } from '../app/layout';
 import { t } from '../app/locale';
-import { rateLimitedText } from '../app/messages';
+import { rateLimitedText, slaWords } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, usePageMove, usePageParam } from '../app/paging';
 import { call } from '../app/result';
 import { useSession } from '../app/sessionContext';
+import { SlaBadge } from '../app/SlaBadge';
+import { worseGoal } from '../app/slaGoals';
 
 type IssueSummary = Schemas['IssueSummary'];
 type Person = Schemas['Person'];
@@ -67,7 +71,30 @@ const ASSIGNEE_OPTIONS: SelectOption[] = [
 const SORT_OPTIONS: SelectOption[] = [
   { value: 'createdAt', label: '올린 시각순' },
   { value: 'dueDate', label: '마감일순' },
+  { value: 'slaDue', label: 'SLA 기한순' },
 ];
+
+const SORTS: readonly IssueSort[] = ['createdAt', 'dueDate', 'slaDue'];
+
+const SLA_OPTIONS: SelectOption[] = [
+  { value: 'warning', label: '곧 넘김' },
+  { value: 'breached', label: '넘김' },
+];
+
+/** The worse running goal: its badge, then the time left; the goal's name is read, not shown. */
+function SlaCell(props: { issue: IssueSummary }) {
+  const worse = worseGoal(props.issue.sla);
+  if (worse === null || worse.goal.remainingMinutes === null) return null;
+  return (
+    <span className="pd-inline pd-sla-cell">
+      <SlaBadge state={worse.goal.state} />
+      <span>
+        <span className="pd-sr-only">{worse.name} </span>
+        {slaWords(worse.goal.remainingMinutes)}
+      </span>
+    </span>
+  );
+}
 
 const columns: DataTableColumn<IssueSummary>[] = [
   { key: 'key', header: '키', cell: (i) => <span className="pd-key">{i.key}</span>, sticky: true, width: '6.5rem' },
@@ -107,6 +134,7 @@ const columns: DataTableColumn<IssueSummary>[] = [
       ),
   },
   { key: 'created', header: '올린 시각', cell: (i) => <RelativeTime dateTime={i.createdAt} focusable={false} />, align: 'end' },
+  { key: 'sla', header: 'SLA', cell: (i) => <SlaCell issue={i} /> },
 ];
 
 /** Who can be the assignee in one company, for the 담당자 filter. An answer for a company left behind is dropped (S3-AC-87). */
@@ -170,6 +198,7 @@ export function C3IssueList() {
               ...(filters.assignee === '' ? {} : { assignee: filters.assignee }),
               ...(filters.reporter === null ? {} : { reporter: filters.reporter }),
               ...(filters.label.length === 0 ? {} : { label: filters.label }),
+              ...(filters.sla === '' ? {} : { sla: filters.sla }),
               ...(sort === 'createdAt' ? {} : { sort }),
             },
           },
@@ -324,6 +353,15 @@ export function C3IssueList() {
             change({ ...filters, assignee });
           }}
         />
+        <Select
+          label="SLA"
+          placeholder="전체"
+          options={SLA_OPTIONS}
+          value={filters.sla}
+          onChange={(sla) => {
+            change({ ...filters, sla: sla === 'warning' || sla === 'breached' ? sla : '' });
+          }}
+        />
         {reporterName !== null && (
           <span className="pd-filter-chip">
             <span>올린 사람: {reporterName}</span>
@@ -342,7 +380,7 @@ export function C3IssueList() {
           options={SORT_OPTIONS}
           value={sort}
           onChange={(next) => {
-            setParams(writeIssueFilters(filters, next === 'dueDate' ? 'dueDate' : 'createdAt'));
+            setParams(writeIssueFilters(filters, SORTS.find((o) => o === next)));
           }}
         />
         {filtered && (

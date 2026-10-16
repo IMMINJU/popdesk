@@ -3,7 +3,7 @@
 // apps is the shared file; this adds the console's own.
 import { TEXT as SHARED } from '@popdesk/app/messages';
 
-export { failureText, fieldSummaryTitle, fieldText, pageAnnouncement, rateLimitedText, type FieldLimits } from '@popdesk/app/messages';
+export { failureText, fieldSummaryTitle, fieldText, pageAnnouncement, rateLimitedText, slaLength, slaWords, type FieldLimits } from '@popdesk/app/messages';
 
 export const TEXT = {
   ...SHARED,

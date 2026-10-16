@@ -3,6 +3,9 @@
 // An app adds its own texts on top of `TEXT`.
 import type { Failure } from './result';
 
+// The words for SLA minutes (8a-sla), exported through this file.
+export { slaLength, slaWords } from './slaWords';
+
 export const TEXT = {
   displayName: 'popdesk',
   skipLink: '본문으로 건너뛰기',
