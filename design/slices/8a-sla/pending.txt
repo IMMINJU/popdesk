@@ -31,4 +31,5 @@ web **/auditWords.words.test.ts
 web **/C12AuditLog.7a.test.tsx
 web **/C12AuditLog.test.tsx
 web **/C12AuditLog.filters.test.tsx
+web **/C11Trash.7a.test.tsx
 web ../../../console/**/Screens8a.overflow.stories.tsx
