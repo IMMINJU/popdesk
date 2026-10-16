@@ -498,7 +498,11 @@ describe('계약 검증기 checkResponse: 8a 묶음 웹 테스트의 견본', ()
     changedAt: T0,
     changedBy: null,
   });
-  /** `onPolicy()` of console8a.ts, with Friday to midnight as storyFetch8a.ts has it. */
+  /**
+   * Not a copy of either fixture: `onPolicy()` of console8a.ts with two parts of storyFetch8a.ts's,
+   * Friday to midnight and no 긴급 resolution goal. The console8a.ts answers pass `contract()` when the
+   * tests run; the storyFetch8a.ts ones do not, so this checks the forms only they use (24:00, a null goal).
+   */
   const onPolicy = (over: Record<string, unknown> = {}) => ({
     version: 3,
     targets: [

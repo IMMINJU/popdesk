@@ -113,7 +113,7 @@ describe('C-11 휴지통 자리와 권한 (7a 묶음)', () => {
     );
     const links = menuLinks();
     expect(links.indexOf('휴지통'), '"구성원" 뒤').toBe(links.indexOf('구성원') + 1);
-    expect(links.indexOf('감사 로그'), '"감사 로그" 앞').toBe(links.indexOf('휴지통') + 1);
+    expect(links.indexOf('감사 로그'), '"감사 로그"는 "SLA 설정" 바로 뒤(8a screens.md 0절)').toBe(links.indexOf('SLA 설정') + 1);
     expect(hrefPath(menu)).toBe(URL_TRASH);
 
     await user.click(menu);

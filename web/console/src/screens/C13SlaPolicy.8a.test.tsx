@@ -74,10 +74,15 @@ function saveButton(): Promise<HTMLElement> {
   return found(() => screen.queryByRole('button', { name: '저장' }), '"저장"');
 }
 
+/** The body of the last save as it was sent. */
+async function lastSentBody(): Promise<ChangeSlaPolicyRequest> {
+  const call = (await sent('PUT', SLA_POLICY)).at(-1);
+  return (await call?.body) as ChangeSlaPolicyRequest;
+}
+
 /** The body of the last save, in the contract's order of priorities and weekdays, holidays sorted. */
 async function lastSaved(): Promise<ChangeSlaPolicyRequest> {
-  const call = (await sent('PUT', SLA_POLICY)).at(-1);
-  const body = (await call?.body) as ChangeSlaPolicyRequest;
+  const body = await lastSentBody();
   return {
     version: body.version,
     targets: [...body.targets].sort((a, b) => PRIORITIES.indexOf(a.priority) - PRIORITIES.indexOf(b.priority)),
@@ -163,7 +168,7 @@ describe('C-13 SLA 설정 읽기 (8a 묶음)', () => {
   test('S8A-AC-01 C-13 켜진 정책: 상태 줄에 버전과 바꾼 사람, 목표 칸의 값과 분 도움말, 업무일과 시각, 쉬는 날 목록(오름차순)', async () => {
     await openPolicy(onPolicy({ targets: [target('LOW', 480, 3120), target('NORMAL', 240, 1440), target('HIGH', 60, 480), target('URGENT', 20, 240)], holidays: ['2026-10-09', '2026-12-25'] }));
 
-    await pageShows(/SLA가 켜져 있습니다\. 버전 3, .+최관리(이|가) 바꿈/);
+    await pageShows(/SLA가 켜져 있습니다\. 버전 3, .+최관리가 바꿈/);
     expect(pageText()).not.toContain(OFF);
     const [lowFirst, lowResolution] = await goalFields('LOW');
     expect(lowFirst.value).toBe('480');
@@ -290,6 +295,7 @@ describe('C-13 SLA 설정 고치기와 저장 (8a 묶음)', () => {
       ],
       holidays: ['2027-01-01'],
     });
+    expect(Object.keys(await lastSentBody()).sort(), '본문의 칸(그 밖의 칸 없음)').toEqual(['holidays', 'hours', 'targets', 'version']);
     await pageShows(SAVED);
     await pageShows(/SLA가 켜져 있습니다\. 버전 4/);
     expect(s8a.policy.version).toBe(4);
@@ -311,6 +317,19 @@ describe('C-13 SLA 설정 고치기와 저장 (8a 묶음)', () => {
     expect(body.holidays).toEqual([]);
     await pageShows(/SLA가 켜져 있습니다\. 버전 2/);
     expect(pageText()).not.toContain(OFF);
+  });
+
+  test('S8A-AC-02 C-13 읽어 온 금요일 끝 24:00은 다른 칸 하나만 고쳐 저장해도 closes 24:00으로 다시 보낸다', async () => {
+    const user = await openPolicy(onPolicy({ hours: WEEKDAYS.map((d) => ({ weekday: d, opens: d === 'FRIDAY' ? '13:00' : null, closes: d === 'FRIDAY' ? '24:00' : null })) }));
+    await found(() => midnightBoxNow('FRIDAY'), '"금 자정까지"');
+
+    const [normalFirst] = await goalFields('NORMAL');
+    await retype(user, normalFirst, '120');
+    await user.click(await saveButton());
+
+    const body = await lastSaved();
+    expect(body.targets).toEqual([target('LOW', 480, 2880), target('NORMAL', 120, 1440), target('HIGH', 60, 480), target('URGENT', 20, 240)]);
+    expect(body.hours).toEqual(WEEKDAYS.map((d) => ({ weekday: d, opens: d === 'FRIDAY' ? '13:00' : null, closes: d === 'FRIDAY' ? '24:00' : null })));
   });
 
   test('S8A-AC-02 C-13 쉬는 날 500개: "더하기"가 막혀 있고 "쉬는 날은 500개까지입니다."', async () => {
@@ -390,9 +409,8 @@ describe('C-13 SLA 설정 오류 (8a 묶음)', () => {
 
     await user.click(await saveButton());
 
-    const alert = await found(() => screen.queryAllByRole('alert').find((a) => text(a).includes(CONFLICT)), `role="alert" "${CONFLICT}"`);
+    await found(() => screen.queryAllByRole('alert').find((a) => text(a).includes(CONFLICT)), `role="alert" "${CONFLICT}"`);
     const reload = await found(() => screen.queryByRole('button', { name: RELOAD }), `"${RELOAD}"`);
-    expect(alert).toBeTruthy();
     expect(s8a.policy.version).toBe(4);
     const reads = callsTo('GET', SLA_POLICY).length;
 
@@ -421,7 +439,7 @@ describe('C-13 SLA 설정 오류 (8a 묶음)', () => {
     await user.click(await saveButton());
     await sent('PUT', SLA_POLICY);
 
-    await user.click(await found(() => screen.queryAllByRole('link', { name: '휴지통' }).find((a) => a.closest('nav') !== null), '메뉴 "휴지통"'));
+    await user.click(await found(() => screen.queryAllByRole('link', { name: '문의' }).find((a) => a.closest('nav') !== null), '메뉴 "문의"'));
     await eventually(() => {
       expect(window.location.pathname).not.toBe(URL_SLA);
     });

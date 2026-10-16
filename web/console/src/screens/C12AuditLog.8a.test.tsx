@@ -51,6 +51,8 @@ describe('C-12 감사 로그의 SLA 정책 항목 (8a 묶음)', () => {
     const [shown] = column('바뀐 값');
     expect(shown).toContain('보통 첫 응답 4시간 → 2시간, 해결 12시간 → 10시간');
     expect(shown).toContain('높음 첫 응답 1시간 → 없음');
+    expect(shown, '바뀐 우선순위 안의 그대로인 목표(높음 해결)').not.toMatch(/높음 첫 응답 1시간 → 없음, 해결/);
+    expect(shown).not.toContain('8시간 → 8시간');
     expect(shown, '바뀌지 않은 우선순위').not.toContain('낮음');
     expect(shown).not.toContain('긴급');
   });
@@ -63,7 +65,9 @@ describe('C-12 감사 로그의 SLA 정책 항목 (8a 묶음)', () => {
     await entryRows(1);
     const [shown] = column('바뀐 값');
     expect(shown).toMatch(/수(요일)? 09:00–18:00 → 쉼/);
-    expect(shown, '바뀌지 않은 요일').not.toMatch(/(^|[^가-힣])월(요일)? /);
+    for (const day of ['월', '화', '목', '금', '토', '일']) {
+      expect(shown, `바뀌지 않은 요일 ${day}`).not.toMatch(new RegExp(`(^|[^가-힣])${day}(요일)? `));
+    }
   });
 
   test('S8A-AC-06 C-12 바뀐 값의 쉬는 날: "더함 {날짜들}, 뺌 {날짜들}"이고 열 개를 넘으면 "외 {n}개"', async () => {
@@ -76,9 +80,11 @@ describe('C-12 감사 로그의 SLA 정책 항목 (8a 묶음)', () => {
 
     await entryRows(2);
     const [one, many] = column('바뀐 값');
-    expect(one).toMatch(/더함 (2027-01-01|2027년 1월 1일), 뺌 (2026-12-25|2026년 12월 25일)/);
-    expect(many).toContain('더함');
+    // 날짜는 2026-12-25 꼴만 받는다(screens.md 4절). 해를 빼는 꼴이 아니므로 테스트를 도는 해와 관계없다.
+    expect(one).toContain('더함 2027-01-01, 뺌 2026-12-25');
+    expect(many).toContain('더함 2027-01-01');
+    expect(many, '열째 날짜까지는 적는다').toContain('2027-01-10');
     expect(many).toContain('외 2개');
-    expect(many, '열한째 날짜는 "외"에 든다').not.toMatch(/2027-01-11|2027년 1월 11일/);
+    expect(many, '열한째 날짜는 "외"에 든다').not.toMatch(/2027-01-11|1월 11일/);
   });
 });
