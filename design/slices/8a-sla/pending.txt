@@ -9,3 +9,15 @@ server io/popdesk/sla/SlaFieldsTest.java
 server io/popdesk/sla/SlaListTest.java
 server io/popdesk/sla/SlaHiddenFromCustomerTest.java
 server io/popdesk/ops/CleanupStalledTest.java
+web **/C13SlaPolicy.8a.test.tsx
+web **/C3IssueList.8a.test.tsx
+web **/C4IssueDetail.8a.test.tsx
+web **/C12AuditLog.8a.test.tsx
+web **/layout.inbox.test.tsx
+web **/adminOnly.1b.test.tsx
+web **/C3IssueList.test.tsx
+web **/auditWords.words.test.ts
+web **/C12AuditLog.7a.test.tsx
+web **/C12AuditLog.test.tsx
+web **/C12AuditLog.filters.test.tsx
+web ../../../console/**/Screens8a.overflow.stories.tsx
