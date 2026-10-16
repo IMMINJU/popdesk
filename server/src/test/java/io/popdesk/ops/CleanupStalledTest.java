@@ -108,6 +108,7 @@ class CleanupStalledTest extends BareAppTest {
         stall.failAt(last.plus(job.stalledAfter()).minus(MINUTE), job);
         holdsItems(0, "a minute before " + job.stalledAfter() + " after the last success of " + job.name());
         IssueFlow.suspendRequest(fixtures.signInAdmin(), away.accountId()).expect(200);
+        int ofFirstBefore = DeliverySteps.items(fixtures.signInAdmin(), KIND).size();
         stall.failAt(last.plus(job.stalledAfter()).plus(MINUTE), job);
 
         awaitItems(1, "a minute after " + job.stalledAfter() + " since the last success of " + job.name());
@@ -116,7 +117,8 @@ class CleanupStalledTest extends BareAppTest {
             assertThat(TalkFlow.isNull(item, field)).as("%s is null in %s", field, item).isTrue();
         }
         Session first = fixtures.signInAdmin();
-        assertThat(DeliverySteps.items(first, KIND)).as("%s items of the first admin", KIND).isNotEmpty();
+        assertThat(DeliverySteps.items(first, KIND)).as("%s items of the first admin, one more than before", KIND)
+                .hasSize(ofFirstBefore + 1);
         assertThat(DeliverySteps.items(fixtures.signInAgain(agent), KIND)).as("%s items of an agent", KIND).isEmpty();
         new IssueFlow(fixtures, clock).reactivate(first, away.accountId());
         assertThat(DeliverySteps.items(fixtures.signInAgain(away), KIND))

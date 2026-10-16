@@ -42,7 +42,9 @@ class CompanyStatsTest extends BareAppTest {
         IssueFlow flow = new IssueFlow(fixtures, clock);
         Company busy = fixtures.createCompany(admin);
         Session customer = fixtures.customer(admin, busy.code());
-        for (String status : List.of("RECEIVED", "RECEIVED", "CONFIRMED", "IN_PROGRESS", "RESOLVED", "CLOSED")) {
+        // Open 3, in progress 1, resolved 2, closed 4: counting one status as another changes a number.
+        for (String status : List.of("RECEIVED", "RECEIVED", "CONFIRMED", "IN_PROGRESS", "RESOLVED", "RESOLVED",
+                "CLOSED", "CLOSED", "CLOSED", "CLOSED")) {
             issueIn(flow, admin, customer, busy.code(), status);
         }
         Company empty = fixtures.createCompany(admin);
@@ -61,7 +63,7 @@ class CompanyStatsTest extends BareAppTest {
         softly.assertThat(fields).as("fields of %s", ofBusy).isEqualTo(new TreeSet<>(StatsSteps.FIELDS));
         softly.assertThat(ofBusy.path("companyName").asString(null)).as("companyName").isEqualTo(busy.name());
         expect(softly, find(items, empty.code()), "ACTIVE", 0, 0, 0, 0, 0);
-        expect(softly, ofBusy, "ACTIVE", 6, 3, 1, 1, 1);
+        expect(softly, ofBusy, "ACTIVE", 10, 3, 1, 2, 4);
         expect(softly, find(items, suspended.code()), "SUSPENDED", 0, 0, 0, 0, 0);
         expect(softly, find(items, archived.code()), "ARCHIVED", 1, 1, 0, 0, 0);
         softly.assertAll();
@@ -102,28 +104,38 @@ class CompanyStatsTest extends BareAppTest {
         Session admin = fixtures.signInAdmin();
         IssueFlow flow = new IssueFlow(fixtures, clock);
         String base = Unique.companyCode();
-        // Open counts 2, 1, 1, 0; the company with one open issue and two closed ones has the larger total.
-        Company twoOpen = company(admin, base + "D");
-        Company oneOpenMore = company(admin, base + "C");
-        Company oneOpen = company(admin, base + "B");
-        Company noneOpen = company(admin, base + "A");
-        Session inD = fixtures.customer(admin, twoOpen.code());
-        issueIn(flow, admin, inD, twoOpen.code(), "RECEIVED");
-        issueIn(flow, admin, inD, twoOpen.code(), "CONFIRMED");
-        Session inC = fixtures.customer(admin, oneOpenMore.code());
-        issueIn(flow, admin, inC, oneOpenMore.code(), "RECEIVED");
-        issueIn(flow, admin, inC, oneOpenMore.code(), "CLOSED");
-        issueIn(flow, admin, inC, oneOpenMore.code(), "CLOSED");
-        issueIn(flow, admin, fixtures.customer(admin, oneOpen.code()), oneOpen.code(), "CONFIRMED");
+        // Open counts 2, 1, 1, 1, 0. Among the three with one open issue (B, C, D) the code order is neither the
+        // order of their totals (2, 1, 3), nor the order they were made in (C, D, B), nor the order of their names.
+        Company twoOpen = company(admin, base + "E", "4");
+        Company oneOpenAlone = company(admin, base + "C", "1");
+        Company oneOpenMost = company(admin, base + "D", "3");
+        Company oneOpenMore = company(admin, base + "B", "2");
+        Company noneOpen = company(admin, base + "A", "5");
+        Session inE = fixtures.customer(admin, twoOpen.code());
+        issueIn(flow, admin, inE, twoOpen.code(), "RECEIVED");
+        issueIn(flow, admin, inE, twoOpen.code(), "CONFIRMED");
+        issueIn(flow, admin, fixtures.customer(admin, oneOpenAlone.code()), oneOpenAlone.code(), "CONFIRMED");
+        Session inD = fixtures.customer(admin, oneOpenMost.code());
+        issueIn(flow, admin, inD, oneOpenMost.code(), "RECEIVED");
+        issueIn(flow, admin, inD, oneOpenMost.code(), "CLOSED");
+        issueIn(flow, admin, inD, oneOpenMost.code(), "CLOSED");
+        Session inB = fixtures.customer(admin, oneOpenMore.code());
+        issueIn(flow, admin, inB, oneOpenMore.code(), "RECEIVED");
+        issueIn(flow, admin, inB, oneOpenMore.code(), "RESOLVED");
         issueIn(flow, admin, fixtures.customer(admin, noneOpen.code()), noneOpen.code(), "IN_PROGRESS");
-        List<String> mine = List.of(twoOpen.code(), oneOpen.code(), oneOpenMore.code(), noneOpen.code());
+        List<String> mine = List.of(twoOpen.code(), oneOpenMore.code(), oneOpenAlone.code(), oneOpenMost.code(),
+                noneOpen.code());
 
         JsonNode answer = StatsSteps.read(admin).json();
         List<JsonNode> items = answer.path("items").values().stream().toList();
+        long companies = admin.client().get("/api/console/companies").query("size", 1).expect(200).json()
+                .path("totalElements").asLong(-1);
 
         Set<String> fields = new TreeSet<>();
         answer.propertyNames().forEach(fields::add);
         assertThat(fields).as("fields of the answer: one list, no page fields").containsExactly("items");
+        assertThat((long) items.size()).as("items against totalElements of the admin's company list")
+                .isEqualTo(companies);
         assertThat(StatsSteps.codes(items).stream().filter(mine::contains).toList())
                 .as("the order of this test's companies").isEqualTo(mine);
         List<String> outOfOrder = new ArrayList<>();
@@ -141,8 +153,10 @@ class CompanyStatsTest extends BareAppTest {
         assertThat(outOfOrder).as("neighbouring items out of order in the whole list").isEmpty();
     }
 
-    private Company company(Session admin, String code) {
-        return fixtures.createCompany(admin, code, "Company " + code, "Company " + code + " Ltd.");
+    /** A company whose name sorts by {@code nameKey}, not by its code. */
+    private Company company(Session admin, String code, String nameKey) {
+        String name = "Company " + nameKey + " " + code;
+        return fixtures.createCompany(admin, code, name, name + " Ltd.");
     }
 
     private static JsonNode find(List<JsonNode> items, String code) {
