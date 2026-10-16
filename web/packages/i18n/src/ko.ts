@@ -154,6 +154,15 @@ export const ko = {
   'inbox.webhookStalled': '웹훅 보내기가 한 시간 넘게 실패하고 있습니다',
   'inbox.auditForwardStalled': '감사 바깥 사본 보내기가 한 시간 넘게 실패하고 있습니다',
   'inbox.cleanupStalled': '정리 작업이 하루 넘게 돌지 않았습니다',
+  // Slice 8b: time ran out, nobody did it, so no "{who}" (8b screens.md 1절).
+  'inbox.slaResponseWarning': '첫 응답 기한을 곧 넘깁니다',
+  'inbox.slaResponseBreached': '첫 응답 기한을 넘겼습니다',
+  'inbox.slaResolutionWarning': '해결 기한을 곧 넘깁니다',
+  'inbox.slaResolutionBreached': '해결 기한을 넘겼습니다',
+  'inbox.slaRecalculated': 'SLA 기한을 다시 계산했습니다: {parts}',
+  'inbox.slaBecameBreached': '새로 넘김 {n}건',
+  'inbox.slaBecameWarning': '새로 곧 넘김 {n}건',
+  'inbox.slaReleased': '넘김·곧 넘김에서 벗어남 {n}건',
   'inbox.other': '새 알림이 있습니다',
   // The portal's sentences: whoever did it is "지원팀", never a name (S4-AC-68).
   'inbox.portal.staffComment': '지원팀이 답변했습니다',
