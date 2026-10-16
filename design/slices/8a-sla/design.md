@@ -163,6 +163,7 @@ create index issue_sla_running_idx on issue (sla_version)
 
 - `IssueSummary`에 칸이 늘면 목록 응답 견본을 고정한 잠긴 테스트(계약 검증기 견본, `console.ts` 기본 가짜 서버)를 C-5 탭이 맞춘다(`process.md` C-4 가드레일).
 - 관리자 옆 메뉴 배열을 그대로 견주는 잠긴 테스트(`layout.inbox.test.tsx` 54줄, `adminOnly.1b.test.tsx` 14줄).
+- C-3 열(`C3IssueList.test.tsx` 79줄 "SLA 열 없음"), C-12 묶음 차례(`C12AuditLog.4b.test.tsx` 43-46줄, `C12AuditLog.7a.test.tsx` 32줄과 사본 `console1b.ts` 24줄, `auditWords.words.test.ts` 85줄). 자리는 `screens.md` 0절대로 잠긴 단언을 덜 건드리게 골랐다(C-4 웹 탭이 찾음).
 - 목록 매개변수 허용 목록(정의 `ConsoleIssueController` 54줄, 검사 177줄)과 `UNKNOWN_PARAMETER` 테스트.
 - 정리 작업 이름을 나열한 테스트 도움: `ops/CleanupStall.java` 59줄 `JOBS`, `issue/IdempotencyKeyTest.java` 56줄 `EARLIER_JOBS`, `auth/PasswordResetCleanupTest.java` 37줄 `EARLIER_JOBS`(새 작업의 기록 수가 2건을 넘으면 잘못 집힌다, 84-88줄).
 - 감사 종류를 그대로 견주는 `web/console/src/app/auditWords.words.test.ts` 40-75줄과 내보내기의 종류 나열.
