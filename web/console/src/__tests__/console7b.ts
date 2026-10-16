@@ -35,7 +35,7 @@ export const ARCHIVED = '보관';
 
 /** One company's counts; `total` is the sum of the four others unless given. */
 export function stat(over: Partial<CompanyStat> = {}): CompanyStat {
-  const base = { companyCode: 'ACME', companyName: '에이크미', companyStatus: 'ACTIVE' as const, open: 5, inProgress: 3, resolved: 0, closed: 4, ...over };
+  const base = { companyCode: 'ACME', companyName: '에이크미', companyStatus: 'ACTIVE' as const, open: 5, inProgress: 3, resolved: 0, closed: 4, sla: null, ...over };
   return { ...base, total: over.total ?? base.open + base.inProgress + base.resolved + base.closed };
 }
 

@@ -425,6 +425,7 @@ describe('계약 검증기 checkResponse: 7a 묶음 웹 테스트의 견본', ()
       companyCode: null,
       task: null,
       linkedIssue: null,
+      slaSummary: null,
       readAt: null,
       createdAt: '2026-10-08T03:15:00Z',
       ...over,
@@ -446,6 +447,7 @@ describe('계약 검증기 checkResponse: 7b 묶음 웹 테스트의 견본', ()
     inProgress: 3,
     resolved: 0,
     closed: 4,
+    sla: null,
     ...over,
   });
 
@@ -472,6 +474,7 @@ describe('계약 검증기 checkResponse: 7b 묶음 웹 테스트의 견본', ()
       companyCode: null,
       task: null,
       linkedIssue: null,
+      slaSummary: null,
       readAt: null,
       createdAt: '2026-10-08T03:15:00Z',
     };
@@ -608,5 +611,44 @@ describe('계약 검증기 checkResponse: 8a 묶음 웹 테스트의 견본', ()
     const withoutSla = Object.fromEntries(Object.entries(issue(null)).filter(([name]) => name !== 'sla'));
     expect(() => checkResponse('console', 'getIssue', 200, withoutSla)).toThrow('$.sla: required, but missing');
     expect(() => checkResponse('console', 'getIssue', 200, issue({ ...SLA, resolution: { ...SLA.resolution, state: 'LATE' } }))).toThrow('$.sla');
+  });
+});
+
+describe('계약 검증기 checkResponse: 8b 묶음 웹 테스트의 견본', () => {
+  const T0 = '2026-10-08T03:15:00Z';
+
+  test('console: 알림함(listNotifications 200)의 SLA 항목 견본(문의의 넘김, 요약 SLA_RECALCULATED)이 계약에 맞고, slaSummary는 필수다', () => {
+    const breached = {
+      id: 851,
+      kind: 'SLA_RESPONSE_BREACHED',
+      actor: null,
+      issue: { key: 'ACME-7', title: '로그인이 안 됩니다' },
+      commentId: null,
+      companyCode: 'ACME',
+      task: null,
+      linkedIssue: null,
+      slaSummary: null,
+      readAt: null,
+      createdAt: T0,
+    };
+    const summary = { ...breached, id: 855, kind: 'SLA_RECALCULATED', issue: null, companyCode: null, slaSummary: { becameBreached: 0, becameWarning: 1234, released: 2 } };
+    const page = { items: [breached, summary], page: 1, size: 20, totalElements: 2, totalPages: 1 };
+
+    expect(checkResponse('console', 'listNotifications', 200, page)).toBe(page);
+    const withoutSummary = Object.fromEntries(Object.entries(breached).filter(([name]) => name !== 'slaSummary'));
+    expect(() => checkResponse('console', 'listNotifications', 200, { ...page, items: [withoutSummary] })).toThrow('$.items[0].slaSummary: required, but missing');
+  });
+
+  test('console: 통계(getCompanyStats 200)의 sla 값 견본(값 있음, 셀 것 없음, 중앙값만 없음)이 계약에 맞는다', () => {
+    const stat = (sla: unknown) => ({ companyCode: 'ACME', companyName: '에이크미', companyStatus: 'ACTIVE', total: 12, open: 5, inProgress: 3, resolved: 0, closed: 4, sla });
+    const stats = {
+      items: [
+        stat({ firstResponse: { medianMinutes: 4260, met: 249, missed: 1 }, resolution: { medianMinutes: 95, met: 23, missed: 2 } }),
+        stat({ firstResponse: { medianMinutes: null, met: 0, missed: 0 }, resolution: { medianMinutes: null, met: 0, missed: 3 } }),
+      ],
+    };
+
+    expect(checkResponse('console', 'getCompanyStats', 200, stats)).toBe(stats);
+    expect(() => checkResponse('console', 'getCompanyStats', 200, { items: [stat({ firstResponse: { medianMinutes: 1, met: 1 }, resolution: null })] })).toThrow('$.items[0].sla');
   });
 });

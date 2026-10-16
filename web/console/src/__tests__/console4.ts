@@ -60,6 +60,7 @@ export function notification(over: Partial<Notification> = {}): Notification {
     readAt: null,
     task: null,
     linkedIssue: null,
+    slaSummary: null,
     ...over,
   };
 }
