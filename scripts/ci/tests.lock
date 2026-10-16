@@ -446,10 +446,10 @@ d91306f4a08e81539bbaefeb533bfc13f19ca7ea2d9ad1073bef86aaec949283  server/src/tes
 6211ab71c66ee44302a3155d5e49bd48a4775bf3d65ee8853ebf502143faea8d  server/src/test/java/io/popdesk/sla/SlaHiddenFromCustomerTest.java
 5218d5ed7f4e3808d39b601e85f0528a933eb0119043c405eb819d1441df4f25  server/src/test/java/io/popdesk/sla/SlaListTest.java
 895e0780c4648b4cdaa8afa89f4c947a29592e2295e3bd0ad0727c4d3272ca04  server/src/test/java/io/popdesk/sla/SlaPolicyAuditTest.java
-fdd0f9d741879f0d47e54558835e2c1cb855ac3d804f76f7f50b21afcf9898d0  server/src/test/java/io/popdesk/sla/SlaPolicyTest.java
+8843d46e7b9b0012fd25216fa7a45b76ab2ff0907b6a4ca60601cc0804c88c13  server/src/test/java/io/popdesk/sla/SlaPolicyTest.java
 b2f2bbcb2619a9983a4a4a0657826e29e7a71f2b3e07c00bd40ca30cdcc6fcbd  server/src/test/java/io/popdesk/sla/SlaPriorityTest.java
 40623474da3dbf59f0fa762af3484dbd2d0d7c2d595b783782445ab869162041  server/src/test/java/io/popdesk/sla/SlaRaceTest.java
-488990be0612a15a0eb2de3ba686c7dd65e226802dd0960ce9eeef388ae61f0d  server/src/test/java/io/popdesk/sla/SlaRecalculationTest.java
+863b5b2a8a051cabadf484a5f15eebdc6b16e9a305b56115892dda3a0bb44cde  server/src/test/java/io/popdesk/sla/SlaRecalculationTest.java
 54858030ca8c29734911ca6abf8b0aa6424415d07040ebbb8b5329560fd5f08c  server/src/test/java/io/popdesk/sla/SlaResolutionClockTest.java
 1fd03f885fe99a544a280a2458367dc6f5be869646a0307a147190b45b1c62a9  server/src/test/java/io/popdesk/sla/SlaStateTest.java
 10d4dda9d081a0ab620e9684f9ff1c19eaca71be91f48d02a17057ff4e50c4ad  server/src/test/java/io/popdesk/sla/SlaSteps.java
