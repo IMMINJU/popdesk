@@ -201,6 +201,20 @@ Staff can link two issues as duplicate or related, even across customer companie
 - Deleting, restoring, and purging by an admin leave an entry in the audit log (by company code and issue key, never the title) and in the issue's history. popdesk's own purges leave a history entry only.
 - **A resolved issue closes by itself 7 days after it was resolved**, checked every 10 minutes (`STATUS-5`). popdesk closes it as "System": the reporter and the team are told as when staff close an issue. An issue reopened or moved on in the meantime is not closed. An issue in the trash is not closed; a resolved issue restored from the trash closes 7 days after the restore.
 
+## Statistics
+
+Staff see how many issues each customer company has: all of them, open (received or confirmed), in progress, resolved, and closed (`STATS-1`).
+
+| Action | Customer | Agent | Admin |
+|---|---|---|---|
+| Issue counts per company | – | Assigned companies | All companies |
+
+- An agent gets only the companies assigned to them. A company they are not assigned to has no line at all, so neither its name nor its counts show (`STATS-2`).
+- Customers have no statistics. The path is a console path, so a customer gets the same answer as for any other console path.
+- Private issues are counted. Issues in the trash and purged ones are not.
+- Archived and suspended companies are listed too; archived ones are marked. A company without issues shows zeros.
+- The company with the most open issues comes first, then by company code.
+
 ## Other areas
 
 | Area | Customer | Agent | Admin |

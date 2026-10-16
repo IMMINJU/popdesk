@@ -81,6 +81,8 @@ The next version stores attachment files in a folder (`POPDESK_STORAGE=disk`) or
 - **Within 10 minutes after the start, resolved issues older than 7 days are closed.** The job `issue-auto-close` closes every `RESOLVED` issue that was resolved over 7 days ago, as popdesk itself, with the same email to the reporter and the same webhook message as when staff close an issue. An installation with many old resolved issues sends that many emails at once, at most 50 an hour to one address ([configuration.md](configuration.md#sending-email-and-webhook-messages)).
 - **New cleanup jobs**: `trash-purge` and `issue-auto-close` ([configuration.md](configuration.md#trash-and-closing-resolved-issues)).
 - **New kinds of audit entry**: `ISSUE_DELETED`, `ISSUE_RESTORED`, and `ISSUE_PURGED`. A receiver of the audit copy or of exports that lists the kinds it knows needs these three.
+- **New inbox item for admins**: `CLEANUP_STALLED`, when a cleanup job has not succeeded for its interval plus 24 hours ([configuration.md](configuration.md#sending-email-and-webhook-messages)). After the upgrade, a job that has not succeeded for that long already raises it in the first minutes.
+- **Statistics**: staff see issue counts per company in the console (`GET /api/console/stats`); agents only for the companies assigned to them. No migration and no setting.
 
 ## A migration failed
 

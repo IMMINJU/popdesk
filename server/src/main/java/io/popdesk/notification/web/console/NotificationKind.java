@@ -16,6 +16,8 @@ public enum NotificationKind {
     WEBHOOK_STALLED,
     /** Sending the outside copy of the audit log has only failed for over an hour (S4B-AC-29). */
     AUDIT_FORWARD_STALLED,
+    /** A cleanup job has not succeeded for its interval plus 24 hours (S7B-AC-10). */
+    CLEANUP_STALLED,
     /** A customer manager invited an email that already has an account (S2-AC-39). */
     MEMBERSHIP_REQUESTED,
     /** Staff added a public comment, to the reporter (S4-AC-27). Never in a staff inbox. */
