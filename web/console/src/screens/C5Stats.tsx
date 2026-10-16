@@ -31,7 +31,7 @@ function goalCell(g: SlaGoalStat) {
   if (counted === 0) return '없음';
   const share = Math.floor((g.met * 100) / counted);
   return (
-    <span className="pd-two-lines">
+    <span className="pd-two-lines pd-stats-sla">
       <span>{g.medianMinutes === null ? '중앙값 없음' : `중앙값 ${slaLength(g.medianMinutes)}`}</span>
       <span>{`지킴 ${String(share)}% (${g.met.toLocaleString('ko')}/${counted.toLocaleString('ko')})`}</span>
     </span>
