@@ -110,7 +110,7 @@
 
 | ID | 규칙 |
 |---|---|
-| STATS-1~3 | → `../slices/7b-stats/rules.md`로 옮김(7b 묶음) |
+| STATS-1~3 | → `../archive/7b-stats/rules.md`로 옮김(7b 묶음) |
 | STATS-4 | SLA가 켜져 있으면 고객사마다 기간(기본 최근 30일) 안의 첫 응답·해결 시간 중앙값과 목표 달성률을 함께 보인다(SLA-7) |
 
 ## 13. 개인정보 (PII)
