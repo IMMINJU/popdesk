@@ -69,7 +69,7 @@
 |---|---|
 | S8A-AC-30 | The system shall 콘솔 문의와 문의 목록 항목에 `sla`를 준다: SLA 대상이 아니면 `null`, 대상이면 `firstResponse`와 `resolution` 둘, 각각 `state`(`OK`, `WARNING`, `BREACHED`, `MET`, `MISSED`, 목표가 없으면 `null`), `dueAt`(기한. 확정한 뒤에도 그때의 기한을 준다. 목표가 없으면 `null`), `remainingMinutes`(시계가 돌 때만, 아니면 `null`). (SLA-5, SLA-6) |
 | S8A-AC-31 | When 콘솔 목록을 `sla=warning`이나 `sla=breached`로 거르면, the system shall 돌고 있는 목표 가운데 하나라도 그 상태인 문의만 준다(`breached`가 있으면 `warning`으로는 거르지 않는다: 문의의 SLA 상태는 두 목표 가운데 나쁜 쪽). 쪽의 전체 수도 같다. 다른 필터와 함께 쓴다. 그 밖의 값은 400 `INVALID_INPUT`다. (SLA-6, 5절 12) |
-| S8A-AC-32 | When 콘솔 목록을 `sort=slaDue`로 읽으면, the system shall 돌고 있는 기한 가운데 이른 것 순으로 주고, 돌고 있는 기한이 없는 문의는 뒤에 올라온 순으로 둔다. `sort=dueDate`(마감일)는 그대로다. (SLA-6, 5절 13) |
+| S8A-AC-32 | When 콘솔 목록을 `sort=slaDue`로 읽으면, the system shall 돌고 있는 기한 가운데 이른 것 순으로 주고, 돌고 있는 기한이 없는 문의는 그 뒤에 최신순으로 둔다(계약의 "newest first"). `sort=dueDate`(마감일)는 그대로다. (SLA-6, 5절 13) |
 | S8A-AC-33 | The system shall 고객에게 SLA를 보이지 않는다: 포털 문의와 목록 응답에 SLA 칸이 없고, 포털 목록은 `sla`, `sort=slaDue`를 받지 않는다(있는 허용 목록대로 400). (SLA-6, TM-63) |
 | S8A-AC-34 | The system shall 상담원이 볼 수 있는 문의에서만 `sla` 필터와 정렬을 한다(RULE-03). 다른 고객사의 문의는 걸러도 나오지 않는다. (RULE-03) |
 
