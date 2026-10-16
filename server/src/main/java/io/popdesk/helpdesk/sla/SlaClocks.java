@@ -89,15 +89,25 @@ public final class SlaClocks {
      * @param goalMinutes the goal of the issue's priority, or null
      * @return a stopped clock unchanged; else the time up to {@code at} added, {@code since} null, and
      *     {@link Outcome#NONE} without a goal, {@link Outcome#MET} when the time used is the goal or less,
-     *     {@link Outcome#MISSED} when more. The warning and due times stay
+     *     {@link Outcome#MISSED} when more. The time used counts whole seconds, so when it is the goal exactly,
+     *     {@code at} decides: {@link Outcome#MET} only at the instant the goal ran out, {@link Outcome#MISSED} after
+     *     it (within the second after it, or outside business hours after the goal ran out at a closing time), as
+     *     {@link #state} calls that time {@link State#BREACHED}. The warning and due times stay
      */
     public static Clock stop(Clock clock, Instant at, Integer goalMinutes, BusinessCalendar calendar) {
         if (!clock.running()) {
             return clock;
         }
         long spent = clock.spent() + calendar.seconds(clock.since(), at);
-        Outcome outcome = goalMinutes == null ? Outcome.NONE
-                : spent <= goalMinutes * 60L ? Outcome.MET : Outcome.MISSED;
+        Outcome outcome;
+        if (goalMinutes == null) {
+            outcome = Outcome.NONE;
+        } else if (spent == goalMinutes * 60L) {
+            Instant ranOut = calendar.plus(clock.since(), goalMinutes * 60L - clock.spent());
+            outcome = at.isAfter(ranOut) ? Outcome.MISSED : Outcome.MET;
+        } else {
+            outcome = spent < goalMinutes * 60L ? Outcome.MET : Outcome.MISSED;
+        }
         return new Clock(spent, null, outcome, clock.warnAt(), clock.dueAt());
     }
 
@@ -194,14 +204,17 @@ public final class SlaClocks {
      * @param goalMinutes the goal in the version of {@code calendar}, or null
      * @return null for a stopped clock or without a goal; else the goal less the business time used up to
      *     {@code now}, in whole minutes rounded down: positive minutes left, or after the goal ran out a negative
-     *     number of minutes past it, rounded up in size
+     *     number of minutes past it, rounded up in size. After the due time it is -1 or less, also while no business
+     *     time has passed since then (outside business hours, or within the second after it), so it agrees with
+     *     {@link State#BREACHED}
      */
     public static Long remainingMinutes(Clock clock, Instant now, Integer goalMinutes, BusinessCalendar calendar) {
         if (!clock.running() || goalMinutes == null) {
             return null;
         }
         long left = goalMinutes * 60L - clock.spent() - calendar.seconds(clock.since(), now);
-        return Math.floorDiv(left, 60L);
+        long minutes = Math.floorDiv(left, 60L);
+        return clock.dueAt() != null && now.isAfter(clock.dueAt()) ? Math.min(minutes, -1L) : minutes;
     }
 
     /** An instant to the second, as clock times are kept (S8A-AC-19). */
