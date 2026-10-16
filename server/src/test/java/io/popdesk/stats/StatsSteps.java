@@ -18,9 +18,9 @@ public final class StatsSteps {
 
     public static final String STATS = "/api/console/stats";
 
-    /** The fields of an item, as the contract names them. */
+    /** The fields of an item, as the contract names them ({@code sla} from slice 8b on). */
     public static final List<String> FIELDS = List.of("companyCode", "companyName", "companyStatus", "total", "open",
-            "inProgress", "resolved", "closed");
+            "inProgress", "resolved", "closed", "sla");
 
     private StatsSteps() {}
 

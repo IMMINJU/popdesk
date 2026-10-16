@@ -138,6 +138,32 @@ public final class SlaAlertSteps {
         }
     }
 
+    /** The caller's {@code SLA_RECALCULATED} items, newest first. They are about no issue. */
+    public static List<JsonNode> summaries(Session admin) {
+        return TalkFlow.inbox(admin).stream().filter(n -> RECALCULATED.equals(TalkFlow.kind(n))).toList();
+    }
+
+    /**
+     * Checks a {@code SLA_RECALCULATED} item (S8B-AC-15): the fields of a console item, {@code issue},
+     * {@code companyCode}, {@code actor}, {@code commentId}, {@code task}, {@code linkedIssue} null, and
+     * {@code slaSummary} with exactly these three counts.
+     */
+    public static void assertSummary(JsonNode item, long becameBreached, long becameWarning, long released) {
+        assertThat(new TreeSet<>(item.propertyNames())).as("fields of %s", item)
+                .isEqualTo(new TreeSet<>(CONSOLE_ITEM_FIELDS));
+        assertThat(TalkFlow.kind(item)).as("kind of %s", item).isEqualTo(RECALCULATED);
+        for (String field : List.of("issue", "companyCode", "actor", "commentId", "task", "linkedIssue")) {
+            assertThat(TalkFlow.isNull(item, field)).as("%s is null in %s", field, item).isTrue();
+        }
+        JsonNode summary = item.path("slaSummary");
+        assertThat(summary.isObject()).as("slaSummary of %s", item).isTrue();
+        assertThat(new TreeSet<>(summary.propertyNames())).as("fields of slaSummary in %s", item)
+                .isEqualTo(new TreeSet<>(List.of("becameBreached", "becameWarning", "released")));
+        assertThat(List.of(summary.path("becameBreached").asLong(-1), summary.path("becameWarning").asLong(-1),
+                summary.path("released").asLong(-1))).as("becameBreached, becameWarning, released of %s", item)
+                .containsExactly(becameBreached, becameWarning, released);
+    }
+
     /** The customer's portal items about the issue, of any kind. */
     public static List<JsonNode> portalItems(Session customer, String key) {
         return TalkFlow.inboxOf(customer, key);
