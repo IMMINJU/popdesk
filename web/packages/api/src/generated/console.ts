@@ -8031,7 +8031,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
-            /** @description `VERSION_CONFLICT`: `version` is not the policy's current one, for example because another admin saved first; nothing changed. Read the policy again (S8A-AC-03). */
+            /** @description `VERSION_CONFLICT`: `version` is not the policy's current one, for example because another admin saved first. This is 409 even when the values sent are the ones the policy has now. Nothing changed. Read the policy again (S8A-AC-03). */
             409: {
                 headers: {
                     [name: string]: unknown;

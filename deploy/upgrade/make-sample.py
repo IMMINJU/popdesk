@@ -235,6 +235,27 @@ def fill(project):
                       expect=201)
         admin.request("DELETE", f"/api/console/issues/{key}", expect=204)
     admin.request("DELETE", f"/api/console/trash/{trashed[1]}", expect=204)
+    # What slice 8a added (S8A-AC-26). Two policy versions after version 1, each with goals, business
+    # hours, and holidays (sla_policy, sla_target, sla_hours, sla_holiday). Then three new issues of ACME
+    # under SLA: one whose clocks run (issue.sla_due_at), one resolved (fr_outcome, res_outcome), and one
+    # the admin deletes, whose clocks are paused in the trash (res_spent, no since, no outcome).
+    weekdays = ("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY")
+    for goals, closes, holidays in (((60, 480), "18:00", ["2030-01-01"]),
+                                    ((30, 240), "24:00", ["2030-01-01", "2030-12-25"])):
+        policy = admin.json("GET", "/api/console/sla-policy")
+        admin.json("PUT", "/api/console/sla-policy", {
+            "version": policy["version"],
+            "targets": [{"priority": p, "firstResponseMinutes": goals[0] if p in ("NORMAL", "URGENT") else None,
+                         "resolutionMinutes": goals[1]} for p in ("LOW", "NORMAL", "HIGH", "URGENT")],
+            "hours": [{"weekday": d, "opens": None if d == "SUNDAY" else "09:00",
+                       "closes": None if d == "SUNDAY" else closes} for d in weekdays],
+            "holidays": holidays})
+    under_sla = [customer.json("POST", "/api/portal/issues",
+                               {"companyCode": "ACME", "title": title, "content": "Filed under SLA."},
+                               expect=201)["key"] for title in ("Monitor flickers", "Mouse is slow", "Filed in error")]
+    for status in ("IN_PROGRESS", "RESOLVED"):
+        agent.json("PUT", f"/api/console/issues/{under_sla[1]}/status", {"status": status})
+    admin.request("DELETE", f"/api/console/issues/{under_sla[2]}", expect=204)
 
     # Mail rows of this run are sent (SMTP is off: one log line each) and deleted. Wait for that, so the
     # queue holds only the failed row added below when it is dumped.

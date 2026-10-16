@@ -13,6 +13,7 @@ import io.popdesk.helpdesk.issue.IssueHistoryRepository.HistoryRow;
 import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
 import io.popdesk.helpdesk.issue.IssueService;
+import io.popdesk.helpdesk.sla.SlaPolicies;
 import io.popdesk.helpdesk.label.LabelRepository.IssueLabel;
 import io.popdesk.helpdesk.task.TaskService;
 import io.popdesk.helpdesk.trash.TrashService;
@@ -74,7 +75,7 @@ class ConsoleIssueController {
         return new Issue(row.key(), row.companyCode(), row.companyName(), row.title(), row.content(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
                 person(row.createdBy()), IssueChannel.valueOf(row.channel()), person(row.assignee()),
-                row.assigneeUnavailable(), labels, row.dueDate(), issues.overdue(row), null, row.status().next(),
+                row.assigneeUnavailable(), labels, row.dueDate(), issues.overdue(row), sla(row), row.status().next(),
                 issues.reopenable(row), utc(row.firstResponseAt()), utc(row.resolvedAt()), utc(row.closedAt()),
                 row.version(), utc(row.createdAt()), utc(row.updatedAt()));
     }
@@ -83,7 +84,19 @@ class ConsoleIssueController {
         return new IssueSummary(row.key(), row.title(), row.companyCode(), row.companyName(), row.status(),
                 row.priority(), row.privateIssue(), person(row.reporterId(), row.reporterName(), row.reporterRole(), row.reporterPhotoUpdatedAt()),
                 row.createdBy() != null, person(row.assignee()), row.assigneeUnavailable(), labels(labels, row.id()),
-                row.dueDate(), issues.overdue(row), null, utc(row.createdAt()), openTasks.getOrDefault(row.id(), 0L));
+                row.dueDate(), issues.overdue(row), sla(row), utc(row.createdAt()),
+                openTasks.getOrDefault(row.id(), 0L));
+    }
+
+    /** The SLA goals of the issue as the server judges them now; null when it is not under SLA (S8A-AC-30). */
+    private IssueSla sla(IssueRow row) {
+        SlaPolicies.SlaView view = issues.sla(row);
+        return view == null ? null : new IssueSla(goal(view.firstResponse()), goal(view.resolution()));
+    }
+
+    private static SlaGoal goal(SlaPolicies.GoalView goal) {
+        return new SlaGoal(goal.state() == null ? null : SlaGoalState.valueOf(goal.state().name()),
+                utc(goal.dueAt()), goal.remainingMinutes());
     }
 
     /** The labels of one issue, in the name order they were read in; empty without labels. */
@@ -187,11 +200,8 @@ class ConsoleIssueController {
         if (!unknown.isEmpty()) {
             throw ApiException.invalid(unknown);
         }
-        // The contract of slice 8a takes `sla` and `sort=slaDue`; filtering and ordering by SLA come with its
-        // build, so until then they change nothing.
-        String order = "slaDue".equals(sort) ? null : sort;
         Paged<IssueRow> rows = issues.list(CurrentAccount.get().viewer(),
-                new IssueService.Filters(status, companyCode, assignee, reporter, q, label, order), page, size);
+                new IssueService.Filters(status, companyCode, assignee, reporter, q, label, sort, sla), page, size);
         // The labels of the whole page in one read, not one for each issue (slice 6a design section 4).
         List<UUID> ids = rows.items().stream().map(IssueRow::id).toList();
         Map<UUID, List<IssueLabel>> labels = issues.labels(ids);
