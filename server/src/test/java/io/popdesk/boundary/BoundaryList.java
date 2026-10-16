@@ -501,5 +501,11 @@ final class BoundaryList {
             none("POST", "/api/console/trash/{key}/restore",
                     "admins only (checked by boundary.AdminOnlyContractTest), and an admin sees every customer company; no customer company narrows which issue of the trash an admin may restore"),
             none("DELETE", "/api/console/trash/{key}",
-                    "admins only (checked by boundary.AdminOnlyContractTest), and an admin sees every customer company; no customer company narrows which issue of the trash an admin may purge"));
+                    "admins only (checked by boundary.AdminOnlyContractTest), and an admin sees every customer company; no customer company narrows which issue of the trash an admin may purge"),
+
+            // Slice 7b (S7B-AC-03): the statistics, on the console for admins and agents. An agent gets the companies
+            // they are assigned to and no item of any other; customers get what any console path gives them.
+            tested("GET", "/api/console/stats",
+                    "stats.StatsScopeTest#agentSeesAssignedCompaniesOnly",
+                    "stats.StatsScopeTest#customerGetsTheConsoleAnswer"));
 }
