@@ -71,8 +71,8 @@ class ConsoleSlaController {
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "409", description = "`VERSION_CONFLICT`: `version` is not the policy's current "
-            + "one, for example because another admin saved first; also when the values sent are the ones the "
-            + "policy has now. Nothing changed. Read the policy again (S8A-AC-03).")
+            + "one, for example because another admin saved first. This is 409 even when the values sent are "
+            + "the ones the policy has now. Nothing changed. Read the policy again (S8A-AC-03).")
     @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     SlaPolicy updateSlaPolicy(@RequestBody ChangeSlaPolicyRequest request) {
         CurrentAccount admin = CurrentAccount.get();
