@@ -9,6 +9,7 @@ import static io.popdesk.sla.SlaAlertSteps.alerts;
 import static io.popdesk.sla.SlaAlertSteps.assertAlert;
 import static io.popdesk.sla.SlaAlertSteps.oneAlert;
 import static io.popdesk.sla.SlaAlertSteps.portalItems;
+import static io.popdesk.sla.SlaAlertSteps.slaRowsOf;
 import static io.popdesk.sla.SlaAlertSteps.untouched;
 import static io.popdesk.sla.SlaSteps.RESOLUTION;
 import static io.popdesk.sla.SlaSteps.goal;
@@ -157,6 +158,9 @@ class SlaAlertTest extends SlaAppTest {
         }
         for (Session customer : List.of(reporter, colleague)) {
             assertThat(portalItems(fixtures.signInAgain(customer), key)).as("portal items of a customer").isEmpty();
+            // The portal hides kinds not meant for customers, so only the table shows an SLA row given to one.
+            assertThat(slaRowsOf(db, customer)).as("SLA rows of the customer %s in the notification table",
+                    customer.email()).isZero();
         }
     }
 

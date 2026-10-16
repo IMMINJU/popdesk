@@ -191,7 +191,7 @@ class SlaStatsTest extends SlaAppTest {
     // S8B-AC-24
 
     @Test
-    @DisplayName("S8B-AC-24 the first response median is the lower one of the four answered goals (10:00, 25:40, "
+    @DisplayName("S8B-AC-24 the first response median is the lower one of the four answered goals (10:00, 25:40.5, "
             + "50:00, 70:00 is 25 minutes), without the goal settled by resolving at 30:00 even after the issue is "
             + "reopened and answered, which counts as met; the resolution median of five is 100 minutes for 100:20; "
             + "a company with nothing settled has null and zeros")
@@ -209,7 +209,9 @@ class SlaStatsTest extends SlaAppTest {
 
         at(filed, 10, 0);
         answer(d, answered[0]);
-        at(filed, 25, 40);
+        // Half a second past a whole second: settled by this answer, fr_settled_at must be first_response_at to the
+        // microsecond (design.md 0절 14), not that time cut to seconds. The next step is a whole second again.
+        sla.advanceTo(filed.plus(Duration.ofMinutes(25).plusSeconds(40).plusMillis(500)));
         answer(d, answered[1]);
         at(filed, 30, 0);
         resolve(d, unanswered);

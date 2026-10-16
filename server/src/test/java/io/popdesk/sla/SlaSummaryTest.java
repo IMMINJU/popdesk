@@ -10,17 +10,26 @@ import static io.popdesk.sla.SlaAlertSteps.oneAlert;
 import static io.popdesk.sla.SlaAlertSteps.summaries;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.popdesk.issue.IssueFlow;
 import io.popdesk.sla.SlaSteps.Desk;
 import io.popdesk.sla.SlaSteps.Policy;
+import io.popdesk.support.ApiResponse;
+import io.popdesk.support.Concurrently;
 import io.popdesk.support.Fixtures.Issue;
 import io.popdesk.support.Fixtures.Session;
+import io.popdesk.support.HeldWrite;
 import io.popdesk.support.ReceivedMail;
+import io.popdesk.support.Unique;
 import io.popdesk.support.WebhookReceiver.Received;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -36,6 +45,9 @@ import tools.jackson.databind.JsonNode;
  * issues are worked out and alerted, and the admins that read the summary are made after them.
  */
 class SlaSummaryTest extends SlaMailAppTest {
+
+    @Autowired
+    PostgreSQLContainer postgres;
 
     /** Before the change: first response and resolution goals in minutes. */
     private static Policy before() {
@@ -142,5 +154,57 @@ class SlaSummaryTest extends SlaMailAppTest {
                 .filter(r -> !r.text().contains(caughtUp.key())).toList())
                 .as("webhook messages after the change, but for the status of " + caughtUp.key())
                 .extracting(Received::text).singleElement().asString().contains(warned.key());
+    }
+
+    // S8B-AC-12, S8B-AC-14
+
+    /**
+     * A title edit of one issue is kept waiting at its UPDATE ({@link HeldWrite}), holding the issue row
+     * {@code FOR NO KEY UPDATE} and no lock of the policy: a title is no clock write, so the edit does not take the
+     * policy's version row (design.md 0절 7, 8). The job's batches skip the locked row (0절 4, 8a), so the issue keeps
+     * its old version and the recalculation does not end while it is held; closing the summary counts it as still to
+     * do (0절 9) and reads no locked row. The second change takes the version row {@code FOR UPDATE}, which nothing
+     * held keys. The hold must end within 20 seconds ({@link HeldWrite}), so it lasts three runs.
+     */
+    @Test
+    @DisplayName("S8B-AC-12, S8B-AC-14 a recalculation that does not end in one run leaves no summary at the runs "
+            + "before it ends, also across a second change; the run that ends it gives every admin one "
+            + "SLA_RECALCULATED item that counts the issues of the earlier runs too")
+    void aRecalculationOverSeveralRunsIsOneSummary() {
+        otherIssuesSettle();
+        Desk d = sla.desk();
+        Session watcher = alerts.newAdmin(d.admin());
+        Instant start = sla.recalculateNow(d.admin());
+        Issue counted = sla.file(d, "NORMAL");
+        Issue held = sla.file(d, "NORMAL");
+        // 30 of 50 minutes: no warning yet; 30 against 20 after the change is overdue.
+        alerts.runAt(d.admin(), start.plus(Duration.ofMinutes(30)));
+        SlaSteps.change(d.admin(), after());
+        long version = flow.version(d.agent(), held.key());
+        ApiResponse edited;
+
+        try (HeldWrite hold = new HeldWrite(db, postgres, "issue", "update", held.json().path("title").asString())) {
+            CompletableFuture<ApiResponse> editing = CompletableFuture.supplyAsync(() -> IssueFlow.editRequest(
+                    d.agent(), held.key(), Map.of("title", Unique.text("Held"), "version", version)).send());
+            hold.awaitHeld("the UPDATE of the title edit");
+            alerts.runs(d.admin(), 2);
+            assertThat(summaries(watcher)).as("SLA_RECALCULATED items while an issue waits for the job").isEmpty();
+            // A second change before the recalculation ends: half a year on, it moves no issue.
+            SlaSteps.change(d.admin(), after().holiday(sla.now().toLocalDate().plusMonths(6)));
+            sla.recalculateNow(d.admin());
+            assertThat(summaries(watcher)).as("SLA_RECALCULATED items after the second change, still waiting")
+                    .isEmpty();
+            hold.release();
+            edited = Concurrently.finish(editing, "the title edit");
+        }
+        assertThat(edited.status()).as("the title edit: %s", edited.snippet()).isEqualTo(200);
+        alerts.runs(d.admin(), 3);
+
+        List<JsonNode> items = summaries(watcher);
+        assertThat(items).as("SLA_RECALCULATED items of the admin once the recalculation ended").hasSize(1);
+        assertSummary(items.getFirst(), 2, 0, 0);
+        assertThat(alertKinds(d.agent(), counted.key())).as("SLA items of the issue counted at the first run")
+                .isEmpty();
+        assertThat(alertKinds(d.agent(), held.key())).as("SLA items of the issue counted at the last run").isEmpty();
     }
 }
