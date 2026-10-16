@@ -187,6 +187,16 @@
   white-space: nowrap;
 }
 
+/* C-5 SLA cells: each line stays whole; a narrow window scrolls the table sideways instead (8b screens.md 2절). */
+.pd-stats-sla {
+  white-space: nowrap;
+}
+
+/* The notes under the C-5 table break between words, not inside one. */
+.pd-stats > p {
+  word-break: keep-all;
+}
+
 /* C-4 라벨, 마감일: the value and "바꾸기" share a baseline, also while the picker under the button is open. */
 .pd-meta dd:has(> .pd-label-picker, > .pd-due-date-picker) {
   align-items: baseline;

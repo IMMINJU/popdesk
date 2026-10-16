@@ -18,6 +18,7 @@ import { useToast } from '../app/toastContext';
 import { useUnread } from '../app/unread';
 
 type Notification = Schemas['Notification'];
+type SlaSummary = Schemas['SlaSummary'];
 
 const PATH = '/inbox';
 
@@ -58,9 +59,30 @@ function sentence(n: Notification): string {
       return t('inbox.auditForwardStalled');
     case 'CLEANUP_STALLED':
       return t('inbox.cleanupStalled');
+    case 'SLA_RESPONSE_WARNING':
+      return t('inbox.slaResponseWarning');
+    case 'SLA_RESPONSE_BREACHED':
+      return t('inbox.slaResponseBreached');
+    case 'SLA_RESOLUTION_WARNING':
+      return t('inbox.slaResolutionWarning');
+    case 'SLA_RESOLUTION_BREACHED':
+      return t('inbox.slaResolutionBreached');
+    case 'SLA_RECALCULATED':
+      return recalculated(n.slaSummary);
     default:
       return t('inbox.other');
   }
+}
+
+/** The counts of a recalculation that are not 0, joined (8b screens.md 1절). The server makes no item of three 0s. */
+function recalculated(summary: SlaSummary | null): string {
+  const parts = [
+    { n: summary?.becameBreached ?? 0, key: 'inbox.slaBecameBreached' },
+    { n: summary?.becameWarning ?? 0, key: 'inbox.slaBecameWarning' },
+    { n: summary?.released ?? 0, key: 'inbox.slaReleased' },
+  ] as const;
+  const said = parts.filter((p) => p.n > 0).map((p) => tf(p.key, { n: p.n.toLocaleString('ko') }));
+  return tf('inbox.slaRecalculated', { parts: said.join(', ') });
 }
 
 /** Where an item leads (S4-AC-66). An item of an unknown kind about no issue leads nowhere. */
@@ -83,6 +105,9 @@ function hrefOf(n: Notification): string | undefined {
     case 'AUDIT_FORWARD_STALLED':
     case 'CLEANUP_STALLED':
       return '/system';
+    // Slice 8b: the issues by due time, the soonest first (8b screens.md 1절).
+    case 'SLA_RECALCULATED':
+      return '/issues?sort=slaDue';
     default:
       return undefined;
   }
