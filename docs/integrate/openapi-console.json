@@ -512,6 +512,61 @@
         "required" : [ "accountId", "email", "name", "photoUpdatedAt" ],
         "type" : "object"
       },
+      "CompanyStat" : {
+        "properties" : {
+          "closed" : {
+            "description" : "Issues that are `CLOSED`.",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "companyCode" : {
+            "type" : "string"
+          },
+          "companyName" : {
+            "type" : "string"
+          },
+          "companyStatus" : {
+            "description" : "The company's status now; archived companies are listed too.",
+            "enum" : [ "ACTIVE", "SUSPENDED", "ARCHIVED" ],
+            "type" : "string"
+          },
+          "inProgress" : {
+            "description" : "Issues that are `IN_PROGRESS`.",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "open" : {
+            "description" : "Issues that are `RECEIVED` or `CONFIRMED`.",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "resolved" : {
+            "description" : "Issues that are `RESOLVED`.",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "total" : {
+            "description" : "Every issue, in any status; the sum of the four counts below.",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "closed", "companyCode", "companyName", "companyStatus", "inProgress", "open", "resolved", "total" ],
+        "type" : "object"
+      },
+      "CompanyStats" : {
+        "properties" : {
+          "items" : {
+            "description" : "One item per company: by `open`, the most first, then by `companyCode`. Empty when the caller can see no company.",
+            "items" : {
+              "$ref" : "#/components/schemas/CompanyStat"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "items" ],
+        "type" : "object"
+      },
       "CreateCommentRequest" : {
         "properties" : {
           "content" : {
@@ -1335,7 +1390,7 @@
             "type" : "integer"
           },
           "issue" : {
-            "description" : "The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, and `MEMBERSHIP_REQUESTED` (S4-AC-40).",
+            "description" : "The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, `CLEANUP_STALLED`, and `MEMBERSHIP_REQUESTED` (S4-AC-40).",
             "oneOf" : [ {
               "$ref" : "#/components/schemas/NotificationIssue"
             }, {
@@ -1343,7 +1398,7 @@
             } ]
           },
           "kind" : {
-            "enum" : [ "DELIVERY_FAILED", "ATTACHMENT_QUOTA_WARNING", "MAIL_STALLED", "WEBHOOK_STALLED", "AUDIT_FORWARD_STALLED", "MEMBERSHIP_REQUESTED", "STAFF_COMMENT", "CUSTOMER_COMMENT", "ISSUE_RESOLVED", "ISSUE_CLOSED", "ISSUE_REOPENED", "ISSUE_FILED_ON_BEHALF", "MENTIONED", "ASSIGNED", "TASK_ASSIGNED", "LINKED_ISSUE_RESOLVED", "LINKED_ISSUE_CLOSED" ],
+            "enum" : [ "DELIVERY_FAILED", "ATTACHMENT_QUOTA_WARNING", "MAIL_STALLED", "WEBHOOK_STALLED", "AUDIT_FORWARD_STALLED", "CLEANUP_STALLED", "MEMBERSHIP_REQUESTED", "STAFF_COMMENT", "CUSTOMER_COMMENT", "ISSUE_RESOLVED", "ISSUE_CLOSED", "ISSUE_REOPENED", "ISSUE_FILED_ON_BEHALF", "MENTIONED", "ASSIGNED", "TASK_ASSIGNED", "LINKED_ISSUE_RESOLVED", "LINKED_ISSUE_CLOSED" ],
             "type" : "string"
           },
           "linkedIssue" : {
@@ -8884,6 +8939,36 @@
         },
         "summary" : "Profile photo of an account",
         "tags" : [ "Photos" ]
+      }
+    },
+    "/api/console/stats" : {
+      "get" : {
+        "description" : "One item for each company the caller can see: every company for admins, assigned ones for agents (S7B-AC-03). A company the caller is not assigned to has no item, and its issues are in no count. Companies of every status are listed, archived ones too, and a company without issues has an item with zeros (S7B-AC-01). Issues in the trash and purged ones are not counted; private issues are (S7B-AC-02). Ordered by `open`, the most first, then by `companyCode` (S7B-AC-04). Not paged: every item at once.",
+        "operationId" : "getCompanyStats",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyStats"
+                }
+              }
+            },
+            "description" : "The counts as they are now."
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`UNAUTHENTICATED`."
+          }
+        },
+        "summary" : "Issue counts per company",
+        "tags" : [ "Statistics" ]
       }
     },
     "/api/console/system/failed-deliveries" : {

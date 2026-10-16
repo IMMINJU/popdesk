@@ -1283,6 +1283,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/console/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Issue counts per company
+         * @description One item for each company the caller can see: every company for admins, assigned ones for agents (S7B-AC-03). A company the caller is not assigned to has no item, and its issues are in no count. Companies of every status are listed, archived ones too, and a company without issues has an item with zeros (S7B-AC-01). Issues in the trash and purged ones are not counted; private issues are (S7B-AC-02). Ordered by `open`, the most first, then by `companyCode` (S7B-AC-04). Not paged: every item at once.
+         */
+        get: operations["getCompanyStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/console/system/failed-deliveries": {
         parameters: {
             query?: never;
@@ -1827,6 +1847,44 @@ export interface components {
              */
             photoUpdatedAt: string | null;
         };
+        CompanyStat: {
+            /**
+             * Format: int64
+             * @description Issues that are `CLOSED`.
+             */
+            closed: number;
+            companyCode: string;
+            companyName: string;
+            /**
+             * @description The company's status now; archived companies are listed too.
+             * @enum {string}
+             */
+            companyStatus: "ACTIVE" | "SUSPENDED" | "ARCHIVED";
+            /**
+             * Format: int64
+             * @description Issues that are `IN_PROGRESS`.
+             */
+            inProgress: number;
+            /**
+             * Format: int64
+             * @description Issues that are `RECEIVED` or `CONFIRMED`.
+             */
+            open: number;
+            /**
+             * Format: int64
+             * @description Issues that are `RESOLVED`.
+             */
+            resolved: number;
+            /**
+             * Format: int64
+             * @description Every issue, in any status; the sum of the four counts below.
+             */
+            total: number;
+        };
+        CompanyStats: {
+            /** @description One item per company: by `open`, the most first, then by `companyCode`. Empty when the caller can see no company. */
+            items: components["schemas"]["CompanyStat"][];
+        };
         CreateCommentRequest: {
             /** @description Markdown, 1 to 4,000 characters. */
             content: string;
@@ -2235,10 +2293,10 @@ export interface components {
             createdAt: string;
             /** Format: int64 */
             id: number;
-            /** @description The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, and `MEMBERSHIP_REQUESTED` (S4-AC-40). */
+            /** @description The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, `CLEANUP_STALLED`, and `MEMBERSHIP_REQUESTED` (S4-AC-40). */
             issue: components["schemas"]["NotificationIssue"] | null;
             /** @enum {string} */
-            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MAIL_STALLED" | "WEBHOOK_STALLED" | "AUDIT_FORWARD_STALLED" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED" | "TASK_ASSIGNED" | "LINKED_ISSUE_RESOLVED" | "LINKED_ISSUE_CLOSED";
+            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MAIL_STALLED" | "WEBHOOK_STALLED" | "AUDIT_FORWARD_STALLED" | "CLEANUP_STALLED" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED" | "TASK_ASSIGNED" | "LINKED_ISSUE_RESOLVED" | "LINKED_ISSUE_CLOSED";
             /** @description For `LINKED_ISSUE_RESOLVED` and `LINKED_ISSUE_CLOSED`: the linked issue that was resolved or closed, with its key and title as they are now; `issue` is the caller's own issue it is linked to (S6C-AC-31). Such an item is listed only while the caller can see both issues (S6C-AC-33). Null for the other kinds (S6C-AC-34). */
             linkedIssue: components["schemas"]["NotificationIssue"] | null;
             /**
@@ -7769,6 +7827,35 @@ export interface operations {
             };
             /** @description `NOT_FOUND`: no such account, the caller cannot see it, or it has no photo. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getCompanyStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The counts as they are now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyStats"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
