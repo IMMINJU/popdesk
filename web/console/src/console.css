@@ -192,6 +192,11 @@
   white-space: nowrap;
 }
 
+/* The notes under the C-5 table break between words, not inside one. */
+.pd-stats > p {
+  word-break: keep-all;
+}
+
 /* C-4 라벨, 마감일: the value and "바꾸기" share a baseline, also while the picker under the button is open. */
 .pd-meta dd:has(> .pd-label-picker, > .pd-due-date-picker) {
   align-items: baseline;
