@@ -742,6 +742,12 @@ public class IssueService {
         return issue.reopenable(now());
     }
 
+    /** The issue counts of every company the viewer may see, counted now (STATS-1 to STATS-3). */
+    @Transactional(readOnly = true)
+    public List<IssueRepository.CompanyCounts> companyStats(Viewer viewer) {
+        return issues.countByCompany(viewer);
+    }
+
     /** The issue with this key, if the viewer may see it; else 404 (COM-1). */
     @Transactional(readOnly = true)
     public IssueRow get(Viewer viewer, String key) {
