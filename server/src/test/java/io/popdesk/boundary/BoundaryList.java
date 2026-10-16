@@ -507,5 +507,14 @@ final class BoundaryList {
             // they are assigned to and no item of any other; customers get what any console path gives them.
             tested("GET", "/api/console/stats",
                     "stats.StatsScopeTest#agentSeesAssignedCompaniesOnly",
-                    "stats.StatsScopeTest#customerGetsTheConsoleAnswer"));
+                    "stats.StatsScopeTest#customerGetsTheConsoleAnswer"),
+
+            // Slice 8a (S8A-AC-05): the SLA policy, one for the installation, on the console for admins only. No
+            // customer company narrows it; agents get 403, customers what any console path gives them.
+            tested("GET", "/api/console/sla-policy",
+                    "sla.SlaPolicyTest#onlyAdminsReadAndChange",
+                    "sla.SlaPolicyTest#customerGetsTheConsoleAnswer"),
+            tested("PUT", "/api/console/sla-policy",
+                    "sla.SlaPolicyTest#onlyAdminsReadAndChange",
+                    "sla.SlaPolicyTest#customerGetsTheConsoleAnswer"));
 }
