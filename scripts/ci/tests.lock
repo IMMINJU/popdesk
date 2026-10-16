@@ -443,7 +443,7 @@ e05faffe8316c40003b9bb6acb313bb2c3cd16a59b1fe453dc9ca6c86441345d  server/src/tes
 2808caf7a377a22bf4c340f62f5e6848c1ac2880ecaef2b8d48b023ac88325f1  server/src/test/java/io/popdesk/project/PeopleSteps.java
 2d8206df613acfcb5c311b730495106250d3204dde3fbd091fc86e2ef3b282db  server/src/test/java/io/popdesk/project/ProjectChecks.java
 34bbbb17158ff1290cf8952927f13fe1b8cf2f830b5150c23aefb0a02001cf97  server/src/test/java/io/popdesk/sla/SlaAlertMailTest.java
-fb0edb42cb9b1eed5752c56d7327ccc0b528c6e2df1e3aa7b7b7cdcb6229504e  server/src/test/java/io/popdesk/sla/SlaAlertSchemaTest.java
+f0292393639db3b85e48708d2e074c6782c04d19c8e6637f1e46a7ff04cce6a9  server/src/test/java/io/popdesk/sla/SlaAlertSchemaTest.java
 507b0bc018937ebb2e83847fa06eb29c2c16c8af6ff04497b560fe23da983d93  server/src/test/java/io/popdesk/sla/SlaAlertSteps.java
 2f7468e1fa1a9a6f5ca4d75972364848d1841759f5d0ba4f1e407f98f7c76db0  server/src/test/java/io/popdesk/sla/SlaAlertTest.java
 d91306f4a08e81539bbaefeb533bfc13f19ca7ea2d9ad1073bef86aaec949283  server/src/test/java/io/popdesk/sla/SlaAppTest.java
