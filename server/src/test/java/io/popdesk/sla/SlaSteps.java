@@ -1,10 +1,14 @@
 package io.popdesk.sla;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.popdesk.issue.IssueFlow;
 import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.AuditChainMath;
 import io.popdesk.support.Fixtures;
+import io.popdesk.support.Fixtures.Issue;
+import io.popdesk.support.Fixtures.NewIssue;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.TestClock;
 import io.popdesk.trash.TrashJobs;
@@ -15,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -315,10 +320,58 @@ public final class SlaSteps {
         return at;
     }
 
+    /**
+     * Moves the app clock forward to {@code instant} and gives it. Fails when the clock is already past it: the
+     * context's clock is shared, and another test of the context may have moved it.
+     */
+    public Instant advanceTo(Instant instant) {
+        Duration ahead = Duration.between(clock.instant(), instant);
+        if (ahead.isNegative()) {
+            throw new AssertionError("The app clock is at " + clock.instant() + ", past " + instant);
+        }
+        return clock.advance(ahead);
+    }
+
+    // Checking a goal
+
+    /** {@code createdAt} of a filed issue. */
+    public static Instant createdAt(Issue issue) {
+        return IssueFlow.time(issue.json(), "createdAt");
+    }
+
+    /** Fails unless the goal has this {@code state}, {@code dueAt} (to the second), and {@code remainingMinutes}. */
+    public static void assertGoal(JsonNode goal, String state, Instant dueAt, Long remaining, String what) {
+        assertThat(state(goal)).as("state of %s: %s", what, goal).isEqualTo(state);
+        assertThat(dueAt(goal)).as("dueAt of %s: %s", what, goal)
+                .isEqualTo(dueAt == null ? null : dueAt.truncatedTo(ChronoUnit.SECONDS));
+        assertThat(remainingMinutes(goal)).as("remainingMinutes of %s: %s", what, goal).isEqualTo(remaining);
+    }
+
     // People
 
     /** The first admin, signed in now; use after moving the clock far. */
     public Session admin() {
         return fixtures.signInAdmin();
+    }
+
+    /** An admin, a new company, a customer of it, and an agent assigned to it. */
+    public record Desk(Session admin, String code, Session customer, Session agent) {}
+
+    /** A new {@link Desk}, with the first admin signed in now. */
+    public Desk desk() {
+        Session admin = fixtures.signInAdmin();
+        String code = fixtures.createCompany(admin).code();
+        return new Desk(admin, code, fixtures.customer(admin, code), fixtures.agent(admin, code));
+    }
+
+    /** The same people signed in again; use after moving the clock far. */
+    public Desk signInAgain(Desk desk) {
+        return new Desk(fixtures.signInAgain(desk.admin()), desk.code(), fixtures.signInAgain(desk.customer()),
+                fixtures.signInAgain(desk.agent()));
+    }
+
+    /** A new issue of the desk's customer with this priority. */
+    public Issue file(Desk desk, String priority) {
+        return fixtures.fileIssue(desk.customer(), NewIssue.in(desk.code()).priority(priority));
     }
 }
