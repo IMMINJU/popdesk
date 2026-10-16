@@ -223,6 +223,8 @@ e500e9a5f26f41aa893e3ae74fdcde2f6785680ff7144ed2017f83874a2470a9  server/src/tes
 4a0d2e5da703541c92bf261515bfe3f044a1cea98e957ca0306faabe3ecd37ed  server/src/test/java/io/popdesk/helpdesk/link/LinkRulesTest.java
 32ad754207b6dc78e94302328e0f46ac6e2503bc6af994439b349a6ad4423010  server/src/test/java/io/popdesk/helpdesk/link/RestoreLinkCheckTest.java
 2fff15b4c150c092c5f4c0fce02261cb3546c5201ef56d9973d781732c5aa250  server/src/test/java/io/popdesk/helpdesk/photo/PhotoImagesTest.java
+2132e05a198d44dc69ee29e9381cbdebe81d1990fcc2f669d4f5197132f0a565  server/src/test/java/io/popdesk/helpdesk/sla/BusinessCalendarTest.java
+e961d337921c81a4103cf061fe364d980f640210905bbb0b75c557d2c3b29519  server/src/test/java/io/popdesk/helpdesk/sla/SlaClocksTest.java
 980fd4d9203ada8c7702dd176c01d245709cf201da977cfba6b122effe1445d9  server/src/test/java/io/popdesk/helpdesk/task/TaskChangesTest.java
 45db1c0f81bcf6065434e010fb4fdcfd0f8e62d0da052be7a7637f30f1a4f831  server/src/test/java/io/popdesk/helpdesk/trash/TrashTimesTest.java
 21517e5a550060bf6467bdbe7e0823c7da7dfba5622a031d6da86004134b712c  server/src/test/java/io/popdesk/inbox/AdminInboxItemsTest.java
@@ -673,6 +675,7 @@ d1c9c6c7914edfe8f9e1748fab96b57db24f9e45bd9141696f8f0d763ec5d593  web/console/sr
 ddea136ccfef24bfb953e24e0d439ac74e52f0d16ceb33f033cf6e0ea400cec7  web/console/src/screens/C12AuditLog.kinds2.test.tsx
 336814b459cecab15820f4ab222ee5038e79c1a0213c7bd69acfbff2f6850d6f  web/console/src/screens/C12AuditLog.test.tsx
 b314c9f7b4dc18f54db8bef29802384019d3c017a377e82d6279cc30a3794bd6  web/console/src/screens/C13SlaPolicy.8a.test.tsx
+850c49b5f05482c409aae292aacd4f3a906fd02738e1fdd681b5aa263ecfb600  web/console/src/screens/C13SlaPolicy.midnight.test.tsx
 86a7fecb9904bcafa199a73dd21cf540a392ff9cb1d6e6fee891b0e3715dda1a  web/console/src/screens/C15MyTasks.test.tsx
 8f812bef0fefd4501f6247038579f73423ec9cd35e7ee4d2ba62dd807d73bd6e  web/console/src/screens/C16PasswordForgot.test.tsx
 e5ca1b09ddd9dba6bbd4625b7e772a1104ce668d5d92efa42e6ca4b81fca4188  web/console/src/screens/C17PasswordReset.test.tsx
@@ -752,6 +755,7 @@ ed5f0067126d00de96f4b0c870119b11691137072359cd71d370526be1c68301  web/packages/a
 c5d154330d5bd3cefa2bcb7e776686b3f65886177b6404b115c2af8cd89852eb  web/packages/app/src/result.test.ts
 0d6be934822924626ed0468b989a1b5e868bc4be6984e504d106fde8e1197721  web/packages/app/src/session.test.tsx
 0050ed23a7a2545795fa28d260e017558f77bce1838df8491ce099498209c84a  web/packages/app/src/sessionContext.test.tsx
+f6b45f497547d624df803e75867bfd1481405120314571a124e8f0c9b04b8e15  web/packages/app/src/slaWords.test.ts
 a5cefe8cb940e95317c9ca88bdc524177d891adc704bd24cc445ff9d7e9edfa2  web/packages/app/src/test-setup.ts
 b68435f98076b4919d80cd6dc4d47b948b4482f72daa7ea1ab6be357c40e462c  web/packages/app/src/toast.test.tsx
 3281a215888795fc9d94e3e3d9fdb4e1f6737723fbf218c6414bd35af086b03e  web/packages/app/src/toastContext.test.tsx
