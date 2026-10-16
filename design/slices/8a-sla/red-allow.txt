@@ -1,0 +1,3 @@
+# 구현 전에 통과해도 되는 테스트. `<테스트 이름> | <까닭>`
+io.popdesk.sla.SlaPolicyTest.customerGetsTheConsoleAnswer | 고객은 컨트롤러 앞에서 포털 404, 콘솔 401로 막힌다(있는 콘솔 경로와 같은 답, S8A-AC-05). 구현이 이 답을 바꾸지 않는지 지킨다
+src/screens/C4IssueDetail.8a.test.tsx.C-4 문의 상세 SLA 구역 (8a 묶음) > S8A-AC-30 C-4 SLA 대상이 아닌 문의(sla null): 구역 "SLA"가 없고 "첫 응답"은 그대로다 | 없음만 본다(지금 화면에 SLA 구역이 없다). 있음은 같은 파일의 다른 테스트가 본다. 구현이 대상 아닌 문의에 구역을 그리지 않는지 지킨다
