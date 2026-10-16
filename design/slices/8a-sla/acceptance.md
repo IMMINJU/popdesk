@@ -30,7 +30,7 @@
 |---|---|
 | S8A-AC-01 | When 관리자가 정책을 읽으면(`GET /api/console/sla-policy`), the system shall 지금 버전 번호, 우선순위 넷마다 첫 응답 목표와 해결 목표(분, 없으면 `null`), 요일 일곱마다 업무 시간(시작·끝, 없으면 `null`), 쉬는 날 목록(날짜 오름차순), 시간대, 바꾼 시각과 사람을 준다. 한 번도 정하지 않은 설치는 버전 1, 목표·업무 시간·쉬는 날이 모두 비어 있다. (SLA-1, SLA-2) |
 | S8A-AC-02 | When 관리자가 정책을 바꾸면(`PUT /api/console/sla-policy`, 본문은 목표·업무 시간·쉬는 날 통째와 읽었던 `version`), the system shall 새 버전(지금 + 1)을 만들고 200으로 새 정책을 준다. 보낸 값이 지금과 같으면 버전을 올리지 않고 200으로 지금 정책을 준다. (SLA-1) |
-| S8A-AC-03 | If 보낸 `version`이 지금 버전이 아니면, then the system shall 아무것도 바꾸지 않고 409 `VERSION_CONFLICT`로 답한다. (SLA-1, 5절 9) |
+| S8A-AC-03 | If 보낸 `version`이 지금 버전이 아니면, then the system shall 아무것도 바꾸지 않고 409 `VERSION_CONFLICT`로 답한다(보낸 값이 지금과 같아도 409다: `version`을 같은 값보다 먼저 본다). (SLA-1, 5절 9) |
 | S8A-AC-04 | If 값이 틀리면, then the system shall 아무것도 바꾸지 않고 400 `INVALID_INPUT`로 칸마다 알린다. 칸 이름과 code는 `design.md` 5절의 표다(목표 범위, 해결 목표가 첫 응답보다 짧음, 업무 시간의 시작·끝, 쉬는 날 한도와 겹침, 우선순위·요일이 빠지거나 겹침). (SLA-1, SLA-2, 5절 6) |
 | S8A-AC-05 | If 상담원이 정책을 읽거나 바꾸려 하면, then the system shall 403 `FORBIDDEN`으로 답한다(관리자 전용 경로). 고객은 있는 콘솔 경로와 같은 답이다(포털 호스트 404, 콘솔 호스트 401). (D-43) |
 | S8A-AC-06 | When 관리자가 정책을 바꿔 버전이 오르면, the system shall 감사 로그에 `SLA_POLICY_CHANGED` 한 항목을 남긴다. 대상은 `{type: "SLA_POLICY", version}`, 바뀐 값은 바뀐 부분(목표, 업무 시간, 쉬는 날)마다 앞뒤 값이다. 버전을 올리지 않은 요청과 시간대로 시스템이 올린 버전은 남기지 않는다. (AUDIT-1, 5절 10) |
