@@ -11,7 +11,7 @@ describe('옆 메뉴와 관리자 전용 화면 (1b)', () => {
     renderAt('/issues');
     await menuShown();
 
-    expect(menuLinks()).toEqual(['문의', '내 작업', '고객사', '구성원', '휴지통', '감사 로그', '시스템 상태']);
+    expect(menuLinks()).toEqual(['문의', '내 작업', '통계', '고객사', '구성원', '휴지통', '감사 로그', '시스템 상태']);
     expect(hrefPath(screen.getByRole('link', { name: '감사 로그' }))).toBe('/audit-log');
   });
 
@@ -20,7 +20,7 @@ describe('옆 메뉴와 관리자 전용 화면 (1b)', () => {
     renderAt('/issues');
     await menuShown();
 
-    expect(menuLinks()).toEqual(['문의', '내 작업']);
+    expect(menuLinks()).toEqual(['문의', '내 작업', '통계']);
     expect(screen.queryByRole('button', { name: '감사 로그' })).toBeNull();
   });
 
