@@ -434,3 +434,49 @@ describe('계약 검증기 checkResponse: 7a 묶음 웹 테스트의 견본', ()
     expect(checkResponse('console', 'listNotifications', 200, page)).toBe(page);
   });
 });
+
+describe('계약 검증기 checkResponse: 7b 묶음 웹 테스트의 견본', () => {
+  /** `stat()` of console7b.ts. */
+  const stat = (over: Record<string, unknown> = {}) => ({
+    companyCode: 'ACME',
+    companyName: '에이크미',
+    companyStatus: 'ACTIVE',
+    total: 12,
+    open: 5,
+    inProgress: 3,
+    resolved: 0,
+    closed: 4,
+    ...over,
+  });
+
+  test('console: 통계(getCompanyStats 200)의 견본(보관한 고객사, 큰 수, 빈 목록)이 계약에 맞고, 칸은 모두 필수다', () => {
+    const stats = {
+      items: [stat(), stat({ companyCode: 'OLD', companyName: '옛상사', companyStatus: 'ARCHIVED', total: 123456, open: 0, inProgress: 0, resolved: 0, closed: 123456 })],
+    };
+    const empty = { items: [] };
+
+    expect(checkResponse('console', 'getCompanyStats', 200, stats)).toBe(stats);
+    expect(checkResponse('console', 'getCompanyStats', 200, empty)).toBe(empty);
+    const withoutOpen = Object.fromEntries(Object.entries(stat()).filter(([name]) => name !== 'open'));
+    expect(() => checkResponse('console', 'getCompanyStats', 200, { items: [withoutOpen] })).toThrow('$.items[0].open: required, but missing');
+    expect(() => checkResponse('console', 'getCompanyStats', 200, { items: [stat({ companyStatus: 'DELETED' })] })).toThrow('$.items[0].companyStatus');
+  });
+
+  test('console: 알림함(listNotifications 200)의 CLEANUP_STALLED 견본이 계약에 맞는다. 문의가 없는 운영 경보다', () => {
+    const alert = {
+      id: 821,
+      kind: 'CLEANUP_STALLED',
+      actor: null,
+      issue: null,
+      commentId: null,
+      companyCode: null,
+      task: null,
+      linkedIssue: null,
+      readAt: null,
+      createdAt: '2026-10-08T03:15:00Z',
+    };
+    const page = { items: [alert], page: 1, size: 20, totalElements: 1, totalPages: 1 };
+
+    expect(checkResponse('console', 'listNotifications', 200, page)).toBe(page);
+  });
+});
