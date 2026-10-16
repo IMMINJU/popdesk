@@ -27,7 +27,7 @@ export const NOTICE = '휴지통의 문의는 세지 않습니다.';
 export const EMPTY_ADMIN = '아직 고객사가 없습니다.';
 export const EMPTY_AGENT = '배정된 고객사가 없습니다.';
 export const READ_FAILED = '통계를 읽지 못했습니다. 다시 해 보세요.';
-export const RETRY = '다시 읽기';
+export const RETRY = '다시 불러오기';
 export const ARCHIVED = '보관';
 
 // ---------------------------------------------------------------------------

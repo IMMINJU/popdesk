@@ -1,6 +1,6 @@
 // 7b 묶음 screens.md 1절 C-5 통계(상담 쪽 모두, /stats): 옆 메뉴 자리("내 작업" 다음), 제목, 표의 칸과 캡션,
 // 보관 배지, 고객사 링크, 0이 아닌 수의 링크(열림은 status 둘), 0은 링크 없음, 표 아래 안내, 비었을 때 관리자·상담원 문구,
-// 읽기 실패와 "다시 읽기", 그리고 다시 읽은 뒤 늦게 온 앞 답.
+// 읽기 실패와 "다시 불러오기", 그리고 다시 읽은 뒤 늦게 온 앞 답.
 // 상태 낱말은 상담 쪽 낱말이다(screens.md 0절). 숫자 모양 123,456은 C-18의 수 칸과 같은 표기다(toLocaleString('ko')).
 import { waitFor } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
@@ -261,7 +261,7 @@ describe('C-5 비었을 때와 실패 (7b 묶음)', () => {
     await expectNoAxeViolations();
   });
 
-  test('S7B-AC-20 C-5 읽기 실패(500): role="alert" "통계를 읽지 못했습니다. 다시 해 보세요."와 "다시 읽기". 누르면 다시 불러 표가 나온다', async () => {
+  test('S7B-AC-20 C-5 읽기 실패(500): role="alert" "통계를 읽지 못했습니다. 다시 해 보세요."와 "다시 불러오기". 누르면 다시 불러 표가 나온다', async () => {
     s7b.stats = [ACME_STAT, BETA_STAT];
     let fail = true;
     route('get', STATS, () => (fail ? errors.internal() : statsResponse()));
