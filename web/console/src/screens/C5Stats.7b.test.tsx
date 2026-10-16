@@ -33,12 +33,14 @@ import {
   COLUMNS,
   EMPTY_ADMIN,
   EMPTY_AGENT,
+  NEW_STAT,
   NOTICE,
   OLD_STAT,
   READ_FAILED,
   RETRY,
   STATS,
   URL_STATS,
+  ZETA_STAT,
   cellOf,
   headOf,
   linksIn,
@@ -55,7 +57,6 @@ import {
   type Column,
 } from '../__tests__/console7b';
 
-const ALL_STATUSES: Status[] = ['CLOSED', 'CONFIRMED', 'IN_PROGRESS', 'RECEIVED', 'RESOLVED'];
 const NUMBER_COLUMNS = ['전체', '열림', '처리 중', '해결', '종료'] as const satisfies readonly Column[];
 
 /** The statuses a count column filters by (screens.md 1절: 열림 is 접수 and 확인). */
@@ -103,33 +104,42 @@ describe('C-5 통계 자리 (7b 묶음)', () => {
 });
 
 describe('C-5 통계 표 (7b 묶음)', () => {
-  test('S7B-AC-20 C-5 캡션 "고객사별 문의 수, 3곳", 열 머리, 받은 차례의 줄, 고객사 칸(코드와 이름), 수 칸(오른쪽 맞춤), 보관 배지, 표 아래 안내', async () => {
-    s7b.stats = [ACME_STAT, BETA_STAT, OLD_STAT];
+  test('S7B-AC-20 C-5 캡션 "고객사별 문의 수, 5곳"(문의 없는 곳도 센다), 열 머리, 받은 차례의 줄(코드순이 아니다), 고객사 칸(코드와 이름), 수 칸(오른쪽 맞춤), 보관한 곳에만 보관 배지, 표 아래 안내', async () => {
+    // 계약 차례(열림이 많은 순, 같으면 코드순)다. 열림이 가장 많은 ZETA의 코드가 가장 뒤라 코드순으로 다시 정렬하면 차례가 달라진다.
+    s7b.stats = [ZETA_STAT, ACME_STAT, BETA_STAT, NEW_STAT, OLD_STAT];
     renderAt(URL_STATS);
 
-    const table = await statsTable(3);
+    const table = await statsTable(5);
     const h1 = await title();
     expect(h1.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING, '제목 아래의 표').not.toBe(0);
     expect(within(table).getAllByRole('columnheader').map((h) => text(h))).toEqual([...COLUMNS]);
 
     const rows = statsRowsNow();
-    expect(rows, '고객사마다 한 줄').toHaveLength(3);
+    expect(rows, '고객사마다 한 줄').toHaveLength(5);
     expect(rows.map((r) => spokenText(cellOf(r, '고객사'))), '받은 차례 그대로').toEqual([
+      expect.stringContaining('ZETA'),
       expect.stringContaining('ACME'),
       expect.stringContaining('BETA'),
+      expect.stringContaining('NEW'),
       expect.stringContaining('OLD'),
     ]);
-    const [acme, beta, old] = rows as [HTMLElement, HTMLElement, HTMLElement];
+    const [zeta, acme, beta, none, old] = rows as [HTMLElement, HTMLElement, HTMLElement, HTMLElement, HTMLElement];
+    expect(spokenText(cellOf(zeta, '고객사'))).toContain('제타소프트');
     expect(spokenText(cellOf(acme, '고객사'))).toContain('에이크미');
     expect(spokenText(cellOf(beta, '고객사'))).toContain('베타상사');
+    expect(spokenText(cellOf(none, '고객사'))).toContain('새상사');
     expect(spokenText(cellOf(old, '고객사'))).toContain('옛상사');
     expect(spokenText(cellOf(old, '고객사')), '보관한 고객사의 배지').toContain(ARCHIVED);
-    expect(spokenText(cellOf(acme, '고객사')), '보관하지 않은 고객사').not.toContain(ARCHIVED);
-    expect(spokenText(cellOf(beta, '고객사')), '보관하지 않은 고객사').not.toContain(ARCHIVED);
+    expect(spokenText(cellOf(zeta, '고객사')), '멈춘 고객사(SUSPENDED)').not.toContain(ARCHIVED);
+    for (const row of [acme, beta, none]) {
+      expect(spokenText(cellOf(row, '고객사')), '보관하지 않은 고객사').not.toContain(ARCHIVED);
+    }
 
     const counts = (row: HTMLElement) => NUMBER_COLUMNS.map((c) => text(cellOf(row, c)));
+    expect(counts(zeta)).toEqual(['12', '9', '1', '0', '2']);
     expect(counts(acme)).toEqual(['12', '5', '3', '0', '4']);
     expect(counts(beta)).toEqual(['3', '2', '0', '1', '0']);
+    expect(counts(none)).toEqual(['0', '0', '0', '0', '0']);
     expect(counts(old)).toEqual(['7', '0', '0', '0', '7']);
     for (const c of NUMBER_COLUMNS) {
       expect(headOf(c).getAttribute('data-align'), `"${c}" 머리의 맞춤`).toBe('end');
@@ -189,7 +199,7 @@ describe('C-5 통계 링크 (7b 묶음)', () => {
     expect(target(a)).toEqual({ path: '/issues', companyCode: 'ACME', status: [...statuses].sort(), others: [] });
   });
 
-  test('S7B-AC-20 C-5 0이 아닌 수 "해결"(BETA)도 링크이고, "전체"는 그 고객사의 모든 상태로 간다', async () => {
+  test('S7B-AC-20 C-5 0이 아닌 수 "해결"(BETA)도 링크이고, "전체"는 상태 없이 그 고객사로만 거른다', async () => {
     s7b.stats = [ACME_STAT, BETA_STAT];
     renderAt(URL_STATS);
 
@@ -204,13 +214,20 @@ describe('C-5 통계 링크 (7b 묶음)', () => {
     expect(to.path).toBe('/issues');
     expect(to.companyCode).toBe('BETA');
     expect(to.others).toEqual([]);
-    // 상태로 거르지 않거나 다섯을 모두 고른다. 둘은 같은 목록이다.
-    expect([[], ALL_STATUSES]).toContainEqual(to.status);
+    // 상태를 붙이지 않는다(screens.md 1절). 다섯을 모두 고르면 C-3에 상태 필터가 걸린 것으로 보인다.
+    expect(to.status).toEqual([]);
   });
 
-  test('S7B-AC-20 C-5 0인 수는 링크가 없다(글자 "0"만)', async () => {
-    s7b.stats = [BETA_STAT, OLD_STAT];
+  test('S7B-AC-20 C-5 0인 수는 링크가 없다(글자 "0"만). 문의가 없는 고객사의 "전체" 0도 그렇다', async () => {
+    s7b.stats = [BETA_STAT, NEW_STAT, OLD_STAT];
     renderAt(URL_STATS);
+
+    const none = await statsRow('NEW');
+    for (const c of NUMBER_COLUMNS) {
+      expect(text(cellOf(none, c))).toBe('0');
+      expect(linksIn(cellOf(none, c)), `NEW "${c}"`).toHaveLength(0);
+    }
+    expect(linksIn(cellOf(none, '고객사')), 'NEW 고객사 칸의 링크').toHaveLength(1);
 
     const beta = await statsRow('BETA');
     for (const c of ['처리 중', '종료'] as const) {
