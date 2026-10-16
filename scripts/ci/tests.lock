@@ -348,7 +348,7 @@ c2d564e52a2809c29e53bd12bfa89c387331ffa402e7d0661cd8db934856cfab  server/src/tes
 c8bc4df4fef4454a7cae02e171316200e52c5dc2ef3abda95d8db1a96d4559d7  server/src/test/java/io/popdesk/notify/Rows.java
 76e95a7304d0b9c8e5832602fd75bfec8e288f2d511b7173e14a5839dc7fd65f  server/src/test/java/io/popdesk/notify/SandboxChannelsTest.java
 c2385fd3318d960f7da564555290b8f9b9738ea5fe88686988774b1c68aee5b3  server/src/test/java/io/popdesk/notify/SandboxMailLimitTest.java
-585a3b096428578e73358704add6d09f64af8cabad91f95452ea7f369b7acc1a  server/src/test/java/io/popdesk/notify/SandboxMailTest.java
+3ff181ce195db900feba390c49214eab3ad8bf8b9ef630ba87d67170b3935821  server/src/test/java/io/popdesk/notify/SandboxMailTest.java
 8c870c1812cc6d78c3d3cbedec9bdb0df8fcb44c7a657ca718566c77e31b7913  server/src/test/java/io/popdesk/notify/SandboxNoAddressTest.java
 d5e0d96a7406e6353c9b8447e89bd0766e5c2ad24bcb3d271c6c93d55c6aa468  server/src/test/java/io/popdesk/notify/SandboxOffTest.java
 7771faac3ea2cab52505ebbeba10504c2cb6a30440de0f332ac10e550a524860  server/src/test/java/io/popdesk/notify/SendLoopBrokenRowTest.java
@@ -442,10 +442,10 @@ e5d36baf1515da49b2f201e6fb343e46281f8549d73c2c0f568e07a6240eab7c  server/src/tes
 e05faffe8316c40003b9bb6acb313bb2c3cd16a59b1fe453dc9ca6c86441345d  server/src/test/java/io/popdesk/project/PeopleMailTest.java
 2808caf7a377a22bf4c340f62f5e6848c1ac2880ecaef2b8d48b023ac88325f1  server/src/test/java/io/popdesk/project/PeopleSteps.java
 2d8206df613acfcb5c311b730495106250d3204dde3fbd091fc86e2ef3b282db  server/src/test/java/io/popdesk/project/ProjectChecks.java
-f15a72df30887a12b6e736ea091de9666aff5ddd490d98b0eeb965611b66993c  server/src/test/java/io/popdesk/sla/SlaAlertMailTest.java
+34bbbb17158ff1290cf8952927f13fe1b8cf2f830b5150c23aefb0a02001cf97  server/src/test/java/io/popdesk/sla/SlaAlertMailTest.java
 fb0edb42cb9b1eed5752c56d7327ccc0b528c6e2df1e3aa7b7b7cdcb6229504e  server/src/test/java/io/popdesk/sla/SlaAlertSchemaTest.java
-33c48a40382f683499e153a67da7db704fcb8251d11e09cd8aec6b1b072331aa  server/src/test/java/io/popdesk/sla/SlaAlertSteps.java
-e0a86e1783123e8320fa138e5a4620e233b68381c4da4a8b61799a3bfac97e43  server/src/test/java/io/popdesk/sla/SlaAlertTest.java
+507b0bc018937ebb2e83847fa06eb29c2c16c8af6ff04497b560fe23da983d93  server/src/test/java/io/popdesk/sla/SlaAlertSteps.java
+2f7468e1fa1a9a6f5ca4d75972364848d1841759f5d0ba4f1e407f98f7c76db0  server/src/test/java/io/popdesk/sla/SlaAlertTest.java
 d91306f4a08e81539bbaefeb533bfc13f19ca7ea2d9ad1073bef86aaec949283  server/src/test/java/io/popdesk/sla/SlaAppTest.java
 108e52ee340e371f887f1b630f9a67e3b86109ac4bbd6045f20ce93e2557657f  server/src/test/java/io/popdesk/sla/SlaBusinessHoursTest.java
 7f9303b729e334d9be75e4417850c2749a8c183bec65262a1e11ead85fc4f7e9  server/src/test/java/io/popdesk/sla/SlaDaylightSavingTest.java
@@ -463,9 +463,9 @@ b2f2bbcb2619a9983a4a4a0657826e29e7a71f2b3e07c00bd40ca30cdcc6fcbd  server/src/tes
 343d3998e9d7a68235102d8aef8fb01348afade3003c7fab8a93fcf6e994385f  server/src/test/java/io/popdesk/sla/SlaRunStepsTest.java
 1fd03f885fe99a544a280a2458367dc6f5be869646a0307a147190b45b1c62a9  server/src/test/java/io/popdesk/sla/SlaStateTest.java
 073a9a7e75ed1e1dfebaf206590ed005cddf215e24c95ac254ee3d650ec0fef5  server/src/test/java/io/popdesk/sla/SlaStatsSteps.java
-e26d2f9878e23d592aa241eca59b020eae02c3c76f3c0cca37347408f7e11a48  server/src/test/java/io/popdesk/sla/SlaStatsTest.java
+79d861811164ced681c642042d0c6faabba384f534fc58861ffc418181045913  server/src/test/java/io/popdesk/sla/SlaStatsTest.java
 10d4dda9d081a0ab620e9684f9ff1c19eaca71be91f48d02a17057ff4e50c4ad  server/src/test/java/io/popdesk/sla/SlaSteps.java
-ccc9c975d70fd586a9e504d6ea738991edb84731e3fb1e4e4d1ef5c254cff6c8  server/src/test/java/io/popdesk/sla/SlaSummaryTest.java
+403d4ff262f720d3730f511a0f6c2e600efbe7cb7eddf46fcd10df61b1df387e  server/src/test/java/io/popdesk/sla/SlaSummaryTest.java
 29724d760ba2e87b6388149ffbd628e211e92c01a4f2b068071ab99f04d87fa6  server/src/test/java/io/popdesk/sla/SlaTrashClockTest.java
 3689616b01a03489b58fa956286155cae64223450ce11421755a724b470506e9  server/src/test/java/io/popdesk/sla/SlaUntouchedInstallTest.java
 8d5653ed6d0a73ef4e6b2e010562a6315dd325e79d2e13f477feba1d671a957c  server/src/test/java/io/popdesk/start/AuditRetentionSettingTest.java
