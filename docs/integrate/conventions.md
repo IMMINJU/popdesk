@@ -148,7 +148,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 409 | `REQUEST_CLOSED` | The membership request was closed the other way (approved when rejecting, rejected when approving), or its manager took it back |
 | 409 | `LINK_EXISTS` | The two issues are linked already, of any kind and in either direction. Nothing changed |
 | 409 | `RESTORE_LINK_CONFLICT` | Restoring an issue from the trash: with its links it would break the link rules (over 50 links, or a duplicate chain). `issueKeys` lists the other issues of the links at fault. The issue stays in the trash |
-| 409 | `VERSION_CONFLICT` | The `version` sent with an edit of an issue is not the issue's current one: someone changed the issue in between. Nothing changed. Read the issue again |
+| 409 | `VERSION_CONFLICT` | The `version` sent with an edit of an issue is not the issue's current one: someone changed the issue in between. Or the `version` sent with a change of the SLA policy (`PUT /api/console/sla-policy`) is not the policy's current one: another admin changed it, or popdesk made a version for a new time zone. Nothing changed. Read the issue or the policy again |
 | 409 | `IDEMPOTENCY_KEY_REUSED` | The account used this `Idempotency-Key` in the last 24 hours for a filing with other content. Nothing is created |
 | 409 | `AUDIT_VERIFICATION_RUNNING` | A check of the audit log's hash chain is already running. One runs at a time |
 | 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit, a profile photo is over 2 MB (2,097,152 bytes), or the JSON of a new issue (the body, or the `issue` part of a multipart request) is over 256 KB (262,144 bytes). The headers of one multipart part, which carry the file name, are limited to 4 KB: a file name far over 255 characters gets this 413, not the 400 `TOO_LONG`. A proxy in front may answer 413 first with its own body |
@@ -268,12 +268,17 @@ A `page` past the last page returns an empty `items`. A `page` below 1 or a `siz
 
 Some lists are short by rule and come all at once, as `{"items": [...]}` without paging, for example the links of an issue (at most 50), the labels of a company (at most 200), and the issue counts per company (`GET /api/console/stats`, one item per company the caller can see).
 
-The staff issue list also takes `sort`. Both orders end with a key that is unique to each issue, so issues with the same due date and the same filing time neither repeat nor go missing across pages:
+The staff issue list also takes `sort`. Every order ends with a key that is unique to each issue, so issues with the same due date and the same filing time neither repeat nor go missing across pages:
 
 | `sort` | Order |
 |---|---|
 | `createdAt` (default) | Newest first, then by issue number, newest first |
 | `dueDate` | Earliest due date first, issues without a due date last; equal due dates in the `createdAt` order |
+| `slaDue` | Earliest running SLA due time first, the earlier of the issue's two goals; issues without a running SLA goal last; equal times in the `createdAt` order |
+
+`dueDate` is the due date people set on an issue (DUE-1); `slaDue` is the due time popdesk works out from the SLA policy. They are different values.
+
+The staff issue list also takes `sla`: `breached` for issues with a running SLA goal past its due time, `warning` for issues with one past 80% of the goal and none breached. An issue counts by the worse of its two running goals. Issues not under SLA, and issues whose SLA clocks are stopped, match neither. Any other value is 400 with `sla` `UNKNOWN_VALUE`. The customer issue list takes neither `sla` nor `sort=slaDue`: customers never see SLA.
 
 Any other value of `sort` is 400 with `sort` `UNKNOWN_VALUE`. `sort` changes only the order: the filters, `totalElements`, and `totalPages` stay the same. Lists that do not take `sort` answer it with `UNKNOWN_PARAMETER` (the customer issue list, for example).
 
@@ -362,6 +367,7 @@ Limits are per account over a 60-second window:
 - `POPDESK_TIMEZONE` takes an IANA zone name (`Asia/Seoul`) or `UTC`. With an empty value or any other value, such as `KST` or `+09:00`, the app takes no requests and answers `SETUP_REQUIRED` until the setting is fixed (see `docs/operate/configuration.md`).
 
 - Periods (24 hours, 7, 14, or 30 days, retention periods) are measured as a difference of UTC times. Daylight saving time and changes to `POPDESK_TIMEZONE` do not change their length. The installation time zone is used only to judge dates: due dates and SLA business hours and holidays.
+- SLA goals count business time: the wall-clock span of each weekday in the installation time zone, without holidays. On a day daylight saving time starts or ends, the span counts the time that really passes in it. SLA due times are returned as UTC timestamps like any other, and the server gives each goal's state and remaining minutes, so the client never counts business time itself.
 
 ## Missing values and `null`
 
@@ -391,6 +397,7 @@ Every audit entry has a place in one chain and a hash over its values and the en
   - `target` and `changes` are the stored values as they are. A time inside them is text in the same form as `occurredAt`.
   - Values hold no fractions: every number is a whole number of at most 64 bits. So no number needs the number rules of RFC 8785.
 - An entry that changes a value keeps it under the field's name as `{"from": before, "to": after}`. An entry that sets values for the first time (creating a company, an invitation) keeps the value itself. New kinds of entry follow this.
+- A change of the SLA policy (`SLA_POLICY_CHANGED`) has the target `{"type": "SLA_POLICY", "version": n}`, the new version. Its `changes` hold each changed part (`targets`, `hours`, `holidays`) as whole lists, before and after, in the shapes of the `SlaPolicy` response: times as `"HH:MM"` text and days as `"YYYY-MM-DD"` text. A version popdesk makes for a new time zone leaves no entry.
 - A name once used for `action`, or for a key of an entry, is never renamed: it is part of the hash.
 - After the retention period removed old entries, the chain starts at the first entry that is left. Its `prevHash` is the `hash` of the last entry removed, which popdesk keeps as the chain's starting point; the integrity check starts there.
 

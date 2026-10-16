@@ -5,5 +5,6 @@ public enum AuditTargetType {
     ACCOUNT,
     COMPANY,
     DATABASE,
-    AUDIT_LOG
+    AUDIT_LOG,
+    SLA_POLICY
 }

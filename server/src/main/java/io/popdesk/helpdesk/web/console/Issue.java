@@ -32,6 +32,9 @@ public record Issue(
         @Schema(description = "The due date is before today in the installation time zone (`POPDESK_TIMEZONE`, "
                 + "S6A-AC-35). `false` without a due date. Judged by the server when it answers; show this "
                 + "instead of comparing with the browser's date.") boolean overdue,
+        @Schema(description = "The SLA goals of the issue; null when it is not under SLA: it was filed while no "
+                + "SLA goal was set, and stays so whatever the policy becomes (S8A-AC-11, S8A-AC-30).",
+                nullable = true) IssueSla sla,
         @Schema(description = "The statuses `changeIssueStatus` takes now (STATUS-1). Empty for a `CLOSED` "
                 + "issue.") List<IssueStatus> nextStatuses,
         @Schema(description = "`reopenIssue` works now: the issue is `RESOLVED`, or `CLOSED` for less than 14 "
@@ -42,6 +45,8 @@ public record Issue(
                 nullable = true) OffsetDateTime resolvedAt,
         @Schema(description = "When the issue became `CLOSED`; null while it is open.", nullable = true)
                 OffsetDateTime closedAt,
-        @Schema(description = "Goes up by 1 on every change to the issue (S0-AC-45).") long version,
+        @Schema(description = "Goes up by 1 on every change to the issue (S0-AC-45). Not when popdesk works out "
+                + "its SLA due times again after a policy change; `sla` and `updatedAt` stay too (S8A-AC-21).")
+                long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {}

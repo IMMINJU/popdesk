@@ -44,5 +44,6 @@ public enum AuditAction {
     LABEL_DELETED,
     ISSUE_DELETED,
     ISSUE_RESTORED,
-    ISSUE_PURGED
+    ISSUE_PURGED,
+    SLA_POLICY_CHANGED
 }
