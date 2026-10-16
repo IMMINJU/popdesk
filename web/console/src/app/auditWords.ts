@@ -310,13 +310,16 @@ function spanWord(day: Record<string, unknown> | undefined): string {
   return `${day.opens}–${day.closes}`;
 }
 
-/** "수요일 09:00–18:00 → 쉼": changed weekdays only. */
+/** "수요일 09:00–18:00 → 쉼": changed weekdays only, Monday first. A weekday missing from a list is 쉼. */
 function hoursWord(from: Record<string, unknown>[], to: Record<string, unknown>[]): string {
   const parts: string[] = [];
-  for (const after of to) {
-    const was = spanWord(from.find((d) => d.weekday === after.weekday));
-    const is = spanWord(after);
-    if (was !== is) parts.push(`${word(WEEKDAY_WORDS, String(after.weekday))} ${was} → ${is}`);
+  const known = Object.keys(WEEKDAY_WORDS);
+  const named = [...from, ...to].map((d) => String(d.weekday));
+  const days = [...known, ...named.filter((d, i) => !known.includes(d) && named.indexOf(d) === i)];
+  for (const weekday of days) {
+    const was = spanWord(from.find((d) => d.weekday === weekday));
+    const is = spanWord(to.find((d) => d.weekday === weekday));
+    if (was !== is) parts.push(`${word(WEEKDAY_WORDS, weekday)} ${was} → ${is}`);
   }
   return parts.length === 0 ? NONE : parts.join(' · ');
 }
