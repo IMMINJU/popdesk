@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from popdesk_stack import (  # noqa: E402
     ADMIN_EMAIL, ADMIN_PASSWORD, CONSOLE_HOST, PEOPLE_PASSWORD, PORTAL_HOST, HarnessError, Project, image_id,
     log, read_audit, read_comments, read_issues, read_mentions, read_notifications, read_outbox,
-    read_password_resets, read_photos, sha256)
+    read_branding, read_password_resets, read_photos, sha256)
 
 # Low, so a few small uploads pass 80% and raise the quota alert (ops_alert, notification rows).
 QUOTA = "1MB"
@@ -302,6 +302,13 @@ def fill(project):
              "select count(*) > " + summaries + " from notification where kind = 'SLA_RECALCULATED' "
              "and sla_became_breached > 0")
 
+    # What slice 9 added (S9-AC-34, design 6절): the branding "Sample Desk" with an accent color (branding) and
+    # one light logo, larger than the box, so what is kept is popdesk's own copy (branding_logo).
+    branding = admin.json("GET", "/api/console/branding")
+    admin.json("PUT", "/api/console/branding",
+               {"version": branding["version"], "displayName": "Sample Desk", "accent": "#6D28D9"})
+    admin.upload("/api/console/branding/logos/light", "file", "logo.png", png(9, 600, 150), expect=200, method="PUT")
+
     # Mail rows of this run are sent (SMTP is off: one log line each) and deleted. Wait for that, so the
     # queue holds only the failed row added below when it is dumped.
     end = time.monotonic() + 60
@@ -377,6 +384,7 @@ def main():
             "comments": read_comments(project),
             "mentions": read_mentions(project),
             "notifications": read_notifications(project),
+            "branding": read_branding(project.api(PORTAL_HOST)),
         }
         if not expected["outbox"]:
             raise HarnessError("The sample has no failed queue row.")
@@ -388,6 +396,8 @@ def main():
         kept = {c["id"] for c in comments if not c["deleted"]}
         if not any(m["commentId"] in kept for m in expected["mentions"]):
             raise HarnessError("The sample needs a comment that mentions someone and is not deleted.")
+        if expected["branding"]["public"]["displayName"] != "Sample Desk" or not expected["branding"]["logos"]:
+            raise HarnessError(f"The sample's branding is not Sample Desk with a logo: {expected['branding']}")
         if {n["read"] for n in expected["notifications"]} != {True, False}:
             raise HarnessError("The sample needs a read and an unread inbox item about an issue.")
 

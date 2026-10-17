@@ -1,15 +1,21 @@
 package io.popdesk.helpdesk.web.publicapi;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.ApiException;
+import io.popdesk.helpdesk.branding.BrandingService;
+import io.popdesk.helpdesk.branding.BrandingService.LogoImage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.Duration;
 import org.jspecify.annotations.Nullable;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +34,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/public/branding")
 class PublicBrandingController {
 
+    /** A logo at the address the branding gives: that address never serves another file (S9-AC-04). */
+    private static final CacheControl KEEP = CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable();
+
+    /** Any other address of a logo: the browser keeps it but asks again every time. */
+    private static final CacheControl ASK_AGAIN = CacheControl.noCache();
+
+    private final BrandingService branding;
+
+    PublicBrandingController(BrandingService branding) {
+        this.branding = branding;
+    }
+
     @Operation(operationId = "getPublicBranding", summary = "The branding",
             description = "The display name, the values made from the accent color, and where the logos are "
                     + "(S9-AC-01, S9-AC-02). An installation that never saved a branding answers the default: "
@@ -37,8 +55,9 @@ class PublicBrandingController {
     @ApiResponse(responseCode = "503", description = "`SETUP_REQUIRED`: there is no first admin yet.")
     @GetMapping
     PublicBranding getPublicBranding() {
-        // The contract of slice 9 answers the default; reading the stored branding comes with its build.
-        return new PublicBranding("popdesk", null, new PublicBrandingLogos(null, null));
+        BrandingService.Shown shown = branding.shown();
+        return new PublicBranding(shown.displayName(), AccentColors.of(shown.palette()),
+                new PublicBrandingLogos(shown.light(), shown.dark()));
     }
 
     @Operation(operationId = "getBrandingLogo", summary = "A logo",
@@ -64,6 +83,28 @@ class PublicBrandingController {
                     @RequestParam(required = false) @Nullable String v,
             @Parameter(description = "The `ETag` of the copy the caller has.")
                     @RequestHeader(name = HttpHeaders.IF_NONE_MATCH, required = false) @Nullable String ifNoneMatch) {
-        throw new NotImplementedException();
+        LogoImage logo = branding.logo(theme).orElseThrow(ApiException::notFound);
+        String etag = '"' + logo.fingerprint() + '"';
+        CacheControl cache = logo.fingerprint().equals(v) ? KEEP : ASK_AGAIN;
+        if (matches(ifNoneMatch, etag)) {
+            return ResponseEntity.status(HttpStatus.NOT_MODIFIED).cacheControl(cache).eTag(etag).build();
+        }
+        // X-Content-Type-Options: nosniff comes with the security headers of every response.
+        return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).cacheControl(cache).eTag(etag)
+                .body(new ByteArrayResource(logo.png()));
+    }
+
+    /** Whether an {@code If-None-Match} value, a list of tags or {@code *}, names the tag; weak tags count. */
+    private static boolean matches(@Nullable String ifNoneMatch, String etag) {
+        if (ifNoneMatch == null) {
+            return false;
+        }
+        for (String candidate : ifNoneMatch.split(",")) {
+            String tag = candidate.strip();
+            if (tag.equals("*") || tag.equals(etag) || tag.equals("W/" + etag)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -69,13 +69,15 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 | `attachment` | `helpdesk` | Attachment metadata and state, and where the file is stored (`storage`, `storage_location`). `pending` (row committed, file being written; no issue yet for a file sent with a new issue), `stored`, `purging` (delete committed, file not removed yet), `purged`. Only `stored` needs an issue (V4): the cleanup ends a failed filing's files without one. Rows stay after a delete as traces; a row the cleanup ended has no `deleted_by` and is not listed |
 | `attachment_content` | `helpdesk` | File contents when `POPDESK_STORAGE=db` |
 | `spring_session`, `spring_session_attributes` | `helpdesk` | Sign-in sessions (Spring Session JDBC) |
+| `branding` | `helpdesk` | The branding of the installation (V21): one row, `id` 1, with the display name, the accent color (`#RRGGBB` in capitals, null for the app's own colors), and a version that goes up when either changes. V21 puts in the default row: `popdesk`, no accent color, version 1 |
+| `branding_logo` | `helpdesk` | The logo of each theme (V21), at most one per `theme` (`LIGHT`, `DARK`): the PNG popdesk made from the upload, never the uploaded file, its SHA-256, and its size within 512 by 128 px. A logo change does not change the branding's version |
 | `outbox` | `notification` | Emails and webhooks waiting to be sent, and the ones that failed. `kind` is a `MailKind` name for `MAIL` (`INVITATION`, `PASSWORD_RESET`, `STAFF_COMMENT`, `ISSUE_RESOLVED`, `MENTIONED`, ...) and a `WebhookKind` name for `WEBHOOK`. A row holds IDs only; `company_code` is set for a `MEMBERSHIP_REQUESTED` email alone (V12) |
 | `delivery_status` | `notification` | Last successful send per channel; both rows are made at startup |
 | `ops_alert` | `notification` | Operations alerts that are raised, one row per kind (`OpsAlerts.Kind`) until resolved |
 | `notification` | `notification` | Inbox items of every account. `kind` is an `OpsAlerts.Kind` name or `MEMBERSHIP_REQUESTED` for the items of admins about no issue, and an `IssueInbox.Kind` name for an item about an issue, which has `issue_id`, `actor_id`, and for a comment `comment_id` (V12). The title and the names are read when the inbox is read |
 | `cleanup_run` | `notification` | One row per cleanup job: when it last ran and how many rows it deleted. `helpdesk`'s jobs are `CleanupJob` beans that `notification` runs and records |
 
-`notification` reads accounts, issues, and comments only through interfaces it declares and `helpdesk` implements (`Recipients`, `IssueFacts`, `IssueAccess`, `InboxFacts`, `CommentFacts`, `InvitationLinks`, `PasswordResetLinks`), so it does not depend on `helpdesk`.
+`notification` reads accounts, issues, and comments only through interfaces it declares and `helpdesk` implements (`Recipients`, `IssueFacts`, `IssueAccess`, `InboxFacts`, `CommentFacts`, `InvitationLinks`, `PasswordResetLinks`, `BrandingName`), so it does not depend on `helpdesk`.
 
 Who is told of what happens on an issue is decided in one class, `helpdesk.issue.IssueNotifications`: it leaves out the person who did it, accounts that are not `ACTIVE`, and accounts that cannot see the issue, and calls `IssueInbox.add` once per person, which writes the inbox item and queues the email together. Services do not queue issue emails themselves.
 

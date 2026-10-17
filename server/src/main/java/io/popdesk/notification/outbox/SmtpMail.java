@@ -9,6 +9,7 @@ import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import java.io.UnsupportedEncodingException;
 import java.net.ConnectException;
 import java.net.NoRouteToHostException;
 import java.net.SocketTimeoutException;
@@ -150,7 +151,7 @@ class SmtpMail {
         Session session = Session.getInstance(properties);
         try {
             MimeMessage mime = new MimeMessage(session);
-            mime.setFrom(new InternetAddress(from(user)));
+            mime.setFrom(sender(from(user), message.senderName()));
             mime.setRecipient(jakarta.mail.Message.RecipientType.TO, new InternetAddress(to, true));
             mime.setSubject(message.subject(), "UTF-8");
             mime.setText(message.text(), "UTF-8");
@@ -173,7 +174,25 @@ class SmtpMail {
      */
     static Message redirected(Message message, long recipientAccountId) {
         return new Message(SANDBOX_SUBJECT_PREFIX + message.subject(),
-                "Sandbox: this email was for account " + recipientAccountId + ".\n\n" + message.text());
+                "Sandbox: this email was for account " + recipientAccountId + ".\n\n" + message.text(),
+                message.senderName());
+    }
+
+    /**
+     * The {@code From} address: {@code MAIL_FROM} as it is when it names someone ({@code Name <address>}),
+     * else the address with {@code senderName}, the display name, encoded as UTF-8 (S9-AC-26). The name has
+     * no line break: the branding refuses one and {@link MailText#oneLine} takes any out.
+     */
+    static InternetAddress sender(String from, String senderName) throws MessagingException {
+        InternetAddress address = new InternetAddress(from);
+        if (senderName != null && (address.getPersonal() == null || address.getPersonal().isBlank())) {
+            try {
+                address.setPersonal(MailText.oneLine(senderName), "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                throw new IllegalStateException("UTF-8 is always there", e);
+            }
+        }
+        return address;
     }
 
     /** {@code MAIL_FROM}, else {@code SMTP_USER} when it is an address, else popdesk at the console host. */

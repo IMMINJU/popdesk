@@ -22,14 +22,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from popdesk_stack import (  # noqa: E402
-    ADMIN_EMAIL, ADMIN_PASSWORD, CONSOLE_HOST, FAILED_ROWS_KEPT_DAYS, ApiError, Project, log, read_audit,
-    read_comments, read_issues, read_mentions, read_notifications, read_outbox, read_password_resets, read_photos,
-    sha256)
+    ADMIN_EMAIL, ADMIN_PASSWORD, CONSOLE_HOST, DEFAULT_BRANDING, FAILED_ROWS_KEPT_DAYS, PORTAL_HOST, ApiError,
+    Project, log, read_audit, read_branding, read_comments, read_issues, read_mentions, read_notifications,
+    read_outbox, read_password_resets, read_photos, sha256)
 
 # The checks every sample has, and those only a later sample has: profile photos and password reset
 # links (after 0.1.0), comments, mentions, and inbox items about issues (after 0.3.0). A later check
-# runs when sample.expected.json names it.
-CHECKS = ("issues", "attachments", "outbox", "audit")
+# runs when sample.expected.json names it. The branding is checked on every sample: one without it
+# (before 0.5.0) has the default.
+CHECKS = ("issues", "attachments", "outbox", "audit", "branding")
 LATER_CHECKS = ("photos", "passwordResets", "comments", "mentions", "notifications")
 
 # The app's health check gives a start period of 3 minutes and then 6 tries 10 seconds apart; a long
@@ -154,6 +155,17 @@ def check_notifications(project, expected):
     return check_rows("notifications", read_notifications(project), expected)
 
 
+def check_branding(project, expected):
+    """The public branding and its logos are as the sample had them; a sample without branding (before 0.5.0)
+    has the default (S9-AC-33)."""
+    wanted = expected.get("branding", DEFAULT_BRANDING)
+    actual = read_branding(project.api(PORTAL_HOST))
+    if actual != wanted:
+        log(f"branding: expected {wanted}, found {actual}")
+        return False
+    return True
+
+
 def run_checks(project, expected):
     checks = {}
     console = project.api(CONSOLE_HOST)
@@ -169,7 +181,8 @@ def run_checks(project, expected):
                                 ("passwordResets", check_password_resets, project),
                                 ("comments", check_comments, project),
                                 ("mentions", check_mentions, project),
-                                ("notifications", check_notifications, project)):
+                                ("notifications", check_notifications, project),
+                                ("branding", check_branding, project)):
         if name in LATER_CHECKS and name not in expected:
             continue
         if target is console and not signed_in:

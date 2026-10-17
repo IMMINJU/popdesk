@@ -4132,7 +4132,7 @@
                 }
               }
             },
-            "description" : "`INVALID_INPUT`, nothing changed; `fields` lists all: `displayName` empty after trimming (`REQUIRED`), only whitespace (`BLANK`), over 50 characters (`TOO_LONG`), or with a line break, a control character, or a direction mark (`INVALID_FORMAT`, S9-AC-09); `accent` not `#` and six hexadecimal digits (`INVALID_FORMAT`, S9-AC-10) or a color whose made values miss 4.5:1 on a theme's backgrounds (`LOW_CONTRAST`, S9-AC-11); `version` missing (`REQUIRED`)."
+            "description" : "`INVALID_INPUT`, nothing changed; `fields` lists all: `displayName` missing or empty (`REQUIRED`), only whitespace (`BLANK`), over 50 characters (`TOO_LONG`), or with a line break, a control character, or a direction mark (`INVALID_FORMAT`, S9-AC-09); `accent` not `#` and six hexadecimal digits (`INVALID_FORMAT`, S9-AC-10) or a color whose made values miss 4.5:1 on a theme's backgrounds (`LOW_CONTRAST`, S9-AC-11); `version` missing (`REQUIRED`)."
           },
           "401" : {
             "content" : {
@@ -4201,7 +4201,7 @@
                 }
               }
             },
-            "description" : "`INVALID_INPUT`: `color` missing (`REQUIRED`) or not `#` and six hexadecimal digits (`INVALID_FORMAT`)."
+            "description" : "`INVALID_INPUT`: `color` missing or empty (`REQUIRED`), or not `#` and six hexadecimal digits (`INVALID_FORMAT`)."
           },
           "401" : {
             "content" : {
@@ -4281,7 +4281,7 @@
         "tags" : [ "Branding" ]
       },
       "put" : {
-        "description" : "Takes a PNG, JPEG, or WebP file of up to 512 KB, judged by its content, never SVG. popdesk turns it by its EXIF orientation, scales it to fit 512 by 128 px (never larger), and keeps only that copy as a PNG without metadata, not the uploaded file (S9-AC-15). The new logo replaces the theme's logo; the branding's `version` stays (S9-AC-18). `PUT`, unlike a profile photo's `POST`: each theme has one logo, put in place. A new logo leaves an audit entry `BRANDING_LOGO_CHANGED` with the target `{\"type\": \"BRANDING\", \"theme\": \"LIGHT\"}` (or `DARK`) and, in `changes`, `logo` from the fingerprint before, or null, to the new one; the same file again leaves none (S9-AC-21). Checks, in this order: role (403), rate limit (429), `theme` (404), the file (413, 400), decoding (503); a refused file leaves the logo as it was (S9-AC-16).",
+        "description" : "Takes a PNG, JPEG, or WebP file of up to 512 KB, judged by its content, never SVG. popdesk turns it by its EXIF orientation, scales it to fit 512 by 128 px (never larger), and keeps only that copy as a PNG without metadata, not the uploaded file (S9-AC-15). The new logo replaces the theme's logo; the branding's `version` stays (S9-AC-18). `PUT`, unlike a profile photo's `POST`: each theme has one logo, put in place. A new logo leaves an audit entry `BRANDING_LOGO_CHANGED` with the target `{\"type\": \"BRANDING\", \"theme\": \"LIGHT\"}` (or `DARK`) and, in `changes`, `logo` from the fingerprint before, or null, to the new one; the same file again leaves none (S9-AC-21). Checks, in this order: role (403), the `file` part (400, looked for before anything else in the request), rate limit (429, refused uploads count too), `theme` (404), the size of the file (413), a place for decoding (503, profile photos and logos together), then the file's first bytes and pixel count (400); a refused file leaves the logo as it was (S9-AC-16).",
         "operationId" : "uploadBrandingLogo",
         "parameters" : [ {
           "description" : "`light` or `dark`.",

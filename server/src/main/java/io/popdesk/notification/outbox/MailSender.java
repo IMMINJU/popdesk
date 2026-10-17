@@ -2,6 +2,7 @@ package io.popdesk.notification.outbox;
 
 import io.popdesk.PublicAddress;
 import io.popdesk.PublicAddress.App;
+import io.popdesk.notification.BrandingName;
 import io.popdesk.notification.CommentFacts;
 import io.popdesk.notification.InvitationLinks;
 import io.popdesk.notification.IssueAccess;
@@ -57,11 +58,12 @@ class MailSender implements Sender {
     private final PasswordResetLinks passwordResets;
     private final PublicAddress address;
     private final SmtpMail smtp;
+    private final BrandingName branding;
     private final Map<Long, String> links = new ConcurrentHashMap<>();
 
     MailSender(Recipients recipients, IssueFacts issues, IssueAccess access, CommentFacts comments,
             TaskFacts tasks, OutboxRepository outbox, InvitationLinks invitations, PasswordResetLinks passwordResets,
-            PublicAddress address, SmtpMail smtp) {
+            PublicAddress address, SmtpMail smtp, BrandingName branding) {
         this.recipients = recipients;
         this.issues = issues;
         this.access = access;
@@ -72,6 +74,7 @@ class MailSender implements Sender {
         this.passwordResets = passwordResets;
         this.address = address;
         this.smtp = smtp;
+        this.branding = branding;
     }
 
     @Override
@@ -115,12 +118,14 @@ class MailSender implements Sender {
             return Attempt.dropped();
         }
         String locale = recipient.locale();
+        // Read once, as it is now, for the text and the sender's name alike (S9-AC-26, S9-AC-27).
+        String desk = MailText.oneLine(branding.displayName());
         String issueLink = issue == null ? null : address.origin(recipient.app()) + "/issues/" + issue.key();
         Optional<Message> message = switch (kind) {
             case INVITATION -> link(row, invitations::renew).map(link -> MailText.invitation(locale,
-                    recipient.name(), link));
+                    desk, recipient.name(), link));
             case PASSWORD_RESET -> link(row, passwordResets::renew).map(link -> MailText.passwordReset(
-                    locale, recipient.name(), link));
+                    locale, desk, recipient.name(), link));
             case STAFF_COMMENT -> Optional.of(MailText.staffComment(locale, issue, issueLink));
             case ISSUE_FILED_ON_BEHALF -> Optional.of(MailText.filedOnBehalf(locale, issue, issueLink));
             case ISSUE_RESOLVED -> Optional.of(MailText.resolved(locale, issue, issueLink));
@@ -138,7 +143,7 @@ class MailSender implements Sender {
         if (message.isEmpty()) {
             return Attempt.dropped();
         }
-        return smtp.send(row.recipientAccountId(), recipient.email(), message.get());
+        return smtp.send(row.recipientAccountId(), recipient.email(), message.get().from(desk));
     }
 
     @Override
