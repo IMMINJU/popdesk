@@ -77,7 +77,7 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 | `notification` | `notification` | Inbox items of every account. `kind` is an `OpsAlerts.Kind` name or `MEMBERSHIP_REQUESTED` for the items of admins about no issue, and an `IssueInbox.Kind` name for an item about an issue, which has `issue_id`, `actor_id`, and for a comment `comment_id` (V12). The title and the names are read when the inbox is read |
 | `cleanup_run` | `notification` | One row per cleanup job: when it last ran and how many rows it deleted. `helpdesk`'s jobs are `CleanupJob` beans that `notification` runs and records |
 
-`notification` reads accounts, issues, and comments only through interfaces it declares and `helpdesk` implements (`Recipients`, `IssueFacts`, `IssueAccess`, `InboxFacts`, `CommentFacts`, `InvitationLinks`, `PasswordResetLinks`), so it does not depend on `helpdesk`.
+`notification` reads accounts, issues, and comments only through interfaces it declares and `helpdesk` implements (`Recipients`, `IssueFacts`, `IssueAccess`, `InboxFacts`, `CommentFacts`, `InvitationLinks`, `PasswordResetLinks`, `BrandingName`), so it does not depend on `helpdesk`.
 
 Who is told of what happens on an issue is decided in one class, `helpdesk.issue.IssueNotifications`: it leaves out the person who did it, accounts that are not `ACTIVE`, and accounts that cannot see the issue, and calls `IssueInbox.add` once per person, which writes the inbox item and queues the email together. Services do not queue issue emails themselves.
 

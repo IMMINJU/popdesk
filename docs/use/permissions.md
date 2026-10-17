@@ -233,6 +233,20 @@ Admins set one SLA policy for the whole installation: a first response goal and 
 
 When a running goal passes 80% or its due time, popdesk tells staff once in the inbox (`SLA-5`). It tells the assignee when the assignee is active and can see the issue; otherwise every active agent assigned to the company; and when there is none of them either, a warning goes to every active admin. A goal past its due time also goes to every active admin, with an email to each person told and a webhook message. Customers are never told, also when the issue's company has nobody assigned. Changing the policy does not alert each issue it moves: admins get one summary item with how many issues became overdue, due soon, or neither.
 
+## Branding
+
+Admins set one branding for the whole installation: the display name, the accent color, and a logo for the light and one for the dark theme (`BRAND-1`). There is no branding per customer company.
+
+| Action | Customer | Agent | Admin |
+|---|---|---|---|
+| Read the display name, the accent colors, and the logos | Yes, also signed out | Yes, also signed out | Yes, also signed out |
+| Read the branding as saved (version, contrast, logo sizes), preview an accent color | – | – (403) | Yes |
+| Change the display name and the accent color; upload or remove a logo | – | – (403) | Yes |
+
+- Anyone can read the public branding and the logos, on both hosts and before sign-in, because the sign-in screens show them (`BRAND-5`). It holds no secret: not who changed it, when, or its version.
+- Agents get 403 on every admin path of the branding, before anything in the request is looked at. Customers never reach those paths: they are console paths, so a customer gets the same answer as for any other console path.
+- Saving the display name and the accent color needs the version the admin read; when another admin saved in between, the save is refused and nothing changes. A logo is put in or removed on its own and does not change the version. Each change leaves an audit entry; saving the same values, uploading the same logo again, or removing a logo that is not there leaves none.
+
 ## Other areas
 
 | Area | Customer | Agent | Admin |
