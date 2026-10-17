@@ -40,8 +40,20 @@ export interface InboxLink {
 
 export interface AppShellProps {
   app: 'portal' | 'console';
-  /** "popdesk" until branding (BRAND). */
+  /** The branding display name, "popdesk" by default (BRAND). */
   displayName: string;
+  /**
+   * Branding logos, one URL per theme (`/api/public/branding/logos/…`). The same URL twice when
+   * only one theme has a logo. Absent: the accent square, as before.
+   *
+   * With it (slice 9 screens.md 1절, C-9 draws it): two `<img alt="">`, and CSS shows the one of
+   * the current theme by the token conditions (`data-theme`, else `prefers-color-scheme`); one
+   * `<img>` when both URLs are the same. Beside it the display name, cut with an ellipsis in the
+   * width left. Console side menu open: at most 96px wide and 28px high, ratio kept. Console
+   * folded strip: still the accent square (a logo in 40px is not readable). Portal head: at most
+   * 140px wide and 28px high.
+   */
+  logo?: { light: string; dark: string };
   /** Console: 문의, and for admins 고객사·구성원·시스템 상태. Portal: 문의 and 우리 회사 사람 for a company manager, else none. */
   nav: readonly NavItem[];
   userName: string;

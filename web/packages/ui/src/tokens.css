@@ -38,11 +38,17 @@
   /* Separate from accent; branding does not change it (D-50). */
   --focus: light-dark(#1b4fd6, #8ab0ff);
 
-  /* Accent, changed by branding (D-50). Emerald is a candidate, not final. */
-  --accent: light-dark(#047857, #34d399);
-  --accent-hover: light-dark(#065f46, #6ee7b7);
-  --on-accent: light-dark(#ffffff, #032016);
-  --accent-subtle: light-dark(#e3f5ee, #0d2e23);
+  /*
+   * Accent, changed by branding (D-50). Emerald is a candidate, not final.
+   * Branding sets the eight --brand-accent-* variables on <html> as plain hex
+   * (brandingStyle in @popdesk/app/branding); without them the defaults below
+   * apply. Only hex goes in at run time: the build lowers light-dark() here,
+   * a light-dark() string set at run time would not be.
+   */
+  --accent: light-dark(var(--brand-accent-light, #047857), var(--brand-accent-dark, #34d399));
+  --accent-hover: light-dark(var(--brand-accent-hover-light, #065f46), var(--brand-accent-hover-dark, #6ee7b7));
+  --on-accent: light-dark(var(--brand-on-accent-light, #ffffff), var(--brand-on-accent-dark, #032016));
+  --accent-subtle: light-dark(var(--brand-accent-subtle-light, #e3f5ee), var(--brand-accent-subtle-dark, #0d2e23));
 
   /* Feedback, fixed */
   --danger: light-dark(#c0262d, #ff8a8a);

@@ -11,6 +11,7 @@ export { ACCOUNT_STATUS_WORDS, ISSUE_STATUS_WORDS, PRIORITY_WORDS, PROJECT_STATU
 export { Alert, type AlertProps, type AlertTone } from './components/Alert';
 export { AppShell, InboxLinkLabel, NavItemLabel, type AppShellProps, type InboxLink, type NavItem } from './components/AppShell';
 export { AttachmentList, type AttachmentItem, type AttachmentListProps } from './components/AttachmentList';
+export { AuthBrand, type AuthBrandProps } from './components/AuthBrand';
 export { Avatar, type AvatarProps } from './components/Avatar';
 export { Badge, type BadgeProps, type BadgeTone } from './components/Badge';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './components/Button';
@@ -37,6 +38,7 @@ export { IssueList, type IssueListItem, type IssueListProps } from './components
 export { LabelChip, type LabelChipProps } from './components/LabelChip';
 export { LabelChips, type LabelChipsProps } from './components/LabelChips';
 export { LabelPicker, type LabelPickerProps } from './components/LabelPicker';
+export { LogoField, type LogoFieldProps } from './components/LogoField';
 export { MarkdownEditor, type ImageUploadResult, type MarkdownEditorProps, type MarkdownTool } from './components/MarkdownEditor';
 export { MarkdownView, type MarkdownViewProps } from './components/MarkdownView';
 export { Pagination, type PageLink, type PaginationProps } from './components/Pagination';

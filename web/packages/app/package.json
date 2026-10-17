@@ -6,6 +6,7 @@
     "./attachments": "./src/attachments.ts",
     "./bands": "./src/bands.tsx",
     "./bodyImages": "./src/bodyImages.ts",
+    "./branding": "./src/branding.ts",
     "./busy": "./src/busy.ts",
     "./CommentEdit": "./src/CommentEdit.tsx",
     "./csrf": "./src/csrf.ts",

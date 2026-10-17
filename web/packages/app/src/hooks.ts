@@ -260,7 +260,11 @@ export function useFocusWhenReady(ref: { current: HTMLElement | null }, ready: b
   }, [ready, ref]);
 }
 
-/** Sets `document.title`; the screen title goes first, then the app's `displayName` (screens.md 2절 접근성). */
+/**
+ * Sets `document.title`; the screen title goes first, then the app's `displayName` (screens.md 2절 접근성).
+ * Without `displayName`: "popdesk" for now. Slice 9 (C-9) makes it the branding name of
+ * `useBranding()`, "popdesk" without a `BrandingProvider`, so the callers stay as they are.
+ */
 export function useDocumentTitle(title: string | null, displayName: string = TEXT.displayName) {
   useEffect(() => {
     if (title !== null) document.title = `${title} - ${displayName}`;
