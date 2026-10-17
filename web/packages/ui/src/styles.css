@@ -2697,6 +2697,19 @@ a.pd-inbox-row:hover .pd-inbox-text {
   padding-left: 0;
   padding-right: 0;
 }
+
+/* "로그아웃" fits the 64px strip: less side room in the head, a small button. */
+.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-head {
+  padding-left: var(--space-1);
+  padding-right: var(--space-1);
+}
+
+.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-user .pd-button {
+  max-width: 100%;
+  padding-left: var(--space-1);
+  padding-right: var(--space-1);
+  font-size: var(--text-xs);
+}
 
 /* Under bp-narrow the shell folds the menu and opens it over the content. */
 .pd-shell[data-app='console'][data-sidebar-over='true'] {
