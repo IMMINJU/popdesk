@@ -5,9 +5,40 @@
 > API 경로와 응답 모양은 묶음마다 컨트롤러 껍데기로 먼저 정하고, springdoc이 만든 `docs/integrate/openapi-portal.json`·`openapi-console.json`이 그 계약이다(D-21, D-43).
 > 글자 수 세는 법, NFC 정규화, 앞뒤 공백 자르기는 `docs/integrate/conventions.md`에 있다.
 
-## 0. 공통
+## 옮긴 규칙
 
-→ `docs/integrate/conventions.md`로 옮김(COM-1~8, 글자 수·NFC·공백 자르기, 시각, null의 뜻 제안).
+묶음을 시작하며 옮겨 간 규칙이다. 절 번호는 옮기기 전의 것이고, 다른 문서가 "features.md N절"이라고 적은 것은 이 표의 그 절이다. 규칙이 하나도 남지 않은 절은 제목을 지우고 이 표에만 남겼다.
+
+| 절 | 규칙 ID | 옮긴 곳 |
+|---|---|---|
+| 0. 공통 | COM-1~8, 글자 수·NFC·공백 자르기, 시각, null의 뜻 제안 | `docs/integrate/conventions.md` |
+| 1. 로그인과 계정 (AUTH, ACCT) | AUTH-1~5·7, ACCT-1~6·8 | `../archive/1a-people/rules.md` |
+| 1. 로그인과 계정 (AUTH, ACCT) | ACCT-7 | `../archive/3-issues/rules.md`(3번 묶음) |
+| 2. 초대 (INVITE) | INVITE | `../archive/1a-people/rules.md`. INVITE-5의 담당자·멘션 부분은 3번·4번 묶음에서, 고객사 담당자의 초대는 2번 묶음(MGR)에서 채운다 |
+| 3. 고객사 (PROJ) | PROJ | `../archive/1a-people/rules.md` |
+| 4. 문의 (ISSUE) | ISSUE-1~12, 상태 표, STATUS-1~4·6·7 | `../archive/3-issues/rules.md`(3번 묶음) |
+| 4. 문의 (ISSUE) | STATUS-5 | `../archive/7a-trash/rules.md`(7a 묶음) |
+| 5. 댓글과 멘션 (CMT, MNT) | CMT, MNT | `../archive/4-talk/rules.md`(4번 묶음) |
+| 6. 첨부 (ATT) | ATT-6~8 | `../archive/5-attachments/rules.md`(5번 묶음) |
+| 6. 첨부 (ATT) | ATT-9 | `../archive/5b-storage/rules.md`(5b 묶음) |
+| 7. 라벨과 마감일 (LBL, DUE) | LBL, DUE | `../archive/6a-labels/rules.md`(6a 묶음) |
+| 8. 작업 (TASK) | TASK | `../archive/6b-tasks/rules.md`(6b 묶음) |
+| 8-1. 문의 연결 (LINK) | LINK | `../archive/6c-links/rules.md`(6c 묶음). LINK-2·7의 휴지통 몫은 7번 묶음이 그 파일에서 가져간다 |
+| 9. 이력과 휴지통 (HIST, TRASH) | HIST-1~3 | `../archive/3-issues/rules.md`(3번 묶음) |
+| 9. 이력과 휴지통 (HIST, TRASH) | TRASH-1~4 | `../archive/7a-trash/rules.md`(7a 묶음) |
+| 10. 알림 (INBOX, MAIL, HOOK) | 알림 표, INBOX-1~4, MAIL-1~5, HOOK-1 | `../archive/4-talk/rules.md`(4번 묶음) |
+| 10. 알림 (INBOX, MAIL, HOOK) | 알림 표의 SLA 줄 셋 | `../archive/8b-sla-alerts/rules.md`(8b 묶음) |
+| 10. 알림 (INBOX, MAIL, HOOK) | MAIL-6 | `../archive/4b-delivery/rules.md` |
+| 12. 통계 (STATS) | STATS-1~3 | `../archive/7b-stats/rules.md`(7b 묶음) |
+| 12. 통계 (STATS) | STATS-4 | `../archive/8b-sla-alerts/rules.md`(8b 묶음) |
+| 14. 감사 로그 (AUDIT) | AUDIT | `../archive/1b-audit/rules.md`. 익명화에 따른 사슬 재계산(AUDIT-6의 끝부분, AUDIT-7의 구간 나누기)은 10번 묶음에서 한다 |
+| 15. 고객사 담당자 (MGR) | MGR | `../archive/2-manager/rules.md`(2번 묶음) |
+| 16. SLA | SLA-1~4, 6, 8 | `../archive/8a-sla/rules.md`(8a 묶음) |
+| 16. SLA | SLA-5, 7 | 8a와 8b가 나눠 가졌다. `../archive/8a-sla/rules.md`와 `../archive/8b-sla-alerts/rules.md` |
+| 17. 브랜딩 (BRAND) | BRAND-1~5 | `../slices/9-branding/rules.md`(9번 묶음, 진행 중) |
+| 18. 운영 경보와 시스템 상태 (OPS) | OPS-3 | `../archive/4b-delivery/rules.md`(4b 묶음) |
+
+## 0. 공통
 
 아래 규칙은 아직 공통 규약에 없다. 공통 규약으로 옮기면 여기서 지운다(TIME-1은 시각 절로).
 
@@ -18,35 +49,13 @@
 
 ## 1. 로그인과 계정 (AUTH, ACCT)
 
-→ AUTH-1~5·7, ACCT-1~6·8은 `../archive/1a-people/rules.md`로, ACCT-7은 `../archive/3-issues/rules.md`로 옮김(3번 묶음). 아래는 11번 묶음의 것이다.
+아래는 11번 묶음의 것이다.
 
 | ID | 규칙 |
 |---|---|
 | AUTH-6 | OIDC 로그인(설정이 있을 때, `OIDC_APPS`의 앱에만): 제공자가 준 `email`이 확인된 것(`email_verified`=true)이고 그 이메일의 계정이 있을 때만 로그인된다. 계정을 새로 만들지 않는다(RULE-07). 수락 전 계정이면 이때 `ACTIVE`가 된다(제공자가 이메일 주인임을 확인했으므로). 처음 맞출 때 제공자의 `iss`와 `sub`를 계정에 묶고, 그 뒤로는 그 값으로만 맞춘다(제공자 쪽에서 이메일이 바뀌어도 남의 계정에 맞지 않게). 정지 계정, 역할이 그 앱과 맞지 않는 계정(AUTH-1), 계정이 없는 이메일은 같은 실패 화면이다. 비밀번호 로그인도 함께 남는다. OIDC로 수락해 비밀번호가 없는 계정은 비밀번호 로그인이 일반 실패(AUTH-2)와 같고, 비밀번호 찾기(AUTH-7)로 비밀번호를 정할 수 있다(제공자가 멈추거나 클라이언트 비밀이 만료돼도 들어올 길이 남게) |
 
-## 2. 초대 (INVITE)
-
-→ `../archive/1a-people/rules.md`로 옮김. INVITE-5의 담당자·멘션 부분은 3번·4번 묶음에서, 고객사 담당자의 초대는 2번 묶음(MGR)에서 채운다.
-
-## 3. 고객사 (PROJ)
-
-→ `../archive/1a-people/rules.md`로 옮김.
-
-## 4. 문의 (ISSUE)
-
-→ ISSUE-1~12, 상태 표, STATUS-1~4·6·7은 `../archive/3-issues/rules.md`로 옮김(3번 묶음). 아래는 7번 묶음의 것이다.
-
-| ID | 규칙 |
-|---|---|
-| STATUS-5 | → `../archive/7a-trash/rules.md`로 옮김(7a 묶음) |
-
-## 5. 댓글과 멘션 (CMT, MNT)
-
-→ `../archive/4-talk/rules.md`로 옮김(4번 묶음).
-
 ## 6. 첨부 (ATT)
-
-→ ATT-6~8은 `../archive/5-attachments/rules.md`로, ATT-9는 `../archive/5b-storage/rules.md`로 옮김(5번, 5b 묶음).
 
 | ID | 규칙 |
 |---|---|
@@ -58,30 +67,9 @@
 | ATT-10 | 첨부 행의 파일 상태: `pending`(파일을 쓰는 중), `stored`, `purging`(파일을 지울 차례), `purged`. 올리기는 ① `pending` 행을 따로 커밋하고 ② 파일을 저장소에 쓰고 ③ 업무 트랜잭션에서 `stored`로 바꾼다. 지우기는 ① 행을 `purging`으로 바꿔 커밋하고 ② 저장소의 파일을 지우고 ③ 지워지면 행을 `purged`로 바꾸거나(흔적이 남는 지우기, ATT-5) 행을 지운다(영구 삭제, TRASH-3). 저장소에서 지우기가 실패해도 업무 요청은 성공한다 |
 | ATT-11 | 첨부 정리 작업(하루 한 번): 만든 지 1시간이 지난 `pending` 행과 `purging` 행의 파일을 지우고 ATT-10의 ③을 한다. 파일이 이미 없으면 지운 것으로 본다. 저장소를 훑어 DB에 없는 파일을 찾아 지우는 방식은 쓰지 않는다(복원 직후처럼 DB가 뒤처진 때 살아 있는 파일을 지울 수 있다). 정리 작업마다 돈 시각과 지운 수를 남긴다(OPS-2) |
 
-## 7. 라벨과 마감일 (LBL, DUE)
-
-→ `../archive/6a-labels/rules.md`로 옮김(6a 묶음).
-
-## 8. 작업 (TASK)
-
-→ `../archive/6b-tasks/rules.md`로 옮김(6b 묶음).
-
-## 8-1. 문의 연결 (LINK)
-
-→ `../archive/6c-links/rules.md`로 옮김(6c 묶음). LINK-2·7의 휴지통 몫은 7번 묶음이 그 파일에서 가져간다.
-
-## 9. 이력과 휴지통 (HIST, TRASH)
-
-→ HIST-1~3은 `../archive/3-issues/rules.md`로 옮김(3번 묶음). TRASH-1~4는 `../archive/7a-trash/rules.md`로 옮김(7a 묶음).
-
 ## 10. 알림 (INBOX, MAIL, HOOK)
 
-→ 알림 표, INBOX-1~4, MAIL-1~5, HOOK-1은 `../archive/4-talk/rules.md`로 옮김(4번 묶음). SLA 줄 셋은 `../archive/8b-sla-alerts/rules.md`로 옮김(8b 묶음). 아래는 뒤 묶음의 것이다: 표의 줄은 6번(작업 담당자, 연결), MAIL-7은 12번이다(MAIL-6은 `../archive/4b-delivery/rules.md`로 옮김). MAIL-1의 `Reply-To`와 MAIL-4의 휴지통 확인도 12번과 7번에서 채운다.
-
-| 일 | 고객(올린 사람) | 상담 쪽 | 팀 웹훅 |
-|---|---|---|---|
-| 작업 담당자가 바뀜 | – | 새 작업 담당자에게 알림함 + 메일 | – |
-| 연결된 문의가 `RESOLVED`·`CLOSED`가 됨 | – | 이어진 문의의 담당자에게 알림함 (LINK-6) | – |
+아래는 뒤 묶음의 것이다: MAIL-7은 12번이다. MAIL-1의 `Reply-To`와 MAIL-4의 휴지통 확인도 12번과 7번에서 채운다. 알림 표의 작업 담당자 줄과 연결 줄은 `../archive/6b-tasks/rules.md`, `../archive/6c-links/rules.md`에 있다.
 
 | ID | 규칙 |
 |---|---|
@@ -102,13 +90,6 @@
 | MAILIN-8 | 처리한 메일은 읽음 표시가 아니라 처리됨 폴더로 옮긴다(사람이 같은 메일함을 열어 읽음으로 만든 메일도 놓치지 않게). 읽는 대상은 받는 폴더의 모든 메일이다. 한 메일의 처리 시도는 5번까지이고, 넘으면 격리 폴더로 옮기고 지표를 올린다(폴더 이름은 설정 키로 정한다) |
 | MAILIN-9 | 메일로 들어온 문의·댓글도 보낸 계정 단위로 포털과 같은 요청 수 제한(COM-8)을 받는다. 넘은 메일은 문의·댓글을 만들지 않고 격리 폴더로 옮기고 지표를 올린다(자동 응답 서버와 서로 답하며 문의가 쏟아지지 않게) |
 | MAILIN-7 | 자동 응답(`Auto-Submitted`가 `no`가 아님, `Precedence: bulk`·`list`·`junk`)과 자기 자신(`MAIL_FROM`)이 보낸 메일은 버린다(메일이 서로 되돌아 도는 것을 막는다) |
-
-## 12. 통계 (STATS)
-
-| ID | 규칙 |
-|---|---|
-| STATS-1~3 | → `../archive/7b-stats/rules.md`로 옮김(7b 묶음) |
-| STATS-4 | → `../archive/8b-sla-alerts/rules.md`로 옮김(8b 묶음) |
 
 ## 13. 개인정보 (PII)
 
@@ -139,25 +120,6 @@
 | 고객사 내보내기 파일 | 24시간 |
 | 앱 로그(표준 출력) | popdesk는 저장하지 않는다. 설치한 곳의 로그 수집기가 정한다 |
 
-## 14. 감사 로그 (AUDIT)
-
-→ `../archive/1b-audit/rules.md`로 옮김. 익명화에 따른 사슬 재계산(AUDIT-6의 끝부분, AUDIT-7의 구간 나누기)은 10번 묶음에서 한다.
-
-## 15. 고객사 담당자 (MGR)
-
-→ `../archive/2-manager/rules.md`로 옮김(2번 묶음).
-
-## 16. SLA
-
-| ID | 규칙 |
-|---|---|
-| SLA-1~4, 6, 8 | → `../archive/8a-sla/rules.md`로 옮김(8a 묶음) |
-| SLA-5, 7 | → 8a와 8b가 나눠 가졌다. `../archive/8a-sla/rules.md`와 `../archive/8b-sla-alerts/rules.md`로 옮김 |
-
-## 17. 브랜딩 (BRAND)
-
-→ BRAND-1~5는 `../slices/9-branding/rules.md`로 옮김(9번 묶음).
-
 ## 18. 운영 경보와 시스템 상태 (OPS)
 
 관측 도구는 선택이라 거기에만 기대지 않는다. 메일이 멈췄을 수 있으므로 경보는 메일이 아니라 관리자 알림함으로 남긴다.
@@ -167,4 +129,4 @@
 | OPS-1 | 운영 경보: 다음 일이 생기면 관리자 전부의 알림함에 항목을 남긴다. 보내기 대기에 `failed` 행이 생김(MAIL-6 포함), 한 채널의 보내기 실패가 한 시간 넘게 이어짐, 정리 작업(OPS-2) 하나가 하루 넘게 돌지 않음, 첨부 총량이 한도의 80%를 넘음(ATT-3), 문의 자동 정리가 처음 켜짐(PII-6), 내보내기 실패(PII-8). 같은 종류의 경보는 풀리기 전까지 하루에 한 건만 남긴다 |
 | OPS-2 | 정리 작업(보내기 대기의 `failed` 행, 임시 이미지, 첨부 파일, 세션, 받은·보낸 메일의 `Message-ID`, 비밀번호 재설정 토큰, `Idempotency-Key`, 감사 로그 보관, 문의 자동 정리, 휴지통 영구 삭제)마다 마지막으로 돈 시각과 지운 수를 DB에 남기고 지표로도 낸다 |
 
-→ OPS-3은 `../archive/4b-delivery/rules.md`로 옮김(4b 묶음). 메일 받기와 OIDC의 줄은 12번과 11번에서 채운다.
+메일 받기와 OIDC의 줄은 12번과 11번에서 채운다.
