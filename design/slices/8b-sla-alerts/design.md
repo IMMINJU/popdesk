@@ -18,7 +18,7 @@
 | 6 | 알림 단계는 정책 행을 잠그지 않는다 | 시계를 바꾸지 않고 표시만 쓴다. 정책 저장이 그 사이 버전을 올려도 읽은 버전 조건으로 쓰고, 다시 계산이 새 버전으로 옮긴다 |
 | 7 | 시계를 쓰는 모든 일(`SlaWrite`의 `filed`, `answered`, `moved`, `reprioritized`, `deleted`, `restored`, 작업의 다시 계산)은 `SlaAlerts`로 표시와 첫 응답 확정 시각을 정한다. 쓰기가 받은 시계의 버전이 지금보다 낮으면(`caughtUp`이 옮김) 그 일을 하기 전에 따라잡기만 한 시계와 앞 시계를 견주어 다시 계산과 똑같이 표시를 올리고 요약 행에 더한다 | 5절 5. 앞 시계를 받는 다섯(`filed` 빼고)은 먼저 `caughtUp`을 부른다[소스: `SlaWrite` 45·57·72·78·85줄]. `filed`는 새 시계라 따라잡을 것이 없다 |
 | 8 | 요약 행에 더하기는 `insert … on conflict (tenant_id) where closed_at is null do update set became_breached = sla_recalc_report.became_breached + excluded.became_breached, …` 한 문장이다. 사람의 쓰기는 정책 `FOR KEY SHARE` → 문의 행 → 요약 행 차례로 잡는다. 작업의 묶음은 문의 → 요약 행이다 | 순환이 없다. 수가 모두 0이면 문장을 보내지 않는다 |
-| 9 | 요약 닫기는 회차의 다시 계산이 끝난 뒤 따로 트랜잭션에서: 정책 지금 버전 행 `FOR KEY SHARE` → 열린 요약 행 `for update` → 옛 버전의 돌고 있는 문의 수를 다시 셈 → 0이면 `closed_at`을 쓰고 세 수 가운데 0이 아닌 것이 있으면 `ACTIVE` 관리자 전부에게 `SLA_RECALCULATED`(세 수를 알림 행 칸에 적음) | 정책 저장(`FOR UPDATE`)이 닫기 뒤로 줄을 서서 "끝났다"를 본 뒤 새 버전이 끼지 않는다(서버 검토 13). 그래도 닫은 바로 뒤에 다시 계산이 시작되면 그것은 다음 요약이다 |
+| 9 | 요약 닫기는 회차의 다시 계산이 끝난 뒤 따로 트랜잭션에서: 정책 지금 버전 행 `FOR KEY SHARE` → 열린 요약 행 `for no key update` → 옛 버전의 돌고 있는 문의 수를 다시 셈 → 0이면 `closed_at`을 쓰고 세 수 가운데 0이 아닌 것이 있으면 `ACTIVE` 관리자 전부에게 `SLA_RECALCULATED`(세 수를 알림 행 칸에 적음) | 정책 저장(`FOR UPDATE`)이 닫기 뒤로 줄을 서서 "끝났다"를 본 뒤 새 버전이 끼지 않는다(서버 검토 13). 그래도 닫은 바로 뒤에 다시 계산이 시작되면 그것은 다음 요약이다 |
 | 10 | 다시 계산 작업의 `updateClocks`는 `returning id`로 쓴 문의를 돌려준다. 조건에서 빠진 문의는 세지 않는다 | 지금은 합계 `int` 하나라 어느 문의가 빠졌는지 모른다[소스: `SlaIssueRepository` 54-86줄] |
 | 11 | 회차의 두 단계는 서로 막지 않는다: 알림 단계를 `try`로 감싸 실패를 기억하고 다시 계산을 하고, 끝에 실패가 있었으면 예외를 낸다(회차가 기록되지 않고 1분 뒤 다시) | S8B-AC-28. 같은 행에서 늘 실패하면 하루 뒤 `CLEANUP_STALLED`가 된다(사전 부검 3절) |
 | 12 | 항목은 있는 `IssueInbox.add`로 넣고 `actorId`는 `Viewer.SYSTEM_ACCOUNT_ID`(0)다. 요약은 `AdminInbox`에 새 메서드 | 자동 종료와 같다. 화면 문장은 "누가"를 쓰지 않는다(`screens.md` 1절) |
@@ -128,7 +128,7 @@ C-4 탭 보고(`tasks/s8b-c4-server-report.md` 4절)로 고쳤다. 모두 잠겨
 
 - `docs/operate/configuration.md`의 정리 작업 줄 `sla-recalculate`에 "SLA 알림도 한다"를 더한다. 운영 문서에 MAIL-6 50통 한도와 넘김 메일의 관계를 한 줄.
 - `docs/integrate/`의 웹훅 설명에 새 종류 둘.
-- `design/spec/architecture.md` 잠금 표(140-165줄)에 세 줄: 다시 계산 묶음(문의 `skip locked` → 요약 행), 알림 묶음(문의 `skip locked`, 정책 행 없음), 요약 닫기(정책 `FOR KEY SHARE` → 요약 행 `for update`). 8a의 다시 계산 줄도 없으므로 함께 적는다.
+- `design/spec/architecture.md` 잠금 표(140-165줄)에 세 줄: 다시 계산 묶음(문의 `skip locked` → 요약 행), 알림 묶음(문의 `skip locked`, 정책 행 없음), 요약 닫기(정책 `FOR KEY SHARE` → 요약 행 `for no key update`). 8a의 다시 계산 줄도 없으므로 함께 적는다.
 - 릴리스 노트 재료는 C-11에서 `verify.md`에 모은다.
 
 ## 8. C-7 서버 점검에서 정한 것 (2026-10-17 메인)

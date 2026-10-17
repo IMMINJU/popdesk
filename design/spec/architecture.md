@@ -166,7 +166,7 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 | SLA 시계를 쓰는 사람의 쓰기(8a, 8b) | 지금 정책 버전 행 `FOR KEY SHARE` → 문의 행 | | 문의 UPDATE(시계, 표시, `fr_settled_at`) → 옛 버전을 따라잡았으면 열린 요약 행 `INSERT … ON CONFLICT … DO UPDATE` | | |
 | SLA 다시 계산 묶음 `sla-recalculate`(8a, 8b, 1분) | 정책 행은 잠그지 않는다. 옛 버전의 돌고 있는 문의 500개를 ID 차례로 `FOR NO KEY UPDATE SKIP LOCKED`. 묶음마다 트랜잭션 하나, 한 회차 10묶음 | | 계산 버전이 읽은 그대로일 때만 문의 UPDATE → 바뀐 수를 열린 요약 행에 더한다(`INSERT … ON CONFLICT … DO UPDATE`) | | 정책 버전 |
 | SLA 알림 묶음 `sla-recalculate`(8b, 다시 계산 앞) | 정책 행은 잠그지 않는다. 지금 버전의 알릴 때가 된 문의 100개를 알림 시각 차례로 `FOR NO KEY UPDATE OF i SKIP LOCKED`. 묶음마다 트랜잭션 하나, 한 회차 10묶음 | | 문의 UPDATE(표시, 조건 `id`와 `sla_version`) → 1행일 때만 `notification`·`outbox`(메일, 웹훅) | | 받는 사람의 계정, 배정 행 |
-| SLA 요약 닫기(8b) | 지금 정책 버전 행 `FOR KEY SHARE` → 열린 요약 행 `FOR UPDATE` → 옛 버전의 돌고 있는 문의 수(잠그지 않음) | | 0이면 요약 행 UPDATE(`closed_at`) → 수가 있으면 관리자마다 `notification` | | 관리자 계정 |
+| SLA 요약 닫기(8b) | 지금 정책 버전 행 `FOR KEY SHARE` → 열린 요약 행 `FOR NO KEY UPDATE` → 옛 버전의 돌고 있는 문의 수(잠그지 않음) | | 0이면 요약 행 UPDATE(`closed_at`) → 수가 있으면 관리자마다 `notification` | | 관리자 계정 |
 
 문의 행을 잠근다는 것은 `FOR NO KEY UPDATE`다. 표의 차례에 붙는 까닭과 남는 틈은 아래와 같다.
 

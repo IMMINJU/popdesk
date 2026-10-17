@@ -42,7 +42,7 @@ import org.springframework.stereotype.Component;
  *       timed: the scheduler has one thread, and the clock of a test stands still.
  *   <li>When no running issue of an older version is left, the summary closes in a transaction of its own: the
  *       current version's row {@code FOR KEY SHARE}, so a policy change waits until the summary is closed, then the
- *       open summary row {@code FOR UPDATE}, then the count; every {@code ACTIVE} admin gets one
+ *       open summary row {@code FOR NO KEY UPDATE}, then the count; every {@code ACTIVE} admin gets one
  *       {@code SLA_RECALCULATED} item unless its three counts are 0 (S8B-AC-14, slice 8b design.md 0절 9).
  * </ol>
  *

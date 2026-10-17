@@ -61,10 +61,10 @@ class SlaReportRepository {
                 .update();
     }
 
-    /** The open row locked {@code FOR UPDATE}, if there is one (slice 8b design.md 0절 9). */
+    /** The open row locked {@code FOR NO KEY UPDATE}, if there is one (slice 8b design.md 0절 9). */
     Optional<Open> lockOpen() {
         return jdbc.sql("select id, became_breached, became_warning, released from sla_recalc_report "
-                        + "where closed_at is null for update")
+                        + "where closed_at is null for no key update")
                 .query((rs, n) -> new Open(rs.getLong("id"), new Counts(rs.getInt("became_breached"),
                         rs.getInt("became_warning"), rs.getInt("released"))))
                 .optional();
