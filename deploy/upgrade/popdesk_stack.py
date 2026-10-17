@@ -202,11 +202,11 @@ class Api:
         _, data = self.request(method, path, body, "application/json", expect, headers)
         return json.loads(data) if data else None
 
-    def upload(self, path, field, file_name, content, expect=201):
+    def upload(self, path, field, file_name, content, expect=201, method="POST"):
         boundary = "popdesk-" + uuid.uuid4().hex
         body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"{field}\"; filename=\"{file_name}\"\r\n"
                 f"Content-Type: application/octet-stream\r\n\r\n").encode() + content + f"\r\n--{boundary}--\r\n".encode()
-        _, data = self.request("POST", path, body, f"multipart/form-data; boundary={boundary}", expect)
+        _, data = self.request(method, path, body, f"multipart/form-data; boundary={boundary}", expect)
         return json.loads(data)
 
     def sign_in(self, email, password):
@@ -256,6 +256,21 @@ def read_photos(console, account_ids):
         _, data = console.request("GET", f"/api/console/photos/{account_id}", expect=200)
         photos.append({"accountId": account_id, "sha256": sha256(data)})
     return photos
+
+
+# The branding of an installation that never saved one (S9-AC-05), what a sample before 0.5.0 has.
+DEFAULT_BRANDING = {"public": {"displayName": "popdesk", "colors": None, "logos": {"light": None, "dark": None}},
+                    "logos": {}}
+
+
+def read_branding(client):
+    """The public branding as anyone reads it (S9-AC-01), and the SHA-256 of each logo it points at."""
+    public = client.json("GET", "/api/public/branding")
+    logos = {}
+    for address in {a for a in public["logos"].values() if a is not None}:
+        _, data = client.request("GET", address, expect=200)
+        logos[address] = sha256(data)
+    return {"public": public, "logos": logos}
 
 
 def read_password_resets(project):
