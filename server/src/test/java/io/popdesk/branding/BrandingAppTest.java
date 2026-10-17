@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.popdesk.support.ApiClient;
 import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
-import io.popdesk.support.AuditChainMath;
 import io.popdesk.support.ConnectedAppTest;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.Unique;
@@ -15,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.test.context.TestPropertySource;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -45,6 +45,8 @@ public abstract class BrandingAppTest extends ConnectedAppTest {
     public static final String EMERALD = "#047857";
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
+    private static final JsonMapper SORTED = JsonMapper.builder()
+            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS).build();
 
     /** {@code GET /api/console/branding} as the admin, 200. */
     protected static JsonNode branding(Session admin) {
@@ -123,9 +125,12 @@ public abstract class BrandingAppTest extends ConnectedAppTest {
         return JSON.valueToTree(value);
     }
 
-    /** RFC 8785 text of a JSON value, to compare two values whatever their key order. */
+    /**
+     * The text of a JSON value with every object's keys sorted, to compare two values whatever their key order. Not the
+     * audit chain's canonical form: that one takes whole numbers only, and contrasts are decimals.
+     */
     protected static String canonical(JsonNode value) {
-        return AuditChainMath.canonical(value);
+        return SORTED.writeValueAsString(JSON.treeToValue(value, Object.class));
     }
 
     /** The names of an object's fields, in order. */
