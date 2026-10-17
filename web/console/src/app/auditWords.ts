@@ -369,12 +369,17 @@ function slaPartWord(field: string, from: unknown, to: unknown): string | null {
   return null;
 }
 
+/** An accent as stored: `#RRGGBB`, or `null` for the default. */
+function accentWord(value: unknown): string {
+  return typeof value === 'string' ? value : '기본';
+}
+
 /**
  * A branding change (slice 9 screens.md 4절): an accent of `null` is "기본"; a logo is only "없음" or
  * "바뀜", never its fingerprint. Null for any other field.
  */
 function brandingWord(action: string, field: string, from: unknown, to: unknown): string | null {
-  if (action === 'BRANDING_CHANGED' && field === 'accent') return `${from === null ? '기본' : String(from)} → ${to === null ? '기본' : String(to)}`;
+  if (action === 'BRANDING_CHANGED' && field === 'accent') return `${accentWord(from)} → ${accentWord(to)}`;
   if (action !== 'BRANDING_LOGO_CHANGED' || field !== 'logo') return null;
   if (from !== null && to !== null) return '바뀜';
   return `${from === null ? NONE : '바뀜'} → ${to === null ? NONE : '바뀜'}`;
