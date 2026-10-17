@@ -731,6 +731,7 @@ bc97091ae8cff5c674076bb77931680ba2f69740ac5301c6d0c6fbb1a25d6754  web/console/sr
 af0d30ef2b2069bf404899bceb39022830408017b3a4815514c9a385d8eed68e  web/console/src/screens/C4IssueDetail.mentions.test.tsx
 93abdba3c0f73525ad7660527335a38330ea47db589a9ea71e58f0652df6a7e6  web/console/src/screens/C4IssueDetail.test.tsx
 b22e6fdb070add4c277d8afbdcd224a35275e27b508da5f1d469d1c6eecf7b2e  web/console/src/screens/C5Stats.7b.test.tsx
+181dee5ffb6073e2ac1b83aee4a9a62dd2a4c7394cf7cd2c80b495a24907cc74  web/console/src/screens/C5Stats.8b-c10.test.tsx
 fc629cd2853967a8a7b0bc8192a7f45107f7999043a53746f3366155090890b7  web/console/src/screens/C5Stats.8b.test.tsx
 c81ca8e02f07ea77a386d4aed1f2fb96fe4c4639ea60f830a1df6f0a39606b69  web/console/src/screens/C6MyInfo.test.tsx
 5f4aac894965c30590b6170e2706c56588ee5bcaa278e05d0f20a0912fc1f289  web/console/src/screens/C7Inbox.4b.test.tsx
