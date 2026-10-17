@@ -652,3 +652,80 @@ describe('계약 검증기 checkResponse: 8b 묶음 웹 테스트의 견본', ()
     expect(() => checkResponse('console', 'getCompanyStats', 200, { items: [stat({ firstResponse: { medianMinutes: 1, met: 1 }, resolution: null })] })).toThrow('$.items[0].sla');
   });
 });
+
+describe('계약 검증기 checkResponse: 9번 묶음 웹 테스트의 견본', () => {
+  /** `EMERALD` of console9.ts: `#047857` put in by hand (design.md 3절의 검산 값). */
+  const EMERALD = {
+    light: { accent: '#047857', accentHover: '#005E43', onAccent: '#FFFFFF', accentSubtle: '#DBF8EB' },
+    dark: { accent: '#6ECBA5', accentHover: '#88E5BF', onAccent: '#191817', accentSubtle: '#0A3123' },
+  };
+  const LOGO_LIGHT = '/api/public/branding/logos/light?v=0123456789abcdef';
+  const LOGO_DARK = '/api/public/branding/logos/dark?v=fedcba9876543210';
+  const branding = (over: Record<string, unknown> = {}) => ({
+    version: 4,
+    displayName: 'Acme 지원',
+    accent: '#047857',
+    colors: EMERALD,
+    contrast: { light: 4.81, dark: 7.28 },
+    logos: { light: { url: LOGO_LIGHT, width: 512, height: 64 }, dark: null },
+    ...over,
+  });
+
+  test.each(['console', 'portal'] as const)('%s: 공개 브랜딩(getPublicBranding 200)의 견본(기본, 색 있음, 한 테마 로고)이 계약에 맞고, 색은 대문자 #RRGGBB다', (app) => {
+    const samples = [
+      { displayName: 'popdesk', colors: null, logos: { light: null, dark: null } },
+      { displayName: 'Acme 지원', colors: EMERALD, logos: { light: LOGO_LIGHT, dark: LOGO_DARK } },
+      { displayName: 'Acme 지원', colors: EMERALD, logos: { light: LOGO_LIGHT, dark: LOGO_LIGHT } },
+    ];
+    for (const sample of samples) {
+      expect(checkResponse(app, 'getPublicBranding', 200, sample)).toBe(sample);
+    }
+    const lower = { ...samples[1], colors: { ...EMERALD, light: { ...EMERALD.light, accent: '#04785a' } } };
+    expect(() => checkResponse(app, 'getPublicBranding', 200, lower)).toThrow('$.colors');
+    expect(() => checkResponse(app, 'getPublicBranding', 200, { displayName: 'popdesk', colors: null })).toThrow('$.logos: required, but missing');
+  });
+
+  test('console: 관리자 브랜딩 읽기(getBranding 200)의 견본(기본, 색과 로고 하나)이 계약에 맞고, 칸은 모두 필수다', () => {
+    const fresh = branding({ version: 1, displayName: 'popdesk', accent: null, colors: null, contrast: null, logos: { light: null, dark: null } });
+    for (const sample of [fresh, branding()]) {
+      expect(checkResponse('console', 'getBranding', 200, sample)).toBe(sample);
+    }
+    const withoutContrast = Object.fromEntries(Object.entries(branding()).filter(([name]) => name !== 'contrast'));
+    expect(() => checkResponse('console', 'getBranding', 200, withoutContrast)).toThrow('$.contrast: required, but missing');
+  });
+
+  test('console: 브랜딩 저장(updateBranding)의 200, 400(표시 이름, LOW_CONTRAST), 409 VERSION_CONFLICT 견본이 계약에 맞는다', () => {
+    const saved = branding({ version: 5 });
+    const invalid = {
+      code: 'INVALID_INPUT',
+      message: 'INVALID_INPUT (server text).',
+      fields: [
+        { field: 'displayName', code: 'TOO_LONG' },
+        { field: 'accent', code: 'LOW_CONTRAST' },
+      ],
+    };
+    const conflict = { code: 'VERSION_CONFLICT', message: 'VERSION_CONFLICT (server text).' };
+
+    expect(checkResponse('console', 'updateBranding', 200, saved)).toBe(saved);
+    expect(checkResponse('console', 'updateBranding', 400, invalid)).toBe(invalid);
+    expect(checkResponse('console', 'updateBranding', 409, conflict)).toBe(conflict);
+  });
+
+  test('console: 미리 보기(previewAccent 200)의 견본(받음, 받지 않음)과 로고 올리기(uploadBrandingLogo 200)의 견본이 계약에 맞는다', () => {
+    const good = { colors: EMERALD, contrast: { light: 4.81, dark: 7.28 }, acceptable: true };
+    const poor = {
+      colors: {
+        light: { accent: '#E11D48', accentHover: '#B8002C', onAccent: '#FFFFFF', accentSubtle: '#FFEDEE' },
+        dark: { accent: '#FF8A97', accentHover: '#FFA5AF', onAccent: '#191817', accentSubtle: '#3A1A1E' },
+      },
+      contrast: { light: 4.1, dark: 7.02 },
+      acceptable: false,
+    };
+    const logo = { url: LOGO_DARK, width: 128, height: 128 };
+
+    expect(checkResponse('console', 'previewAccent', 200, good)).toBe(good);
+    expect(checkResponse('console', 'previewAccent', 200, poor)).toBe(poor);
+    expect(checkResponse('console', 'uploadBrandingLogo', 200, logo)).toBe(logo);
+    expect(() => checkResponse('console', 'uploadBrandingLogo', 200, { url: LOGO_DARK, width: 128 })).toThrow('$.height: required, but missing');
+  });
+});
