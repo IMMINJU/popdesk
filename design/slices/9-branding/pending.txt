@@ -12,3 +12,10 @@ server io/popdesk/branding/BrandingPublicTest.java
 server io/popdesk/branding/BrandingSchemaTest.java
 server io/popdesk/branding/BrandingUpdateTest.java
 server io/popdesk/project/NoStoreTest.java
+server io/popdesk/branding/BrandingLogoUploadTest.java
+server io/popdesk/branding/BrandingLogoRefusalTest.java
+server io/popdesk/branding/BrandingLogoServeTest.java
+server io/popdesk/branding/BrandingLogoChangeTest.java
+server io/popdesk/branding/BrandingLogoAuditTest.java
+server io/popdesk/branding/BrandingMailTest.java
+server io/popdesk/deploy/BrandingSampleTest.java
