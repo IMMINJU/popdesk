@@ -161,6 +161,36 @@ describe('포털의 브랜딩 (9번 묶음)', () => {
     });
   });
 
+  test('S9-AC-23 포털 없는 주소(404)의 탭 제목도 "{화면 제목} - {표시 이름}"이다', async () => {
+    answerWith(ACME);
+    renderAt('/no-such-screen');
+
+    await slowly(() => {
+      expect(pageText()).toContain('찾을 수 없습니다');
+      expect(document.title).toBe('찾을 수 없습니다 - Acme 지원');
+    });
+  });
+
+  test.each([
+    { where: 'P-1 로그인', path: '/login' },
+    { where: 'P-2 초대 수락', path: '/invite#token=inv-Hk3sV8pQ2mTx' },
+    { where: 'P-2 쓸 수 없는 초대 링크', path: '/invite' },
+    { where: 'P-9 비밀번호 찾기', path: '/forgot-password' },
+    { where: 'P-10 비밀번호 다시 정하기', path: '/reset-password#token=rst-Hk3sV8pQ2mTx' },
+    { where: 'P-10 쓸 수 없는 링크', path: '/reset-password' },
+  ])('S9-AC-22 포털 로그인 전 $where: 표시 이름과 두 테마 로고를 보이고 "popdesk"가 없다', async ({ path }) => {
+    state.signedIn = false;
+    answerWith(ACME);
+    renderAt(path);
+
+    await slowly(() => {
+      expect(pageText()).toContain('Acme 지원');
+      expect(imagesIn(document.body)).toEqual([LOGO_LIGHT_URL, LOGO_DARK_URL]);
+      expect(document.title).toMatch(/ - Acme 지원$/);
+    });
+    expect(pageText()).not.toContain('popdesk');
+  });
+
   test.each([
     { what: '500', answer: () => errors.internal() },
     { what: '연결 없음', answer: () => HttpResponse.error() },

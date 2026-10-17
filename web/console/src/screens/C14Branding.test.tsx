@@ -1,7 +1,7 @@
 // 9번 묶음 screens.md 2절 C-14 브랜딩(관리자, /branding): 메뉴 끝 자리와 권한, 구역 셋(표시 이름, 강조색, 로고), 기본 색 쓰기
 // (켜기·끄기와 글 되살림), 강조색 미리 보기(0.3초 뒤 부름, 늦은 답 버림, 받을 수 없는 색, 꼴 틀림, 미리 보기 실패), 저장(바뀐 것
 // 없음, 성공과 화면 전체가 바로 바뀜, 400 넷, LOW_CONTRAST, 409와 다시 불러오기), 로고 칸(상태 다섯, 바로 올림, 오류 문장, 초점),
-// 읽기 실패(S9-AC-28~32).
+// 읽기 실패, 이름·색과 로고 답이 서로를 되돌리지 않음, 떠난 뒤 온 답의 앱 전체 반영(S9-AC-28~32).
 import { act, fireEvent } from '@testing-library/react';
 import { HttpResponse } from 'msw/http';
 import { describe, expect, test, vi } from 'vitest';
@@ -75,6 +75,7 @@ import {
   publicOf,
   removeButtonOf,
   s9,
+  saveBranding,
   saveButton,
   section,
   slowly,
@@ -228,7 +229,7 @@ describe('C-14 브랜딩 읽기 (9번 묶음)', () => {
     expect((await accentField()).value).toBe('#6D28D9');
     expect(await defaultBox()).not.toBeChecked();
     expect((await colorInput()).value.toUpperCase()).toBe('#6D28D9');
-    await panesShow(contrastLine('#6D28D9', '6.22'), contrastLine('#B8A5FF', '8.01'));
+    await panesShow(contrastLine('#6D28D9', '6.21'), contrastLine('#B8A5FF', '6.89'));
 
     const light = await logoField('light');
     expect(imagesIn(light)).toEqual([WIDE_LOGO.url]);
@@ -287,7 +288,7 @@ describe('C-14 강조색과 미리 보기 (9번 묶음)', () => {
 
     await sent('GET', ACCENT);
     expect(previewColors().at(-1)).toBe('#047857');
-    await panesShow(contrastLine('#047857', '4.81'), contrastLine('#6ECBA5', '7.28'));
+    await panesShow(contrastLine('#047857', '4.81'), contrastLine('#6ECBA5', '7.27'));
     expect(text(await pane('light'))).toContain('주 버튼');
     expect(brandVariables(), '화면 전체의 변수(저장 전)').toEqual(NO_VARIABLES);
   });
@@ -332,13 +333,13 @@ describe('C-14 강조색과 미리 보기 (9번 묶음)', () => {
     await retype(user, field, '#6D28D9');
     await sent('GET', ACCENT);
     await retype(user, field, '#047857');
-    await panesShow(contrastLine('#047857', '4.81'), contrastLine('#6ECBA5', '7.28'));
+    await panesShow(contrastLine('#047857', '4.81'), contrastLine('#6ECBA5', '7.27'));
     const done = answered('GET', ACCENT);
     release.open();
     await done;
     await settle();
 
-    expect(text(paneNow('light')), '늦게 온 #6D28D9 답').not.toMatch(contrastLine('#6D28D9', '6.22'));
+    expect(text(paneNow('light')), '늦게 온 #6D28D9 답').not.toMatch(contrastLine('#6D28D9', '6.21'));
     expect(text(paneNow('light'))).toMatch(contrastLine('#047857', '4.81'));
   });
 
@@ -444,6 +445,23 @@ describe('C-14 강조색과 미리 보기 (9번 묶음)', () => {
     expect(body.version).toBe(4);
   });
 
+  test('S9-AC-29 C-14 "기본 색 쓰기"를 켜면 강조색 구역에 꼴 오류 글이 없고 칸은 aria-invalid="true"가 아니다', async () => {
+    const user = await openBranding(violetBranding());
+    const field = await accentField();
+    await retype(user, field, '#12');
+    await slowly(() => {
+      expect(text(sectionOr('강조색'))).toContain(BAD_FORMAT);
+    });
+
+    await user.click(await defaultBox());
+
+    await eventually(() => {
+      expect(isBlocked(field), '강조색 칸').toBe(true);
+      expect(text(sectionOr('강조색')), '강조색 구역의 꼴 오류 글').not.toContain(BAD_FORMAT);
+      expect(field.getAttribute('aria-invalid'), '강조색 칸의 aria-invalid').not.toBe('true');
+    });
+  });
+
   test('S9-AC-29 C-14 색 고르기에서 고르면 대문자로 강조색 칸에 넣는다', async () => {
     const user = await openBranding(defaultBranding());
     const field = await useOwnColor(user);
@@ -485,7 +503,7 @@ describe('C-14 브랜딩 저장 (9번 묶음)', () => {
     await retype(user, await nameField(), 'Acme 지원');
     const field = await useOwnColor(user);
     await retype(user, field, '#6D28D9');
-    await panesShow(contrastLine('#6D28D9', '6.22'), contrastLine('#B8A5FF', '8.01'));
+    await panesShow(contrastLine('#6D28D9', '6.21'), contrastLine('#B8A5FF', '6.89'));
     expect(brandVariables()).toEqual(NO_VARIABLES);
     const reads = callsTo('GET', PUBLIC_BRANDING).length;
 
@@ -570,6 +588,88 @@ describe('C-14 브랜딩 저장 (9번 묶음)', () => {
       expect(nameNow(), '다시 읽은 값').toBe('Beta 지원');
     });
     expect(screen.queryAllByRole('alert').some((a) => text(a).includes(CONFLICT)), '다시 읽은 뒤의 409 띠').toBe(false);
+  });
+
+  test('S9-AC-31 C-14 409: 누르기 전까지 고친 강조색도 그대로다', async () => {
+    const user = await openBranding(violetBranding());
+    s9.branding = violetBranding({ version: 5, displayName: 'Beta 지원' });
+    await retype(user, await nameField(), 'Acme 고객지원');
+    const field = await accentField();
+    await retype(user, field, '#047857');
+    await sent('GET', ACCENT);
+
+    await user.click(await saveButton());
+
+    await found(() => screen.queryAllByRole('alert').find((a) => text(a).includes(CONFLICT)), `role="alert" "${CONFLICT}"`);
+    await found(() => screen.queryByRole('button', { name: RELOAD }), `"${RELOAD}"`);
+    expect(field.value, '누르기 전의 고친 강조색').toBe('#047857');
+    expect(nameNow(), '누르기 전의 고친 이름').toBe('Acme 고객지원');
+    expect(await defaultBox()).not.toBeChecked();
+  });
+
+  test.each([
+    { what: '앞뒤 공백을 붙인 이름', name: '  Acme 지원 ', accent: '#6D28D9' },
+    { what: '소문자로만 바꾼 강조색', name: 'Acme 지원', accent: '#6d28d9' },
+  ])('S9-AC-31 C-14 정리하면 같은 값($what)으로 "저장": 요청 없이 "바뀐 것이 없습니다."', async ({ name, accent }) => {
+    const user = await openBranding(violetBranding());
+    const nameInput = await nameField();
+    act(() => {
+      fireEvent.change(nameInput, { target: { value: name } });
+    });
+    setAccentNow(await accentField(), accent);
+    await eventually(() => {
+      expect(nameNow()).toBe(name);
+    });
+
+    await user.click(await saveButton());
+
+    await slowly(() => {
+      expect(pageText()).toContain(NOTHING_CHANGED);
+    });
+    await settle();
+    expect(callsTo('PUT', BRANDING)).toHaveLength(0);
+  });
+
+  test('S9-AC-29 C-14 미리 보기를 기다리는 중에 "저장"하면 막지 않고 보낸다', async () => {
+    const release = gate();
+    route('get', ACCENT, async ({ request }) => {
+      await release.opened;
+      return previewResponse(new URL(request.url).searchParams.get('color'));
+    });
+    const user = await openBranding(defaultBranding());
+    const field = await useOwnColor(user);
+    await retype(user, field, '#6D28D9');
+    await sent('GET', ACCENT);
+
+    try {
+      await user.click(await saveButton());
+
+      const body = await lastSaved();
+      expect(body.accent).toBe('#6D28D9');
+      expect(body.version).toBe(1);
+    } finally {
+      release.open();
+    }
+  });
+
+  test('S9-AC-32 C-14 색이 있던 브랜딩을 "기본 색 쓰기"로 저장하면 화면 전체의 --brand-* 여덟 변수를 지운다', async () => {
+    const user = await openBranding(violetBranding());
+    await slowly(() => {
+      expect(brandVariables(), '저장 전 화면 전체의 변수').toEqual(variablesOf(VIOLET));
+    });
+
+    await user.click(await defaultBox());
+    await user.click(await saveButton());
+
+    expect((await lastSaved()).accent).toBeNull();
+    await slowly(() => {
+      expect(screen.queryAllByRole('alert').concat(screen.queryAllByRole('status')).some((a) => text(a).includes(SAVED)), `화면 안 "${SAVED}"`).toBe(true);
+    });
+    await eventually(() => {
+      expect(brandVariables(), '화면 전체의 변수').toEqual(NO_VARIABLES);
+    });
+    expect(document.documentElement.style.length, '<html>의 style 속성 수').toBe(0);
+    expect(text(headNow()), '머리의 표시 이름').toContain('Acme 지원');
   });
 });
 
@@ -689,7 +789,97 @@ describe('C-14 로고 (9번 묶음)', () => {
     });
     await expectNoAxeViolations();
   });
+
+  test('S9-AC-30 C-14 이름·색을 저장한 뒤 로고를 올려도 머리 이름, --brand-* 변수, 고치던 표시 이름 칸은 그대로다', async () => {
+    const user = await openBranding(defaultBranding());
+    await saveAcmeViolet(user);
+    await retype(user, await nameField(), 'Acme 고객지원');
+
+    await user.upload(fileInputOf(await logoField('light')), image('logo.png'));
+
+    await sent('PUT', logoPath('light'));
+    await eventually(() => {
+      expect(imagesIn(headNow()), '머리 로고').toEqual([WIDE_LOGO.url]);
+    });
+    await settle();
+    expect(text(headNow()), '머리의 표시 이름').toContain('Acme 지원');
+    expect(brandVariables(), '화면 전체의 변수').toEqual(variablesOf(VIOLET));
+    expect(nameNow(), '고치던 표시 이름 칸').toBe('Acme 고객지원');
+    expect((await accentField()).value).toBe('#6D28D9');
+  });
+
+  test('S9-AC-30 C-14 로고 답을 잡아 둔 채 이름·색을 저장하고 놓아도 머리 이름, --brand-* 변수, 표시 이름 칸은 새 값이다', async () => {
+    const release = gate();
+    route('put', logoPath('light'), async ({ request }) => {
+      await release.opened;
+      return saveLogoNow(request);
+    });
+    const user = await openBranding(defaultBranding());
+    await user.upload(fileInputOf(await logoField('light')), image('logo.png'));
+    await sent('PUT', logoPath('light'));
+
+    await saveAcmeViolet(user);
+    release.open();
+
+    await eventually(() => {
+      expect(imagesIn(headNow()), '머리 로고').toEqual([WIDE_LOGO.url]);
+    });
+    await settle();
+    expect(text(headNow()), '머리의 표시 이름').toContain('Acme 지원');
+    expect(brandVariables(), '화면 전체의 변수').toEqual(variablesOf(VIOLET));
+    expect(nameNow(), '표시 이름 칸').toBe('Acme 지원');
+  });
 });
+
+describe('C-14를 떠난 뒤 온 답 (9번 묶음)', () => {
+  test('S9-AC-30 S9-AC-32 C-14를 떠난 뒤 온 저장 답과 로고 답도 앱 전체의 머리 이름, --brand-* 변수, 머리 로고에 반영한다', async () => {
+    const release = gate();
+    route('put', BRANDING, async ({ request }) => {
+      await release.opened;
+      return saveBranding(request);
+    });
+    route('put', logoPath('light'), async ({ request }) => {
+      await release.opened;
+      return saveLogoNow(request);
+    });
+    const user = await openBranding(defaultBranding());
+    await user.upload(fileInputOf(await logoField('light')), image('logo.png'));
+    await sent('PUT', logoPath('light'));
+    await retype(user, await nameField(), 'Acme 지원');
+    await retype(user, await useOwnColor(user), '#6D28D9');
+    await panesShow(contrastLine('#6D28D9', '6.21'), contrastLine('#B8A5FF', '6.89'));
+    await user.click(await saveButton());
+    await sent('PUT', BRANDING);
+
+    await user.click(await found(() => screen.queryAllByRole('link').find((a) => a.closest('nav') !== null && hrefPath(a) === '/issues'), '메뉴의 문의 목록 링크'));
+    await eventually(() => {
+      expect(window.location.pathname).toBe('/issues');
+    });
+    expect(text(headNow()), '답이 오기 전의 머리').toContain('popdesk');
+    release.open();
+
+    await slowly(() => {
+      expect(text(headNow()), '머리의 표시 이름').toContain('Acme 지원');
+      expect(brandVariables(), '화면 전체의 변수').toEqual(variablesOf(VIOLET));
+      expect(imagesIn(headNow()), '머리 로고').toEqual([WIDE_LOGO.url]);
+    });
+  });
+});
+
+/** Saves the name "Acme 지원" and the accent #6D28D9 and waits until the whole app shows them. */
+async function saveAcmeViolet(user: User): Promise<void> {
+  await retype(user, await nameField(), 'Acme 지원');
+  const box = await defaultBox();
+  if (box.checked) await user.click(box);
+  await retype(user, await accentField(), '#6D28D9');
+  await panesShow(contrastLine('#6D28D9', '6.21'), contrastLine('#B8A5FF', '6.89'));
+  await user.click(await saveButton());
+  await sent('PUT', BRANDING);
+  await eventually(() => {
+    expect(brandVariables(), '저장 뒤 화면 전체의 변수').toEqual(variablesOf(VIOLET));
+    expect(text(headNow()), '저장 뒤 머리의 표시 이름').toContain('Acme 지원');
+  });
+}
 
 /** The default logo handler of console9.ts, for a test that holds the answer first. */
 function saveLogoNow(request: Request): Promise<Response> {

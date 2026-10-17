@@ -64,7 +64,8 @@ describe('LogoField (9번 묶음)', () => {
 
     const box = await group(label);
     expect(text(box)).toContain(words);
-    // 투명도는 CSS라 jsdom이 계산하지 않는다(story가 본다): 다른 테마 로고가 그려졌는지만 본다.
+    // 투명도와 칸 바탕은 CSS라 jsdom이 계산하지 않는다. 콘솔 Screens9.overflow.stories.tsx의 C14LogoFallback이
+    // 어두운 칸에서 본다(밝은 칸은 어디서도 보지 않는다). 여기서는 다른 테마 로고가 그려졌는지만 본다.
     expect(images(box)).toEqual([OTHER]);
     expect(box.querySelector('img')).toHaveAttribute('alt', '');
     await input(box, '올리기');

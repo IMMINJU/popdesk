@@ -68,7 +68,7 @@ export const NO_LOGO = '로고 없음';
 export const LOGO_LABEL: Readonly<Record<Theme, string>> = { light: '밝은 테마 로고', dark: '어두운 테마 로고' };
 export const PANE_LABEL: Readonly<Record<Theme, string>> = { light: '밝은 테마', dark: '어두운 테마' };
 
-/** "강조색 #6ECBA5 · 가장 낮은 대비 7.28:1" (screens.md 2.1). The middle dot may sit between any spaces. */
+/** "강조색 #6ECBA5 · 가장 낮은 대비 7.27:1" (screens.md 2.1). The middle dot may sit between any spaces. */
 export function contrastLine(accent: string, contrast: string): RegExp {
   return new RegExp(`강조색 ${accent} ?· ?가장 낮은 대비 ${contrast.replace('.', '\\.')}:1`);
 }
@@ -77,24 +77,25 @@ export function contrastLine(accent: string, contrast: string): RegExp {
 // Fixtures
 
 /**
- * `#047857` put in by hand: the values main measured (design.md 3절의 검산 값). Light 4.81, dark 7.28,
- * so it is taken.
+ * `#047857` put in by hand: the values main measured (design.md 3절의 검산 값). Light 4.81, dark 7.27
+ * (cut, not rounded: design.md 9절), so it is taken.
  */
 export const EMERALD: AccentColors = {
   light: { accent: '#047857', accentHover: '#005E43', onAccent: '#FFFFFF', accentSubtle: '#DBF8EB' },
   dark: { accent: '#6ECBA5', accentHover: '#88E5BF', onAccent: '#191817', accentSubtle: '#0A3123' },
 };
-export const EMERALD_PREVIEW: AccentPreview = { colors: EMERALD, contrast: { light: 4.81, dark: 7.28 }, acceptable: true };
+export const EMERALD_PREVIEW: AccentPreview = { colors: EMERALD, contrast: { light: 4.81, dark: 7.27 }, acceptable: true };
 
 /**
- * `#6D28D9`: the accents and the light contrast are main's (design.md 3절, 6.22 and `#B8A5FF`). The
- * hover and subtle values and the dark contrast are made up for the screen: it only shows what it gets.
+ * `#6D28D9`: the accents, the light subtle `#F0EEFF` and both contrasts are what the server gives
+ * (the server C-7 check measured light 6.2181 and dark 6.8982, cut to 6.21 and 6.89). The hover
+ * values and the dark subtle are made up for the screen: it only shows what it gets.
  */
 export const VIOLET: AccentColors = {
-  light: { accent: '#6D28D9', accentHover: '#5512BF', onAccent: '#FFFFFF', accentSubtle: '#F1EBFF' },
+  light: { accent: '#6D28D9', accentHover: '#5512BF', onAccent: '#FFFFFF', accentSubtle: '#F0EEFF' },
   dark: { accent: '#B8A5FF', accentHover: '#D0C0FF', onAccent: '#191817', accentSubtle: '#2B2140' },
 };
-export const VIOLET_PREVIEW: AccentPreview = { colors: VIOLET, contrast: { light: 6.22, dark: 8.01 }, acceptable: true };
+export const VIOLET_PREVIEW: AccentPreview = { colors: VIOLET, contrast: { light: 6.21, dark: 6.89 }, acceptable: true };
 
 /**
  * `#E11D48`: not taken, light 4.10 (design.md 3절). The other values are made up for the screen.
