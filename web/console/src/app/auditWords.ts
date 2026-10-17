@@ -72,7 +72,11 @@ export const KIND_GROUPS: readonly KindGroup[] = [
   { key: 'OPERATION', name: '운영 명령', kinds: { ADMIN_PASSWORD_RESET: '관리자 비밀번호 복구', BACKUP_CREATED: '백업', DATABASE_RESTORED: '복원' } },
   { key: 'EXPORT', name: '내보내기', kinds: { AUDIT_EXPORTED: '감사 로그 내보내기' } },
   // Slice 8a: settings of the whole installation, before 보내기 (8a-sla screens.md 4절).
-  { key: 'SETTINGS', name: '설정', kinds: { SLA_POLICY_CHANGED: 'SLA 정책 바꾸기' } },
+  {
+    key: 'SETTINGS',
+    name: '설정',
+    kinds: { SLA_POLICY_CHANGED: 'SLA 정책 바꾸기', BRANDING_CHANGED: '브랜딩 바꾸기', BRANDING_LOGO_CHANGED: '로고 바꾸기' },
+  },
   { key: 'DELIVERY', name: '보내기', kinds: { DELIVERY_RESENT: '다시 보내기', TEST_MAIL_SENT: '시험 메일' } },
 ];
 
@@ -109,6 +113,8 @@ export interface Target {
   issueKey?: string;
   /** The version of the SLA policy a change made (slice 8a). */
   version?: number;
+  /** The theme of a branding logo, LIGHT or DARK (slice 9). */
+  theme?: string;
 }
 
 /** Reads a stored target (a free JSON object); null when it names nothing. */
@@ -121,12 +127,14 @@ export function targetOf(stored: Readonly<Record<string, unknown>> | null): Targ
     ...(typeof stored.labelId === 'number' ? { labelId: stored.labelId } : {}),
     ...(typeof stored.issueKey === 'string' ? { issueKey: stored.issueKey } : {}),
     ...(typeof stored.version === 'number' ? { version: stored.version } : {}),
+    ...(typeof stored.theme === 'string' ? { theme: stored.theme } : {}),
   };
 }
 
-/** "계정 12", "고객사 ACME", "고객사 ACME · 계정 12", "고객사 ACME · 라벨 61", "고객사 ACME · 문의 ACME-7", "데이터베이스", "감사 로그", "SLA 정책 버전 4". */
+/** "계정 12", "고객사 ACME", "고객사 ACME · 계정 12", "고객사 ACME · 라벨 61", "고객사 ACME · 문의 ACME-7", "데이터베이스", "감사 로그", "SLA 정책 버전 4", "브랜딩 (밝은 테마)". */
 export function targetWord(target: Target): string {
   if (target.type === 'SLA_POLICY' && target.version !== undefined) return `SLA 정책 버전 ${String(target.version)}`;
+  if (target.type === 'BRANDING') return target.theme === undefined ? '브랜딩' : `브랜딩 (${word(LOGO_THEME_WORDS, target.theme)})`;
   const account = target.accountId === undefined ? null : `계정 ${String(target.accountId)}`;
   const company = target.code === undefined ? null : `고객사 ${target.code}`;
   const label = target.labelId === undefined ? null : `라벨 ${String(target.labelId)}`;
@@ -167,7 +175,12 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
   targets: '목표',
   hours: '업무 시간',
   holidays: '쉬는 날',
+  displayName: '표시 이름',
+  accent: '강조색',
+  logo: '로고',
 };
+
+const LOGO_THEME_WORDS: Readonly<Record<string, string>> = { LIGHT: '밝은 테마', DARK: '어두운 테마' };
 
 /** Fields that hold a time. */
 const TIME_FIELDS: ReadonlySet<string> = new Set(['expiresAt', 'lockedUntil']);
@@ -356,11 +369,24 @@ function slaPartWord(field: string, from: unknown, to: unknown): string | null {
   return null;
 }
 
+/**
+ * A branding change (slice 9 screens.md 4절): an accent of `null` is "기본"; a logo is only "없음" or
+ * "바뀜", never its fingerprint. Null for any other field.
+ */
+function brandingWord(action: string, field: string, from: unknown, to: unknown): string | null {
+  if (action === 'BRANDING_CHANGED' && field === 'accent') return `${from === null ? '기본' : String(from)} → ${to === null ? '기본' : String(to)}`;
+  if (action !== 'BRANDING_LOGO_CHANGED' || field !== 'logo') return null;
+  if (from !== null && to !== null) return '바뀜';
+  return `${from === null ? NONE : '바뀜'} → ${to === null ? NONE : '바뀜'}`;
+}
+
 /** One line for each changed field: "역할: 상담원 → 관리자", or "칸: 값" for a value that is not from and to. */
 export function changeLines(action: string, changes: Readonly<Record<string, unknown>> | null): string[] {
   return Object.entries(changes ?? {}).map(([field, value]) => {
     const sla = action === 'SLA_POLICY_CHANGED' && isFromTo(value) ? slaPartWord(field, value.from, value.to) : null;
     if (sla !== null) return `${word(FIELD_WORDS, field)}: ${sla}`;
+    const branding = isFromTo(value) ? brandingWord(action, field, value.from, value.to) : null;
+    if (branding !== null) return `${word(FIELD_WORDS, field)}: ${branding}`;
     // An export's filter may hold just 부터 and 까지: it is not a change from one value to another.
     const shown = field !== 'filter' && isFromTo(value) ? `${valueWord(action, field, value.from)} → ${valueWord(action, field, value.to)}` : valueWord(action, field, value);
     return `${word(FIELD_WORDS, field)}: ${shown}`;
