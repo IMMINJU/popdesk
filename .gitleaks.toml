@@ -4,6 +4,6 @@
 useDefault = true
 
 [allowlist]
-description = "Made-up password reset tokens in test fixtures. They start with rst- and are no real tokens."
+description = "Made-up password reset and invitation tokens in test fixtures. They start with rst- or inv- and are no real tokens."
 regexTarget = "match"
-regexes = ['''rst-[A-Za-z0-9]{8,24}''']
+regexes = ['''rst-[A-Za-z0-9]{8,24}''', '''inv-[A-Za-z0-9]{8,24}''']
