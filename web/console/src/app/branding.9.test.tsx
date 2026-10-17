@@ -3,9 +3,10 @@
 // 바꾼다(S9-AC-22, 23, 25). 읽기 실패와 꼴이 틀린 답은 이 브라우저에 남긴 값, 없으면 기본으로 그리고 오류를 보이지 않는다(S9-AC-24).
 import { HttpResponse } from 'msw/http';
 import { describe, expect, test, vi } from 'vitest';
-import { callsTo, errors, expectNoAxeViolations, link, liveRegions, pageText, renderAt, sent, state, text } from '../__tests__/console';
+import { callsTo, errors, expectNoAxeViolations, gate, link, liveRegions, pageText, renderAt, sent, state, text } from '../__tests__/console';
 import { route, settle } from '../__tests__/console1a';
 import {
+  BRAND_VARIABLES,
   LOGO_DARK_URL,
   LOGO_LIGHT_URL,
   NO_VARIABLES,
@@ -15,6 +16,7 @@ import {
   head,
   imagesIn,
   publicBranding,
+  publicResponse,
   s9,
   slowly,
   variablesOf,
@@ -41,6 +43,18 @@ function altsIn(root: ParentNode): (string | null)[] {
 /** The keys of `localStorage` whose value holds `part`. */
 function keptKeysWith(part: string): string[] {
   return Object.keys(localStorage).filter((k) => (localStorage.getItem(k) ?? '').includes(part));
+}
+
+/** Shows ACME once so the console keeps it in this browser, then takes the app down again. */
+async function keepAcme(): Promise<void> {
+  s9.public = ACME;
+  const first = renderAt('/issues');
+  await slowly(() => {
+    expect(brandVariables()).toEqual(variablesOf(VIOLET));
+  });
+  await settle();
+  expect(keptKeysWith('Acme 지원'), '남긴 값').not.toEqual([]);
+  first.unmount();
 }
 
 describe('콘솔의 브랜딩 (9번 묶음)', () => {
@@ -203,6 +217,114 @@ describe('콘솔의 브랜딩 (9번 묶음)', () => {
       getItem.mockRestore();
       setItem.mockRestore();
     }
+  });
+
+  test('S9-AC-22 콘솔은 <html>에 --brand-* 여덟만 넣는다: style 속성 수가 8이고 light-dark()와 --focus가 없다', async () => {
+    s9.public = ACME;
+    await openList();
+
+    await slowly(() => {
+      expect(brandVariables()).toEqual(variablesOf(VIOLET));
+    });
+    await settle();
+    const style = document.documentElement.style;
+    expect(Array.from({ length: style.length }, (_, i) => style.item(i)).sort(), '<html>의 style 속성').toEqual([...BRAND_VARIABLES].sort());
+    expect(style.length).toBe(8);
+    const attribute = document.documentElement.getAttribute('style') ?? '';
+    expect(attribute).not.toContain('light-dark');
+    expect(attribute).not.toContain('--focus');
+  });
+
+  test('S9-AC-22 S9-AC-24 콘솔은 남긴 값이 있으면 공개 브랜딩 답이 오기 전에 이미 그 이름·변수·로고로 그린다', async () => {
+    await keepAcme();
+    const release = gate();
+    route('get', PUBLIC_BRANDING, async () => {
+      await release.opened;
+      return publicResponse(ACME);
+    });
+
+    renderAt('/issues');
+
+    expect(brandVariables(), '첫 그림의 변수').toEqual(variablesOf(VIOLET));
+    try {
+      const top = await head();
+      await sent('GET', PUBLIC_BRANDING);
+      await slowly(() => {
+        expect(text(top)).toContain('Acme 지원');
+      });
+      expect(imagesIn(top)).toEqual([LOGO_LIGHT_URL, LOGO_DARK_URL]);
+      expect(brandVariables()).toEqual(variablesOf(VIOLET));
+    } finally {
+      release.open();
+    }
+  });
+
+  test('S9-AC-22 콘솔은 남긴 보라 뒤 공개 답이 기본이면 <html>의 --brand-* 여덟을 모두 지운다', async () => {
+    await keepAcme();
+    const release = gate();
+    route('get', PUBLIC_BRANDING, async () => {
+      await release.opened;
+      return publicResponse(publicBranding());
+    });
+    renderAt('/issues');
+    expect(brandVariables(), '남긴 값으로 그린 변수').toEqual(variablesOf(VIOLET));
+    const top = await head();
+    await sent('GET', PUBLIC_BRANDING);
+
+    release.open();
+
+    await slowly(() => {
+      expect(text(top)).toContain('popdesk');
+      expect(brandVariables()).toEqual(NO_VARIABLES);
+    });
+    expect(document.documentElement.style.length, '<html>의 style 속성 수').toBe(0);
+    expect(imagesIn(top)).toEqual([]);
+  });
+
+  test.each([
+    { what: '목록 꼴 200', answer: () => HttpResponse.json({ items: [], page: 1, size: 20, totalElements: 0, totalPages: 0 }) },
+    { what: '이름 51자', answer: () => HttpResponse.json({ ...ACME, displayName: '가'.repeat(51) }) },
+  ])('S9-AC-24 콘솔은 남긴 값이 있을 때 꼴이 틀린 200($what)이 남긴 값을 덮지 않는다', async ({ answer }) => {
+    await keepAcme();
+    route('get', PUBLIC_BRANDING, answer);
+
+    const top = await openList();
+    await settle();
+
+    expect(text(top)).toContain('Acme 지원');
+    expect(brandVariables()).toEqual(variablesOf(VIOLET));
+    expect(imagesIn(top)).toEqual([LOGO_LIGHT_URL, LOGO_DARK_URL]);
+    expect(keptKeysWith('Acme 지원'), '남긴 값').not.toEqual([]);
+  });
+
+  test('S9-AC-23 콘솔 없는 주소(404)의 탭 제목도 "{화면 제목} - {표시 이름}"이다', async () => {
+    s9.public = ACME;
+    renderAt('/no-such-screen');
+
+    await slowly(() => {
+      expect(pageText()).toContain('찾을 수 없습니다');
+      expect(document.title).toBe('찾을 수 없습니다 - Acme 지원');
+    });
+  });
+
+  test.each([
+    { where: 'C-1 로그인', path: '/login' },
+    { where: 'C-2 초대 수락', path: '/invite#token=inv-Hk3sV8pQ2mTx' },
+    { where: 'C-2 쓸 수 없는 초대 링크', path: '/invite' },
+    { where: 'C-16 비밀번호 찾기', path: '/forgot-password' },
+    { where: 'C-17 비밀번호 다시 정하기', path: '/reset-password#token=rst-Hk3sV8pQ2mTx' },
+    { where: 'C-17 쓸 수 없는 링크', path: '/reset-password' },
+  ])('S9-AC-22 콘솔 로그인 전 $where: 표시 이름과 두 테마 로고를 보이고 "popdesk"가 없다', async ({ path }) => {
+    state.signedIn = false;
+    s9.public = ACME;
+    renderAt(path);
+
+    await slowly(() => {
+      expect(pageText()).toContain('Acme 지원');
+      expect(imagesIn(document.body)).toEqual([LOGO_LIGHT_URL, LOGO_DARK_URL]);
+      expect(document.title).toMatch(/ - Acme 지원$/);
+    });
+    expect(pageText()).not.toContain('popdesk');
   });
 
   test('S9-AC-22 콘솔이 내려가면 <html>의 브랜딩 변수를 지운다', async () => {

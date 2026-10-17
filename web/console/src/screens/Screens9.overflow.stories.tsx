@@ -1,6 +1,6 @@
 // 9번 묶음이 더하거나 바꾼 콘솔 화면을 상태마다 360·820·1280 폭, 밝게·어둡게에서 그리고, play에서 테마가 그것인지, 페이지와
 // 화면의 부분이 가로로 넘치지 않는지, axe(대비 포함) 위반이 없는지 본다(screens.md 5절):
-// C-14 브랜딩(긴 이름, 받는 색, 받을 수 없는 색, 로고 둘), 머리(로고 있음·긴 이름, 820과 360은 접힌 띠), 로그인 전 C-1(긴 이름·로고).
+// C-14 브랜딩(긴 이름, 받는 색, 받을 수 없는 색, 로고 둘, 다른 테마 로고를 씀), 머리(로고 있음·긴 이름, 820과 360은 접힌 띠), 로그인 전 C-1(긴 이름·로고).
 // 머리와 로그인 전 화면은 data-theme에 맞는 로고 하나만 보이는지도 본다(jsdom은 테마 조건을 계산하지 않는다). 접힌 띠에는 로고가
 // 보이지 않는다. 화면은 가짜 fetch(__tests__/storyFetch.ts, storyFetch9.ts)의 답으로 그리고, 로고 파일은 play가 그린다(drawLogos).
 //
@@ -55,8 +55,10 @@ function data(path: string, over: Partial<BrandingScenario>): Data {
 
 // C-14
 const C14_LONG = data('/branding', { branding: defaultBranding({ displayName: LONG_NAME }) });
-const C14_TAKEN = data('/branding', { branding: defaultBranding({ version: 4, displayName: 'Acme 지원', accent: '#6D28D9', colors: VIOLET, contrast: { light: 6.22, dark: 8.01 } }) });
+const C14_TAKEN = data('/branding', { branding: defaultBranding({ version: 4, displayName: 'Acme 지원', accent: '#6D28D9', colors: VIOLET, contrast: { light: 6.21, dark: 6.89 } }) });
 const C14_LOGOS = data('/branding', { branding: defaultBranding({ displayName: LONG_LATIN, logos: { light: WIDE, dark: SQUARE } }) });
+// 밝은 로고만: 어두운 칸은 밝은 로고를 흐리게 쓴다
+const C14_FALLBACK = data('/branding', { branding: defaultBranding({ displayName: 'Acme 지원', logos: { light: WIDE, dark: null } }) });
 
 // 머리: 로고 둘과 긴 이름, 밝은 로고 하나와 공백 없는 라틴 이름
 const HEAD_LONG = data('/issues', { branding: defaultBranding({ displayName: LONG_NAME, accent: '#6D28D9', colors: VIOLET, logos: { light: WIDE, dark: SQUARE } }) });
@@ -152,6 +154,40 @@ async function c14Logos(canvas: HTMLElement): Promise<Found> {
   return [...found, ...fields];
 }
 
+/** The opacity `el` is drawn with: its own times every ancestor's up to `top`. */
+function drawnOpacity(el: Element, top: Element): number {
+  let opacity = 1;
+  for (let at: Element | null = el; at !== null; at = at === top ? null : at.parentElement) opacity *= Number(getComputedStyle(at).opacity);
+  return opacity;
+}
+
+/** The first background colour that is not transparent from `el`'s parent up to `top`. */
+function backgroundUnder(el: Element, top: Element): string {
+  for (let at: Element | null = el.parentElement; at !== null; at = at === top ? null : at.parentElement) {
+    const color = getComputedStyle(at).backgroundColor;
+    if (color !== 'transparent' && color !== 'rgba(0, 0, 0, 0)') return color;
+  }
+  return 'transparent';
+}
+
+/** Only the light logo: the dark field shows it at opacity 0.5 on the dark theme's bg #191817 (screens.md 2.2). */
+async function c14Fallback(canvas: HTMLElement): Promise<Found> {
+  const { main, found } = await brandingShows(canvas, 'Acme 지원');
+  const dark = await waitFor(
+    () => Array.from(main.querySelectorAll('[data-pd="LogoField"]')).find((f) => textOf(f).includes('어두운 테마 로고') && f.querySelector('img') !== null),
+    'C-14의 어두운 테마 로고 칸과 그 안의 로고',
+  );
+  if (!textOf(dark).includes('없음. 밝은 테마 로고를 같이 씁니다')) throw new Error('어두운 칸에 "없음. 밝은 테마 로고를 같이 씁니다"가 없다');
+  await drawLogos(main);
+  const img = dark.querySelector('img') as HTMLImageElement;
+  if (img.dataset['logo'] !== 'light') throw new Error(`어두운 칸의 로고가 밝은 테마 것이 아니다: ${img.dataset['logo'] ?? '?'}`);
+  const opacity = drawnOpacity(img, dark);
+  if (Math.abs(opacity - 0.5) > 0.01) throw new Error(`어두운 칸의 밝은 로고 투명도가 0.5가 아니다: ${String(opacity)}`);
+  const bg = backgroundUnder(img, dark);
+  if (bg !== 'rgb(25, 24, 23)') throw new Error(`어두운 칸의 로고 바탕이 #191817(rgb(25, 24, 23))이 아니다: ${bg}`);
+  return [...found, { el: dark, what: 'C-14의 어두운 테마 로고 칸' }];
+}
+
 // 머리
 
 /** The head drawn with the logos; at 1280 the theme's logo shows, folded (820, 360) none. */
@@ -235,7 +271,14 @@ export const C14Logos820Dark = screenStory(820, 'dark', C14_LOGOS, c14Logos);
 export const C14Logos1280Light = screenStory(1280, 'light', C14_LOGOS, c14Logos);
 export const C14Logos1280Dark = screenStory(1280, 'dark', C14_LOGOS, c14Logos);
 
-export const HeadLogoLong360Light = screenStory(360, 'light', HEAD_LONG, headLong);
+export const C14LogoFallback360Light = screenStory(360, 'light', C14_FALLBACK, c14Fallback);
+export const C14LogoFallback360Dark = screenStory(360, 'dark', C14_FALLBACK, c14Fallback);
+export const C14LogoFallback820Light = screenStory(820, 'light', C14_FALLBACK, c14Fallback);
+export const C14LogoFallback820Dark = screenStory(820, 'dark', C14_FALLBACK, c14Fallback);
+export const C14LogoFallback1280Light = screenStory(1280, 'light', C14_FALLBACK, c14Fallback);
+export const C14LogoFallback1280Dark = screenStory(1280, 'dark', C14_FALLBACK, c14Fallback);
+
+export const HeadLogoLong360Light =screenStory(360, 'light', HEAD_LONG, headLong);
 export const HeadLogoLong360Dark = screenStory(360, 'dark', HEAD_LONG, headLong);
 export const HeadLogoLong820Light = screenStory(820, 'light', HEAD_LONG, headLong);
 export const HeadLogoLong820Dark = screenStory(820, 'dark', HEAD_LONG, headLong);

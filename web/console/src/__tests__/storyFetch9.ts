@@ -30,9 +30,9 @@ export const EMERALD: AccentColors = {
   dark: { accent: '#6ECBA5', accentHover: '#88E5BF', onAccent: '#191817', accentSubtle: '#0A3123' },
 };
 
-/** `#6D28D9` (the accents are main's, design.md 3절; the rest is made up for the screen): taken. */
+/** `#6D28D9` (the accents and the light subtle are the server's; the rest is made up for the screen): taken. */
 export const VIOLET: AccentColors = {
-  light: { accent: '#6D28D9', accentHover: '#5512BF', onAccent: '#FFFFFF', accentSubtle: '#F1EBFF' },
+  light: { accent: '#6D28D9', accentHover: '#5512BF', onAccent: '#FFFFFF', accentSubtle: '#F0EEFF' },
   dark: { accent: '#B8A5FF', accentHover: '#D0C0FF', onAccent: '#191817', accentSubtle: '#2B2140' },
 };
 
@@ -43,8 +43,8 @@ export const ROSE: AccentColors = {
 };
 
 const PREVIEWS: Readonly<Record<string, AccentPreview>> = {
-  '#047857': { colors: EMERALD, contrast: { light: 4.81, dark: 7.28 }, acceptable: true },
-  '#6D28D9': { colors: VIOLET, contrast: { light: 6.22, dark: 8.01 }, acceptable: true },
+  '#047857': { colors: EMERALD, contrast: { light: 4.81, dark: 7.27 }, acceptable: true },
+  '#6D28D9': { colors: VIOLET, contrast: { light: 6.21, dark: 6.89 }, acceptable: true },
   '#E11D48': { colors: ROSE, contrast: { light: 4.1, dark: 7.02 }, acceptable: false },
 };
 
