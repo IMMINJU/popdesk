@@ -2,23 +2,6 @@
 # 구현 탭이 이 테스트들을 통과시키고 병합되면 메인이 그 줄을 지운다. 묶음이 끝나면 파일이 빈다.
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
-server io/popdesk/branding/BrandingAccentTest.java
-server io/popdesk/branding/BrandingAccessTest.java
-server io/popdesk/branding/BrandingAuditTest.java
-server io/popdesk/branding/BrandingDefaultTest.java
-server io/popdesk/branding/BrandingNameTest.java
-server io/popdesk/branding/BrandingPreviewTest.java
-server io/popdesk/branding/BrandingPublicTest.java
-server io/popdesk/branding/BrandingSchemaTest.java
-server io/popdesk/branding/BrandingUpdateTest.java
-server io/popdesk/project/NoStoreTest.java
-server io/popdesk/branding/BrandingLogoUploadTest.java
-server io/popdesk/branding/BrandingLogoRefusalTest.java
-server io/popdesk/branding/BrandingLogoServeTest.java
-server io/popdesk/branding/BrandingLogoChangeTest.java
-server io/popdesk/branding/BrandingLogoAuditTest.java
-server io/popdesk/branding/BrandingMailTest.java
-server io/popdesk/deploy/BrandingSampleTest.java
 web **/C14Branding.test.tsx
 web **/C12AuditLog.9.test.tsx
 web **/app/branding.9.test.tsx
