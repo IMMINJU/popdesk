@@ -19,3 +19,17 @@ server io/popdesk/branding/BrandingLogoChangeTest.java
 server io/popdesk/branding/BrandingLogoAuditTest.java
 server io/popdesk/branding/BrandingMailTest.java
 server io/popdesk/deploy/BrandingSampleTest.java
+web **/C14Branding.test.tsx
+web **/C12AuditLog.9.test.tsx
+web **/app/branding.9.test.tsx
+web **/branding.9.test.ts
+web **/LogoField.test.tsx
+web **/AuthBrand.test.tsx
+web **/AppShell.logo.test.tsx
+web ../../../console/**/Screens9.overflow.stories.tsx
+web **/adminOnly.1b.test.tsx
+web **/layout.inbox.test.tsx
+web **/C12AuditLog.8a.test.tsx
+web **/C12AuditLog.test.tsx
+web **/C12AuditLog.filters.test.tsx
+web **/auditWords.words.test.ts
