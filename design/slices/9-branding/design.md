@@ -7,7 +7,7 @@
 
 | # | 정한 것 |
 |---|---|
-| 1 | 서버 패키지 `helpdesk.branding`: `BrandingService`(읽기, 저장, 로고), `BrandingRepository`(DB를 읽는 곳은 여기만, `ScopedReadRulesTest`), 순수 계산 `AccentColors`. 컨트롤러는 `web/publicapi/PublicBrandingController`, `web/console/ConsoleBrandingController`. 메일 쪽은 `notification`에 작은 인터페이스 `BrandingName`을 두고 `helpdesk.branding`이 구현한다(`notification`은 `helpdesk`를 가져오지 않는다. 새 순환 없음) |
+| 1 | 서버 패키지 `helpdesk.branding`: `BrandingService`(읽기, 저장, 로고), `BrandingRepository`(DB를 읽는 곳은 여기만, `ScopedReadRulesTest`), 순수 계산 `AccentPalette`. 컨트롤러는 `web/publicapi/PublicBrandingController`, `web/console/ConsoleBrandingController`. 메일 쪽은 `notification`에 작은 인터페이스 `BrandingName`을 두고 `helpdesk.branding`이 구현한다(`notification`은 `helpdesk`를 가져오지 않는다. 새 순환 없음) |
 | 2 | 이미지 디코딩: 새 패키지 `helpdesk.image`에 공개 클래스 `ImageDecoder`(상자 가로·세로를 인자로, EXIF 방향대로 돌린 **뒤**의 크기로 상자에 맞춤, 서브샘플링도 상자를 따름)와 빈 `ImageDecoding`(동시 디코딩 둘의 세마포어, 지금 `PhotoService`의 필드에서 옮김)을 둔다. `helpdesk.photo`의 `PhotoHeader`·`PhotoImages`는 이름과 시그니처를 그대로 두고 안에서 `ImageDecoder`를 부른다(잠긴 `PhotoImagesTest`가 package-private 멤버를 쓴다). 사진의 동작과 오류는 그대로다 |
 | 3 | 요청 수 제한은 `AccountRateLimit.Action.BRAND_LOGO(10)`(1분 창, 사진과 따로). 사진처럼 크기 검사보다 먼저 센다 |
 | 4 | 공개 브랜딩은 요청마다 DB에서 읽는다(행 하나, 로고는 지문과 테마만). 메모리 캐시는 두지 않는다 |
@@ -73,7 +73,7 @@ create table branding_logo (
 
 `fields[].code`에 `LOW_CONTRAST`(`conventions.md` 165-178줄 표). 감사 `BRANDING_CHANGED`, `BRANDING_LOGO_CHANGED`. 감사 대상 종류 `BRANDING`을 `AuditTargetType`(감사 목록 `targetType` 필터)과 `AuditEntry` 설명에 더한다. 로고 감사 대상의 `theme`은 `LIGHT`·`DARK`(DB 값과 같은 대문자). 바뀐 값은 늘 `{from, to}`(기본 행이 있어 "처음 정한 값"이 없다).
 
-## 3. 순수 계산 `AccentColors` (C-8 목록, C-10 PIT)
+## 3. 순수 계산 `AccentPalette` (C-8 목록, C-10 PIT)
 
 입력 `#RRGGBB`(대문자로 맞춘 뒤). sRGB ↔ OKLab은 Björn Ottosson의 식(2020), OKLCH는 그 극좌표다. 대비는 WCAG 2.1 상대 휘도. 세제곱근과 거듭제곱은 `StrictMath`(JVM마다 같은 값).
 
@@ -151,3 +151,14 @@ create table branding_logo (
 - `server/README.md` Tables 표에 두 줄.
 - 묶음을 닫을 때 메인: `design/tokens.md` 37줄("9번에서 정한다")을 이 문서 3절로, 254줄(지원팀 표시가 "로고 자리")을 "로고는 머리와 로그인 전 화면에만, 지원팀 표시는 그대로"로.
 - 위협 모델 TM-65, TM-66(`threat-model.md`에 넣었다).
+
+## 8. C-4에서 정한 것 (2026-10-17 메인)
+
+`tasks/s9-c4-server-report.md`, `s9-c4-web-report.md`.
+
+- 지문은 다시 인코딩한 PNG의 SHA-256 앞 16자(16진수)다. `ETag`, 로고 주소의 `v`, 감사의 `logo` 값이 모두 이것이다. 표 `sha256`에는 전체를 둔다.
+- 순수 계산 클래스 이름은 `AccentPalette`다(계약 record `web.publicapi.AccentColors`와 겹치지 않게).
+- `docs/use/permissions.md`의 브랜딩 줄(관리자만)은 C-9 서버 구현 탭이 넣는다.
+- 테마가 틀린 404와 로고가 없는 404는 같은 몸이다.
+- 공개 `GET /api/public/branding`은 껍데기에서 기본 값을 준다(나머지는 501). 웹 C-4는 `tokens.css` 변수 꼴, `AppShell.logo`, `LogoField`, `AuthBrand`, `@popdesk/app/branding` 껍데기를 넣었다. `.pd-auth-brand` CSS를 `ui`로 모으는 것은 C-9다.
+- 시험 메일은 `MailSender.attempt`를 거치지 않는다(`TestMail`이 만든다). 거기서도 같은 꼴로 이름을 한 번 읽는다(5절).

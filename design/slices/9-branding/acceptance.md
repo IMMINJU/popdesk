@@ -111,12 +111,12 @@
 | S9-AC-35 | 권한(관리자만) |
 | S9-AC-33, 34 | 마이그레이션 |
 | S9-AC-01, 06, 12 | 공개 계약 |
-| S9-AC-11, 13 | 순수 계산(`AccentColors`)의 변이 테스트 |
+| S9-AC-11, 13 | 순수 계산(`AccentPalette`)의 변이 테스트 |
 | S9-AC-01, 03, 07, 15, 20~23, 26 | 숨긴 E2E로 본다: 로그인 전 공개 읽기, 저장, 로고 하나만, 감사, 메일의 이름 |
 
 일부러 틀린 구현(C-7 점검 지시서에 넣음): 공개 응답에 관리자 응답을 그대로 줌(바꾼 사람·버전이 샘), 로고를 올린 바이트 그대로 저장하고 `Content-Type`을 올린 이름에서 정함, 강조색을 `bg` 하나에만 검사(옅은 바탕·`sunken` 빠짐), EXIF 방향을 돌리기 전 크기로 상자를 맞춤, 표시 이름의 줄바꿈을 받아 메일 머리에 넣음, 로고를 바꿀 때 버전을 올림, 로고 주소의 `v`를 보지 않고 늘 `immutable`.
 
-순수 계산 클래스(C-8 목록 후보, `design.md` 3절): 서버 `AccentColors`(OKLCH 옮김, 색역, 대비). 웹은 받은 값을 CSS 변수로 바꾸는 `brandingStyle`과 응답 꼴 검사 `parseBranding`(순수 함수). C-10에서 PIT와 Stryker를 받는다. 어두운 테마의 받기 검사는 만든 꼴상 늘 참이라 PIT에서 살아남는 변이가 있을 수 있다(그 까닭으로 적는다).
+순수 계산 클래스(C-8 목록 후보, `design.md` 3절): 서버 `AccentPalette`(OKLCH 옮김, 색역, 대비). 웹은 받은 값을 CSS 변수로 바꾸는 `brandingStyle`과 응답 꼴 검사 `parseBranding`(순수 함수). C-10에서 PIT와 Stryker를 받는다. 어두운 테마의 받기 검사는 만든 꼴상 늘 참이라 PIT에서 살아남는 변이가 있을 수 있다(그 까닭으로 적는다).
 
 ## 4. 화면
 
@@ -147,7 +147,7 @@
 ## 6. 테스트 쓰는 법 (C-5)
 
 - 브랜딩은 설치에 하나라 테스트끼리 섞인다. 브랜딩을 바꾸거나 로고를 올리는 서버 테스트는 따로 띄운 앱(`@TestPropertySource`, 8a SLA 테스트처럼) 한 컨텍스트에서 돈다. 다른 테스트는 기본("popdesk", 로고 없음)이라고 기대해도 된다. `NoStoreTest`가 이것에 기댄다.
-- 만든 값의 정확한 hex는 HTTP 테스트에서 기본 에메랄드와 한두 색만 본다. 나머지 경우는 C-10의 `AccentColors` 단위 테스트가 본다.
+- 만든 값의 정확한 hex는 HTTP 테스트에서 기본 에메랄드와 한두 색만 본다. 나머지 경우는 C-10의 `AccentPalette` 단위 테스트가 본다.
 - 로고 파일은 테스트가 만든다(작은 PNG, JPEG, WebP, 메타데이터를 넣은 JPEG, SVG, GIF, 512KB 넘는 파일, 큰 픽셀). 돌려받은 PNG를 디코딩해 크기와 메타데이터 없음을 본다.
 - 메일은 GreenMail. 보내는 사람 이름을 `From` 머리에서 읽는다.
 - 웹은 공개 브랜딩을 가짜 서버로 준다. 앱의 기본 가짜 서버(`console.ts`, `portal.ts`)와 story 가짜 서버(`storyFetch.ts`)에 기본 브랜딩 답을 더한다(모든 화면이 부른다). 두 앱 테스트 준비의 `beforeEach`에서 `localStorage.clear()`와 `document.documentElement.removeAttribute('style')`을 한다(브랜딩이 한 파일의 테스트 사이에 남지 않게).
