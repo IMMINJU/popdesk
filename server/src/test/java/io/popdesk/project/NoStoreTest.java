@@ -51,11 +51,19 @@ class NoStoreTest extends BareAppTest {
             "/api/console/photos/{accountId}");
 
     /**
+     * The branding logo, left out of the reads that succeed: this context has no logo, so it is a 404
+     * (which the other checks hold to {@code no-store}), and a logo there answers {@code no-cache} or,
+     * with its fingerprint in {@code v}, a year's cache (slice 9, acceptance.md 5절 7). Its headers
+     * are checked by the logo tests of slice 9.
+     */
+    private static final String LOGO_READ = "/api/public/branding/logos/{theme}";
+
+    /**
      * The query a read cannot be sent without: the audit log export answers 400 without its
-     * {@code format} (S1B-AC-23).
+     * {@code format} (S1B-AC-23), the accent preview of slice 9 without its {@code color}.
      */
     private static final Map<String, String> REQUIRED_QUERY = Map.of("/api/console/audit-log/export",
-            "?format=JSONL");
+            "?format=JSONL", "/api/console/branding/accent", "?color=%23047857");
 
     @Test
     @DisplayName("S0-AC-101 the invitation response has Cache-Control no-store")
@@ -157,7 +165,7 @@ class NoStoreTest extends BareAppTest {
                 "No store, read " + Unique.number()));
         fixtures.comment(admin, issue.key(), "No store answer " + Unique.number());
         Map<String, String> values = Map.of("{key}", issue.key(), "{code}", company.code(), "{id}", file.id(),
-                "{accountId}", String.valueOf(agent.accountId()), "{noteId}", "999999999");
+                "{accountId}", String.valueOf(agent.accountId()), "{noteId}", "999999999", "{theme}", "light");
         // A temporary image is read by the account that uploaded it, on its own path (S5-AC-10): each
         // reader gets the ID of an image of their own there, not the ID of the issue's attachment.
         Map<String, String> imageReads = Map.of(
@@ -169,7 +177,7 @@ class NoStoreTest extends BareAppTest {
             if (!op.method().equals("GET") && !op.method().equals("HEAD")) {
                 continue;
             }
-            if (PHOTO_READS.contains(op.path())) {
+            if (PHOTO_READS.contains(op.path()) || op.path().equals(LOGO_READ)) {
                 continue;
             }
             String path = withValues(imageReads.getOrDefault(op.path(), op.path()), values)
@@ -303,6 +311,7 @@ class NoStoreTest extends BareAppTest {
                 .replace("{code}", "NOSUCH9")
                 .replace("{accountId}", "999999999")
                 .replace("{noteId}", "999999999")
+                .replace("{theme}", "nosuch")
                 .replace("{id}", "999999999");
         ApiRequest request = client.request(op.method(), path);
         if (Set.of("POST", "PUT", "PATCH").contains(op.method())) {

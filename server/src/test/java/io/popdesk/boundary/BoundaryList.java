@@ -49,6 +49,8 @@ final class BoundaryList {
     private static final String LINK_CREATE = "link.LinkCreateTest#";
     private static final String LINK_LIST = "link.LinkListTest#";
     private static final String LINK_CUSTOMER = "link.LinkCustomerTest#";
+    private static final String BRANDING = "/api/console/branding";
+    private static final String BRANDING_ACCESS = "branding.BrandingAccessTest#";
 
     static final List<Entry> ENTRIES = List.of(
             // Before sign-in, both hosts
@@ -516,5 +518,28 @@ final class BoundaryList {
                     "sla.SlaPolicyTest#customerGetsTheConsoleAnswer"),
             tested("PUT", "/api/console/sla-policy",
                     "sla.SlaPolicyTest#onlyAdminsReadAndChange",
-                    "sla.SlaPolicyTest#customerGetsTheConsoleAnswer"));
+                    "sla.SlaPolicyTest#customerGetsTheConsoleAnswer"),
+
+            // Slice 9 (S9-AC-35): the branding, one for the installation. The two public reads give the display
+            // name, the made colors, and the logos to anyone; the five console paths are for admins only. No
+            // customer company narrows it; agents get 403, customers what any console path gives them.
+            none("GET", "/api/public/branding",
+                    "the installation's display name, colors, and logo addresses for anyone before sign-in; no customer data"),
+            none("GET", "/api/public/branding/logos/{theme}",
+                    "the installation's logo for anyone before sign-in; no customer data"),
+            tested("GET", BRANDING,
+                    BRANDING_ACCESS + "agentsAreForbidden",
+                    BRANDING_ACCESS + "customerGetsTheConsoleAnswer"),
+            tested("PUT", BRANDING,
+                    BRANDING_ACCESS + "agentsAreForbidden",
+                    BRANDING_ACCESS + "customerGetsTheConsoleAnswer"),
+            tested("GET", BRANDING + "/accent",
+                    BRANDING_ACCESS + "agentsAreForbidden",
+                    BRANDING_ACCESS + "customerGetsTheConsoleAnswer"),
+            tested("PUT", BRANDING + "/logos/{theme}",
+                    BRANDING_ACCESS + "agentsAreForbidden",
+                    BRANDING_ACCESS + "customerGetsTheConsoleAnswer"),
+            tested("DELETE", BRANDING + "/logos/{theme}",
+                    BRANDING_ACCESS + "agentsAreForbidden",
+                    BRANDING_ACCESS + "customerGetsTheConsoleAnswer"));
 }
