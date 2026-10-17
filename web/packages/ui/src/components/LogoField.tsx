@@ -1,4 +1,6 @@
-import { useId, type ChangeEvent } from 'react';
+import { useEffect, useId, useRef, type ChangeEvent } from 'react';
+import { Spinner } from '../icons';
+import { Button } from './Button';
 import { FieldError, FieldHelp } from './fieldParts';
 
 export interface LogoFieldProps {
@@ -34,41 +36,97 @@ export interface LogoFieldProps {
   removeLabel: string;
 }
 
+const THEME_WORDS: Readonly<Record<'light' | 'dark', string>> = { light: '밝은', dark: '어두운' };
+
 /**
  * One theme's logo on C-14 (slice 9 screens.md 2.2): 없음, 다른 테마 것을 씀, 있음, 올리는 중, 실패.
- * "올리기"·"바꾸기" is the `label` of a hidden file input, as in `PhotoField`.
- *
- * Shell (C-4): the name, the file input with its label, help and error. The preview, the size line,
- * 지우기, the fallback and the busy state are C-9.
+ * "올리기"·"바꾸기" is the `label` of a hidden file input, as in `PhotoField`. The preview sits on
+ * the theme's own `bg` whatever the page theme is. After an upload focus goes to the file input
+ * (named "바꾸기"), after a removal to the same input (named "올리기"), when focus was in the field
+ * or had fallen to `body`.
  */
 export function LogoField(props: LogoFieldProps) {
   const inputId = useId();
   const helpId = `${inputId}-help`;
   const errorId = `${inputId}-error`;
   const nameId = `${inputId}-name`;
+  const box = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const uploading = props.uploading ?? false;
+  const shown = props.logo?.url ?? null;
+  const before = useRef(shown);
+  useEffect(() => {
+    if (before.current === shown) return;
+    before.current = shown;
+    const active = document.activeElement;
+    if (active === null || active === document.body || box.current?.contains(active)) input.current?.focus();
+  }, [shown]);
   const describedBy = [props.helpText ? helpId : null, props.error ? errorId : null].filter(Boolean).join(' ');
   const pick = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     // Cleared so that picking the same file again, after a failure, is a change.
     e.target.value = '';
-    if (file) props.onUpload(file);
+    if (file && !uploading) props.onUpload(file);
   };
+  const fallback = props.logo ? null : (props.fallback ?? null);
   return (
-    <div className="pd-logo-field" data-pd="LogoField" data-logo-theme={props.theme} role="group" aria-labelledby={nameId}>
+    <div
+      ref={box}
+      className="pd-logo-field"
+      data-pd="LogoField"
+      data-logo-theme={props.theme}
+      role="group"
+      aria-labelledby={nameId}
+      aria-busy={uploading ? true : undefined}
+    >
       <p id={nameId} className="pd-label">
         {props.label}
       </p>
-      <input
-        id={inputId}
-        className="pd-upload-input"
-        type="file"
-        accept={props.accept}
-        aria-describedby={describedBy || undefined}
-        onChange={pick}
-      />
-      <label className="pd-upload-label" htmlFor={inputId}>
-        {props.logo ? props.changeLabel : props.uploadLabel}
-      </label>
+      <div className="pd-logo-preview" data-logo-theme={props.theme} data-empty={props.logo || fallback ? undefined : 'true'}>
+        {props.logo ? (
+          <img className="pd-logo-image" src={props.logo.url} alt="" />
+        ) : fallback ? (
+          <img className="pd-logo-image" data-fallback="true" src={fallback.url} alt="" />
+        ) : (
+          <span className="pd-logo-none">로고 없음</span>
+        )}
+      </div>
+      {props.logo && (
+        <p className="pd-logo-size">
+          {props.logo.width} × {props.logo.height} px
+        </p>
+      )}
+      {fallback && <p className="pd-logo-size">없음. {THEME_WORDS[fallback.from]} 테마 로고를 같이 씁니다</p>}
+      <div className="pd-logo-actions">
+        <input
+          ref={input}
+          id={inputId}
+          className="pd-upload-input"
+          type="file"
+          accept={props.accept}
+          aria-disabled={uploading ? true : undefined}
+          aria-describedby={describedBy || undefined}
+          onClick={(e) => {
+            // Blocked, not disabled: focus stays here while the upload runs.
+            if (uploading) e.preventDefault();
+          }}
+          onChange={pick}
+        />
+        <label className="pd-upload-label" htmlFor={inputId}>
+          {props.logo ? props.changeLabel : props.uploadLabel}
+        </label>
+        {props.logo && (
+          <Button variant="quiet" size="sm" blocked={uploading} onClick={props.onRemove}>
+            {props.removeLabel}
+          </Button>
+        )}
+        {uploading && (
+          <span className="pd-logo-busy">
+            <Spinner />
+            올리는 중…
+          </span>
+        )}
+      </div>
       <FieldHelp id={helpId} text={props.helpText} />
       <FieldError id={errorId} text={props.error} />
     </div>

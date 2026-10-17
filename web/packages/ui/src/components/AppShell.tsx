@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type Ref } from 'react';
 import { BellIcon, SidebarIcon } from '../icons';
 import { Avatar } from './Avatar';
+import { BrandLogo } from './BrandLogo';
 import { Button } from './Button';
 import { IconButton } from './IconButton';
 
@@ -46,7 +47,7 @@ export interface AppShellProps {
    * Branding logos, one URL per theme (`/api/public/branding/logos/…`). The same URL twice when
    * only one theme has a logo. Absent: the accent square, as before.
    *
-   * With it (slice 9 screens.md 1절, C-9 draws it): two `<img alt="">`, and CSS shows the one of
+   * With it (slice 9 screens.md 1절): two `<img alt="">`, and CSS shows the one of
    * the current theme by the token conditions (`data-theme`, else `prefers-color-scheme`); one
    * `<img>` when both URLs are the same. Beside it the display name, cut with an ellipsis in the
    * width left. Console side menu open: at most 96px wide and 28px high, ratio kept. Console
@@ -182,9 +183,15 @@ export function AppShell({ mainRef, ...props }: AppShellProps) {
       document.removeEventListener('keydown', onKey);
     };
   }, [opened]);
+  // The accent square stays for the folded strip; CSS hides it beside a logo.
   const brand = (
-    <span className="pd-shell-brand">
+    <span className="pd-shell-brand" data-has-logo={props.logo ? 'true' : undefined}>
       <span className="pd-shell-logo" aria-hidden="true" />
+      {props.logo && (
+        <span className="pd-shell-logo-image">
+          <BrandLogo logo={props.logo} />
+        </span>
+      )}
       <span className="pd-shell-name">{props.displayName}</span>
     </span>
   );

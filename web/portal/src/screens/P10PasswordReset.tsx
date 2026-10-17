@@ -12,6 +12,7 @@ import { TEXT } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { call, type Failure } from '../app/result';
 import { useToast } from '../app/toastContext';
+import { Brand } from '../app/layout';
 
 function tokenFromHash(): string | null {
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
@@ -77,7 +78,7 @@ export function P10PasswordReset() {
     return (
       <main id="main" className="pd-auth" tabIndex={-1}>
         <div className="pd-auth-panel">
-          <p className="pd-auth-brand">{TEXT.displayName}</p>
+          <Brand />
           <EmptyState
             headingLevel={1}
             icon={<LockIcon size={20} />}
@@ -93,7 +94,7 @@ export function P10PasswordReset() {
   return (
     <main id="main" className="pd-auth" tabIndex={-1}>
       <div className="pd-auth-panel">
-        <p className="pd-auth-brand">{TEXT.displayName}</p>
+        <Brand />
         <h1 className="pd-auth-title" tabIndex={-1}>
           {t('passwordReset.title')}
         </h1>

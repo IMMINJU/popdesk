@@ -1,9 +1,10 @@
 // The signed-in frame: checks the session, draws the top bar (AppShell), and
 // lets screens mark `main` busy while they load (screens.md 2절, 1절 화면 머리).
-import { Alert, AppShell, Button, EmptyState, InboxLinkLabel, LockIcon, NavItemLabel, SearchOffIcon, type InboxLink, type NavItem } from '@popdesk/ui';
+import { Alert, AppShell, AuthBrand, Button, EmptyState, InboxLinkLabel, LockIcon, NavItemLabel, SearchOffIcon, type InboxLink, type NavItem } from '@popdesk/ui';
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { api } from '../api';
+import { logoOf, useBranding } from './branding';
 import { BusyContext } from './busy';
 import { useDocumentTitle, useFocusWhenReady } from './hooks';
 import { t, tf } from './locale';
@@ -33,6 +34,8 @@ function isCurrent(pathname: string, href: string): boolean {
 }
 
 export function PortalLayout() {
+  const branding = useBranding();
+  const logo = logoOf(branding.logos);
   const { me, setMe } = useSession();
   const toLogin = useToLogin();
   const navigate = useLiveNavigate();
@@ -108,7 +111,8 @@ export function PortalLayout() {
     <BusyContext value={setBusy}>
       <AppShell
         app="portal"
-        displayName={TEXT.displayName}
+        displayName={branding.displayName}
+        {...(logo ? { logo } : {})}
         nav={nav}
         navLabel={TEXT.menu}
         renderLink={(item) => (
@@ -207,4 +211,11 @@ export function LoadFailed(props: { onRetry: () => void; text?: string }) {
       {props.text ?? TEXT.server}
     </Alert>
   );
+}
+
+/** The logo and display name above the forms before log in, from the branding (slice 9 screens.md 1절). */
+export function Brand() {
+  const branding = useBranding();
+  const logo = logoOf(branding.logos);
+  return <AuthBrand displayName={branding.displayName} {...(logo ? { logo } : {})} />;
 }

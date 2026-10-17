@@ -9,6 +9,7 @@ import { useCooldown, useDocumentTitle, useFieldErrors, useLive } from '../app/h
 import { t } from '../app/locale';
 import { fieldText, TEXT } from '../app/messages';
 import { call, type Failure } from '../app/result';
+import { Brand } from '../app/layout';
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -64,7 +65,7 @@ export function P9PasswordForgot() {
   return (
     <main id="main" className="pd-auth" tabIndex={-1}>
       <div className="pd-auth-panel">
-        <p className="pd-auth-brand">{TEXT.displayName}</p>
+        <Brand />
         <h1 className="pd-auth-title" tabIndex={-1}>
           {t('passwordForgot.title')}
         </h1>

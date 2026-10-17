@@ -9,6 +9,7 @@ import { TEXT } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { call, type Failure } from '../app/result';
 import { safeNext, useSession, type LoginState } from '../app/sessionContext';
+import { Brand } from '../app/layout';
 
 const SIGN_IN_FAILED = '이메일 또는 비밀번호가 맞지 않습니다.';
 
@@ -96,7 +97,7 @@ export function P1Login() {
   return (
     <main id="main" className="pd-auth" tabIndex={-1}>
       <div className="pd-auth-panel">
-        <p className="pd-auth-brand">{TEXT.displayName}</p>
+        <Brand />
         <h1 className="pd-auth-title" tabIndex={-1}>
           로그인
         </h1>

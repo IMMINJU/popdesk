@@ -332,13 +332,6 @@
   background: var(--bg);
 }
 
-.pd-auth-brand {
-  font-size: var(--text-3xl);
-  line-height: var(--text-3xl-line);
-  font-weight: var(--text-3xl-weight);
-  color: var(--text);
-}
-
 .pd-auth-title {
   font-size: var(--text-lg);
   line-height: var(--text-lg-line);

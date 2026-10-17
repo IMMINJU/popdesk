@@ -40,7 +40,9 @@ export interface BrandingState {
   displayName: string;
   /** `null`: the default accent of `tokens.css`. */
   colors: AccentColors | null;
-  /** `null` until the branding is read, and without a provider. */
+  /**
+   * The logo shown in each theme: its own, else the other theme's. `null` without a provider.
+   */
   logos: BrandingLogos | null;
   /**
    * From the C-14 save answer only. It leaves the logos alone, so a late save answer does not put
@@ -75,18 +77,76 @@ export function useBranding(): BrandingState {
  * `--brand-on-accent-dark`, `--brand-accent-subtle-light`, `--brand-accent-subtle-dark`, each a
  * plain hex. `null` gives `{}` (the defaults of `tokens.css`). Hex only, never a `light-dark()`
  * string: the build lowers the one in `tokens.css`, not one set at run time (design.md 0절 16).
- *
- * Shell (C-4): gives `{}` for now; C-9 fills it.
  */
-// A typed const, not a function, while the shell has no use for its argument.
-export const brandingStyle: (colors: AccentColors | null) => Record<string, string> = () => ({});
+export function brandingStyle(colors: AccentColors | null): Record<string, string> {
+  if (colors === null) return {};
+  const { light, dark } = colors;
+  return {
+    '--brand-accent-light': light.accent,
+    '--brand-accent-dark': dark.accent,
+    '--brand-accent-hover-light': light.accentHover,
+    '--brand-accent-hover-dark': dark.accentHover,
+    '--brand-on-accent-light': light.onAccent,
+    '--brand-on-accent-dark': dark.onAccent,
+    '--brand-accent-subtle-light': light.accentSubtle,
+    '--brand-accent-subtle-dark': dark.accentSubtle,
+  };
+}
+
+/** The names of the eight variables, for removing them. */
+export const BRAND_VARIABLES: readonly string[] = Object.keys(
+  brandingStyle({
+    light: { accent: '', accentHover: '', onAccent: '', accentSubtle: '' },
+    dark: { accent: '', accentHover: '', onAccent: '', accentSubtle: '' },
+  }),
+);
 
 /**
  * Checks a public branding answer or the value kept in `localStorage` (design.md 4절):
  * `displayName` 1 to 50 characters, every color `#RRGGBB`, each logo `null` or a URL that starts
  * with `/api/public/branding/logos/`. Anything else gives `null`, and the caller keeps what it
  * has. Needed because the story fake server answers an unknown GET with a list-shaped 200.
- *
- * Shell (C-4): gives `null` for now; C-9 fills it.
  */
-export const parseBranding: (value: unknown) => PublicBranding | null = () => null;
+export function parseBranding(value: unknown): PublicBranding | null {
+  if (!isRecord(value)) return null;
+  const { displayName, colors, logos } = value;
+  if (typeof displayName !== 'string') return null;
+  const length = Array.from(displayName).length;
+  if (length < 1 || length > 50) return null;
+  const parsedColors = colors === null ? null : accentColorsOf(colors);
+  if (parsedColors === undefined) return null;
+  if (!isRecord(logos)) return null;
+  const light = logoOf(logos.light);
+  const dark = logoOf(logos.dark);
+  if (light === undefined || dark === undefined) return null;
+  return { displayName, colors: parsedColors, logos: { light, dark } };
+}
+
+const HEX = /^#[0-9A-Fa-f]{6}$/;
+const LOGO_PATH = '/api/public/branding/logos/';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** `undefined` when `value` is not two themes of four `#RRGGBB` each. */
+function accentColorsOf(value: unknown): AccentColors | undefined {
+  if (!isRecord(value)) return undefined;
+  const light = themeColorsOf(value.light);
+  const dark = themeColorsOf(value.dark);
+  return light && dark ? { light, dark } : undefined;
+}
+
+function themeColorsOf(value: unknown): ThemeColors | undefined {
+  if (!isRecord(value)) return undefined;
+  const { accent, accentHover, onAccent, accentSubtle } = value;
+  const all = [accent, accentHover, onAccent, accentSubtle];
+  if (!all.every((c) => typeof c === 'string' && HEX.test(c))) return undefined;
+  return { accent, accentHover, onAccent, accentSubtle } as ThemeColors;
+}
+
+/** `undefined` when `value` is neither `null` nor a public logo URL of this host. */
+function logoOf(value: unknown): string | null | undefined {
+  if (value === null) return null;
+  return typeof value === 'string' && value.startsWith(LOGO_PATH) ? value : undefined;
+}
