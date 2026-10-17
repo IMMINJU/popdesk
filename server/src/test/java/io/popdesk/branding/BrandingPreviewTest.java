@@ -71,7 +71,8 @@ class BrandingPreviewTest extends BrandingAppTest {
 
     @Test
     @DisplayName("S9-AC-13 #047857 makes the values design.md 3절 measured: dark accent #6ECBA5, light contrast 4.81 "
-            + "(the lowest over the light backgrounds), and the same values every time")
+            + "(the lowest over the light backgrounds), dark contrast 7.27 (rounded down), and the same values every "
+            + "time")
     void emeraldMakesTheMeasuredValues() {
         Session admin = fixtures.signInAdmin();
 
@@ -81,6 +82,8 @@ class BrandingPreviewTest extends BrandingAppTest {
         assertThat(canonical(first.path("colors"))).as("colors of %s", EMERALD)
                 .isEqualTo(canonical(json(colors(EMERALD_LIGHT, EMERALD_DARK))));
         assertThat(first.path("contrast").path("light").asDouble()).as("light contrast of %s", EMERALD).isEqualTo(4.81);
+        // 7.2798 to 7.27, rounded down at the second decimal; rounding would give 7.28 (design.md 3절, 9절).
+        assertThat(first.path("contrast").path("dark").asDouble()).as("dark contrast of %s", EMERALD).isEqualTo(7.27);
         assertThat(canonical(again)).as("the second preview").isEqualTo(canonical(first));
     }
 

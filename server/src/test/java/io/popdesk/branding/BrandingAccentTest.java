@@ -18,9 +18,9 @@ import tools.jackson.databind.JsonNode;
 class BrandingAccentTest extends BrandingAppTest {
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"047857", "#04785", "#0478570", "#04785G", "#04-857", "red", "#047857;"})
-    @DisplayName("S9-AC-10 an accent color that is not # and six hexadecimal digits is 400 INVALID_INPUT with "
-            + "accent INVALID_FORMAT, and changes nothing")
+    @ValueSource(strings = {"047857", "#04785", "#0478570", "#04785G", "#04-857", "red", "#047857;", ""})
+    @DisplayName("S9-AC-10 an accent color that is not # and six hexadecimal digits, the empty text too (only null is "
+            + "the default), is 400 INVALID_INPUT with accent INVALID_FORMAT, and changes nothing")
     void wrongFormatChangesNothing(String accent) {
         Session admin = fixtures.signInAdmin();
         JsonNode before = save(admin, uniqueName(), EMERALD);

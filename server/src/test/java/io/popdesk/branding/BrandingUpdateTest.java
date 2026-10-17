@@ -81,6 +81,25 @@ class BrandingUpdateTest extends BrandingAppTest {
     }
 
     @Test
+    @DisplayName("S9-AC-07 values that are the saved ones after the clean-up (the name with spaces around it and not "
+            + "in NFC, the accent in small letters) keep the version and leave no audit entry")
+    void cleanedUpSameValuesKeepTheVersion() {
+        Session admin = fixtures.admin(fixtures.signInAdmin());
+        String base = uniqueName();
+        JsonNode saved = save(admin, base + " Café", "#6D28D9");
+        int entriesAfterSave = entries(admin);
+
+        // e and a combining acute accent: U+00E9 once in NFC.
+        JsonNode same = update(admin, body(version(saved), "  " + base + " Café ", "#6d28d9")).expect(200)
+                .json();
+
+        assertThat(canonical(same)).as("the answer to the same values").isEqualTo(canonical(saved));
+        assertThat(version(branding(admin))).as("version after the same values").isEqualTo(version(saved));
+        assertThat(entriesAfterSave).as("BRANDING_CHANGED entries of the admin after the save").isEqualTo(1);
+        assertThat(entries(admin)).as("BRANDING_CHANGED entries of the admin after the same values").isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("S9-AC-08 two saves sent with the same version: the first makes the next version, the second is "
             + "409 VERSION_CONFLICT and changes nothing, and so is a second one sending the values already saved")
     void staleVersionIsAConflict() {

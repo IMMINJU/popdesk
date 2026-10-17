@@ -35,7 +35,12 @@ class BrandingNameTest extends BrandingAppTest {
                 Arguments.of("U+202E right-to-left override", "Desk‮emaN", "INVALID_FORMAT"),
                 Arguments.of("U+202A left-to-right embedding", "‪Desk", "INVALID_FORMAT"),
                 Arguments.of("U+2066 left-to-right isolate", "Desk⁦Name", "INVALID_FORMAT"),
-                Arguments.of("U+2069 pop directional isolate", "Desk⁩Name", "INVALID_FORMAT"));
+                Arguments.of("U+2069 pop directional isolate", "Desk⁩Name", "INVALID_FORMAT"),
+                Arguments.of("U+202B right-to-left embedding", "Desk‫Name", "INVALID_FORMAT"),
+                Arguments.of("U+202C pop directional formatting", "Desk‬Name", "INVALID_FORMAT"),
+                Arguments.of("U+202D left-to-right override", "Desk‭Name", "INVALID_FORMAT"),
+                Arguments.of("U+2067 right-to-left isolate", "Desk⁧Name", "INVALID_FORMAT"),
+                Arguments.of("U+2068 first strong isolate", "Desk⁨Name", "INVALID_FORMAT"));
     }
 
     @ParameterizedTest(name = "{0}")

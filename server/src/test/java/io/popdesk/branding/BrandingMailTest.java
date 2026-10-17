@@ -117,6 +117,40 @@ class BrandingMailTest extends BrandingAppTest {
     }
 
     @Test
+    @DisplayName("S9-AC-27 a password reset mail to an account in Korean says the display name in the subject and the "
+            + "text where it said popdesk")
+    void koreanPasswordResetSaysTheDisplayName() {
+        Session admin = fixtures.signInAdmin();
+        Session agent = fixtures.agent(admin);
+        agent.client().patch(agent.api("/me")).json(Map.of("locale", "ko")).expect(200);
+        String name = hangulName();
+        save(admin, name, null);
+        mail().reset();
+
+        console().post(RESET).json(Map.of("email", agent.email())).expect(202);
+
+        ReceivedMail m = mail().awaitMessage("the reset mail to " + agent.email(),
+                r -> r.isTo(agent.email()) && r.text().contains("/reset-password#token="));
+        assertNamed(m, name, name + " 비밀번호 재설정", name + " 계정의 비밀번호 재설정 요청을 받았습니다.");
+    }
+
+    @Test
+    @DisplayName("S9-AC-27 a test mail to an admin in Korean says the display name in the subject and the text where "
+            + "it said popdesk")
+    void koreanTestMailSaysTheDisplayName() {
+        Session tester = fixtures.admin(fixtures.signInAdmin());
+        tester.client().patch(tester.api("/me")).json(Map.of("locale", "ko")).expect(200);
+        String name = hangulName();
+        save(tester, name, null);
+
+        JsonNode result = Delivery.testMail(tester);
+        assertThat(result.path("ok").isBoolean() && result.path("ok").booleanValue()).as("ok in %s", result).isTrue();
+
+        ReceivedMail m = mail().awaitMessageTo(tester.email());
+        assertNamed(m, name, name + " 시험 메일", name + "의 메일 보내기 설정을 확인하는 시험 메일입니다.");
+    }
+
+    @Test
     @DisplayName("S9-AC-26 S9-AC-27 the mail of an issue comes from the display name and still says 지원팀, not the "
             + "display name, without an image")
     void issueMailKeepsTheSupportTeam() {

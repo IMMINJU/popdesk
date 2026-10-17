@@ -60,8 +60,12 @@ class BrandingLogoUploadTest extends BrandingLogoAppTest {
                 arguments(named("lossless WebP with alpha 300x600",
                                 (Supplier<byte[]>) () -> PhotoSteps.resource("lossless-alpha-300x600.webp")),
                         "logo.webp", "image/webp", 300, 600, "dark"),
-                arguments(named("PNG 100x50, already inside the box and not made larger",
-                                (Supplier<byte[]>) () -> PhotoSteps.png(100, 50, 3)),
+                // With a private chunk: a PNG inside the box written again without metadata may give the bytes sent.
+                arguments(named("PNG 100x50 with a private chunk, already inside the box and not made larger",
+                                (Supplier<byte[]>) () -> {
+                                    byte[] png = PhotoSteps.png(100, 50, 3);
+                                    return PhotoSteps.padPng(png, png.length + 12 + 64, 3);
+                                }),
                         "small.png", "image/png", 100, 50, "light"));
     }
 
