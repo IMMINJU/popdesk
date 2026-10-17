@@ -666,7 +666,7 @@ describe('계약 검증기 checkResponse: 9번 묶음 웹 테스트의 견본', 
     displayName: 'Acme 지원',
     accent: '#047857',
     colors: EMERALD,
-    contrast: { light: 4.81, dark: 7.28 },
+    contrast: { light: 4.81, dark: 7.27 },
     logos: { light: { url: LOGO_LIGHT, width: 512, height: 64 }, dark: null },
     ...over,
   });
@@ -712,7 +712,7 @@ describe('계약 검증기 checkResponse: 9번 묶음 웹 테스트의 견본', 
   });
 
   test('console: 미리 보기(previewAccent 200)의 견본(받음, 받지 않음)과 로고 올리기(uploadBrandingLogo 200)의 견본이 계약에 맞는다', () => {
-    const good = { colors: EMERALD, contrast: { light: 4.81, dark: 7.28 }, acceptable: true };
+    const good = { colors: EMERALD, contrast: { light: 4.81, dark: 7.27 }, acceptable: true };
     const poor = {
       colors: {
         light: { accent: '#E11D48', accentHover: '#B8002C', onAccent: '#FFFFFF', accentSubtle: '#FFEDEE' },

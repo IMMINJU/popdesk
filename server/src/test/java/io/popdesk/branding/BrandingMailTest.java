@@ -108,6 +108,7 @@ class BrandingMailTest extends BrandingAppTest {
         String name = hangulName();
         save(tester, name, null);
 
+        mail().reset();
         JsonNode result = Delivery.testMail(tester);
         assertThat(result.path("ok").isBoolean() && result.path("ok").booleanValue()).as("ok in %s", result).isTrue();
 
@@ -143,6 +144,7 @@ class BrandingMailTest extends BrandingAppTest {
         String name = hangulName();
         save(tester, name, null);
 
+        mail().reset();
         JsonNode result = Delivery.testMail(tester);
         assertThat(result.path("ok").isBoolean() && result.path("ok").booleanValue()).as("ok in %s", result).isTrue();
 
