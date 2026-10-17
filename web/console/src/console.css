@@ -658,13 +658,6 @@
   background: var(--bg);
 }
 
-.pd-auth-brand {
-  font-size: var(--text-3xl);
-  line-height: var(--text-3xl-line);
-  font-weight: var(--text-3xl-weight);
-  color: var(--text);
-}
-
 .pd-auth-title {
   font-size: var(--text-lg);
   line-height: var(--text-lg-line);
@@ -1144,4 +1137,164 @@
 .pd-sla .pd-section > p,
 .pd-sla-part ul {
   word-break: keep-all;
+}
+
+/* C-14 브랜딩 (9-branding screens.md 2절) */
+
+.pd-branding-name,
+.pd-branding-accent {
+  width: min(400px, 100%);
+}
+
+.pd-branding-accent {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.pd-branding-accent > .pd-field {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The native color input, its swatch drawn with the tokens. It sits level with the text input. */
+.pd-color-input {
+  flex: none;
+  width: var(--button-height);
+  height: var(--button-height);
+  margin-top: calc(var(--text-sm-line) + var(--space-1));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.pd-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.pd-color-input::-webkit-color-swatch {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.pd-color-input::-moz-color-swatch {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.pd-color-input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-sm);
+}
+
+.pd-color-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Each pane is drawn in its own theme whatever the page theme is (tokens.md bg and text). */
+.pd-brand-panes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 819.98px) {
+  .pd-brand-panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pd-brand-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.pd-brand-pane[data-pane-theme='light'] {
+  --pv-accent: #047857;
+  --pv-on-accent: #ffffff;
+  --pv-accent-subtle: #e3f5ee;
+  background: #ffffff;
+  color: #2f2d2a;
+}
+
+.pd-brand-pane[data-pane-theme='dark'] {
+  --pv-accent: #34d399;
+  --pv-on-accent: #032016;
+  --pv-accent-subtle: #0d2e23;
+  background: #191817;
+  color: #eceae6;
+}
+
+.pd-brand-pane-title {
+  font-weight: 600;
+}
+
+.pd-brand-pane-line {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.pd-brand-samples,
+.pd-brand-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--button-height);
+}
+
+.pd-brand-sample-button {
+  display: inline-flex;
+  align-items: center;
+  height: var(--button-height);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--pv-accent);
+  color: var(--pv-on-accent);
+  font-weight: 600;
+}
+
+.pd-brand-sample-link {
+  color: var(--pv-accent);
+  text-decoration: underline;
+}
+
+.pd-brand-sample-row {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--pv-accent-subtle);
+  color: var(--pv-accent);
+  font-weight: 600;
+}
+
+.pd-brand-swatch {
+  width: var(--button-height);
+  height: var(--button-height);
+  border-radius: var(--radius-sm);
+  background: var(--pv-accent);
+}
+
+.pd-brand-swatch[data-subtle='true'] {
+  background: var(--pv-accent-subtle);
+}
+
+.pd-branding-logos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 639.98px) {
+  .pd-branding-logos {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

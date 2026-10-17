@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider, type RouteObject } from 'react-router';
 import { MY_ISSUES_HREF } from './app/issueFilters';
+import { BrandingProvider, loadBranding } from './app/branding';
 import { AdminOnly, ConsoleLayout, NotFound } from './app/layout';
 import { SessionProvider } from './app/session';
 import { ToastProvider } from './app/toast';
@@ -8,6 +9,7 @@ import { C10MemberList } from './screens/C10MemberList';
 import { C11Trash } from './screens/C11Trash';
 import { C12AuditLog } from './screens/C12AuditLog';
 import { C13SlaPolicy } from './screens/C13SlaPolicy';
+import { C14Branding } from './screens/C14Branding';
 import { C15MyTasks } from './screens/C15MyTasks';
 import { C16PasswordForgot } from './screens/C16PasswordForgot';
 import { C17PasswordReset } from './screens/C17PasswordReset';
@@ -34,6 +36,7 @@ import { C9CompanyDetail } from './screens/C9CompanyDetail';
 // Slice 7a adds C-11 (admin only).
 // Slice 7b adds C-5 (every role).
 // Slice 8a adds C-13 (admin only).
+// Slice 9 adds C-14 (admin only), after 시스템 상태 in the menu.
 const routes: RouteObject[] = [
   { index: true, element: <Navigate to={MY_ISSUES_HREF} replace /> },
   { path: '/login', element: <C1Login /> },
@@ -57,6 +60,7 @@ const routes: RouteObject[] = [
       { path: '/sla', element: <AdminOnly><C13SlaPolicy /></AdminOnly> },
       { path: '/audit-log', element: <AdminOnly><C12AuditLog /></AdminOnly> },
       { path: '/system', element: <AdminOnly><C18SystemStatus /></AdminOnly> },
+      { path: '/branding', element: <AdminOnly><C14Branding /></AdminOnly> },
       { path: '*', element: <NotFound listHref="/issues" listLabel="문의 목록으로" /> },
     ],
   },
@@ -64,15 +68,17 @@ const routes: RouteObject[] = [
 
 /**
  * The console app. The router is made when the app mounts, from the address at
- * that time; the toast stack and the session live above it so both survive moves.
+ * that time; the branding, the toast stack and the session live above it so they survive moves.
  */
 export function App() {
   const [router] = useState(() => createBrowserRouter(routes));
   return (
-    <SessionProvider>
-      <ToastProvider>
-        <RouterProvider router={router} />
-      </ToastProvider>
-    </SessionProvider>
+    <BrandingProvider load={loadBranding}>
+      <SessionProvider>
+        <ToastProvider>
+          <RouterProvider router={router} />
+        </ToastProvider>
+      </SessionProvider>
+    </BrandingProvider>
   );
 }
