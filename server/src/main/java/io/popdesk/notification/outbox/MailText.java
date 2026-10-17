@@ -9,40 +9,61 @@ import io.popdesk.notification.IssueFacts.Issue;
  */
 final class MailText {
 
-    /** One email's subject and plain text. */
-    record Message(String subject, String text) {}
+    /**
+     * One email's subject and plain text, and the name it comes from: the display name of the branding
+     * (S9-AC-26), or null for the address alone.
+     */
+    record Message(String subject, String text, String senderName) {
+
+        Message(String subject, String text) {
+            this(subject, text, null);
+        }
+
+        /** The same email from {@code senderName}. */
+        Message from(String senderName) {
+            return new Message(subject, text, senderName);
+        }
+    }
 
     private MailText() {}
 
-    /** An invitation to the person's app (S0-AC-72). */
-    static Message invitation(String locale, String name, String link) {
+    /**
+     * An invitation to the person's app (S0-AC-72), naming the installation by its display name
+     * (S9-AC-27).
+     */
+    static Message invitation(String locale, String displayName, String name, String link) {
+        String desk = oneLine(displayName);
         if (korean(locale)) {
-            return new Message("popdesk에 초대되었습니다",
-                    name + "님, popdesk에 초대되었습니다.\n\n"
+            return new Message(desk + "에 초대되었습니다",
+                    name + "님, " + desk + "에 초대되었습니다.\n\n"
                             + "아래 링크에서 비밀번호를 정하면 로그인할 수 있습니다. 링크는 일주일 동안 쓸 수 있습니다.\n\n"
                             + link + "\n\n"
                             + "초대를 기다리지 않았다면 이 메일을 지워도 됩니다.\n");
         }
-        return new Message("You are invited to popdesk",
+        return new Message("You are invited to " + desk,
                 "Hello " + name + ",\n\n"
-                        + "You are invited to popdesk. Set your password at the link below to sign in. The link works "
+                        + "You are invited to " + desk + ". Set your password at the link below to sign in. The link works "
                         + "for one week.\n\n"
                         + link + "\n\n"
                         + "If you did not expect this invitation, you can delete this email.\n");
     }
 
-    /** A link to set a new password (S1A-AC-06). It names no other account and says nothing of the old password. */
-    static Message passwordReset(String locale, String name, String link) {
+    /**
+     * A link to set a new password (S1A-AC-06). It names no other account and says nothing of the old
+     * password; the installation is named by its display name (S9-AC-27).
+     */
+    static Message passwordReset(String locale, String displayName, String name, String link) {
+        String desk = oneLine(displayName);
         if (korean(locale)) {
-            return new Message("popdesk 비밀번호 재설정",
-                    name + "님, popdesk 계정의 비밀번호 재설정 요청을 받았습니다.\n\n"
+            return new Message(desk + " 비밀번호 재설정",
+                    name + "님, " + desk + " 계정의 비밀번호 재설정 요청을 받았습니다.\n\n"
                             + "아래 링크에서 새 비밀번호를 정할 수 있습니다. 링크는 1시간 동안 쓸 수 있습니다.\n\n"
                             + link + "\n\n"
                             + "요청한 적이 없다면 이 메일을 지워도 됩니다.\n");
         }
-        return new Message("Reset your popdesk password",
+        return new Message("Reset your " + desk + " password",
                 "Hello " + name + ",\n\n"
-                        + "A password reset was asked for your popdesk account. Set a new password at the link below. "
+                        + "A password reset was asked for your " + desk + " account. Set a new password at the link below. "
                         + "The link works for one hour.\n\n"
                         + link + "\n\n"
                         + "If you did not ask for this, you can delete this email.\n");
@@ -236,20 +257,22 @@ final class MailText {
 
     /**
      * The test email an admin sends to check the SMTP settings (S4B-AC-28): the console's address and
-     * the time it was sent, and nothing about anyone.
+     * the time it was sent, and nothing about anyone. The installation is named by its display name
+     * (S9-AC-27).
      *
      * @param consoleLink the console's address, without a path
      * @param sentAt the time as text, with its time zone
      */
-    static Message test(String locale, String consoleLink, String sentAt) {
+    static Message test(String locale, String displayName, String consoleLink, String sentAt) {
+        String desk = oneLine(displayName);
         if (korean(locale)) {
-            return new Message("popdesk 시험 메일",
-                    "popdesk의 메일 보내기 설정을 확인하는 시험 메일입니다.\n\n"
+            return new Message(desk + " 시험 메일",
+                    desk + "의 메일 보내기 설정을 확인하는 시험 메일입니다.\n\n"
                             + "콘솔: " + consoleLink + "\n"
                             + "보낸 시각: " + sentAt + "\n");
         }
-        return new Message("popdesk test email",
-                "This is a test email to check the email settings of popdesk.\n\n"
+        return new Message(desk + " test email",
+                "This is a test email to check the email settings of " + desk + ".\n\n"
                         + "Console: " + consoleLink + "\n"
                         + "Sent: " + sentAt + "\n");
     }

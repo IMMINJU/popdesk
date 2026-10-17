@@ -4,6 +4,7 @@ import io.popdesk.ApiException;
 import io.popdesk.InstallationZone;
 import io.popdesk.PublicAddress;
 import io.popdesk.PublicAddress.App;
+import io.popdesk.notification.BrandingName;
 import io.popdesk.notification.DeliveryAudit;
 import io.popdesk.notification.Recipients;
 import io.popdesk.notification.Recipients.Recipient;
@@ -45,16 +46,18 @@ public class TestMail {
     private final Recipients recipients;
     private final DeliveryAudit audit;
     private final PublicAddress address;
+    private final BrandingName branding;
     private final Clock clock;
     private final ZoneId zone;
 
     TestMail(TestMailLimit limit, SmtpMail smtp, Recipients recipients, DeliveryAudit audit, PublicAddress address,
-            Clock clock, InstallationZone zone) {
+            BrandingName branding, Clock clock, InstallationZone zone) {
         this.limit = limit;
         this.smtp = smtp;
         this.recipients = recipients;
         this.audit = audit;
         this.address = address;
+        this.branding = branding;
         this.clock = clock;
         // The zone due dates are judged in (S6A-AC-72); a wrong value lets no request through.
         this.zone = zone.zone();
@@ -69,8 +72,10 @@ public class TestMail {
         Recipient me = recipients.find(accountId)
                 .orElseThrow(() -> new IllegalStateException("The signed-in account is gone"));
         String sentAt = SENT_AT.withZone(zone).format(clock.instant()) + " (" + zone.getId() + ")";
+        // Read once, for the text and the sender's name alike (S9-AC-26, S9-AC-27).
+        String desk = MailText.oneLine(branding.displayName());
         SmtpMail.Result sent = smtp.sendForReply(accountId, me.email(),
-                MailText.test(me.locale(), address.origin(App.CONSOLE), sentAt));
+                MailText.test(me.locale(), desk, address.origin(App.CONSOLE), sentAt).from(desk));
         boolean ok = sent.attempt().outcome() == Outcome.SENT;
         String errorKind = ok ? null : sent.attempt().errorKind();
         audit.testMailSent(accountId, ok, errorKind);
