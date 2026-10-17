@@ -35,7 +35,7 @@ import java.util.regex.Pattern;
  * {@code #C2410C} 4.50, acceptable; {@code #B45309} 4.38, not acceptable; {@code #FACC15} not acceptable;
  * {@code #6D28D9} 6.21, dark {@code #B8A5FF} 6.89), a dark value out of gamut (a saturated red or magenta such as
  * {@code #FF0000} or {@code #FF00FF}), lightness 0 and 1 ({@code #000000}, {@code #FFFFFF}), the {@code L < 0.2} branch
- * of the light hover ({@code #000000}, {@code #1E293B}), a contrast just under and just over 4.5 ({@code #B45309}
+ * of the light hover ({@code #000000}; {@code #1E293B} at 0.28 is not in it), a contrast just under and just over 4.5 ({@code #B45309}
  * 4.38, {@code #C2410C} 4.504), small letters ({@code #e11d48} as {@code #E11D48}), and colors of the wrong form.
  */
 public final class AccentPalette {
