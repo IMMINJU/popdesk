@@ -34,6 +34,8 @@ public class AccountRateLimit {
         ATTACHMENT(30),
         /** Uploading a profile photo (S1A-AC-28). */
         PHOTO(10),
+        /** Uploading a branding logo, also the uploads refused with 413 or 400; apart from photos (S9-AC-19). */
+        BRAND_LOGO(10),
         /** A customer manager inviting to a company or sending an invitation again, together (S2-AC-20). */
         MEMBER_INVITATION(20),
         /**

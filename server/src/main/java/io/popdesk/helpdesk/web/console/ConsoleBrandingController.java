@@ -1,6 +1,9 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.branding.AccentPalette;
+import io.popdesk.helpdesk.branding.BrandingService;
+import io.popdesk.helpdesk.web.publicapi.AccentColors;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -36,6 +39,12 @@ class ConsoleBrandingController {
     static final String THEME = "`light` or `dark`.";
     static final String NO_THEME = "`NOT_FOUND`: `theme` is not `light` or `dark`.";
 
+    private final BrandingService branding;
+
+    ConsoleBrandingController(BrandingService branding) {
+        this.branding = branding;
+    }
+
     @Operation(operationId = "getBranding", summary = "The branding",
             description = "The display name, the accent color as saved, the values made from it and their "
                     + "contrast, and the logo of each theme (S9-AC-06). Checks, in this order: role (403).")
@@ -44,7 +53,7 @@ class ConsoleBrandingController {
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY)
     @GetMapping
     Branding getBranding() {
-        throw new NotImplementedException();
+        return branding(branding.get(CurrentAccount.get().viewer()));
     }
 
     @Operation(operationId = "updateBranding", summary = "Change the display name and the accent color",
@@ -57,7 +66,7 @@ class ConsoleBrandingController {
                     + "old version (S9-AC-08).")
     @ApiResponse(responseCode = "200", description = "The branding as it is now.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`, nothing changed; `fields` lists all: "
-            + "`displayName` empty after trimming (`REQUIRED`), only whitespace (`BLANK`), over 50 characters "
+            + "`displayName` missing or empty (`REQUIRED`), only whitespace (`BLANK`), over 50 characters "
             + "(`TOO_LONG`), or with a line break, a control character, or a direction mark (`INVALID_FORMAT`, "
             + "S9-AC-09); `accent` not `#` and six hexadecimal digits (`INVALID_FORMAT`, S9-AC-10) or a color "
             + "whose made values miss 4.5:1 on a theme's backgrounds (`LOW_CONTRAST`, S9-AC-11); `version` "
@@ -69,7 +78,9 @@ class ConsoleBrandingController {
             + "ones it has (S9-AC-08). Read the branding again.")
     @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     Branding updateBranding(@RequestBody UpdateBrandingRequest request) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        return branding(branding.update(admin.viewer(), admin.actor(), new BrandingService.Change(request.version(),
+                request.displayName(), request.accent())));
     }
 
     @Operation(operationId = "previewAccent", summary = "What an accent color would make",
@@ -77,15 +88,16 @@ class ConsoleBrandingController {
                     + "`updateBranding` takes it; nothing is saved (S9-AC-12). Checks, in this order: role "
                     + "(403), `color` (400).")
     @ApiResponse(responseCode = "200", description = "The made values.")
-    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `color` missing (`REQUIRED`) or not `#` and "
-            + "six hexadecimal digits (`INVALID_FORMAT`).")
+    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `color` missing or empty (`REQUIRED`), or not `#` "
+            + "and six hexadecimal digits (`INVALID_FORMAT`).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY)
     @GetMapping("/accent")
     AccentPreview previewAccent(
             @Parameter(description = "`#RRGGBB`, either letter case; the `#` is sent as `%23`.")
                     @RequestParam(required = false) @Nullable String color) {
-        throw new NotImplementedException();
+        AccentPalette.Palette palette = branding.preview(CurrentAccount.get().viewer(), color);
+        return new AccentPreview(AccentColors.of(palette), contrast(palette), palette.acceptable());
     }
 
     @Operation(operationId = "uploadBrandingLogo", summary = "Set the logo of a theme",
@@ -97,8 +109,10 @@ class ConsoleBrandingController {
                     + "an audit entry `BRANDING_LOGO_CHANGED` with the target `{\"type\": \"BRANDING\", "
                     + "\"theme\": \"LIGHT\"}` (or `DARK`) and, in `changes`, `logo` from the fingerprint before, "
                     + "or null, to the new one; the same file again leaves none (S9-AC-21). Checks, in this "
-                    + "order: role (403), rate limit (429), `theme` (404), the file (413, 400), decoding (503); "
-                    + "a refused file leaves the logo as it was (S9-AC-16).")
+                    + "order: role (403), the `file` part (400, looked for before anything else in the request), "
+                    + "rate limit (429, refused uploads count too), `theme` (404), the size of the file (413), a "
+                    + "place for decoding (503, profile photos and logos together), then the file's first bytes "
+                    + "and pixel count (400); a refused file leaves the logo as it was (S9-AC-16).")
     @ApiResponse(responseCode = "200", description = "The logo as stored.")
     @ApiResponse(responseCode = "400", description = "`UNSUPPORTED_IMAGE`: not one of the three formats by its "
             + "first bytes (an SVG, a GIF, or an HTML file named `.png` too), or it cannot be decoded. "
@@ -118,7 +132,8 @@ class ConsoleBrandingController {
             @Parameter(description = THEME, schema = @Schema(type = "string", allowableValues = {"light", "dark"}))
                     @PathVariable String theme,
             @RequestPart("file") MultipartFile file) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        return logo(branding.uploadLogo(admin.viewer(), admin.actor(), theme, file));
     }
 
     @Operation(operationId = "deleteBrandingLogo", summary = "Remove the logo of a theme",
@@ -134,6 +149,21 @@ class ConsoleBrandingController {
     void deleteBrandingLogo(
             @Parameter(description = THEME, schema = @Schema(type = "string", allowableValues = {"light", "dark"}))
                     @PathVariable String theme) {
-        throw new NotImplementedException();
+        CurrentAccount admin = CurrentAccount.get();
+        branding.deleteLogo(admin.viewer(), admin.actor(), theme);
+    }
+
+    private static Branding branding(BrandingService.Settings settings) {
+        return new Branding(settings.version(), settings.displayName(), settings.accent(),
+                AccentColors.of(settings.palette()), settings.palette() == null ? null : contrast(settings.palette()),
+                new BrandingLogos(logo(settings.light()), logo(settings.dark())));
+    }
+
+    private static AccentContrast contrast(AccentPalette.Palette palette) {
+        return new AccentContrast(palette.lightContrast(), palette.darkContrast());
+    }
+
+    private static BrandingLogo logo(BrandingService.Logo logo) {
+        return logo == null ? null : new BrandingLogo(logo.url(), logo.width(), logo.height());
     }
 }
