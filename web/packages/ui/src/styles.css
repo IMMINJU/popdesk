@@ -2448,9 +2448,12 @@ a.pd-inbox-row:hover .pd-inbox-text {
   border-radius: var(--radius-sm);
 }
 
+/* The name gives way first: every box around it may shrink below its text. */
+.pd-shell-top,
 .pd-shell-top > .pd-shell-home,
 .pd-shell-top > .pd-shell-brand {
   min-width: 0;
+  max-width: 100%;
 }
 
 .pd-shell-nav ul {
@@ -2697,7 +2700,7 @@ a.pd-inbox-row:hover .pd-inbox-text {
   padding-left: 0;
   padding-right: 0;
 }
-
+
 /* "로그아웃" fits the 64px strip: less side room in the head, a small button. */
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-head {
   padding-left: var(--space-1);
@@ -2956,6 +2959,7 @@ a.pd-inbox-row:hover .pd-inbox-text {
 .pd-logo-size {
   font-size: var(--text-sm);
   color: var(--text-muted);
+  word-break: keep-all;
   overflow-wrap: anywhere;
 }
 

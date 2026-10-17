@@ -1298,3 +1298,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.pd-branding .pd-section > p,
+.pd-brand-pane-line {
+  word-break: keep-all;
+}
