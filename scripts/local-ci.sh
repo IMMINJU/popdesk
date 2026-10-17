@@ -39,7 +39,7 @@ SUMMARY="$OUT/summary.txt"
 # The server test packages of each part, about the same time each (seconds of the v0.4.0 tag run).
 # deploy and e2e are the deploy step. `root` is the classes right under io.popdesk.
 PART_1="notify root"
-PART_2="ops audit due task link"
+PART_2="ops audit due task link branding"
 PART_3="auth start photo trash sla"
 PART_4="issue inbox boundary manager label"
 PART_5="attachment project helpdesk notification support stats"
