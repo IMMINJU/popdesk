@@ -2401,15 +2401,59 @@ a.pd-inbox-row:hover .pd-inbox-text {
 }
 
 .pd-shell-logo {
+  flex: none;
   width: 18px;
   height: 18px;
   border-radius: var(--radius-sm);
   background: var(--accent);
 }
 
+/* A logo takes the square's place; the folded console strip keeps the square (below). */
+.pd-shell-brand[data-has-logo='true'] .pd-shell-logo {
+  display: none;
+}
+
+.pd-shell-logo-image {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.pd-shell-logo-image .pd-brand-logo {
+  max-width: 96px;
+  max-height: 28px;
+}
+
+.pd-shell[data-app='portal'] .pd-shell-logo-image .pd-brand-logo {
+  max-width: 140px;
+}
+
+/* A long display name ends with an ellipsis in the width left beside the logo. */
+.pd-shell-brand {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pd-shell-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pd-shell-home {
+  display: inline-flex;
+  max-width: 100%;
   text-decoration: none;
   border-radius: var(--radius-sm);
+}
+
+/* The name gives way first: every box around it may shrink below its text. */
+.pd-shell-top,
+.pd-shell-top > .pd-shell-home,
+.pd-shell-top > .pd-shell-brand {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .pd-shell-nav ul {
@@ -2615,6 +2659,14 @@ a.pd-inbox-row:hover .pd-inbox-text {
   white-space: nowrap;
 }
 
+.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-brand[data-has-logo='true'] .pd-shell-logo {
+  display: block;
+}
+
+.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-logo-image {
+  display: none;
+}
+
 .pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-top {
   flex-direction: column;
   padding-left: 0;
@@ -2647,6 +2699,19 @@ a.pd-inbox-row:hover .pd-inbox-text {
   flex-direction: column;
   padding-left: 0;
   padding-right: 0;
+}
+
+/* "로그아웃" fits the 64px strip: less side room in the head, a small button. */
+.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-head {
+  padding-left: var(--space-1);
+  padding-right: var(--space-1);
+}
+
+.pd-shell[data-app='console'][data-sidebar-collapsed='true'] .pd-shell-user .pd-button {
+  max-width: 100%;
+  padding-left: var(--space-1);
+  padding-right: var(--space-1);
+  font-size: var(--text-xs);
 }
 
 /* Under bp-narrow the shell folds the menu and opens it over the content. */
@@ -2777,4 +2842,143 @@ a.pd-inbox-row:hover .pd-inbox-text {
   .pd-shell[data-app='portal'] .pd-shell-inbox a {
     padding: 0 var(--space-2);
   }
+}
+
+/* Branding logo (slice 9 screens.md 1절) --------------------------------- */
+
+/* Two images, one per theme; the conditions are the tokens' own (tokens.css). */
+.pd-brand-logo {
+  display: block;
+  width: auto;
+  height: auto;
+}
+
+.pd-brand-logo[data-brand-theme='dark'] {
+  display: none;
+}
+
+[data-theme='dark'] .pd-brand-logo[data-brand-theme='light'] {
+  display: none;
+}
+
+[data-theme='dark'] .pd-brand-logo[data-brand-theme='dark'] {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .pd-brand-logo[data-brand-theme='light'] {
+    display: none;
+  }
+
+  :root:not([data-theme]) .pd-brand-logo[data-brand-theme='dark'] {
+    display: block;
+  }
+}
+
+/* Above the forms before log in: the logo, then the display name. */
+.pd-auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.pd-auth-brand-logo {
+  display: flex;
+  max-width: 100%;
+}
+
+.pd-auth-brand-logo .pd-brand-logo {
+  max-width: 100%;
+  max-height: 40px;
+}
+
+.pd-auth-brand-name {
+  max-width: 100%;
+  font-size: var(--text-3xl);
+  line-height: var(--text-3xl-line);
+  font-weight: var(--text-3xl-weight);
+  color: var(--text);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* Logo field (slice 9 screens.md 2.2) ------------------------------------ */
+
+.pd-logo-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* The theme's own bg (tokens.md: bg #FFFFFF, #191817), whatever the page theme is. */
+.pd-logo-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.pd-logo-preview[data-logo-theme='light'] {
+  background: #ffffff;
+  color: #6b6862;
+}
+
+.pd-logo-preview[data-logo-theme='dark'] {
+  background: #191817;
+  color: #ada8a0;
+}
+
+.pd-logo-preview[data-empty='true'] {
+  border: 1px dashed var(--border-strong);
+}
+
+.pd-logo-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 64px;
+}
+
+/* Another theme's logo: faded, so an admin sees one that does not read on this bg. */
+.pd-logo-image[data-fallback='true'] {
+  opacity: 0.5;
+}
+
+.pd-logo-none {
+  font-size: var(--text-sm);
+}
+
+.pd-logo-size {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.pd-logo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pd-logo-busy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.pd-upload-input[aria-disabled='true'] + .pd-upload-label {
+  color: var(--text-disabled);
+  cursor: not-allowed;
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider, type RouteObject } from 'react-router';
+import { BrandingProvider, loadBranding } from './app/branding';
 import { NotFound, PortalLayout } from './app/layout';
 import { SessionProvider } from './app/session';
 import { ToastProvider } from './app/toast';
@@ -41,15 +42,17 @@ const routes: RouteObject[] = [
 
 /**
  * The portal app. The router is made when the app mounts, from the address at
- * that time; the toast stack and the session live above it so both survive moves.
+ * that time; the branding, the toast stack and the session live above it so they survive moves.
  */
 export function App() {
   const [router] = useState(() => createBrowserRouter(routes));
   return (
-    <SessionProvider>
-      <ToastProvider>
-        <RouterProvider router={router} />
-      </ToastProvider>
-    </SessionProvider>
+    <BrandingProvider load={loadBranding}>
+      <SessionProvider>
+        <ToastProvider>
+          <RouterProvider router={router} />
+        </ToastProvider>
+      </SessionProvider>
+    </BrandingProvider>
   );
 }

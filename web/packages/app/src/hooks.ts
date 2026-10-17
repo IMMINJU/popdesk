@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useBlocker } from 'react-router';
 import type { FieldError } from '@popdesk/ui';
-import { fieldSummaryTitle, fieldText, TEXT, type FieldLimits } from './messages';
+import { useBranding } from './brandingContext';
+import { fieldSummaryTitle, fieldText, type FieldLimits } from './messages';
 import type { Failure, FieldProblem, Result } from './result';
 import { useToLogin } from './sessionContext';
 
@@ -262,11 +263,13 @@ export function useFocusWhenReady(ref: { current: HTMLElement | null }, ready: b
 
 /**
  * Sets `document.title`; the screen title goes first, then the app's `displayName` (screens.md 2절 접근성).
- * Without `displayName`: "popdesk" for now. Slice 9 (C-9) makes it the branding name of
- * `useBranding()`, "popdesk" without a `BrandingProvider`, so the callers stay as they are.
+ * Without `displayName`: the branding name of `useBranding()`, "popdesk" without a
+ * `BrandingProvider` (slice 9 design.md 0절 10), so the callers stay as they are.
  */
-export function useDocumentTitle(title: string | null, displayName: string = TEXT.displayName) {
+export function useDocumentTitle(title: string | null, displayName?: string) {
+  const branded = useBranding().displayName;
+  const name = displayName ?? branded;
   useEffect(() => {
-    if (title !== null) document.title = `${title} - ${displayName}`;
-  }, [title, displayName]);
+    if (title !== null) document.title = `${title} - ${name}`;
+  }, [title, name]);
 }

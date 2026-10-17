@@ -11,6 +11,8 @@ import { useLiveNavigate } from '../app/navigate';
 import { call, type Failure } from '../app/result';
 import { useSession } from '../app/sessionContext';
 import { useToast } from '../app/toastContext';
+import { useBranding } from '../app/branding';
+import { Brand } from '../app/layout';
 
 const RULES = '10~72자로 정합니다. 공백만으로는 안 되고, 이메일과 같으면 안 됩니다.';
 const INVALID_LINK = '이 초대 링크는 쓸 수 없습니다. 관리자에게 다시 보내 달라고 하세요.';
@@ -22,6 +24,7 @@ function tokenFromHash(): string | null {
 }
 
 export function P2InviteAccept() {
+  const { displayName } = useBranding();
   const navigate = useLiveNavigate();
   const toast = useToast();
   const { setMe } = useSession();
@@ -78,7 +81,7 @@ export function P2InviteAccept() {
     return (
       <main id="main" className="pd-auth" tabIndex={-1}>
         <div className="pd-auth-panel">
-          <p className="pd-auth-brand">{TEXT.displayName}</p>
+          <Brand />
           <EmptyState
             headingLevel={1}
             icon={<LockIcon size={20} />}
@@ -94,11 +97,11 @@ export function P2InviteAccept() {
   return (
     <main id="main" className="pd-auth" tabIndex={-1}>
       <div className="pd-auth-panel">
-        <p className="pd-auth-brand">{TEXT.displayName}</p>
+        <Brand />
         <h1 className="pd-auth-title" tabIndex={-1}>
           초대 수락
         </h1>
-        <p className="pd-auth-lead">popdesk 고객 포털에 오신 것을 환영합니다. 쓸 비밀번호를 정하면 바로 시작합니다.</p>
+        <p className="pd-auth-lead">{displayName} 고객 포털에 오신 것을 환영합니다. 쓸 비밀번호를 정하면 바로 시작합니다.</p>
         <form
           className="pd-form"
           noValidate
