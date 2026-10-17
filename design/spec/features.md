@@ -35,7 +35,7 @@
 | 15. 고객사 담당자 (MGR) | MGR | `../archive/2-manager/rules.md`(2번 묶음) |
 | 16. SLA | SLA-1~4, 6, 8 | `../archive/8a-sla/rules.md`(8a 묶음) |
 | 16. SLA | SLA-5, 7 | 8a와 8b가 나눠 가졌다. `../archive/8a-sla/rules.md`와 `../archive/8b-sla-alerts/rules.md` |
-| 17. 브랜딩 (BRAND) | BRAND-1~5 | `../slices/9-branding/rules.md`(9번 묶음, 진행 중) |
+| 17. 브랜딩 (BRAND) | BRAND-1~5 | `../archive/9-branding/rules.md`(9번 묶음) |
 | 18. 운영 경보와 시스템 상태 (OPS) | OPS-3 | `../archive/4b-delivery/rules.md`(4b 묶음) |
 
 ## 0. 공통
