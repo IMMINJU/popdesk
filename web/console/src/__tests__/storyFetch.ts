@@ -140,6 +140,8 @@ const notFound = () => json({ code: 'NOT_FOUND', message: 'Not found.' }, 404);
 function answer(method: string, path: string): Response {
   const s = current;
   if (path === '/api/public/csrf') return new Response(null, { status: 204 });
+  // Every screen reads the public branding once (slice 9): the default. storyFetch9.ts answers others.
+  if (method === 'GET' && path === '/api/public/branding') return json({ displayName: 'popdesk', colors: null, logos: { light: null, dark: null } });
   if (method !== 'GET') return notFound();
   if (path === '/api/console/me') return json(s.me);
   if (path === '/api/console/notifications/unread-count') return json({ count: 0 });

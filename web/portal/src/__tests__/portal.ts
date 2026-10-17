@@ -278,6 +278,11 @@ function unknownIssue(key: string | readonly string[] | undefined): Response | u
 
 const defaultHandlers = [
   http.get('*/api/public/csrf', () => new HttpResponse(null, { status: 204 })),
+  // Every screen reads the public branding once (slice 9 S9-AC-22): the default, so the earlier
+  // screen tests see "popdesk" and the accent of tokens.css.
+  http.get('*/api/public/branding', () =>
+    HttpResponse.json<Schemas['PublicBranding']>({ displayName: 'popdesk', colors: null, logos: { light: null, dark: null } }),
+  ),
   http.post('*/api/public/sign-in', () => {
     state.signedIn = true;
     return new HttpResponse(null, { status: 204 });
@@ -383,6 +388,13 @@ beforeEach(() => {
   Object.defineProperty(window.navigator, 'language', { value: 'ko', configurable: true });
   Object.defineProperty(window.navigator, 'languages', { value: ['ko'], configurable: true });
   document.title = '';
+  // The branding a test showed must not reach the next one (slice 9 acceptance.md 6절).
+  try {
+    localStorage.clear();
+  } catch {
+    // A test may have blocked the storage.
+  }
+  document.documentElement.removeAttribute('style');
 });
 
 afterEach(() => {

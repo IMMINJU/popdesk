@@ -25,7 +25,7 @@ describe('C-12 감사 로그의 SLA 정책 항목 (8a 묶음)', () => {
     await expectNoAxeViolations();
   });
 
-  test('S8A-AC-06 C-12 종류 고르기: 묶음 "설정"은 "보내기" 바로 앞이고 그 아래 "SLA 정책 바꾸기" 하나다. 고르면 action이 SLA_POLICY_CHANGED다', async () => {
+  test('S8A-AC-06 C-12 종류 고르기: 묶음 "설정"은 "보내기" 바로 앞이고 그 아래 "SLA 정책 바꾸기", "브랜딩 바꾸기", "로고 바꾸기" 차례다. 고르면 action이 그 셋이다', async () => {
     const { user } = renderAt(URL_LOG);
     await entryRows(audit.entries.length);
     const kind = await kindSelect();
@@ -34,10 +34,10 @@ describe('C-12 감사 로그의 SLA 정책 항목 (8a 묶음)', () => {
     expect(groups.indexOf('설정'), '"설정" 묶음').toBeGreaterThanOrEqual(0);
     expect(groups.indexOf('보내기'), '"보내기" 바로 앞').toBe(groups.indexOf('설정') + 1);
     const settings = Array.from(kind.querySelectorAll('optgroup')).find((g) => g.label === '설정');
-    expect(Array.from(settings?.querySelectorAll('option') ?? []).map((o) => text(o))).toEqual(['SLA 정책 바꾸기']);
+    expect(Array.from(settings?.querySelectorAll('option') ?? []).map((o) => text(o))).toEqual(['SLA 정책 바꾸기', '브랜딩 바꾸기', '로고 바꾸기']);
 
     await user.selectOptions(kind, '설정');
-    await listedKinds(['SLA_POLICY_CHANGED']);
+    await listedKinds(['SLA_POLICY_CHANGED', 'BRANDING_CHANGED', 'BRANDING_LOGO_CHANGED']);
   });
 
   test('S8A-AC-06 C-12 바뀐 값의 목표: 바뀐 우선순위만 "{우선순위} 첫 응답 {앞} → {뒤}, 해결 {앞} → {뒤}"(분은 길이 글, 없으면 "없음")', async () => {

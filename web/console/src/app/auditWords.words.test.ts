@@ -78,6 +78,8 @@ describe('changeLines', () => {
       'DATABASE_RESTORED',
       'AUDIT_EXPORTED',
       'SLA_POLICY_CHANGED',
+      'BRANDING_CHANGED',
+      'BRANDING_LOGO_CHANGED',
       'DELIVERY_RESENT',
       'TEST_MAIL_SENT',
     ];
