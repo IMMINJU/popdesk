@@ -482,6 +482,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The branding
+         * @description The display name, the values made from the accent color, and where the logos are (S9-AC-01, S9-AC-02). An installation that never saved a branding answers the default: `popdesk`, `colors` null, both logos null (S9-AC-05). `Cache-Control: no-store` like any other API response.
+         */
+        get: operations["getPublicBranding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/branding/logos/{theme}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A logo
+         * @description The logo of one theme, always PNG, with `X-Content-Type-Options: nosniff` and a strong `ETag`, its fingerprint (S9-AC-04). With `v` equal to that fingerprint, the address `getPublicBranding` gives, it is `Cache-Control: public, max-age=31536000, immutable`; with another `v` or none, `no-cache`. A new logo has a new fingerprint, so the address changes with it. `HEAD` answers the same headers.
+         */
+        get: operations["getBrandingLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/csrf": {
         parameters: {
             query?: never;
@@ -606,6 +646,10 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AccentColors: {
+            dark: components["schemas"]["ThemeColors"];
+            light: components["schemas"]["ThemeColors"];
+        };
         AcceptInvitationRequest: {
             /** @description 10 to 72 characters, not only whitespace, not the same as the email (AUTH-5). */
             password: string;
@@ -978,6 +1022,19 @@ export interface components {
              */
             photoUpdatedAt: string | null;
         };
+        PublicBranding: {
+            /** @description The values made from the accent color; null without one, and the app's own colors apply. */
+            colors: components["schemas"]["AccentColors"] | null;
+            /** @description 1 to 50 characters; `popdesk` until an admin changes it (S9-AC-05). */
+            displayName: string;
+            logos: components["schemas"]["PublicBrandingLogos"];
+        };
+        PublicBrandingLogos: {
+            /** @description The same for the dark theme; null without a logo. */
+            dark: string | null;
+            /** @description `/api/public/branding/logos/{theme}?v={fingerprint}` for the light theme; null without a logo. */
+            light: string | null;
+        };
         RequestPasswordResetRequest: {
             /** @description Leading and trailing whitespace and case are ignored. */
             email: string;
@@ -999,6 +1056,16 @@ export interface components {
              * @description The ID to write as `attachment:{id}` and to send in `imageIds`. Hard to guess, but not a permission check (ATT-7). It stays the attachment's ID once the image is attached.
              */
             id: string;
+        };
+        ThemeColors: {
+            /** @description Text, links, and the main button. */
+            accent: string;
+            /** @description The main button under the pointer. */
+            accentHover: string;
+            /** @description A light background of the accent, for example the chosen row. */
+            accentSubtle: string;
+            /** @description Text on `accent`: the theme's background color. */
+            onAccent: string;
         };
         UnreadCount: {
             /** Format: int64 */
@@ -2921,6 +2988,91 @@ export interface operations {
             };
             /** @description `NOT_FOUND`: no such account, a customer of another company, an agent or admin, or an account without a photo. One body for all. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPublicBranding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The branding. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBranding"];
+                };
+            };
+            /** @description `SETUP_REQUIRED`: there is no first admin yet. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getBrandingLogo: {
+        parameters: {
+            query?: {
+                /** @description The fingerprint the address carries; with it the logo may be kept a year. */
+                v?: string;
+            };
+            header?: {
+                /** @description The `ETag` of the copy the caller has. */
+                "If-None-Match"?: string;
+            };
+            path: {
+                /** @description `light` or `dark`. */
+                theme: "light" | "dark";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The logo, with its `ETag`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description The logo still has the `ETag` sent in `If-None-Match`. No body. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            /** @description `NOT_FOUND`: the theme has no logo, or `theme` is not `light` or `dark`. The logo of the other theme is never given instead; `getPublicBranding` already points both themes at the one there is (S9-AC-03). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `SETUP_REQUIRED`: there is no first admin yet. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

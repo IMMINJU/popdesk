@@ -1,6 +1,18 @@
 {
   "components" : {
     "schemas" : {
+      "AccentColors" : {
+        "properties" : {
+          "dark" : {
+            "$ref" : "#/components/schemas/ThemeColors"
+          },
+          "light" : {
+            "$ref" : "#/components/schemas/ThemeColors"
+          }
+        },
+        "required" : [ "dark", "light" ],
+        "type" : "object"
+      },
       "AcceptInvitationRequest" : {
         "properties" : {
           "password" : {
@@ -706,6 +718,41 @@
         "required" : [ "accountId", "kind", "name", "photoUpdatedAt" ],
         "type" : "object"
       },
+      "PublicBranding" : {
+        "properties" : {
+          "colors" : {
+            "description" : "The values made from the accent color; null without one, and the app's own colors apply.",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/AccentColors"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "displayName" : {
+            "description" : "1 to 50 characters; `popdesk` until an admin changes it (S9-AC-05).",
+            "type" : "string"
+          },
+          "logos" : {
+            "$ref" : "#/components/schemas/PublicBrandingLogos"
+          }
+        },
+        "required" : [ "colors", "displayName", "logos" ],
+        "type" : "object"
+      },
+      "PublicBrandingLogos" : {
+        "properties" : {
+          "dark" : {
+            "description" : "The same for the dark theme; null without a logo.",
+            "type" : [ "string", "null" ]
+          },
+          "light" : {
+            "description" : "`/api/public/branding/logos/{theme}?v={fingerprint}` for the light theme; null without a logo.",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "dark", "light" ],
+        "type" : "object"
+      },
       "RequestPasswordResetRequest" : {
         "properties" : {
           "email" : {
@@ -752,6 +799,32 @@
           }
         },
         "required" : [ "id" ],
+        "type" : "object"
+      },
+      "ThemeColors" : {
+        "properties" : {
+          "accent" : {
+            "description" : "Text, links, and the main button.",
+            "pattern" : "^#[0-9A-F]{6}$",
+            "type" : "string"
+          },
+          "accentHover" : {
+            "description" : "The main button under the pointer.",
+            "pattern" : "^#[0-9A-F]{6}$",
+            "type" : "string"
+          },
+          "accentSubtle" : {
+            "description" : "A light background of the accent, for example the chosen row.",
+            "pattern" : "^#[0-9A-F]{6}$",
+            "type" : "string"
+          },
+          "onAccent" : {
+            "description" : "Text on `accent`: the theme's background color.",
+            "pattern" : "^#[0-9A-F]{6}$",
+            "type" : "string"
+          }
+        },
+        "required" : [ "accent", "accentHover", "accentSubtle", "onAccent" ],
         "type" : "object"
       },
       "UnreadCount" : {
@@ -3173,6 +3246,114 @@
         },
         "summary" : "Profile photo of a customer",
         "tags" : [ "Photos" ]
+      }
+    },
+    "/api/public/branding" : {
+      "get" : {
+        "description" : "The display name, the values made from the accent color, and where the logos are (S9-AC-01, S9-AC-02). An installation that never saved a branding answers the default: `popdesk`, `colors` null, both logos null (S9-AC-05). `Cache-Control: no-store` like any other API response.",
+        "operationId" : "getPublicBranding",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicBranding"
+                }
+              }
+            },
+            "description" : "The branding."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`SETUP_REQUIRED`: there is no first admin yet."
+          }
+        },
+        "summary" : "The branding",
+        "tags" : [ "Branding" ]
+      }
+    },
+    "/api/public/branding/logos/{theme}" : {
+      "get" : {
+        "description" : "The logo of one theme, always PNG, with `X-Content-Type-Options: nosniff` and a strong `ETag`, its fingerprint (S9-AC-04). With `v` equal to that fingerprint, the address `getPublicBranding` gives, it is `Cache-Control: public, max-age=31536000, immutable`; with another `v` or none, `no-cache`. A new logo has a new fingerprint, so the address changes with it. `HEAD` answers the same headers.",
+        "operationId" : "getBrandingLogo",
+        "parameters" : [ {
+          "description" : "`light` or `dark`.",
+          "in" : "path",
+          "name" : "theme",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "light", "dark" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "The fingerprint the address carries; with it the logo may be kept a year.",
+          "in" : "query",
+          "name" : "v",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "The `ETag` of the copy the caller has.",
+          "in" : "header",
+          "name" : "If-None-Match",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "The logo, with its `ETag`."
+          },
+          "304" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "The logo still has the `ETag` sent in `If-None-Match`. No body."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: the theme has no logo, or `theme` is not `light` or `dark`. The logo of the other theme is never given instead; `getPublicBranding` already points both themes at the one there is (S9-AC-03)."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`SETUP_REQUIRED`: there is no first admin yet."
+          }
+        },
+        "summary" : "A logo",
+        "tags" : [ "Branding" ]
       }
     },
     "/api/public/csrf" : {

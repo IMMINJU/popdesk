@@ -205,6 +205,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/console/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The branding
+         * @description The display name, the accent color as saved, the values made from it and their contrast, and the logo of each theme (S9-AC-06). Checks, in this order: role (403).
+         */
+        get: operations["getBranding"];
+        /**
+         * Change the display name and the accent color
+         * @description Saves both and makes the next version (S9-AC-07). Sending what the branding has already is 200 with the branding as it is, no new version, and no audit entry. A change leaves an audit entry `BRANDING_CHANGED` with the target `{"type": "BRANDING"}` and, in `changes`, `displayName` or `accent` from before to after for each that changed; an accent is its `#RRGGBB` or null (S9-AC-20). Logos are not touched. Checks, in this order: role (403), the body (400), `version` (409), so a body that is wrong is 400 even with an old version (S9-AC-08).
+         */
+        put: operations["updateBranding"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/branding/accent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What an accent color would make
+         * @description The values popdesk would make from the color, their contrast, and whether `updateBranding` takes it; nothing is saved (S9-AC-12). Checks, in this order: role (403), `color` (400).
+         */
+        get: operations["previewAccent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/branding/logos/{theme}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the logo of a theme
+         * @description Takes a PNG, JPEG, or WebP file of up to 512 KB, judged by its content, never SVG. popdesk turns it by its EXIF orientation, scales it to fit 512 by 128 px (never larger), and keeps only that copy as a PNG without metadata, not the uploaded file (S9-AC-15). The new logo replaces the theme's logo; the branding's `version` stays (S9-AC-18). `PUT`, unlike a profile photo's `POST`: each theme has one logo, put in place. A new logo leaves an audit entry `BRANDING_LOGO_CHANGED` with the target `{"type": "BRANDING", "theme": "LIGHT"}` (or `DARK`) and, in `changes`, `logo` from the fingerprint before, or null, to the new one; the same file again leaves none (S9-AC-21). Checks, in this order: role (403), rate limit (429), `theme` (404), the file (413, 400), decoding (503); a refused file leaves the logo as it was (S9-AC-16).
+         */
+        put: operations["uploadBrandingLogo"];
+        post?: never;
+        /**
+         * Remove the logo of a theme
+         * @description Succeeds also when the theme has no logo, and then leaves no audit entry; otherwise `BRANDING_LOGO_CHANGED` with `logo` from the fingerprint to null (S9-AC-17, S9-AC-21). The branding's `version` stays (S9-AC-18). Checks, in this order: role (403), `theme` (404).
+         */
+        delete: operations["deleteBrandingLogo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/console/companies": {
         parameters: {
             query?: never;
@@ -1487,6 +1555,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The branding
+         * @description The display name, the values made from the accent color, and where the logos are (S9-AC-01, S9-AC-02). An installation that never saved a branding answers the default: `popdesk`, `colors` null, both logos null (S9-AC-05). `Cache-Control: no-store` like any other API response.
+         */
+        get: operations["getPublicBranding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/branding/logos/{theme}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A logo
+         * @description The logo of one theme, always PNG, with `X-Content-Type-Options: nosniff` and a strong `ETag`, its fingerprint (S9-AC-04). With `v` equal to that fingerprint, the address `getPublicBranding` gives, it is `Cache-Control: public, max-age=31536000, immutable`; with another `v` or none, `no-cache`. A new logo has a new fingerprint, so the address changes with it. `HEAD` answers the same headers.
+         */
+        get: operations["getBrandingLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/csrf": {
         parameters: {
             query?: never;
@@ -1611,6 +1719,28 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AccentColors: {
+            dark: components["schemas"]["ThemeColors"];
+            light: components["schemas"]["ThemeColors"];
+        };
+        AccentContrast: {
+            /**
+             * Format: double
+             * @description Dark theme: over `#191817`, `#201F1D`, `#2A2826`, `#121110`, `#24221F`, and the made `accentSubtle`.
+             */
+            dark: number;
+            /**
+             * Format: double
+             * @description Light theme: over `#FFFFFF`, `#F7F6F3`, `#F1F0ED`, `#F4F3F0`, and the made `accentSubtle`.
+             */
+            light: number;
+        };
+        AccentPreview: {
+            /** @description Both contrasts are 4.5 or more, so `updateBranding` takes the color (S9-AC-11). */
+            acceptable: boolean;
+            colors: components["schemas"]["AccentColors"];
+            contrast: components["schemas"]["AccentContrast"];
+        };
         AcceptInvitationRequest: {
             /** @description 10 to 72 characters, not only whitespace, not the same as the email (AUTH-5). */
             password: string;
@@ -1721,7 +1851,7 @@ export interface components {
              * @description The entry's place in the hash chain, from 1.
              */
             seq: number;
-            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`, `SLA_POLICY`) and the keys that name it (`accountId`, `code`). An issue deleted, restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is `{"type": "COMPANY", "code": …, "issueKey": …}`, with the issue's company and key and never its title, and `changes` is null (S7A-AC-07). A change of the SLA policy (`SLA_POLICY_CHANGED`) is `{"type": "SLA_POLICY", "version": …}` with the new version (S8A-AC-06). */
+            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`, `SLA_POLICY`, `BRANDING`) and the keys that name it (`accountId`, `code`). An issue deleted, restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is `{"type": "COMPANY", "code": …, "issueKey": …}`, with the issue's company and key and never its title, and `changes` is null (S7A-AC-07). A change of the SLA policy (`SLA_POLICY_CHANGED`) is `{"type": "SLA_POLICY", "version": …}` with the new version (S8A-AC-06). A change of the display name or the accent color (`BRANDING_CHANGED`) is `{"type": "BRANDING"}` (S9-AC-20); a new or removed logo (`BRANDING_LOGO_CHANGED`) is `{"type": "BRANDING", "theme": …}` with `LIGHT` or `DARK` (S9-AC-21). */
             target: {
                 [key: string]: unknown;
             } | null;
@@ -1741,6 +1871,42 @@ export interface components {
             reason: "ENTRY_MISMATCH" | "HEAD_MISMATCH" | null;
             /** @description Every entry and the end of the chain hold. */
             valid: boolean;
+        };
+        Branding: {
+            /** @description The accent color as saved, `#RRGGBB` in capitals; null for the app's own colors. */
+            accent: string | null;
+            /** @description The values made from `accent`; null without one. */
+            colors: components["schemas"]["AccentColors"] | null;
+            /** @description The contrast of `colors`; null without an accent color. */
+            contrast: components["schemas"]["AccentContrast"] | null;
+            /** @description 1 to 50 characters; `popdesk` by default. */
+            displayName: string;
+            logos: components["schemas"]["BrandingLogos"];
+            /**
+             * Format: int64
+             * @description Goes up by 1 when the display name or the accent color changes, not when a logo does (S9-AC-18). Send it back with `updateBranding`.
+             */
+            version: number;
+        };
+        BrandingLogo: {
+            /**
+             * Format: int32
+             * @description In pixels, 1 to 128.
+             */
+            height: number;
+            /** @description Its public address, `/api/public/branding/logos/{theme}?v={fingerprint}`, the same as in `getPublicBranding`. */
+            url: string;
+            /**
+             * Format: int32
+             * @description In pixels, 1 to 512.
+             */
+            width: number;
+        };
+        BrandingLogos: {
+            /** @description Null without a logo for the dark theme. */
+            dark: components["schemas"]["BrandingLogo"] | null;
+            /** @description Null without a logo for the light theme. */
+            light: components["schemas"]["BrandingLogo"] | null;
         };
         ChangeCompanyStatusRequest: {
             /** @enum {string} */
@@ -2697,6 +2863,19 @@ export interface components {
             /** @enum {string} */
             role: "CUSTOMER" | "AGENT" | "ADMIN";
         };
+        PublicBranding: {
+            /** @description The values made from the accent color; null without one, and the app's own colors apply. */
+            colors: components["schemas"]["AccentColors"] | null;
+            /** @description 1 to 50 characters; `popdesk` until an admin changes it (S9-AC-05). */
+            displayName: string;
+            logos: components["schemas"]["PublicBrandingLogos"];
+        };
+        PublicBrandingLogos: {
+            /** @description The same for the dark theme; null without a logo. */
+            dark: string | null;
+            /** @description `/api/public/branding/logos/{theme}?v={fingerprint}` for the light theme; null without a logo. */
+            light: string | null;
+        };
         RequestPasswordResetRequest: {
             /** @description Leading and trailing whitespace and case are ignored. */
             email: string;
@@ -2951,6 +3130,16 @@ export interface components {
             /** @description What the SMTP server answered, as plain text of up to 500 characters, with line breaks but no other control characters; show it as text, never as markup. The address the email went to is masked after its first character, and the SMTP user name and password are replaced by `***`. null when the server gave no answer: when the email was taken, or when the server could not be reached. */
             serverReply: string | null;
         };
+        ThemeColors: {
+            /** @description Text, links, and the main button. */
+            accent: string;
+            /** @description The main button under the pointer. */
+            accentHover: string;
+            /** @description A light background of the accent, for example the chosen row. */
+            accentSubtle: string;
+            /** @description Text on `accent`: the theme's background color. */
+            onAccent: string;
+        };
         TrashedIssue: {
             companyCode: string;
             companyName: string;
@@ -2979,6 +3168,17 @@ export interface components {
         UpdateAccountRequest: {
             /** @description 1 to 50 characters. */
             name?: string;
+        };
+        UpdateBrandingRequest: {
+            /** @description `#RRGGBB`, either letter case, kept in capitals; null for the app's own colors (S9-AC-10, S9-AC-11). */
+            accent: string | null;
+            /** @description 1 to 50 characters after trimming and NFC; no line breaks, control characters, or direction marks (S9-AC-09). */
+            displayName: string;
+            /**
+             * Format: int64
+             * @description The `version` of the branding as the caller read it (S9-AC-08).
+             */
+            version: number;
         };
         UpdateCommentRequest: {
             /** @description Markdown, 1 to 4,000 characters. `null` is refused. */
@@ -3476,11 +3676,11 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
-                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG" | "SLA_POLICY";
+                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG" | "SLA_POLICY" | "BRANDING";
                 /** @description Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account. */
                 targetAccountId?: number;
                 /** @description Only entries whose target names this customer company (`code` of the target). */
@@ -3544,11 +3744,11 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
-                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG" | "SLA_POLICY";
+                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG" | "SLA_POLICY" | "BRANDING";
                 /** @description Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account. */
                 targetAccountId?: number;
                 /** @description Only entries whose target names this customer company (`code` of the target). */
@@ -3624,11 +3824,11 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
-                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG" | "SLA_POLICY";
+                targetType?: "ACCOUNT" | "COMPANY" | "DATABASE" | "AUDIT_LOG" | "SLA_POLICY" | "BRANDING";
                 /** @description Only entries whose target names this account (`accountId` of the target). Without `targetType` this also finds a company's membership and assignment entries of the account. */
                 targetAccountId?: number;
                 /** @description Only entries whose target names this customer company (`code` of the target). */
@@ -3733,6 +3933,295 @@ export interface operations {
             };
             /** @description `AUDIT_VERIFICATION_RUNNING`: a check is already running (S1B-AC-18). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getBranding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The branding. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Branding"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, agents too (S9-AC-35). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateBranding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBrandingRequest"];
+            };
+        };
+        responses: {
+            /** @description The branding as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Branding"];
+                };
+            };
+            /** @description `INVALID_INPUT`, nothing changed; `fields` lists all: `displayName` empty after trimming (`REQUIRED`), only whitespace (`BLANK`), over 50 characters (`TOO_LONG`), or with a line break, a control character, or a direction mark (`INVALID_FORMAT`, S9-AC-09); `accent` not `#` and six hexadecimal digits (`INVALID_FORMAT`, S9-AC-10) or a color whose made values miss 4.5:1 on a theme's backgrounds (`LOW_CONTRAST`, S9-AC-11); `version` missing (`REQUIRED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, agents too (S9-AC-35). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `VERSION_CONFLICT`: `version` is not the branding's current one, for example because another admin saved first; nothing changed, even when the values are the ones it has (S9-AC-08). Read the branding again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    previewAccent: {
+        parameters: {
+            query?: {
+                /** @description `#RRGGBB`, either letter case; the `#` is sent as `%23`. */
+                color?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The made values. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccentPreview"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `color` missing (`REQUIRED`) or not `#` and six hexadecimal digits (`INVALID_FORMAT`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, agents too (S9-AC-35). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    uploadBrandingLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description `light` or `dark`. */
+                theme: "light" | "dark";
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The logo as stored. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandingLogo"];
+                };
+            };
+            /** @description `UNSUPPORTED_IMAGE`: not one of the three formats by its first bytes (an SVG, a GIF, or an HTML file named `.png` too), or it cannot be decoded. `IMAGE_TOO_LARGE`: width times height is over 25 million pixels for PNG and JPEG, 12 million for WebP, as for a profile photo (S9-AC-16). `INVALID_INPUT`: no `file` part (`REQUIRED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, agents too (S9-AC-35). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: `theme` is not `light` or `dark`. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: the file is over 512 KB (524,288 bytes, S9-AC-16). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `RATE_LIMITED`: more than 10 logo uploads in 60 seconds, refused ones too; counted apart from profile photos (S9-AC-19). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `SERVER_BUSY`: 2 images, logos and profile photos together, are being decoded; try again after `Retry-After` (S9-AC-19). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteBrandingLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description `light` or `dark`. */
+                theme: "light" | "dark";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The theme has no logo now. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, agents too (S9-AC-35). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: `theme` is not `light` or `dark`. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8520,6 +9009,91 @@ export interface operations {
             };
             /** @description `RESTORE_LINK_CONFLICT`: with its links the issue would break the link rules (LINK-2: over 50 links, or a duplicate chain); it stays in the trash and nothing changed. `issueKeys` lists the keys of the other issues of the links at fault (S7A-AC-24). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPublicBranding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The branding. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBranding"];
+                };
+            };
+            /** @description `SETUP_REQUIRED`: there is no first admin yet. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getBrandingLogo: {
+        parameters: {
+            query?: {
+                /** @description The fingerprint the address carries; with it the logo may be kept a year. */
+                v?: string;
+            };
+            header?: {
+                /** @description The `ETag` of the copy the caller has. */
+                "If-None-Match"?: string;
+            };
+            path: {
+                /** @description `light` or `dark`. */
+                theme: "light" | "dark";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The logo, with its `ETag`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description The logo still has the `ETag` sent in `If-None-Match`. No body. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            /** @description `NOT_FOUND`: the theme has no logo, or `theme` is not `light` or `dark`. The logo of the other theme is never given instead; `getPublicBranding` already points both themes at the one there is (S9-AC-03). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `SETUP_REQUIRED`: there is no first admin yet. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
