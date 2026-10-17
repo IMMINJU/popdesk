@@ -280,7 +280,7 @@ The staff issue list also takes `sort`. Every order ends with a key that is uniq
 
 `dueDate` is the due date people set on an issue (DUE-1); `slaDue` is the due time popdesk works out from the SLA policy. They are different values.
 
-The staff issue list also takes `sla`: `breached` for issues with a running SLA goal past its due time, `warning` for issues with one past 80% of the goal and none breached. An issue counts by the worse of its two running goals. Issues not under SLA, and issues whose SLA clocks are stopped, match neither. Any other value is 400 with `sla` `UNKNOWN_VALUE`. The customer issue list takes neither `sla` nor `sort=slaDue`: customers never see SLA.
+The staff issue list also takes `sla`: `breached` for issues with a running SLA goal past its due time, `warning` for issues with one past 80% of the goal and none breached. A goal whose time was used up when its clock stopped is past its due time from the moment the issue is reopened or restored. An issue counts by the worse of its two running goals. Issues not under SLA, and issues whose SLA clocks are stopped, match neither. Any other value is 400 with `sla` `UNKNOWN_VALUE`. The customer issue list takes neither `sla` nor `sort=slaDue`: customers never see SLA.
 
 Any other value of `sort` is 400 with `sort` `UNKNOWN_VALUE`. `sort` changes only the order: the filters, `totalElements`, and `totalPages` stay the same. Lists that do not take `sort` answer it with `UNKNOWN_PARAMETER` (the customer issue list, for example).
 

@@ -76,13 +76,10 @@
 
 ## 10. 알림 (INBOX, MAIL, HOOK)
 
-→ 알림 표, INBOX-1~4, MAIL-1~5, HOOK-1은 `../archive/4-talk/rules.md`로 옮김(4번 묶음). 아래는 뒤 묶음의 것이다: 표의 줄은 6번(작업 담당자, 연결)과 8번(SLA), MAIL-7은 12번이다(MAIL-6은 `../archive/4b-delivery/rules.md`로 옮김). MAIL-1의 `Reply-To`와 MAIL-4의 휴지통 확인도 12번과 7번에서 채운다.
+→ 알림 표, INBOX-1~4, MAIL-1~5, HOOK-1은 `../archive/4-talk/rules.md`로 옮김(4번 묶음). SLA 줄 셋은 `../archive/8b-sla-alerts/rules.md`로 옮김(8b 묶음). 아래는 뒤 묶음의 것이다: 표의 줄은 6번(작업 담당자, 연결), MAIL-7은 12번이다(MAIL-6은 `../archive/4b-delivery/rules.md`로 옮김). MAIL-1의 `Reply-To`와 MAIL-4의 휴지통 확인도 12번과 7번에서 채운다.
 
 | 일 | 고객(올린 사람) | 상담 쪽 | 팀 웹훅 |
 |---|---|---|---|
-| SLA 목표의 80%가 지남 | – | 담당자(없거나 볼 수 없으면 그 고객사 배정 상담원 전부, ISSUE-11)에게 알림함 | – |
-| SLA 목표를 넘김 | – | 담당자(없거나 볼 수 없으면 그 고객사 배정 상담원 전부)와 관리자 전부에게 알림함 + 메일 | 보냄 |
-| SLA 재계산으로 상태가 바뀜 | – | 관리자 전부에게 요약 알림함 한 건 (SLA-5) | – |
 | 작업 담당자가 바뀜 | – | 새 작업 담당자에게 알림함 + 메일 | – |
 | 연결된 문의가 `RESOLVED`·`CLOSED`가 됨 | – | 이어진 문의의 담당자에게 알림함 (LINK-6) | – |
 
@@ -111,7 +108,7 @@
 | ID | 규칙 |
 |---|---|
 | STATS-1~3 | → `../archive/7b-stats/rules.md`로 옮김(7b 묶음) |
-| STATS-4 | SLA가 켜져 있으면 고객사마다 기간(기본 최근 30일) 안의 첫 응답·해결 시간 중앙값과 목표 달성률을 함께 보인다(SLA-7) |
+| STATS-4 | → `../archive/8b-sla-alerts/rules.md`로 옮김(8b 묶음) |
 
 ## 13. 개인정보 (PII)
 
@@ -154,9 +151,8 @@
 
 | ID | 규칙 |
 |---|---|
-| SLA-1~4, 6, 8 | → `../archive/8a-sla/rules.md`로 옮김(8a 묶음). SLA-5·7은 8a와 8b가 나눠 가져 여기 남긴다(8a `rules.md`에도 적음) |
-| SLA-5 | 상태: 목표마다 `ok`, `warning`(목표 시간의 80%가 지남), `breached`(넘김), `met`(기한 안에 멈춤), `missed`(넘긴 뒤 멈춤). 1분마다 도는 작업이 `warning`·`breached`로 바뀐 문의를 찾아 한 번씩만 알린다(10절 표). 휴지통의 문의는 알리지 않는다. 다시 계산(SLA-4)으로 바뀐 상태는 하나씩 알리지 않고, 다시 계산이 끝나면 관리자에게 요약 알림함 한 건(넘김·곧 넘김이 된 수, 풀린 수)만 남긴다. 다시 계산으로 기한이 늘어 상태가 앞 단계로 돌아가면(`breached`→`warning`·`ok`, `warning`→`ok`) 지금 상태보다 뒤 단계의 "알렸음" 표시를 지운다. 그 뒤 다시 그 단계가 되면 다시 알린다 |
-| SLA-7 | 통계(STATS-4): 고객사마다 기간 안에 멈춘 문의의 첫 응답·해결 시간 중앙값과 목표 달성률(`met` ÷ (`met`+`missed`))을 보인다 |
+| SLA-1~4, 6, 8 | → `../archive/8a-sla/rules.md`로 옮김(8a 묶음) |
+| SLA-5, 7 | → 8a와 8b가 나눠 가졌다. `../archive/8a-sla/rules.md`와 `../archive/8b-sla-alerts/rules.md`로 옮김 |
 
 ## 17. 브랜딩 (BRAND)
 
