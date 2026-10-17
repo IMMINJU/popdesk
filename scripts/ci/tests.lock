@@ -236,6 +236,7 @@ e1d08cbd94d049b3b2dd74c30da15a37399e6dd68318d84dd59cb2e5f8f3c503  server/src/tes
 3fa96523670b6fa17cc0a84b5c3d88a130db36c07557e0cf90c940187974448a  server/src/test/java/io/popdesk/helpdesk/audit/AuditRetentionPeriodTest.java
 f4de80d0f25bd2de23c99b4cc5050ce86d54d7590e14d59e8731712c3008e420  server/src/test/java/io/popdesk/helpdesk/audit/AuditValuesTest.java
 5564884d48fbbba93be3f96f3ed8d37e747c61712f190224898a2d28bbdc32c8  server/src/test/java/io/popdesk/helpdesk/audit/AuditVerifyScriptTest.java
+88ff3e7081298fd256b62378c7f3f81f2c8a9400183e1da5087b0d8584535085  server/src/test/java/io/popdesk/helpdesk/branding/AccentPaletteTest.java
 e500e9a5f26f41aa893e3ae74fdcde2f6785680ff7144ed2017f83874a2470a9  server/src/test/java/io/popdesk/helpdesk/issue/SearchTextTest.java
 52d1f2750a273e4e0d538ae61bae4c11de51becfba3f233e8d88ce9a7e982267  server/src/test/java/io/popdesk/helpdesk/label/LabelColorTest.java
 368e1964e9dafb3d64699ec55549a4b9371b4d074807fe84da67bcb34b642338  server/src/test/java/io/popdesk/helpdesk/label/LabelNameTest.java
