@@ -11,3 +11,4 @@ server io/popdesk/branding/BrandingPreviewTest.java
 server io/popdesk/branding/BrandingPublicTest.java
 server io/popdesk/branding/BrandingSchemaTest.java
 server io/popdesk/branding/BrandingUpdateTest.java
+server io/popdesk/project/NoStoreTest.java
