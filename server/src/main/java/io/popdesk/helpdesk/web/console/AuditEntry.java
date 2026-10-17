@@ -15,12 +15,15 @@ public record AuditEntry(
                 + "the database may hold another name, so this is a plain string.") String action,
         AuditActor actor,
         @Schema(description = "What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, "
-                + "`DATABASE`, `AUDIT_LOG`, `SLA_POLICY`) and the keys that name it (`accountId`, `code`). An issue deleted, "
+                + "`DATABASE`, `AUDIT_LOG`, `SLA_POLICY`, `BRANDING`) and the keys that name it (`accountId`, `code`). An issue deleted, "
                 + "restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is "
                 + "`{\"type\": \"COMPANY\", \"code\": …, \"issueKey\": …}`, with the issue's company and key and "
                 + "never its title, and `changes` is null (S7A-AC-07). A change of the SLA policy "
                 + "(`SLA_POLICY_CHANGED`) is `{\"type\": \"SLA_POLICY\", \"version\": …}` with the new version "
-                + "(S8A-AC-06).", nullable = true) Map<String, Object> target,
+                + "(S8A-AC-06). A change of the display name or the accent color (`BRANDING_CHANGED`) is "
+                + "`{\"type\": \"BRANDING\"}` (S9-AC-20); a new or removed logo (`BRANDING_LOGO_CHANGED`) is "
+                + "`{\"type\": \"BRANDING\", \"theme\": …}` with `LIGHT` or `DARK` (S9-AC-21).", nullable = true)
+                Map<String, Object> target,
         @Schema(description = "What changed, as stored. A changed value is `{\"from\": ..., \"to\": ...}` under "
                 + "its field name; a value set for the first time is the value itself. Null when the action "
                 + "changes no value.", nullable = true) Map<String, Object> changes,
