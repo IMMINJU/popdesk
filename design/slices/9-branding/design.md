@@ -131,7 +131,7 @@ create table branding_logo (
 | 파일 | 까닭 |
 |---|---|
 | `web/console/src/screens/adminOnly.1b.test.tsx:14`, `web/console/src/app/layout.inbox.test.tsx:54` | 관리자 메뉴 전체 목록 끝에 "브랜딩" |
-| `web/console/src/screens/C12AuditLog.8a.test.tsx:37`, `web/console/src/__tests__/console1b.ts:24-81`(`KIND_GROUPS`) | "설정" 묶음에 새 종류 둘 |
+| `web/console/src/screens/C12AuditLog.8a.test.tsx:37`, `web/console/src/__tests__/console1b.ts:24-81`(`KIND_GROUPS`), `web/console/src/app/auditWords.words.test.ts:43-83`(`others` 배열) | "설정" 묶음에 새 종류 둘 |
 | `web/console/src/__tests__/console.ts`, `web/portal/src/__tests__/portal.ts` | 기본 가짜 서버에 공개 브랜딩(기본 값), `beforeEach`에서 `localStorage.clear()`와 `documentElement`의 `style` 지우기 |
 | `web/console/src/__tests__/storyFetch.ts:140-159` | 공개 브랜딩에 기본 답(지금은 모르는 GET에 목록 꼴 200) |
 | `web/packages/api/src/testing/contract.test.ts` | 새 스키마 견본 |
