@@ -349,6 +349,8 @@
 
 .pd-audit-dates {
   display: flex;
+  /* Below two fields' width (360px) 까지 goes under 부터. */
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-3);
 }
