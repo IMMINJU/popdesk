@@ -246,6 +246,25 @@ class AuditVerifyRechainTest {
                 .doesNotContain("BROKEN");
     }
 
+    @Test
+    @DisplayName("S10A-AC-24 an AUDIT_RECHAINED that a later range computed again (its prevHash is no longer its "
+            + "headHash.to) is read as part of that later range, and the file is whole")
+    void rechainedEntryInsideALaterRange(@TempDir Path directory) throws IOException, InterruptedException {
+        Versions v = versions();
+        List<ObjectNode> lines = concat(Versions.seqs(v.v0(), 1, 2), Versions.seqs(v.v1(), 3, 5),
+                Versions.seqs(v.v2(), 6, 9));
+        JsonNode newR1 = lines.get(5);
+
+        Run run = verify(directory, lines);
+
+        assertThat(newR1.get("prevHash").asString()).as("prevHash of the AUDIT_RECHAINED computed again")
+                .isNotEqualTo(newR1.path("changes").path("headHash").path("to").asString());
+        assertThat(run.exit()).as("exit code with the AUDIT_RECHAINED of the later version: %s", run.output())
+                .isZero();
+        assertThat(run.output()).contains("rechained 2-5 at 6").contains("rechained 3-7 at 8")
+                .doesNotContain("BROKEN");
+    }
+
     // Broken
 
     static Stream<Arguments> breaks() {
