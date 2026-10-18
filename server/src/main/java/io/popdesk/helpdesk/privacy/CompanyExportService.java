@@ -34,6 +34,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,6 +83,13 @@ public class CompanyExportService implements InitializingBean, SmartLifecycle {
     static final String INTERRUPTED = "INTERRUPTED";
 
     private static final Logger log = LoggerFactory.getLogger(CompanyExportService.class);
+
+    /**
+     * The name of a file an export writes: {@code {id}.zip}, or {@code {id}.zip.part} while it is written. Only such
+     * files are deleted when the app starts, so a folder shared with other files loses none of them.
+     */
+    private static final Pattern EXPORT_FILE =
+            Pattern.compile("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}\\.zip(\\.part)?");
 
     /**
      * An export as the API gives it: {@code state} is {@code EXPIRED} for a {@code DONE} export whose ZIP is over 24
@@ -281,8 +289,8 @@ public class CompanyExportService implements InitializingBean, SmartLifecycle {
 
     /**
      * Ends the exports of the last run, once, when the app starts (S10B-AC-06, acceptance.md 5절 15): every export
-     * still {@code RUNNING} becomes {@code FAILED} with {@code INTERRUPTED}; of the files in the export folder only the
-     * ZIP of each {@code DONE} export stays; and a {@code DONE} export whose ZIP is gone becomes {@code EXPIRED}. A
+     * still {@code RUNNING} becomes {@code FAILED} with {@code INTERRUPTED}; of the export files in the export folder
+     * ({@link #EXPORT_FILE}) only the ZIP of each {@code DONE} export stays; and a {@code DONE} export whose ZIP is gone becomes {@code EXPIRED}. A
      * folder that is not there yet is made by the first export.
      */
     @Override
@@ -296,7 +304,8 @@ public class CompanyExportService implements InitializingBean, SmartLifecycle {
             done.forEach(id -> kept.add(CompanyExportWriter.zipOf(folder, id).getFileName().toString()));
             try (Stream<Path> files = Files.list(folder)) {
                 for (Path file : files.toList()) {
-                    if (!kept.contains(file.getFileName().toString()) && Files.isRegularFile(file)) {
+                    String name = file.getFileName().toString();
+                    if (EXPORT_FILE.matcher(name).matches() && !kept.contains(name) && Files.isRegularFile(file)) {
                         Files.deleteIfExists(file);
                         deleted++;
                     }
