@@ -65,8 +65,15 @@ const ACCOUNT_ERRORS: Record<string, string> = {
   ANONYMIZATION_RUNNING: '다른 익명화가 진행 중입니다. 잠시 뒤 다시 시도해 주세요.',
 };
 
-/** The 익명화 dialog says OWN_ACCOUNT in its own words: the shared text is about 정지 and 역할. */
-const ANONYMIZE_ERRORS: Record<string, string> = { ...ACCOUNT_ERRORS, OWN_ACCOUNT: '자기 계정은 익명화할 수 없습니다.' };
+/**
+ * The 익명화 dialog says OWN_ACCOUNT in its own words: the shared text is about 정지 and 역할.
+ * AUDIT_CHAIN_BROKEN comes only from 익명화; its `brokenSeq` is not shown (S10A-AC-37).
+ */
+const ANONYMIZE_ERRORS: Record<string, string> = {
+  ...ACCOUNT_ERRORS,
+  OWN_ACCOUNT: '자기 계정은 익명화할 수 없습니다.',
+  AUDIT_CHAIN_BROKEN: '감사 로그의 사슬이 끊겨 있어 익명화하지 않았습니다. 감사 로그에서 무결성 확인을 돌려 보세요.',
+};
 
 /** The 503 of 정보 내보내기, with the seconds of `Retry-After`. */
 function exportBusyText(seconds: number | null): string {
