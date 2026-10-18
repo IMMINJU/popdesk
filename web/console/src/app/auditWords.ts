@@ -25,6 +25,9 @@ export const KIND_GROUPS: readonly KindGroup[] = [
       ACCOUNT_PASSWORD_RESET: '비밀번호 초기화',
       PASSWORD_CHANGED: '비밀번호 바꾸기',
       PASSWORD_RESET_COMPLETED: '비밀번호 재설정',
+      // Slice 10a (10a design.md 0절 12): 익명화 and the audit chain it computes again.
+      ACCOUNT_ANONYMIZED: '익명화',
+      AUDIT_RECHAINED: '감사 사슬 다시 계산',
     },
   },
   {
@@ -70,7 +73,7 @@ export const KIND_GROUPS: readonly KindGroup[] = [
     },
   },
   { key: 'OPERATION', name: '운영 명령', kinds: { ADMIN_PASSWORD_RESET: '관리자 비밀번호 복구', BACKUP_CREATED: '백업', DATABASE_RESTORED: '복원' } },
-  { key: 'EXPORT', name: '내보내기', kinds: { AUDIT_EXPORTED: '감사 로그 내보내기' } },
+  { key: 'EXPORT', name: '내보내기', kinds: { AUDIT_EXPORTED: '감사 로그 내보내기', ACCOUNT_EXPORTED: '계정 정보 내보내기' } },
   // Slice 8a: settings of the whole installation, before 보내기 (8a-sla screens.md 4절).
   {
     key: 'SETTINGS',
@@ -178,6 +181,10 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
   displayName: '표시 이름',
   accent: '강조색',
   logo: '로고',
+  // Slice 10a: the part of the chain 익명화 computed again (AUDIT_RECHAINED).
+  fromSeq: '시작 번호',
+  toSeq: '끝 번호',
+  headHash: '마지막 hash',
 };
 
 const LOGO_THEME_WORDS: Readonly<Record<string, string>> = { LIGHT: '밝은 테마', DARK: '어두운 테마' };
