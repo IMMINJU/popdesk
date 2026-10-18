@@ -50,7 +50,7 @@
 | S10A-AC-13 | If 이미 익명 계정이면, then the system shall 익명화, 이름 고치기, 역할 바꾸기, 정지 해제, 비밀번호 초기화, 초대 다시 보내기·링크 복사, 고객사에 더하기, 그 계정의 소속 요청 승인에 400 `ACCOUNT_ANONYMIZED`로 답한다(이 검사가 다른 400보다 먼저다). 정지는 지금처럼 200이다. (PII-4, 5절 4) |
 | S10A-AC-14 | When `clearAssignments=true`로 익명화하면, the system shall 정지의 담당 비우기(S3-AC-31)와 같이 그 계정이 담당인 열린 문의와 `OPEN` 작업의 담당자를 같은 트랜잭션에서 비운다. 없으면 담당자는 그대로 남고 "담당자가 볼 수 없음"이다. (ACCT-7) |
 | S10A-AC-15 | When 익명화한 계정의 옛 이메일로 초대하면, the system shall 새 계정을 만든다(옛 계정과 따로, 옛 계정의 문의·소속을 넘기지 않는다). (PII-5) |
-| S10A-AC-16 | When 익명화하면, the system shall 감사 `ACCOUNT_ANONYMIZED` 하나를 남긴다: 대상 `{type: ACCOUNT, accountId}`, 바뀐 값은 담당을 비웠을 때만 `clearedIssues`(정지의 담당 비우기와 같은 값)이고, 옛 이름·이메일은 넣지 않는다. (AUDIT-1, PII-5) |
+| S10A-AC-16 | When 익명화하면, the system shall 감사 `ACCOUNT_ANONYMIZED` 하나를 남긴다: 대상 `{type: ACCOUNT, accountId}`, 바뀐 값은 정지의 담당 비우기와 같다(비웠을 때 `clearedIssues`, 비운 작업이 있으면 `clearedTasks`). 옛 이름·이메일은 넣지 않는다. (AUDIT-1, PII-5) |
 
 ### 2.3 감사 사슬
 
@@ -82,7 +82,7 @@
 | S10A-AC-29 | When 관리자가 "정보 내보내기"를 고르면, the system shall 파일을 내려받는다(감사 내보내기와 같은 꼴: 먼저 확인하고 실패하면 그 자리에 까닭을 보인다). (PII-3) |
 | S10A-AC-30 | When 관리자가 "익명화"를 고르면, the system shall 위험 확인 대화상자에 되돌릴 수 없다는 것과 바뀌는 것(이름·이메일, 사진·세션 지움, 쓴 글은 남음), 그 사람이 담당인 열린 문의·작업 수와 담당 비우기 선택(정지와 같은 꼴)을 보이고, 그 사람의 이메일을 쳐 넣어야(앞뒤 공백을 자르고 대소문자는 가리지 않는다) "익명화" 단추가 눌린다. (PII-4, ACCT-7, 5절 5) |
 | S10A-AC-31 | When 익명화가 끝나면, the system shall 목록을 다시 읽어 그 줄을 익명 이름, 익명 이메일, "익명화됨" 표시로 바꾸고 "익명화했습니다"를 알린다(비운 담당이 있으면 정지와 같은 꼴로 수를 덧붙인다). 400·409면 대화상자 안에 까닭을 보이고 닫지 않는다. (PII-4) |
-| S10A-AC-36 | The system shall C-9 고객사 상세의 고객 찾기에 익명 계정을 보이지 않는다. (PII-4, S10A-AC-13) |
+| S10A-AC-36 | When 계정 목록을 `anonymized=false`로 부르면, the system shall 익명 계정을 빼고 준다(값이 없으면 거르지 않는다). C-9 고객사 상세의 고객 찾기는 이 값으로 불러 익명 계정을 보이지 않는다. (PII-4, S10A-AC-13) |
 | S10A-AC-32 | The system shall 구성원 목록에서 익명 계정을 "익명화됨" 표시로 정지 계정과 구분한다(상태 필터는 지금처럼 `SUSPENDED`에 든다). (PII-4) |
 
 ### 2.6 마이그레이션과 견본
