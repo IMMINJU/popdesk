@@ -14,4 +14,7 @@ public record Account(
         AccountStatus status,
         OffsetDateTime createdAt,
         @Schema(description = "When the profile photo last changed; null without a photo (`getPhoto`).",
-                nullable = true) OffsetDateTime photoUpdatedAt) {}
+                nullable = true) OffsetDateTime photoUpdatedAt,
+        @Schema(description = "The account was anonymized (PII-4): `name` and `email` are the "
+                + "anonymous values, `status` is `SUSPENDED`, and nothing brings it back (S10A-AC-13).")
+                boolean anonymized) {}

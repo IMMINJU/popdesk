@@ -190,7 +190,8 @@ class ConsoleCompanyController {
             description = "The customer, invited ones included, sees the company and its public issues from the "
                     + "next request. Adding again is 200 too (S1A-AC-50).")
     @ApiResponse(responseCode = "200", description = "A member.")
-    @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: the account is not a customer (field "
+    @ApiResponse(responseCode = "400", description = "`ACCOUNT_ANONYMIZED`: the account is anonymized; checked "
+            + "before the other 400s (S10A-AC-13). `INVALID_INPUT`: the account is not a customer (field "
             + "`accountId` `UNKNOWN_VALUE`) (S1A-AC-51). `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` "
             + "(S1A-AC-48).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")

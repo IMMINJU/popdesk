@@ -74,7 +74,8 @@ class ConsoleInvitationController {
                     + "again (S1A-AC-40). Without SMTP the response carries the link instead, once. The response "
                     + "has `Cache-Control: no-store`.")
     @ApiResponse(responseCode = "200", description = "Sent again.")
-    @ApiResponse(responseCode = "400", description = "`INVITATION_ALREADY_ACCEPTED`: the account accepted its "
+    @ApiResponse(responseCode = "400", description = "`ACCOUNT_ANONYMIZED`: the account is anonymized; checked "
+            + "before the other 400s (S10A-AC-13). `INVITATION_ALREADY_ACCEPTED`: the account accepted its "
             + "invitation before (S1A-AC-41).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`.")
@@ -104,6 +105,8 @@ class ConsoleInvitationController {
             description = "Only without SMTP. Makes a new token, so the previous link stops working, and returns the "
                     + "link once (S0-AC-38). The response has `Cache-Control: no-store` (S0-AC-101).")
     @ApiResponse(responseCode = "200", description = "The new link.")
+    @ApiResponse(responseCode = "400", description = "`ACCOUNT_ANONYMIZED`: the account is anonymized; checked "
+            + "before the 404 for an account that is not `INVITED` (S10A-AC-13).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: SMTP is configured (S0-AC-39), or no `INVITED` "

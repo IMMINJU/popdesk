@@ -113,9 +113,10 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 400 | `CURRENT_PASSWORD_WRONG` | The current password sent with a password change is wrong |
 | 400 | `UNSUPPORTED_IMAGE` | The profile photo or the branding logo is not a PNG, JPEG, or WebP file, judged by its content (an SVG is not taken), or it cannot be decoded |
 | 400 | `IMAGE_TOO_LARGE` | The profile photo or the branding logo has too many pixels: width times height over 25 million for PNG and JPEG, 12 million for WebP |
-| 400 | `OWN_ACCOUNT` | An admin tries to suspend their own account or change their own role, or a customer manager tries to remove themselves from the company |
+| 400 | `OWN_ACCOUNT` | An admin tries to suspend, anonymize, or change the role of their own account, or a customer manager tries to remove themselves from the company |
 | 400 | `CUSTOMER_ROLE_FIXED` | A role change to `CUSTOMER`, or of a customer's account. Only `AGENT` and `ADMIN` change into each other |
-| 400 | `LAST_ADMIN` | The suspension or role change would leave no `ACTIVE` admin |
+| 400 | `LAST_ADMIN` | The suspension, anonymization, or role change would leave no `ACTIVE` admin |
+| 400 | `ACCOUNT_ANONYMIZED` | The account is anonymized, so it cannot be anonymized again, renamed, given another role, reactivated, have its password reset, be sent its invitation or a new invitation link, be added to a company, or have its membership request approved. Checked before the other 400s of the request. Suspending it is still 200. Nothing changed |
 | 400 | `ACCOUNT_NOT_ACTIVE` | The account is not `ACTIVE`, so its password cannot be reset by an admin; or it never accepted its invitation, so it cannot be suspended (cancel the invitation instead) |
 | 400 | `INVITATION_NOT_ACCEPTED` | The account never accepted its invitation, so its suspension cannot be lifted. Send the invitation again instead |
 | 400 | `INVITATION_ALREADY_ACCEPTED` | The account accepted its invitation before, so the invitation cannot be sent again or cancelled |
@@ -161,11 +162,12 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 409 | `VERSION_CONFLICT` | The `version` sent with an edit of an issue is not the issue's current one: someone changed the issue in between. Or the `version` sent with a change of the SLA policy (`PUT /api/console/sla-policy`) is not the policy's current one: another admin changed it, or popdesk made a version for a new time zone; this is 409 also when the values sent are the ones the policy has now. Or the `version` sent with a change of the branding (`PUT /api/console/branding`) is not its current one, also with the values it has now; a new or removed logo does not change it. Nothing changed. Read the issue, the policy, or the branding again |
 | 409 | `IDEMPOTENCY_KEY_REUSED` | The account used this `Idempotency-Key` in the last 24 hours for a filing with other content. Nothing is created |
 | 409 | `AUDIT_VERIFICATION_RUNNING` | A check of the audit log's hash chain is already running. One runs at a time |
+| 409 | `ANONYMIZATION_RUNNING` | Another account is being anonymized. One anonymization runs at a time. Nothing changed |
 | 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit, a profile photo is over 2 MB (2,097,152 bytes), a branding logo is over 512 KB (524,288 bytes), or the JSON of a new issue (the body, or the `issue` part of a multipart request) is over 256 KB (262,144 bytes). The headers of one multipart part, which carry the file name, are limited to 4 KB: a file name far over 255 characters gets this 413, not the 400 `TOO_LONG`. A proxy in front may answer 413 first with its own body |
 | 429 | `RATE_LIMITED` | Over a rate limit (`COM-8`). `Retry-After` says when to try again |
 | 500 | `INTERNAL_ERROR` | An unexpected server error |
 | 501 | `NOT_IMPLEMENTED` | The endpoint is in the contract but not built yet. Only before a slice is finished; never in a release |
-| 503 | `SERVER_BUSY` | 16 uploads, or 16 downloads, are already running, 2 images (profile photos and branding logos together) are already being decoded, or 2 audit log exports are already running. `Retry-After` says when to try again |
+| 503 | `SERVER_BUSY` | 16 uploads, or 16 downloads, are already running, 2 images (profile photos and branding logos together) are already being decoded, 2 audit log exports are already running, or 2 account exports are. `Retry-After` says when to try again |
 | 503 | `SETUP_REQUIRED` | The first admin could not be created, or `POPDESK_LOCALE` or `POPDESK_TIMEZONE` is not a value popdesk takes, so the app takes no requests yet. The log says what to set |
 
 A request to a host that is neither the portal host nor the console host gets 404 with a plain text note, not this body.
@@ -416,14 +418,67 @@ Every audit entry has a place in one chain and a hash over its values and the en
 - A change of the SLA policy (`SLA_POLICY_CHANGED`) has the target `{"type": "SLA_POLICY", "version": n}`, the new version. Its `changes` hold each changed part (`targets`, `hours`, `holidays`) as whole lists, before and after, in the shapes of the `SlaPolicy` response: times as `"HH:MM"` text and days as `"YYYY-MM-DD"` text. A version popdesk makes for a new time zone leaves no entry.
 - A change of the branding's display name or accent color (`BRANDING_CHANGED`) has the target `{"type": "BRANDING"}`. Its `changes` hold only what changed, `displayName` and `accent` (the `#RRGGBB` text, or `null` for the apps' own colors), always as `{"from": …, "to": …}`: the installation starts with a branding, so no value is set for the first time. Saving what the branding has already leaves no entry.
 - A new or removed logo (`BRANDING_LOGO_CHANGED`) has the target `{"type": "BRANDING", "theme": "LIGHT"}` or `"DARK"`, and in `changes` `logo` as `{"from": …, "to": …}`: the first 16 characters of the SHA-256 of the stored PNG before and after, or `null` without a logo. The file name and the file are never in it. Uploading the same logo again, and removing a logo that is not there, leave no entry.
+- An account export (`ACCOUNT_EXPORTED`) has the target `{"type": "ACCOUNT", "accountId": n}` and no `changes`. An anonymization (`ACCOUNT_ANONYMIZED`) has the same target; its `changes` are `null`, or, when assignments were cleared, `clearedIssues` and `clearedTasks` as a suspension writes them. Neither holds the account's old name or email.
+- An anonymization computes the chain again ([below](#anonymization-and-the-chain)) and records it as `AUDIT_RECHAINED`, the entry right before its `ACCOUNT_ANONYMIZED`: the target `{"type": "AUDIT_LOG"}`, and in `changes` `fromSeq` and `toSeq`, the first and the last entry computed again, and `headHash` as `{"from": …, "to": …}`, the `hash` of entry `toSeq` before and after. So its `seq` is `toSeq + 1`, and its `prevHash` is `headHash.to`.
+- A person in an entry is the actor `{"accountId", "name", "email"}`, or the target's `accountId` with that account's name and email at the top of `changes` as `name` and `email` (text, or `{"from", "to"}`). A new kind of entry that puts another person into `changes` puts them there as `{"accountId": n, "name": "…", "email": "…"}`, never as a name or an email alone, so that an anonymization can find them by account ID.
 - A name once used for `action`, or for a key of an entry, is never renamed: it is part of the hash.
 - After the retention period removed old entries, the chain starts at the first entry that is left. Its `prevHash` is the `hash` of the last entry removed, which popdesk keeps as the chain's starting point; the integrity check starts there.
 
 The integrity check (`verifyAuditLog`) computes the same from the database and also compares the last entry with the recorded end of the chain. It finds a changed entry, a removed entry, and removed last entries. It cannot find a chain that someone with write access to the database computed again from start to end; keep the last `hash` of an export somewhere else, or send the entries to another system as they are written ([outside copy](#audit-log-outside-copy)).
 
+### Anonymization and the chain
+
+Anonymizing an account (`anonymizeAccount`) puts the anonymous name and email into every entry of that person: the actor when its `accountId` is the account, and the `name` and `email` at the top of `changes` when the target's `accountId` is the account. Entries are found by account ID only, so another account with the same name is not changed. Nothing else in an entry changes.
+
+The `hash` of every entry from the first changed one (`fromSeq`) to the end of the chain (`toSeq`), and the `prevHash` of every entry after the first, are then computed again by the same rules, in the same transaction; the `AUDIT_RECHAINED` entry records the range. When no entry names the account, nothing is computed again and no `AUDIT_RECHAINED` is written. Entries of the person that join the chain after the anonymization, also ones made just before it and committed after, are written with the anonymous values.
+
+The integrity check afterwards says the chain holds. A copy or an export made before holds the old values and hashes for the entries `fromSeq` to `toSeq`; [`audit-verify.py`](audit-verify.py) reads such a mix as follows (AUDIT-7):
+
+- Each `AUDIT_RECHAINED` entry (seq R, range F to T) is a boundary. Where an entry's `prevHash` is not the `hash` of the entry before it, and the entry is in F to T or is R itself, it is reported as "computed again, seq F-T", not as a break.
+- R's `prevHash` must still be `headHash.to` of its `changes`, and every entry's `hash` must still match its own values and its own `prevHash`.
+- Any other mismatch is a break, as before.
+- The same `seq` twice (delivery is at least once): the same `hash` counts as one entry; a different `hash` is taken only when the `seq` lies in the range of an `AUDIT_RECHAINED` that comes after it, and then the later entry is used.
+- Ranges may overlap; each boundary is checked on its own.
+
+## Account export and anonymization (PII-3, PII-4)
+
+Two admin endpoints under `/api/console/accounts/{accountId}`. Agents get 403, a portal session 401, the portal host 404. Account 0 (popdesk itself) and an unknown ID are 404.
+
+`GET /api/console/accounts/{accountId}/export` streams one JSON file, `application/json`, `Content-Disposition: attachment; filename="popdesk-account-{accountId}.json"`, `Cache-Control: no-store`. `HEAD` answers with the same headers and no body, records nothing, and takes no export place. Two account exports run at a time, counted apart from audit log exports; a third is 503 `SERVER_BUSY` with `Retry-After`. Each export is recorded as `ACCOUNT_EXPORTED`. The file has these fields in this order (`AccountExport` in the contract):
+
+```json
+{
+  "exportedAt": "2026-10-18T03:00:00Z",
+  "account": {"id": 12, "email": "…", "name": "…", "role": "CUSTOMER", "status": "ACTIVE",
+              "locale": "ko", "createdAt": "…", "anonymized": false},
+  "photo": {"contentType": "image/png", "base64": "…"},
+  "issues": [{"key": "ACME-7", "companyCode": "ACME", "title": "…", "content": "…", "status": "CLOSED",
+              "private": false, "createdAt": "…", "closedAt": "…", "deletedAt": null}],
+  "comments": [{"issueKey": "ACME-7", "content": "…", "internal": false, "createdAt": "…", "editedAt": null}],
+  "attachments": [{"issueKey": "ACME-7", "commentId": null, "fileName": "a.png", "size": 1024,
+                   "createdAt": "…"}]
+}
+```
+
+- Times are in the form of [Time and time zone](#time-and-time-zone-time-1). Lists are oldest first, then by ID.
+- `photo` is the stored PNG in Base64, or `null` without one.
+- `issues` are the issues the account is the reporter of, also those staff filed on its behalf; not those it filed for someone else. Issues in the trash are in it with `deletedAt`; purged ones are not.
+- `comments` are the comments it wrote and did not delete, internal ones included, on issues that are not purged. `attachments` are the files it uploaded and did not delete, without their content; temporary images not attached yet are left out.
+- The file holds no other account's ID, name, or email: no assignee, no one who filed an issue on behalf, no mentions, no company names (codes only).
+- An anonymized account is exported the same way, with its anonymous values and `photo` `null`.
+
+`POST /api/console/accounts/{accountId}/anonymize` cannot be undone. It answers 200 with the same body as `suspendAccount` (`SuspendedAccount`), `anonymized` `true`; `clearAssignments=true` clears assignments as a suspension does.
+
+- The name becomes the anonymous name in the installation's language when it runs (`POPDESK_LOCALE`): `Deleted user` for `en`, `삭제된 사용자` for `ko`. It is stored as text and does not change with the language later. The email becomes `deleted-{id}@invalid`, the status `SUSPENDED`. An `INVITED` account is anonymized too.
+- In the same transaction it ends the account's sessions and removes its profile photo, password, sign-in lock, invitation and password reset tokens, the queued emails to it, and its inbox items; it puts the anonymous values into its membership requests and its audit entries ([above](#anonymization-and-the-chain)), and records `AUDIT_RECHAINED` and then `ACCOUNT_ANONYMIZED`. A failure anywhere leaves everything as it was.
+- What the account wrote stays and shows the anonymous name wherever its name is shown.
+- One anonymization runs at a time (409 `ANONYMIZATION_RUNNING`). Own account is 400 `OWN_ACCOUNT`, the last `ACTIVE` admin 400 `LAST_ADMIN`, an anonymized account 400 `ACCOUNT_ANONYMIZED`.
+- An anonymized account cannot come back: every request that would make it usable again is 400 `ACCOUNT_ANONYMIZED` (see the error codes). Its old email can be invited again, which makes a new account with nothing of the old one.
+- The account list and every answer with an `Account` or a `SuspendedAccount` have `anonymized`.
+
 ## Audit log export
 
-`exportAuditLog` gives the entries the filters find, in chain order (`seq`, lowest first), up to the end of the chain as it was when the export started. The hashes are the stored ones; the export never computes them again.
+`exportAuditLog` gives the entries the filters find, in chain order (`seq`, lowest first), up to the end of the chain as it was when the export started. The hashes are the stored ones; the export never computes them again. An export that runs while an account is anonymized holds the chain as it was before.
 
 JSON Lines (`application/x-ndjson`): one JSON object per line, lines end with a line feed.
 
@@ -463,7 +518,8 @@ Authorization: Bearer <AUDIT_FORWARD_TOKEN>
 - The body is the entry with the fields of a JSON Lines export line, described above: `id`, `seq`, `prevHash`, `hash`, `action`, `actor`, `target`, `changes`, `occurredAt`. The values and hashes are the stored ones, read when the request is sent. A receiver can compute `hash` from the body alone, by the rules of the hash chain. Ignore fields you do not know; later versions may add some.
 - The `Authorization` header is there only when `AUDIT_FORWARD_TOKEN` is set.
 - Answer with any `2xx` once the entry is stored. Any other answer, a redirect (it is not followed), no answer within 30 seconds, or a failed connection counts as a failure.
-- **Delivery is at least once.** A failed entry is sent again after 1 second, then 2, 4, and so on, at most every 10 minutes, for 24 hours after its first failure. An entry can arrive twice, for example when the answer was lost or popdesk restarted between sending and noting it. Keep one entry per `id`: an entry never changes, so a second arrival with the same `id` holds the same body.
+- **Delivery is at least once.** A failed entry is sent again after 1 second, then 2, 4, and so on, at most every 10 minutes, for 24 hours after its first failure. An entry can arrive twice, for example when the answer was lost or popdesk restarted between sending and noting it. Keep one entry per `id`: a second arrival with the same `id` holds the same body, unless an anonymization changed the entry in between.
+- **An anonymization changes entries.** Copies not sent yet go out with the anonymous values and the new hashes, because the body is read when it is sent. Copies already sent are not sent again; the `AUDIT_RECHAINED` entry, sent like any other, names the range whose hashes changed. Keep the later body of an entry inside such a range, or check the copies with `audit-verify.py`, which reads the ranges ([Anonymization and the chain](#anonymization-and-the-chain)).
 - **Order is not guaranteed.** Entries are sent one at a time, oldest first, but an entry that failed waits for its next try while later ones go out. Put the entries in order by `seq`, or follow `prevHash`: the entry after one with hash `h` is the one whose `prevHash` is `h`. A gap in `seq` means an entry has not arrived yet, or was given up.
 - **Only entries written while the address is set are sent.** Entries from before are not sent later; get them with an export.
 - An entry still failing 24 hours after its first failure is given up and not sent again; the console's system status lists it with its `auditEntryId`, and `resendFailedDelivery` sends it again until it is deleted 7 days later. Fill a gap from an export: its lines have the same fields.

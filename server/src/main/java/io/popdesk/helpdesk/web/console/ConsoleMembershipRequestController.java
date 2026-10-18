@@ -62,8 +62,9 @@ class ConsoleMembershipRequestController {
             description = "Makes the account a member of the company and closes the request (S2-AC-34). Approving "
                     + "an approved request again is 200 too (S2-AC-37).")
     @ApiResponse(responseCode = "200", description = "Approved.")
-    @ApiResponse(responseCode = "400", description = "`NOT_A_CUSTOMER`: the account is an agent or an admin. "
-            + "`COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-36).")
+    @ApiResponse(responseCode = "400", description = "`ACCOUNT_ANONYMIZED`: the account of the request is "
+            + "anonymized; checked before the other 400s (S10A-AC-13). `NOT_A_CUSTOMER`: the account is an agent "
+            + "or an admin. `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-36).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "404", description = NO_REQUEST)

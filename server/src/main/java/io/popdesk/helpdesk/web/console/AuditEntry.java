@@ -22,7 +22,11 @@ public record AuditEntry(
                 + "(`SLA_POLICY_CHANGED`) is `{\"type\": \"SLA_POLICY\", \"version\": …}` with the new version "
                 + "(S8A-AC-06). A change of the display name or the accent color (`BRANDING_CHANGED`) is "
                 + "`{\"type\": \"BRANDING\"}` (S9-AC-20); a new or removed logo (`BRANDING_LOGO_CHANGED`) is "
-                + "`{\"type\": \"BRANDING\", \"theme\": …}` with `LIGHT` or `DARK` (S9-AC-21).", nullable = true)
+                + "`{\"type\": \"BRANDING\", \"theme\": …}` with `LIGHT` or `DARK` (S9-AC-21). An account "
+                + "export or anonymization (`ACCOUNT_EXPORTED`, `ACCOUNT_ANONYMIZED`) is "
+                + "`{\"type\": \"ACCOUNT\", \"accountId\": …}`; the chain computed again after an anonymization "
+                + "(`AUDIT_RECHAINED`) is `{\"type\": \"AUDIT_LOG\"}` (S10A-AC-06, S10A-AC-16, S10A-AC-18).",
+                nullable = true)
                 Map<String, Object> target,
         @Schema(description = "What changed, as stored. A changed value is `{\"from\": ..., \"to\": ...}` under "
                 + "its field name; a value set for the first time is the value itself. Null when the action "
