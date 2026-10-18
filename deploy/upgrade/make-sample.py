@@ -320,6 +320,20 @@ def fill(project):
     gone.json("POST", f"/api/portal/issues/{gone_issue['key']}/comments", {"content": "Thank you."}, expect=201)
     admin.json("POST", f"/api/console/accounts/{gone_id}/anonymize", expect=200)
 
+    # What slice 10b added (S10B-AC-29, design.md 1절): a company export of BETA (company_export) that ended here,
+    # whose admin got COMPANY_EXPORT_READY. Its ZIP stays in this container, so an installation started on the sample
+    # finds it gone; it is stored as EXPIRED below, as the cleanup job does 24 hours later. And an issue that is
+    # CLOSED, to be moved to the trash by automatic cleanup below.
+    export = admin.json("POST", "/api/console/companies/BETA/exports",
+                        {"includeInternal": True, "includePrivate": False}, expect=202)
+    wait_for(f"The end of company export {export['id']}",
+             f"select state = 'DONE' from company_export where id = '{export['id']}'")
+    swept = agent.json("POST", "/api/console/issues",
+                       {"companyCode": "ACME", "reporterId": customer_id, "channel": "PHONE",
+                        "title": "Old question", "content": "Answered long ago."}, expect=201)["key"]
+    for status in ("IN_PROGRESS", "RESOLVED", "CLOSED"):
+        agent.json("PUT", f"/api/console/issues/{swept}/status", {"status": status})
+
     # Mail rows of this run are sent (SMTP is off: one log line each) and deleted. Wait for that, so the
     # queue holds only the failed row added below when it is dumped.
     end = time.monotonic() + 60
@@ -332,6 +346,22 @@ def fill(project):
     # removal failed (the daily cleanup ends it later).
     project.sql(f"update attachment set state = 'purging', file_name = null, deleted_at = now(), "
                 f"deleted_by = {admin_id} where id = '{purging['id']}' and state = 'stored'")
+    # The company export 24 hours later: its ZIP deleted, the export EXPIRED.
+    project.sql(f"update company_export set state = 'EXPIRED' where id = '{export['id']}' and state = 'DONE'")
+    # The closed issue as automatic cleanup moves it 90 days later (PII-6, acceptance.md 5절 4): in the trash with no
+    # admin in deleted_by and a TRASH history entry by popdesk (account 0); the state row as that run leaves it, with
+    # the first day's item of every admin (notification.retention_count, retention_days).
+    project.sql("update issue i set deleted_at = now(), deleted_by = null, updated_at = now(), version = version + 1 "
+                f"from company co where co.id = i.company_id and co.code || '-' || i.number = '{swept}' "
+                "and i.status = 'CLOSED'")
+    project.sql("insert into issue_history (tenant_id, issue_id, kind, field, old_value, new_value, actor_id, "
+                "created_at) select 1, i.id, 'CHANGED', 'TRASH', null, 'TRASHED', 0, now() from issue i "
+                f"join company co on co.id = i.company_id where co.code || '-' || i.number = '{swept}'")
+    project.sql("update issue_retention set period_seconds = 7776000, moves_from = now() - interval '1 day', "
+                "last_moved_at = now() where id = 1")
+    project.sql("insert into notification (tenant_id, account_id, kind, retention_count, retention_days, created_at) "
+                "select 1, id, 'ISSUE_RETENTION_ARMED', 1, 90, now() - interval '1 day' from account "
+                "where role = 'ADMIN' and status = 'ACTIVE'")
     # A send queue row in state failed: an email given up after 24 hours of failures.
     project.sql(
         "insert into outbox (tenant_id, channel, kind, recipient_account_id, issue_id, comment_id, state, attempts, "
