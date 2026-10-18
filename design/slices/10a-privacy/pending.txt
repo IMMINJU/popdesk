@@ -21,3 +21,11 @@ server io/popdesk/privacy/CustomerSearchTest.java
 server io/popdesk/ops/PrivacyLogTest.java
 server io/popdesk/deploy/PrivacySampleTest.java
 server io/popdesk/project/NoStoreTest.java
+web **/C10MemberList.10a.test.tsx
+web **/C12AuditLog.10a.test.tsx
+web **/C9CompanyDetail.10a.test.tsx
+web ../../../console/**/Screens10a.overflow.stories.tsx
+web **/C10MemberList.1a.test.tsx
+web **/C12AuditLog.test.tsx
+web **/C12AuditLog.filters.test.tsx
+web **/auditWords.words.test.ts
