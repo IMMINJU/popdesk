@@ -14,7 +14,7 @@ import java.util.Objects;
  *   <li>On for the first time, or shorter than the period seen last: {@link Step#ARM}, the moves start
  *       {@link #WAIT} later. Periods are compared by length, so {@code P90D} and {@code PT2160H} are the same.
  *   <li>As long or longer: the wait, if any, stays as it was; once it has passed, issues are moved at most once
- *       every {@link #DAY}, counted from the last run that moved.
+ *       every {@link #DAY}, counted from the last run that moved an issue ({@link #afterMoves}).
  * </ul>
  */
 final class RetentionSchedule {
@@ -68,7 +68,8 @@ final class RetentionSchedule {
      *     with the new period and a wait until {@code now} plus {@link #WAIT} when the cleanup was off or the
      *     setting is shorter than the period seen; otherwise the new period with the wait kept and {@link Step#WAIT}
      *     before the wait ends, {@link Step#IDLE} within a {@link #DAY} of the last move, or {@link Step#MOVE} with
-     *     {@code now} as the last move. {@code lastMovedAt} changes only on {@link Step#MOVE}
+     *     {@code now} as the last move. {@code lastMovedAt} changes only on {@link Step#MOVE}, and {@link #afterMoves} keeps the earlier one when the
+     *     run moved nothing
      */
     static Decision decide(State last, Duration setting, Instant now) {
         Objects.requireNonNull(last, "last");
@@ -88,5 +89,23 @@ final class RetentionSchedule {
             return new Decision(Step.IDLE, kept);
         }
         return new Decision(Step.MOVE, new State(seconds, last.movesFrom(), now));
+    }
+
+    /**
+     * The state a {@link Step#MOVE} leaves once its moves are done. Only a run that moved an issue counts as the last
+     * move: after a run that found none, the next issue that becomes due moves at the next run, not a day later.
+     *
+     * @param last what the last run left, as given to {@link #decide}
+     * @param decision the {@link Step#MOVE} that {@link #decide} gave for {@code last}
+     * @param moved how many issues the run moved, 0 or more
+     * @return {@code decision}'s state when {@code moved} is positive; otherwise that state with the last move of
+     *     {@code last}
+     */
+    static State afterMoves(State last, Decision decision, long moved) {
+        if (decision.step() != Step.MOVE) {
+            throw new IllegalArgumentException("Only a MOVE has moves: " + decision.step());
+        }
+        State next = decision.next();
+        return moved > 0 ? next : new State(next.periodSeconds(), next.movesFrom(), last.lastMovedAt());
     }
 }

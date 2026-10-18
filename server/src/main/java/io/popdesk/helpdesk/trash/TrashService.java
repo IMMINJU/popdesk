@@ -15,6 +15,7 @@ import io.popdesk.helpdesk.issue.IssueHistoryRepository.Field;
 import io.popdesk.helpdesk.issue.IssueKey;
 import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.issue.IssueRepository.IssueRow;
+import io.popdesk.helpdesk.issue.IssueRepository.RetentionLock;
 import io.popdesk.helpdesk.issue.IssueRepository.TrashedRow;
 import io.popdesk.helpdesk.label.LabelRepository;
 import io.popdesk.helpdesk.link.LinkRepository;
@@ -272,8 +273,8 @@ public class TrashService {
         Viewer system = Viewer.system();
         return transactions.run(() -> {
             SlaWrite slaWrite = sla.begin();
-            TrashedRow issue = issues.lockTrashedByIds(system, List.of(id)).stream().findFirst().orElse(null);
-            if (issue == null || issue.deletedAt() != null) {
+            RetentionLock issue = issues.lockForRetention(id).orElse(null);
+            if (issue == null || issue.deleted()) {
                 return false;
             }
             if (!issues.updateDeletedBySystem(id, now, startedBefore,

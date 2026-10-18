@@ -708,6 +708,23 @@ public class IssueRepository {
                 .query(UUID.class).list();
     }
 
+    /** What automatic cleanup reads of an issue it locked: whether it is in the trash, its priority, and its clocks. */
+    public record RetentionLock(boolean deleted, Priority priority, IssueClocks sla) {}
+
+    /**
+     * Locks the issue {@code FOR NO KEY UPDATE} until the end of the transaction for automatic cleanup (S10B-AC-21),
+     * reading the issue row alone: a row that changed while the lock was waited for is read again as it is now, which
+     * a join to other tables would not be.
+     */
+    public Optional<RetentionLock> lockForRetention(UUID id) {
+        return jdbc.sql("select i.deleted_at, i.priority, " + IssueClocks.COLUMNS + " from issue i where i.id = ? "
+                        + "for no key update")
+                .param(id)
+                .query((rs, n) -> new RetentionLock(rs.getTimestamp("deleted_at") != null,
+                        Priority.valueOf(rs.getString("priority")), IssueClocks.read(rs)))
+                .optional();
+    }
+
     /** How many issues of the installation {@link #findDueForRetention} finds over all its batches (S10B-AC-19). */
     public long countDueForRetention(Instant startedBefore) {
         Timestamp before = Timestamp.from(startedBefore);
