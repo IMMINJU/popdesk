@@ -13,6 +13,8 @@ public record TrashedIssue(
         @Schema(description = "The status the issue had when it was deleted; the trash does not change it.")
                 IssueStatus status,
         OffsetDateTime deletedAt,
-        @Schema(description = "The admin who deleted the issue, by the account's current name.") Person deletedBy,
+        @Schema(description = "The admin who deleted the issue, by the account's current name. null: automatic "
+                + "cleanup (PII-6) moved it here, because it was closed longer ago than `POPDESK_ISSUE_RETENTION` "
+                + "(S10B-AC-20, S10B-AC-22).", nullable = true) Person deletedBy,
         @Schema(description = "When popdesk purges the issue by itself: `deletedAt` plus 30 days, measured in UTC "
                 + "(S7A-AC-31). The hourly job may do it up to an hour later.") OffsetDateTime purgeAt) {}

@@ -63,5 +63,18 @@ public enum NotificationKind {
      * Working the SLA due times out again finished and changed something; to every admin, about no issue.
      * The item's {@code slaSummary} has the counts (S8B-AC-14, S8B-AC-15). No email, no webhook.
      */
-    SLA_RECALCULATED
+    SLA_RECALCULATED,
+    /**
+     * A company export the caller asked for became {@code DONE}; to that admin only, and not when the
+     * account is no longer {@code ACTIVE} or is anonymized (S10B-AC-04). {@code companyCode} names the
+     * company; about no issue, {@code actor} is null. No email.
+     */
+    COMPANY_EXPORT_READY,
+    /** A company export became {@code FAILED}; to every admin, like {@link #COMPANY_EXPORT_READY} (S10B-AC-05). */
+    COMPANY_EXPORT_FAILED,
+    /**
+     * Automatic issue cleanup was turned on or shortened and starts moving issues in 24 hours; to every
+     * admin, about no issue. {@code retentionCount} and {@code retentionDays} have the numbers (S10B-AC-19).
+     */
+    ISSUE_RETENTION_ARMED
 }

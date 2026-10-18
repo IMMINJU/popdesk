@@ -25,7 +25,9 @@ public record AuditEntry(
                 + "`{\"type\": \"BRANDING\", \"theme\": …}` with `LIGHT` or `DARK` (S9-AC-21). An account "
                 + "export or anonymization (`ACCOUNT_EXPORTED`, `ACCOUNT_ANONYMIZED`) is "
                 + "`{\"type\": \"ACCOUNT\", \"accountId\": …}`; the chain computed again after an anonymization "
-                + "(`AUDIT_RECHAINED`) is `{\"type\": \"AUDIT_LOG\"}` (S10A-AC-06, S10A-AC-16, S10A-AC-18).",
+                + "(`AUDIT_RECHAINED`) is `{\"type\": \"AUDIT_LOG\"}` (S10A-AC-06, S10A-AC-16, S10A-AC-18). A "
+                + "company export asked for or downloaded (`COMPANY_EXPORTED`, `COMPANY_EXPORT_DOWNLOADED`) is "
+                + "`{\"type\": \"COMPANY\", \"code\": …}` (S10B-AC-09).",
                 nullable = true)
                 Map<String, Object> target,
         @Schema(description = "What changed, as stored. A changed value is `{\"from\": ..., \"to\": ...}` under "

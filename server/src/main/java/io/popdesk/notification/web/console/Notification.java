@@ -9,11 +9,13 @@ public record Notification(
         NotificationKind kind,
         @Schema(description = "The issue the item is about, as it is now; null for `DELIVERY_FAILED`, "
                 + "`ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, "
-                + "`CLEANUP_STALLED`, `MEMBERSHIP_REQUESTED` (S4-AC-40), and `SLA_RECALCULATED` (S8B-AC-15).",
+                + "`CLEANUP_STALLED`, `MEMBERSHIP_REQUESTED` (S4-AC-40), `SLA_RECALCULATED` (S8B-AC-15), "
+                + "`COMPANY_EXPORT_READY`, `COMPANY_EXPORT_FAILED`, and `ISSUE_RETENTION_ARMED` (S10B-AC-27).",
                 nullable = true)
                 NotificationIssue issue,
-        @Schema(description = "The company of the issue, or the company a `MEMBERSHIP_REQUESTED` item is about; "
-                + "null for the other kinds.", nullable = true) String companyCode,
+        @Schema(description = "The company of the issue, or the company a `MEMBERSHIP_REQUESTED`, "
+                + "`COMPANY_EXPORT_READY`, or `COMPANY_EXPORT_FAILED` item is about; null for the other kinds.",
+                nullable = true) String companyCode,
         @Schema(description = "The comment the item is about; null when it is about no comment.", nullable = true)
                 Long commentId,
         @Schema(description = "Who did it; null for an item about no issue, and null for what popdesk itself "
@@ -32,4 +34,10 @@ public record Notification(
         @Schema(description = "For `SLA_RECALCULATED`: how many issues working the SLA due times out again "
                 + "made overdue, due soon, or no longer either, counted as changes to an issue (S8B-AC-12). "
                 + "Null for the other kinds (S8B-AC-15).", nullable = true)
-                SlaSummary slaSummary) {}
+                SlaSummary slaSummary,
+        @Schema(description = "For `ISSUE_RETENTION_ARMED`: how many issues automatic cleanup would move to the "
+                + "trash when the item was written (S10B-AC-19). Null for the other kinds.", nullable = true)
+                Integer retentionCount,
+        @Schema(description = "For `ISSUE_RETENTION_ARMED`: `POPDESK_ISSUE_RETENTION` in whole days, rounded "
+                + "down (S10B-AC-19). Null for the other kinds.", nullable = true)
+                Integer retentionDays) {}

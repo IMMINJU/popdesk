@@ -27,7 +27,8 @@ public record IssueHistoryEntry(
                 + "see it again (S6C-AC-22). `TRASH`: the issue was deleted into the trash (new value "
                 + "`TRASHED`), restored from it (old value `TRASHED`, new value null), or purged (old value "
                 + "`TRASHED`, new value `PURGED`); the actor is the admin, or popdesk itself for a purge after "
-                + "30 days (S7A-AC-06). "
+                + "30 days (S7A-AC-06) and for a delete by automatic cleanup (`POPDESK_ISSUE_RETENTION`, "
+                + "S10B-AC-20). "
                 + "Later releases add names, so this is a plain string; show an entry with a name you do not "
                 + "know as a change without detail. Null for `CREATED`.", nullable = true) String field,
         @Schema(description = "The value before the change: the name of the status or priority, or the title "
