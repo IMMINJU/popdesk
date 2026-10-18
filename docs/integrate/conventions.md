@@ -97,6 +97,16 @@ A 409 `RESTORE_LINK_CONFLICT` lists the other issues whose links stop the restor
 }
 ```
 
+A 409 `AUDIT_CHAIN_BROKEN` gives the place where the audit log's hash chain first breaks, as the entry's `seq`, in `brokenSeq`. It is present only for that error:
+
+```json
+{
+  "code": "AUDIT_CHAIN_BROKEN",
+  "message": "The audit log's hash chain is broken, so the account was not anonymized.",
+  "brokenSeq": 1042
+}
+```
+
 - `code` is a stable key. Clients choose the text they show by `code` and use `message` only for a `code` they do not know.
 - `message` is a default text in the installation language (`POPDESK_LOCALE`).
 - The body never contains exception names, stack traces, or SQL.
@@ -163,6 +173,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 409 | `IDEMPOTENCY_KEY_REUSED` | The account used this `Idempotency-Key` in the last 24 hours for a filing with other content. Nothing is created |
 | 409 | `AUDIT_VERIFICATION_RUNNING` | A check of the audit log's hash chain is already running. One runs at a time |
 | 409 | `ANONYMIZATION_RUNNING` | Another account is being anonymized. One anonymization runs at a time. Nothing changed |
+| 409 | `AUDIT_CHAIN_BROKEN` | Anonymizing an account: the audit log's hash chain does not hold in the range it would compute again, from the account's first entry to the end of the chain. An entry there does not follow the one before or does not match its own values, or the last entry is not the recorded end. `brokenSeq` is the `seq` of the first such entry, or of the last entry when only the end does not match; the body holds no value or hash. Checked after the 400s. Nothing changed; the integrity check finds the break at the same entry |
 | 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit, a profile photo is over 2 MB (2,097,152 bytes), a branding logo is over 512 KB (524,288 bytes), or the JSON of a new issue (the body, or the `issue` part of a multipart request) is over 256 KB (262,144 bytes). The headers of one multipart part, which carry the file name, are limited to 4 KB: a file name far over 255 characters gets this 413, not the 400 `TOO_LONG`. A proxy in front may answer 413 first with its own body |
 | 429 | `RATE_LIMITED` | Over a rate limit (`COM-8`). `Retry-After` says when to try again |
 | 500 | `INTERNAL_ERROR` | An unexpected server error |
@@ -473,6 +484,7 @@ Two admin endpoints under `/api/console/accounts/{accountId}`. Agents get 403, a
 - The name becomes the anonymous name in the installation's language when it runs (`POPDESK_LOCALE`): `Deleted user` for `en`, `삭제된 사용자` for `ko`. It is stored as text and does not change with the language later. The email becomes `deleted-{id}@invalid`, the status `SUSPENDED`. An `INVITED` account is anonymized too.
 - In the same transaction it ends the account's sessions and removes its profile photo, password, sign-in lock, invitation and password reset tokens, the queued emails to it, and its inbox items; it puts the anonymous values into its membership requests and its audit entries ([above](#anonymization-and-the-chain)), and records `AUDIT_RECHAINED` and then `ACCOUNT_ANONYMIZED`. A failure anywhere leaves everything as it was.
 - What the account wrote stays and shows the anonymous name wherever its name is shown.
+- Before it computes an entry again, it checks the entry as the integrity check does, from the account's first entry to the end of the chain, and the end against the last entry. A break there is 409 `AUDIT_CHAIN_BROKEN` and nothing changes, so the new hashes never cover a change made outside popdesk. A break before the account's first entry does not stop it.
 - One anonymization runs at a time (409 `ANONYMIZATION_RUNNING`). Own account is 400 `OWN_ACCOUNT`, the last `ACTIVE` admin 400 `LAST_ADMIN`, an anonymized account 400 `ACCOUNT_ANONYMIZED`.
 - An anonymized account cannot come back: every request that would make it usable again is 400 `ACCOUNT_ANONYMIZED` (see the error codes). Its old email can be invited again, which makes a new account with nothing of the old one.
 - The account list and every answer with an `Account` or a `SuspendedAccount` have `anonymized`. `listAccounts` takes `anonymized=false` to leave anonymized accounts out; the console's customer search for a company sends it.

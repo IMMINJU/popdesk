@@ -245,22 +245,14 @@ public class AuditService {
             if (broken != null) {
                 return;
             }
-            if (row.seq() != seq + 1 || !hash.equals(row.prevHash()) || !holds(row)) {
+            if (row.seq() != seq + 1 || !hash.equals(row.prevHash())
+                    || !AuditChain.holds(row.prevHash(), row.values(), row.hash())) {
                 broken = row;
                 return;
             }
             seq = row.seq();
             hash = row.hash();
             checked++;
-        }
-
-        private static boolean holds(AuditRow row) {
-            try {
-                return AuditChain.hash(row.prevHash(), row.values()).equals(row.hash());
-            } catch (IllegalArgumentException e) {
-                // Values without a canonical form were not written by popdesk.
-                return false;
-            }
         }
     }
 }

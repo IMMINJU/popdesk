@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.audit;
 
+import io.popdesk.ApiException;
 import io.popdesk.helpdesk.audit.AuditChainRepository.Walk;
 import io.popdesk.notification.AuditCopies;
 import java.time.Clock;
@@ -9,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,9 +33,16 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>The two parts run while this class's lock is held ({@link #alone}). The retention period takes the
  * same lock ({@link AuditService#removeOlderThan}), so the start of the chain stays where it is while
  * the first part runs, and one anonymization runs at a time. The app is one instance (ADR D-23).
+ *
+ * <p>Both parts check every entry they pass as it was, with the integrity check's function
+ * ({@link AuditChain#holds}), and the second part the head too. A break is refused with 409
+ * {@code AUDIT_CHAIN_BROKEN} and the transaction rolls back, so an anonymization never covers a change
+ * someone made in the database with new hashes (S10A-AC-37, acceptance.md 5절 11).
  */
 @Service
 public class AuditRechain {
+
+    private static final Logger log = LoggerFactory.getLogger(AuditRechain.class);
 
     private final ReentrantLock lock = new ReentrantLock();
     private final AuditRepository repository;
@@ -113,13 +123,20 @@ public class AuditRechain {
      * hash of {@code toSeq} before and after (S10A-AC-18). When no entry changed, nothing is computed
      * again and nothing is appended. Entries the transaction recorded join the chain after it, at the
      * commit, and the head stays locked until then.
+     *
+     * <p>The first part's break is refused here, after the account's checks, so their 400s come first.
+     *
+     * @throws ApiException 409 {@code AUDIT_CHAIN_BROKEN} when an entry from the first one computed again
+     *     to the head, or the head, does not hold; the caller's transaction must roll back
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public void finish(Recalculation recalculation, AuditLog.Actor actor) {
         requireLock();
         Walk walk = recalculation.walk;
+        refuseBroken(walk);
         String headBefore = repository.rechainFromHead(walk, recalculation.accountId, recalculation.name,
                 recalculation.email);
+        refuseBroken(walk);
         if (walk.fromSeq == null) {
             return;
         }
@@ -133,6 +150,14 @@ public class AuditRechain {
         repository.append(List.of(AuditChain.values(AuditAction.AUDIT_RECHAINED, actor.accountId(), actor.name(),
                 actor.email(), Map.of("type", "AUDIT_LOG"), changes, clock.instant().truncatedTo(ChronoUnit.MICROS))),
                 copies.enabled());
+    }
+
+    private static void refuseBroken(Walk walk) {
+        if (walk.brokenSeq != null) {
+            log.warn("The audit chain is broken at seq {}; the anonymization is refused and rolled back.",
+                    walk.brokenSeq);
+            throw ApiException.auditChainBroken(walk.brokenSeq);
+        }
     }
 
     private void requireLock() {

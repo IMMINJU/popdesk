@@ -159,8 +159,10 @@ public final class AuditChainRepository {
 
     /**
      * Where a recalculation stands ({@link #rechain}): the last row it passed ({@code seq}), that row's
-     * hash as it was ({@code oldHash}) and as it is now ({@code newHash}), and the first row whose values
-     * changed ({@code fromSeq}, null while none did). Until a row changes, rows are only read.
+     * hash as it was ({@code oldHash}) and as it is now ({@code newHash}), the first row whose values
+     * changed ({@code fromSeq}, null while none did), and the first row that did not hold as it was
+     * ({@code brokenSeq}, null while all did). Until a row changes, rows are only read; once one does not
+     * hold, the walk stops there.
      */
     static final class Walk {
 
@@ -168,6 +170,7 @@ public final class AuditChainRepository {
         String oldHash;
         String newHash;
         Long fromSeq;
+        Long brokenSeq;
 
         Walk(long seq, String hash) {
             this.seq = seq;
@@ -186,8 +189,13 @@ public final class AuditChainRepository {
      * hash is computed, as for appending. Only the rows it changes are locked; the head row is the
      * caller's.
      *
-     * @param walk where the walk stands; it ends at {@code to}
-     * @throws IllegalStateException when a row is missing
+     * <p>Each row is checked as it was before it is computed again, as the integrity check does
+     * (S10A-AC-37): its {@code seq} follows the row before, its previous hash is that row's old hash, and
+     * its hash is the one computed from its stored values. At the first row that does not hold, or when
+     * rows are missing at the end, the walk stops with {@code brokenSeq} set, so a break is never covered
+     * by new hashes; the caller rolls the transaction back.
+     *
+     * @param walk where the walk stands; it ends at {@code to}, or where the chain is broken
      */
     static void rechain(Connection c, Walk walk, long to, long accountId, String name, String email)
             throws SQLException {
@@ -202,10 +210,13 @@ public final class AuditChainRepository {
                     Values stored = new Values(rs.getString(5), rs.getString(6), rs.getString(7), rs.getString(8),
                             rs.getObject(9, OffsetDateTime.class).toInstant());
                     Values values = AuditAnonymizer.anonymize(stored, accountId, name, email);
-                    batch.add(new Row(rs.getLong(1), rs.getLong(2), rs.getString(4), stored,
+                    batch.add(new Row(rs.getLong(1), rs.getLong(2), rs.getString(3), rs.getString(4), stored,
                             values == stored ? null : values));
                     if (batch.size() == BATCH) {
                         write(c, walk, batch);
+                        if (walk.brokenSeq != null) {
+                            return;
+                        }
                     }
                 }
             }
@@ -213,15 +224,19 @@ public final class AuditChainRepository {
                 write(c, walk, batch);
             }
         }
-        if (walk.seq != to) {
-            throw new IllegalStateException("The audit chain has no row with seq " + (walk.seq + 1));
+        if (walk.brokenSeq == null && walk.seq != to) {
+            // Rows up to the head are committed, so the missing ones were removed behind the app's back.
+            walk.brokenSeq = walk.seq;
         }
     }
 
     /** A row read by {@link #rechain}: as stored, and with the anonymous values when they differ. */
-    private record Row(long id, long seq, String hash, Values stored, Values changed) {}
+    private record Row(long id, long seq, String prevHash, String hash, Values stored, Values changed) {}
 
-    /** Computes one batch on from where the walk stands, writes it with one statement, and empties it. */
+    /**
+     * Computes one batch on from where the walk stands, writes it with one statement, and empties it.
+     * Writes nothing of the batch when one of its rows does not hold.
+     */
     private static void write(Connection c, Walk walk, List<Row> batch) throws SQLException {
         List<Values> changed = batch.stream().map(Row::changed).filter(Objects::nonNull).toList();
         Iterator<Values> changedAsStored = (changed.isEmpty() ? changed : asStored(c, changed)).iterator();
@@ -232,8 +247,13 @@ public final class AuditChainRepository {
         List<String> changes = new ArrayList<>(batch.size());
         List<Boolean> valuesChanged = new ArrayList<>(batch.size());
         for (Row row : batch) {
-            if (row.seq() != walk.seq + 1) {
-                throw new IllegalStateException("The audit chain has no row with seq " + (walk.seq + 1));
+            byte[] canonical = row.seq() == walk.seq + 1 && row.prevHash().equals(walk.oldHash)
+                    ? AuditChain.canonicalIfHolds(row.prevHash(), row.stored(), row.hash())
+                    : null;
+            if (canonical == null) {
+                walk.brokenSeq = row.seq();
+                batch.clear();
+                return;
             }
             Values values = row.changed() == null ? row.stored() : changedAsStored.next();
             if (walk.fromSeq == null && row.changed() != null) {
@@ -246,7 +266,9 @@ public final class AuditChainRepository {
                 continue;
             }
             String prevHash = walk.newHash;
-            walk.newHash = AuditChain.hash(prevHash, values);
+            // An unchanged row keeps its canonical JSON; only its previous hash is new.
+            walk.newHash = row.changed() == null ? AuditChain.hash(prevHash, canonical)
+                    : AuditChain.hash(prevHash, values);
             ids.add(row.id());
             prevHashes.add(prevHash);
             hashes.add(walk.newHash);

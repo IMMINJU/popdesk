@@ -72,7 +72,9 @@ public class AnonymizationService {
      *   <li>the profile photo, the emails queued to it, its inbox, and the copies of its email and name in
      *       membership requests;
      *   <li>the second part of the recalculation, last, which holds the chain's head until the commit and
-     *       appends {@code AUDIT_RECHAINED} before {@code ACCOUNT_ANONYMIZED}.
+     *       appends {@code AUDIT_RECHAINED} before {@code ACCOUNT_ANONYMIZED}. When either part met an entry or
+     *       a head that does not hold, it is 409 {@code AUDIT_CHAIN_BROKEN} and everything rolls back
+     *       (S10A-AC-37).
      * </ol>
      *
      * <p>A retry after a lock timeout ({@link Transactions#run}) starts again from the first part.

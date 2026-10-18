@@ -68,14 +68,18 @@ class AuditRepository {
 
     /**
      * The second part ({@link AuditRechain#finish}): locks the head row, goes on from where the walk
-     * stands to the head, and moves the head's hash when an entry changed. Returns the head's hash
-     * before.
+     * stands to the head, checks that the last entry's old hash is the head's, and moves the head's hash
+     * when an entry changed. Returns the head's hash before. When the chain does not hold, the walk's
+     * {@code brokenSeq} is set (the last entry when only the head does not match) and nothing is moved.
      */
     String rechainFromHead(Walk walk, long accountId, String name, String email) {
         return jdbc.execute((ConnectionCallback<String>) c -> {
             Chain chain = lockChain();
             AuditChainRepository.rechain(c, walk, chain.headSeq(), accountId, name, email);
-            if (walk.fromSeq != null) {
+            if (walk.brokenSeq == null && !walk.oldHash.equals(chain.headHash())) {
+                walk.brokenSeq = walk.seq;
+            }
+            if (walk.brokenSeq == null && walk.fromSeq != null) {
                 jdbc.update("update audit_chain set head_hash = ?", walk.newHash);
             }
             return chain.headHash();

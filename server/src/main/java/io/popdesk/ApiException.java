@@ -15,6 +15,7 @@ public class ApiException extends RuntimeException {
     private final String code;
     private final List<ApiError.FieldError> fields;
     private List<String> issueKeys;
+    private Long brokenSeq;
     private Long retryAfterSeconds;
 
     public ApiException(HttpStatus status, String code, String message, List<ApiError.FieldError> fields) {
@@ -42,7 +43,7 @@ public class ApiException extends RuntimeException {
     }
 
     public ApiError body() {
-        return new ApiError(code, getMessage(), fields, issueKeys);
+        return new ApiError(code, getMessage(), fields, issueKeys, brokenSeq);
     }
 
     /** 404: the target does not exist or the caller may not see it; one body for both (COM-1). */
@@ -104,6 +105,19 @@ public class ApiException extends RuntimeException {
         ApiException e = conflict("RESTORE_LINK_CONFLICT",
                 "With its links this issue would break the link rules, so it was not restored.");
         e.issueKeys = List.copyOf(issueKeys);
+        return e;
+    }
+
+    /**
+     * 409 {@code AUDIT_CHAIN_BROKEN}: the audit chain does not hold where the change would compute it again,
+     * so nothing changed (S10A-AC-37). The body holds the place of the break, never a value or a hash.
+     *
+     * @param seq the {@code seq} of the first entry that does not hold
+     */
+    public static ApiException auditChainBroken(long seq) {
+        ApiException e = conflict("AUDIT_CHAIN_BROKEN",
+                "The audit log's hash chain is broken, so the account was not anonymized.");
+        e.brokenSeq = seq;
         return e;
     }
 

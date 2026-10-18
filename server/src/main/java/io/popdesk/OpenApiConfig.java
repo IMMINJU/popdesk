@@ -28,8 +28,8 @@ import org.springframework.context.annotation.Configuration;
  *   <li>Every error response (4xx, 5xx) has the {@link ApiError} body (COM-3).
  *   <li>Response types list every field as required, and a field marked {@code @Schema(nullable =
  *       true)} may be {@code null} (ADR D-44: fields are never left out). Request types, whose names end in
- *       {@code Request}, keep optional fields optional. {@code ApiError.fields} and
- *       {@code ApiError.issueKeys} are the only response fields that may be left out. A nullable field
+ *       {@code Request}, keep optional fields optional. {@code ApiError.fields}, {@code ApiError.issueKeys}
+ *       and {@code ApiError.brokenSeq} are the only response fields that may be left out. A nullable field
  *       with an {@code enum} has {@code null} among its values.
  * </ul>
  */
@@ -128,6 +128,7 @@ class OpenApiConfig {
                 if (name.equals("ApiError")) {
                     required.remove("fields");
                     required.remove("issueKeys");
+                    required.remove("brokenSeq");
                 }
                 schema.setRequired(new ArrayList<>(required));
             });

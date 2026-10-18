@@ -30,6 +30,16 @@ An admin does this in the console, member list (C-10), row menu of the person:
 
 Other people's issues and comments may name the person in their text. popdesk does not find those: search for the person's name and email in the issue list and change or delete what you find.
 
+### When an anonymization is refused because the audit log is broken
+
+The anonymization checks the audit log's hash chain from the person's first entry to the end before it changes anything. If an entry there was changed or removed in the database, it is refused with `AUDIT_CHAIN_BROKEN`, nothing changes, and the deletion request stays open until someone decides how to go on. popdesk does not anonymize over a break, because the new hashes would hide it.
+
+1. **Run the integrity check** (admins, audit log). It names the first entry that does not hold, the same place the refusal gave as `brokenSeq`. A break was there before the anonymization; the check would have failed on it anyway.
+2. **Keep the evidence.** Before anything changes, export the audit log and take a backup (`popdesk backup`), and keep the outside copy if you have one. Find out who could write to the database, and when.
+3. **Decide how to restore the log.** Compare the entries with the outside copy or an older export, which hold the values popdesk wrote. Put the changed values back from there, or restore a backup from before the change, then run the check again. When the check says the log is whole, anonymize the account again.
+
+Tell the person that the deletion is delayed and why, as the law that applies to you requires.
+
 ## What an anonymization changes
 
 - The name becomes `Deleted user` or `삭제된 사용자`, in the installation's language at that moment (`POPDESK_LOCALE`), and the email `deleted-{id}@invalid`. The account becomes `SUSPENDED` and is marked as anonymized in the member list.

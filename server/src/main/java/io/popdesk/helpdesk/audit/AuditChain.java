@@ -97,13 +97,27 @@ public final class AuditChain {
      *     {@code {accountId, name, email}}, a target that is not an object, a number that is not whole
      */
     public static String hash(String prevHash, Values stored) {
+        return hash(prevHash, canonical(stored));
+    }
+
+    /**
+     * The canonical JSON of a stored row, which {@link #hash(String, Values)} hashes: for computing the
+     * hashes of one row with two previous hashes without encoding it twice.
+     *
+     * @throws IllegalArgumentException as {@link #hash(String, Values)}
+     */
+    static byte[] canonical(Values stored) {
         Map<String, Object> actor = object(stored.actor());
         if (actor == null || !actor.keySet().equals(ACTOR_KEYS)) {
             throw new IllegalArgumentException("The person of an audit row is not {accountId, name, email}");
         }
-        byte[] canonical = CanonicalAuditJson.encode(stored.action(), whole(actor.get("accountId")),
+        return CanonicalAuditJson.encode(stored.action(), whole(actor.get("accountId")),
                 text(actor.get("name")), text(actor.get("email")), object(stored.target()),
                 object(stored.changes()), stored.occurredAt());
+    }
+
+    /** SHA-256 of the previous hash's 64 characters and a row's {@link #canonical} JSON, as hex. */
+    static String hash(String prevHash, byte[] canonical) {
         try {
             MessageDigest sha = MessageDigest.getInstance("SHA-256");
             sha.update(prevHash.getBytes(StandardCharsets.UTF_8));
@@ -112,6 +126,29 @@ public final class AuditChain {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    /**
+     * Whether a stored row holds: its {@code hash} is the one computed from its previous hash and values.
+     * The integrity check and the recalculation after an anonymization both ask here.
+     */
+    static boolean holds(String prevHash, Values stored, String hash) {
+        return canonicalIfHolds(prevHash, stored, hash) != null;
+    }
+
+    /**
+     * The canonical JSON of a stored row when the row {@link #holds}; null when it does not, also when its
+     * values have no canonical form.
+     */
+    static byte[] canonicalIfHolds(String prevHash, Values stored, String hash) {
+        byte[] canonical;
+        try {
+            canonical = canonical(stored);
+        } catch (IllegalArgumentException e) {
+            // Values without a canonical form were not written by popdesk.
+            return null;
+        }
+        return hash(prevHash, canonical).equals(hash) ? canonical : null;
     }
 
     private static Map<String, Object> object(String json) {

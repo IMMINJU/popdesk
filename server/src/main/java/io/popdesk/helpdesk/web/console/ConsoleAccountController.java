@@ -263,7 +263,11 @@ class ConsoleAccountController {
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY)
     @ApiResponse(responseCode = "404", description = NOT_FOUND + " Also account 0, popdesk itself.")
     @ApiResponse(responseCode = "409", description = "`ANONYMIZATION_RUNNING`: another anonymization is running; "
-            + "one runs at a time (S10A-AC-21). Nothing changed.")
+            + "one runs at a time (S10A-AC-21). `AUDIT_CHAIN_BROKEN`: the audit log's hash chain does not hold "
+            + "from the account's first entry to the end of the chain (an entry changed, an entry that does not "
+            + "follow the one before, or an end that does not match the last entry); `brokenSeq` is the `seq` of "
+            + "the first entry that does not hold, or of the last entry when only the end does not match "
+            + "(S10A-AC-37). Run the integrity check. Nothing changed.")
     @PostMapping("/api/console/accounts/{accountId}/anonymize")
     SuspendedAccount anonymizeAccount(@PathVariable long accountId,
             @Parameter(description = CLEAR_ASSIGNMENTS) @RequestParam(defaultValue = "false")
