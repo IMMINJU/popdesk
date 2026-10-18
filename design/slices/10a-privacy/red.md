@@ -1,0 +1,75 @@
+# 실패 확인
+
+- 단언 실패 68, 통과 0, 허용한 통과 0, 오류 0, 건너뜀 0
+- 판정: 통과
+
+## 단언에서 실패한 테스트
+
+- `io.popdesk.privacy.AnonymizeAccountTest.ownAccount`: POST /api/console/accounts/51/anonymize on console.popdesk.test: expected 400 but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeAccountTest.clearsAssignments(boolean)[1]`: Expected 200 from POST /api/console/accounts/53/anonymize?clearAssignments=true on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not bu
+- `io.popdesk.privacy.AnonymizeAccountTest.clearsAssignments(boolean)[2]`: Expected 200 from POST /api/console/accounts/55/anonymize?clearAssignments=false on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not b
+- `io.popdesk.privacy.AnonymizeAccountTest.anonymizes(Who)[1]`: Expected 200 from POST /api/console/accounts/56/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeAccountTest.anonymizes(Who)[2]`: Expected 200 from POST /api/console/accounts/57/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeAccountTest.anonymizes(Who)[3]`: Expected 200 from POST /api/console/accounts/58/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeAccountTest.anonymizedEntry(boolean)[1]`: Expected 200 from POST /api/console/accounts/60/anonymize?clearAssignments=true on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not bu
+- `io.popdesk.privacy.AnonymizeAccountTest.anonymizedEntry(boolean)[2]`: Expected 200 from POST /api/console/accounts/62/anonymize?clearAssignments=false on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not b
+- `io.popdesk.privacy.AnonymizeAccountTest.oldEmailInvitedAgain`: Expected 200 from POST /api/console/accounts/63/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeAuditTest.rechainedEntry`: Expected 200 from POST /api/console/accounts/68/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeAuditTest.outsideCopies`: Expected 200 from POST /api/console/accounts/69/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeAuditTest.personFieldsReplaced`: Expected 200 from POST /api/console/accounts/70/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeAuditTest.lateEntryIsAnonymous`: Expected 200 from POST /api/console/accounts/72/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizedAccountBlockedTest.suspendIsAllowed`: Expected 200 from POST /api/console/accounts/22/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizedAccountBlockedTest.refused(Action)[1]`: Expected 200 from POST /api/console/accounts/25/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizedAccountBlockedTest.refused(Action)[2]`: Expected 200 from POST /api/console/accounts/28/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizedAccountBlockedTest.refused(Action)[3]`: Expected 200 from POST /api/console/accounts/31/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizedAccountBlockedTest.refused(Action)[4]`: Expected 200 from POST /api/console/accounts/34/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizedAccountBlockedTest.refused(Action)[5]`: Expected 200 from POST /api/console/accounts/37/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizedAccountBlockedTest.refused(Action)[6]`: Expected 200 from POST /api/console/accounts/40/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizedAccountBlockedTest.refused(Action)[7]`: Expected 200 from POST /api/console/accounts/43/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizedAccountBlockedTest.refused(Action)[8]`: Expected 200 from POST /api/console/accounts/46/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizedAccountBlockedTest.refused(Action)[9]`: Expected 200 from POST /api/console/accounts/49/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeRaceTest.retentionDuringRecalculation`: The anonymization was not held in its recalculation; it answered 501 {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeRaceTest.oneAtATime`: The anonymization was not held in its recalculation; it answered 501 {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeRaceTest.otherEntriesDuringRecalculation`: The anonymization was not held in its recalculation; it answered 501 {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeRaceTest.connectionEndsDuringRecalculation`: The anonymization was not held in its recalculation; it answered 501 {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeRemovesTest.queuedMailIsDropped`: Expected 200 from POST /api/console/accounts/4/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeRemovesTest.membershipRequests`: Expected 200 from POST /api/console/accounts/7/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeRemovesTest.sessionPhotoAndInbox`: Expected 200 from POST /api/console/accounts/11/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeRemovesTest.tokensStopWorking`: Expected 200 from POST /api/console/accounts/13/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizeUnderLoadTest.signInsWhileAnonymizing`: [the anonymization still ran when the sign-ins were sent (it answered {"code":"NOT_IMPLEMENTED","message":"Not built yet."})] 
+- `io.popdesk.privacy.AnonymousAuthorTest.anonymousNameAsAuthor`: Expected 200 from POST /api/console/accounts/64/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AuditVerifyRechainTest.rechainedEntryInsideALaterRange(Path)`: [exit code with the AUDIT_RECHAINED of the later version: BROKEN at line 3: prevHash is not the hash of the line before
+- `io.popdesk.privacy.AuditVerifyRechainTest.mixedFilesAreWhole(Path)`: [exit code for old and new copies: BROKEN at line 4: prevHash is not the hash of the line before
+- `io.popdesk.privacy.AuditVerifyRechainTest.otherMismatchesBreak(String, List, int, Path)[1]`: [output for a prevHash after the range that is not the hash before it] 
+- `io.popdesk.privacy.AuditVerifyRechainTest.otherMismatchesBreak(String, List, int, Path)[2]`: [exit code for an AUDIT_RECHAINED whose prevHash is not headHash.to: OK: 7 entries, last seq 7, last hash f47a7389f67a8f085be63f219718488b6256a5865c3c9f0fa12c1a
+- `io.popdesk.privacy.AuditVerifyRechainTest.otherMismatchesBreak(String, List, int, Path)[3]`: [output for a line in the range whose hash does not match its own values] 
+- `io.popdesk.privacy.AuditVerifyRechainTest.otherMismatchesBreak(String, List, int, Path)[4]`: [output for the same seq twice with another hash and no later range around it] 
+- `io.popdesk.privacy.LastAdminAnonymizeTest.anonymizeAndSuspendEachOther(First)[1]`: Timed out after PT15S waiting for the first request's UPDATE of admin-186@example.test held in the trigger
+- `io.popdesk.privacy.LastAdminAnonymizeTest.anonymizeAndSuspendEachOther(First)[2]`: [statuses of anonymizing {"code":"NOT_IMPLEMENTED","message":"Not built yet."} and suspending {"id":1,"email":"admin@popdesk.test","name":"Admin","role":"ADMIN"
+- `io.popdesk.ops.PrivacyLogTest.exportAndAnonymizationLeaveNoPersonalText`: Expected 200 from HEAD /api/console/accounts/7/export on console.popdesk.test but got 501:
+- `io.popdesk.privacy.AccountExportTest.answerAndFields`: [HEAD /api/console/accounts/7/export on console.popdesk.test -> 501: ] 
+- `io.popdesk.privacy.AccountExportTest.commentsOfTheWriter`: Expected 200 from GET /api/console/accounts/8/export on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AccountExportTest.issuesOfTheReporter`: Expected 200 from GET /api/console/accounts/10/export on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AccountExportTest.attachmentsOfTheUploader`: Expected 200 from GET /api/console/accounts/13/export on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AccountExportTest.noPhotoIsNull`: Expected 200 from GET /api/console/accounts/15/export on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.AnonymizedExportTest.anonymousValuesAndWhatItWrote`: Expected 200 from POST /api/console/accounts/6/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CustomerSearchTest.searchLeavesOutAnonymizedAccounts`: Expected 200 from POST /api/console/accounts/4/anonymize on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.ExportAuditTest.oneEntryPerExport`: Expected 200 from HEAD /api/console/accounts/6/export on console.popdesk.test but got 501:
+- `io.popdesk.privacy.ExportHoldsNoOtherPersonTest.holdsOnlyItsOwnPerson`: Expected 200 from GET /api/console/accounts/2/export on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.PrivacyAccessTest.anonymizationNeedsTheCsrfToken`: [the admin's POST /api/console/accounts/8/anonymize on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.privacy.PrivacyAccessTest.unknownAccountsAreNotFound(Call, long)[1]`: [GET /api/console/accounts/999999999/export on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.privacy.PrivacyAccessTest.unknownAccountsAreNotFound(Call, long)[2]`: [HEAD /api/console/accounts/999999999/export on console.popdesk.test -> 501: ] 
+- `io.popdesk.privacy.PrivacyAccessTest.unknownAccountsAreNotFound(Call, long)[3]`: [POST /api/console/accounts/999999999/anonymize on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.privacy.PrivacyAccessTest.unknownAccountsAreNotFound(Call, long)[4]`: [GET /api/console/accounts/0/export on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.privacy.PrivacyAccessTest.unknownAccountsAreNotFound(Call, long)[5]`: [HEAD /api/console/accounts/0/export on console.popdesk.test -> 501: ] 
+- `io.popdesk.privacy.PrivacyAccessTest.unknownAccountsAreNotFound(Call, long)[6]`: [POST /api/console/accounts/0/anonymize on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.privacy.PrivacyAccessTest.customerHostGets404(Call)[1]`: [the admin's GET /api/console/accounts/16/export on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.privacy.PrivacyAccessTest.customerHostGets404(Call)[2]`: [the admin's HEAD /api/console/accounts/18/export on console.popdesk.test -> 501: ] 
+- `io.popdesk.privacy.PrivacyAccessTest.customerHostGets404(Call)[3]`: [the admin's POST /api/console/accounts/20/anonymize on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.privacy.PrivacyAccessTest.signedOutGets401(Call)[1]`: [the admin's GET /api/console/accounts/21/export on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.privacy.PrivacyAccessTest.signedOutGets401(Call)[2]`: [the admin's HEAD /api/console/accounts/22/export on console.popdesk.test -> 501: ] 
+- `io.popdesk.privacy.PrivacyAccessTest.signedOutGets401(Call)[3]`: [the admin's POST /api/console/accounts/23/anonymize on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.privacy.PrivacyAccessTest.agentsAreForbidden(Call)[1]`: [the admin's GET /api/console/accounts/25/export on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.privacy.PrivacyAccessTest.agentsAreForbidden(Call)[2]`: [the admin's HEAD /api/console/accounts/27/export on console.popdesk.test -> 501: ] 
+- `io.popdesk.privacy.PrivacyAccessTest.agentsAreForbidden(Call)[3]`: [the admin's POST /api/console/accounts/29/anonymize on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.privacy.PrivacySchemaTest.accountHasAnonymizedAt`: [account.anonymized_at] 
