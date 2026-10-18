@@ -51,6 +51,8 @@ final class BoundaryList {
     private static final String LINK_CUSTOMER = "link.LinkCustomerTest#";
     private static final String BRANDING = "/api/console/branding";
     private static final String BRANDING_ACCESS = "branding.BrandingAccessTest#";
+    private static final String ACCOUNT_EXPORT = "/api/console/accounts/{accountId}/export";
+    private static final String PRIVACY_ACCESS = "privacy.PrivacyAccessTest#";
 
     static final List<Entry> ENTRIES = List.of(
             // Before sign-in, both hosts
@@ -541,5 +543,17 @@ final class BoundaryList {
                     BRANDING_ACCESS + "customerGetsTheConsoleAnswer"),
             tested("DELETE", BRANDING + "/logos/{theme}",
                     BRANDING_ACCESS + "agentsAreForbidden",
-                    BRANDING_ACCESS + "customerGetsTheConsoleAnswer"));
+                    BRANDING_ACCESS + "customerGetsTheConsoleAnswer"),
+
+            // Slice 10a (S10A-AC-25): the account export and the anonymization, on the console for admins only. No
+            // customer company narrows them; agents get 403, customers on the portal host 404.
+            tested("GET", ACCOUNT_EXPORT,
+                    PRIVACY_ACCESS + "agentsAreForbidden",
+                    PRIVACY_ACCESS + "customerHostGets404"),
+            tested("HEAD", ACCOUNT_EXPORT,
+                    PRIVACY_ACCESS + "agentsAreForbidden",
+                    PRIVACY_ACCESS + "customerHostGets404"),
+            tested("POST", "/api/console/accounts/{accountId}/anonymize",
+                    PRIVACY_ACCESS + "agentsAreForbidden",
+                    PRIVACY_ACCESS + "customerHostGets404"));
 }
