@@ -20,8 +20,9 @@
 | 8 | 익명 이름은 `InstallationLocale`에서 고른다 [소스: `InstallationLocale`가 `en`·`ko`]. 서버 문구는 지금 메일 문구처럼 서버 쪽 글 묶음에 둔다 |
 | 9 | 내보내기는 `StreamingResponseBody`로 읽기 전용 `REPEATABLE READ` 하나에서 Jackson `JsonGenerator`로 흘려 쓴다(감사 내보내기와 같은 꼴) [소스: `ConsoleAuditController` 내보내기]. 동시 둘은 감사 내보내기와 따로 센 세마포어, 넘으면 503 `SERVER_BUSY`와 `Retry-After`. `HEAD`도 둔다(화면이 먼저 확인한다) |
 | 10 | 웹 계약 탭은 따로 두지 않는다. 공용 컴포넌트 API를 바꾸지 않는다: `ConfirmDialog`에는 막힌 확인 단추와 입력 칸 자리가 없으므로, 익명화 대화상자는 C-10 안에서 `Dialog`와 폼으로 만든다(`RenameDialog`와 같은 꼴, 확인 단추는 `Button blocked`, 열 때 초점은 이메일 칸, Enter로 보냄). 이메일 맞춤은 순수 함수 `matchesEmail(typed, email)`로 옆 모듈에 둔다(Stryker 대상) |
-| 11 | 내보내기 확인(`HEAD` → 상태별 문구 → `window.location.assign`)을 `C12AuditLog.tsx`에서 `console/src/app`의 도움 함수로 옮겨 C-10과 C-12가 같이 쓴다. 503은 `Retry-After`의 초를 문구에 넣고, 401은 로그인으로 보낸다(지금 C-12와 같음). 두 번 누름을 막는다 |
+| 11 | 내보내기 확인(`HEAD` → 상태별 문구 → 이동)을 `C12AuditLog.tsx`에서 `web/console/src/app/exportDownload.ts`의 `startExport(url, { navigate, busyText }): Promise<ExportCheck>`로 옮겨 C-10과 C-12가 같이 쓴다(`ExportCheck`는 `{ ok: true } \| { ok: false; status; text }`). 이동 함수와 503 문구는 화면이 넘긴다(C-12는 지금 문구 그대로, S1B-AC-28. C-10은 `Retry-After` 초를 넣은 문구). 401은 로그인으로 보낸다(지금 C-12와 같음). 두 번 누름을 막는다. 화면은 `navigate`에 `window.location.assign`을 넘긴다(C-7 웹 점검 D1) |
 | 12 | C-12 종류 묶음: `ACCOUNT_EXPORTED`는 "내보내기"(지금 `AUDIT_EXPORTED`가 있는 묶음 [소스: `auditWords.ts:73`]), `ACCOUNT_ANONYMIZED`와 `AUDIT_RECHAINED`는 "계정". 종류 이름: `ACCOUNT_EXPORTED` "계정 정보 내보내기", `ACCOUNT_ANONYMIZED` "익명화", `AUDIT_RECHAINED` "감사 사슬 다시 계산". 바뀐 값 이름: `fromSeq` "시작 번호", `toSeq` "끝 번호", `headHash` "마지막 hash", `clearedIssues`는 지금 이름 "비운 담당" 그대로(잠긴 `C12AuditLog.cleared.test.tsx`) |
+| 13 | C-7 점검 뒤 정함: 고객의 익명화 대화상자는 담당 수를 묻지 않는다(정지와 같음). 익명화 대화상자의 첫 초점은 `Dialog`의 `initialFocus`로 이메일 칸에 준다. C-12의 hash는 줄이지 않고 다 보인다(넘침은 story로 본다). AC-22(보관 작업과 잠금 나눔)의 테스트는 약한 채 두고 코드 검토로 본다. `conventions.md`의 바깥 확인 규칙에 "뒤 구간 안의 `AUDIT_RECHAINED`는 `headHash.to` 검사를 하지 않는다"를 구현 탭이 적는다 |
 
 ## 1. 표 (V22)
 
