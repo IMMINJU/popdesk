@@ -26,11 +26,12 @@ public class AccountRepository {
     /**
      * One account row. {@code passwordHash} is null until an invitation is accepted;
      * {@code passwordChangedAt} is null for a password that never changed; {@code photoUpdatedAt} is null
-     * for an account without a profile photo.
+     * for an account without a profile photo. {@code anonymized}: the account was anonymized (PII-4), and
+     * nothing brings it back (S10A-AC-13).
      */
     public record AccountRow(long id, String email, String name, Role role, AccountStatus status, String passwordHash,
             String locale, int failedSignIns, Instant lockedUntil, Instant passwordChangedAt, Instant createdAt,
-            Instant photoUpdatedAt) {}
+            Instant photoUpdatedAt, boolean anonymized) {}
 
     /**
      * An account that has not accepted its invitation, with the invitation. {@code cancelled}: an admin
@@ -44,6 +45,7 @@ public class AccountRepository {
 
     private static final String ACCOUNT_COLUMNS = "a.id, a.email, a.name, a.role, a.status, a.password_hash, a.locale, "
             + "a.failed_sign_ins, a.locked_until, a.password_changed_at, a.created_at, "
+            + "a.anonymized_at is not null as anonymized, "
             + "(select p.updated_at from account_photo p where p.account_id = a.id) as photo_updated_at";
 
     private static final String PENDING_COLUMNS = "a.id, a.email, a.name, a.role, i.invited_at, i.expires_at, "
@@ -52,10 +54,12 @@ public class AccountRepository {
     /**
      * The list filters, with the parameters of {@link #filter}. The search text is a LIKE pattern in
      * which {@code %} and {@code _} are escaped, so they find only themselves (COM-5, S1A-AC-89). The
-     * escape character is named, so the pattern does not lean on the database's default.
+     * escape character is named, so the pattern does not lean on the database's default. The anonymized
+     * filter compares {@code anonymized_at is not null} with the value sent (S10A-AC-36).
      */
     private static final String FILTER = "(cast(? as text) is null or a.role = ?) "
             + "and (cast(? as text) is null or a.status = ?) "
+            + "and (cast(? as boolean) is null or (a.anonymized_at is not null) = ?) "
             + "and (cast(? as text) is null or a.name ilike ? escape '\\' "
             + "or a.email ilike ? escape '\\')";
 
@@ -204,18 +208,18 @@ public class AccountRepository {
     }
 
     /**
-     * One page of the accounts with this role and status whose name or email holds {@code q}, ignoring
-     * case, newest first; a null filter leaves that one out.
+     * One page of the accounts with this role and status, anonymized or not, whose name or email holds
+     * {@code q}, ignoring case, newest first; a null filter leaves that one out.
      */
-    List<AccountRow> list(Role role, AccountStatus status, String q, long offset, int limit) {
+    List<AccountRow> list(Role role, AccountStatus status, Boolean anonymized, String q, long offset, int limit) {
         return jdbc.sql("select " + ACCOUNT_COLUMNS + " from account a where " + FILTER
                         + " order by a.created_at desc, a.id desc offset ? limit ?")
-                .params(filter(role, status, q, offset, limit)).query(AccountRepository::account).list();
+                .params(filter(role, status, anonymized, q, offset, limit)).query(AccountRepository::account).list();
     }
 
-    long count(Role role, AccountStatus status, String q) {
+    long count(Role role, AccountStatus status, Boolean anonymized, String q) {
         return jdbc.sql("select count(*) from account a where " + FILTER)
-                .params(filter(role, status, q)).query(Long.class).single();
+                .params(filter(role, status, anonymized, q)).query(Long.class).single();
     }
 
     /**
@@ -226,11 +230,12 @@ public class AccountRepository {
         return "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
     }
 
-    private static Object[] filter(Role role, AccountStatus status, String q, Object... more) {
+    private static Object[] filter(Role role, AccountStatus status, Boolean anonymized, String q, Object... more) {
         String roleName = role == null ? null : role.name();
         String statusName = status == null ? null : status.name();
         String pattern = q == null ? null : containing(q);
-        Object[] filters = {roleName, roleName, statusName, statusName, pattern, pattern, pattern};
+        Object[] filters = {roleName, roleName, statusName, statusName, anonymized, anonymized, pattern, pattern,
+            pattern};
         Object[] all = Arrays.copyOf(filters, filters.length + more.length);
         System.arraycopy(more, 0, all, filters.length, more.length);
         return all;
@@ -307,7 +312,8 @@ public class AccountRepository {
                 Role.valueOf(rs.getString("role")), AccountStatus.valueOf(rs.getString("status")),
                 rs.getString("password_hash"), rs.getString("locale"), rs.getInt("failed_sign_ins"),
                 instant(rs.getTimestamp("locked_until")), instant(rs.getTimestamp("password_changed_at")),
-                instant(rs.getTimestamp("created_at")), instant(rs.getTimestamp("photo_updated_at")));
+                instant(rs.getTimestamp("created_at")), instant(rs.getTimestamp("photo_updated_at")),
+                rs.getBoolean("anonymized"));
     }
 
     private static PendingRow pending(ResultSet rs, int row) throws SQLException {

@@ -43,7 +43,7 @@ class ConsoleAccountController {
 
     static Account account(AccountRow a) {
         return new Account(a.id(), a.email(), a.name(), a.role(), a.status(), a.createdAt().atOffset(ZoneOffset.UTC),
-                a.photoUpdatedAt() == null ? null : a.photoUpdatedAt().atOffset(ZoneOffset.UTC), false);
+                a.photoUpdatedAt() == null ? null : a.photoUpdatedAt().atOffset(ZoneOffset.UTC), a.anonymized());
     }
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`.";
@@ -78,7 +78,8 @@ class ConsoleAccountController {
                     @RequestParam(required = false) @Nullable Boolean anonymized,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
-        Paged<AccountRow> rows = accounts.list(CurrentAccount.get(), role, status, q, page, size);
+        Paged<AccountRow> rows = accounts.list(CurrentAccount.get(), role, status, anonymized, q, page,
+                size);
         return new Paged<>(rows.items().stream().map(ConsoleAccountController::account).toList(), rows.page(),
                 rows.size(), rows.totalElements(), rows.totalPages());
     }

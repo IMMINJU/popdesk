@@ -72,14 +72,14 @@ public class AccountService {
     }
 
     /**
-     * Every account, or those with {@code role} and {@code status} whose name or email holds {@code q},
-     * newest first (S1A-AC-29). {@code q} is 1 to 100 characters and is searched as it is: {@code %} and
+     * Every account, or those with {@code role} and {@code status}, anonymized or not ({@code anonymized},
+     * S10A-AC-36), whose name or email holds {@code q}, newest first (S1A-AC-29). {@code q} is 1 to 100 characters and is searched as it is: {@code %} and
      * {@code _} find themselves (S1A-AC-89). A request with {@code q} is counted against the admin's
      * search limit first (S3-AC-15).
      */
     @Transactional(readOnly = true)
-    public Paged<AccountRow> list(CurrentAccount admin, Role role, AccountStatus status, String q, int page,
-            int size) {
+    public Paged<AccountRow> list(CurrentAccount admin, Role role, AccountStatus status, Boolean anonymized, String q,
+            int page, int size) {
         if (q != null) {
             rateLimit.count(AccountRateLimit.Action.SEARCH, admin.id());
         }
@@ -91,8 +91,8 @@ public class AccountService {
             throw ApiException.invalid("q", "TOO_LONG");
         }
         PageRequest request = PageRequest.of(page, size);
-        return request.of(accounts.list(role, status, text, request.offset(), request.size()),
-                accounts.count(role, status, text));
+        return request.of(accounts.list(role, status, anonymized, text, request.offset(), request.size()),
+                accounts.count(role, status, anonymized, text));
     }
 
     /**
