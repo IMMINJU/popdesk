@@ -56,16 +56,18 @@ public class AuditService {
 
     private final AuditRepository repository;
     private final AuditLog audit;
+    private final AuditRechain rechain;
     private final Transactions transactions;
     private final TransactionTemplate reading;
     private final TransactionTemplate verifying;
     private final Semaphore exports = new Semaphore(EXPORTS);
     private final AtomicBoolean verificationRunning = new AtomicBoolean();
 
-    AuditService(AuditRepository repository, AuditLog audit, Transactions transactions,
+    AuditService(AuditRepository repository, AuditLog audit, AuditRechain rechain, Transactions transactions,
             PlatformTransactionManager transactionManager) {
         this.repository = repository;
         this.audit = audit;
+        this.rechain = rechain;
         this.transactions = transactions;
         this.reading = new TransactionTemplate(transactionManager);
         this.reading.setReadOnly(true);
@@ -208,10 +210,13 @@ public class AuditService {
      * and the chain's starting point becomes the place and hash of the last one removed. The integrity
      * check reads a snapshot, so it sees the chain before or after, never in between.
      *
+     * <p>It waits while an anonymization computes the chain again ({@link AuditRechain}, S10A-AC-22): that
+     * one walks from an entry it found without locking the chain, so the front must not move meanwhile.
+     *
      * @return how many entries were removed
      */
     public long removeOlderThan(Instant cutoff) {
-        return transactions.run(() -> {
+        return rechain.waiting(() -> transactions.run(() -> {
             repository.lockChain();
             Optional<AuditRow> last = repository.lastOfFrontBefore(cutoff);
             if (last.isEmpty()) {
@@ -220,7 +225,7 @@ public class AuditService {
             long removed = repository.deleteUpTo(last.get().seq());
             repository.updateAnchor(last.get().seq(), last.get().hash());
             return removed;
-        });
+        }));
     }
 
     /** The walk along the chain: the entry before, and the first entry that does not follow. */

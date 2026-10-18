@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.audit;
 
+import io.popdesk.helpdesk.audit.AuditChainRepository.Walk;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -17,8 +18,9 @@ import org.springframework.stereotype.Repository;
 
 /**
  * Reads audit rows (table {@code audit_log}) and the chain's one row ({@code audit_chain}). Writing
- * goes through {@link AuditChainRepository}, on the connection of the caller's transaction. Rows are never
- * changed once written; the retention period alone removes them, from the front of the chain.
+ * goes through {@link AuditChainRepository}, on the connection of the caller's transaction. Rows change
+ * only when an anonymization computes the chain again ({@link AuditRechain}); the retention period alone
+ * removes them, from the front of the chain.
  */
 @Repository
 class AuditRepository {
@@ -41,6 +43,43 @@ class AuditRepository {
     /** Appends to the chain in the current transaction; the IDs of the new rows, in order. */
     List<Long> append(List<AuditChain.Values> entries, boolean copy) {
         return jdbc.execute((ConnectionCallback<List<Long>>) c -> AuditChainRepository.append(c, entries, copy));
+    }
+
+    /**
+     * The first part of a recalculation ({@link AuditRechain#start}): from the account's first entry,
+     * found by its {@code accountId} as actor or target, up to the head as it is now, read without a lock.
+     * A walk that has not moved when the account has no entry.
+     */
+    Walk rechainToHead(long accountId, String name, String email) {
+        return jdbc.execute((ConnectionCallback<Walk>) c -> {
+            Chain chain = chain();
+            String id = Long.toString(accountId);
+            List<Walk> first = jdbc.query("select seq, prev_hash from audit_log where seq = (select min(seq) "
+                    + "from audit_log where seq <= ? and (actor ->> 'accountId' = ? or target ->> 'accountId' = ?))",
+                    (rs, n) -> new Walk(rs.getLong(1) - 1, rs.getString(2)), chain.headSeq(), id, id);
+            if (first.isEmpty()) {
+                return new Walk(chain.headSeq(), chain.headHash());
+            }
+            Walk walk = first.getFirst();
+            AuditChainRepository.rechain(c, walk, chain.headSeq(), accountId, name, email);
+            return walk;
+        });
+    }
+
+    /**
+     * The second part ({@link AuditRechain#finish}): locks the head row, goes on from where the walk
+     * stands to the head, and moves the head's hash when an entry changed. Returns the head's hash
+     * before.
+     */
+    String rechainFromHead(Walk walk, long accountId, String name, String email) {
+        return jdbc.execute((ConnectionCallback<String>) c -> {
+            Chain chain = lockChain();
+            AuditChainRepository.rechain(c, walk, chain.headSeq(), accountId, name, email);
+            if (walk.fromSeq != null) {
+                jdbc.update("update audit_chain set head_hash = ?", walk.newHash);
+            }
+            return chain.headHash();
+        });
     }
 
     /** One entry by its ID. */
