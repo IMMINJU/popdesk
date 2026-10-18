@@ -73,9 +73,21 @@ function mainOf(canvas: HTMLElement): HTMLElement | null {
   return canvas.querySelector('main') ?? document.querySelector('main');
 }
 
-/** The section whose heading is "내보내기". */
+/** The name a region gets from `aria-label` or from the elements `aria-labelledby` names. */
+function regionName(el: HTMLElement): string {
+  const label = el.getAttribute('aria-label');
+  if (label) return label.trim();
+  const ids = (el.getAttribute('aria-labelledby') ?? '').split(/\s+/).filter((id) => id !== '');
+  return ids.map((id) => textOf(document.getElementById(id))).join(' ').trim();
+}
+
+/**
+ * The 구역 the vitest tests find (C9CompanyDetail.10b.test.tsx): a region named from "내보내기" (a named
+ * `<section>` or `role="region"`) whose h2, the level of the other C-9 구역, is "내보내기".
+ */
 function exportSection(main: HTMLElement): HTMLElement | null {
-  return Array.from(main.querySelectorAll<HTMLElement>('section')).find((s) => Array.from(s.querySelectorAll('h2, h3')).some((h) => textOf(h) === '내보내기')) ?? null;
+  const regions = Array.from(main.querySelectorAll<HTMLElement>('section[aria-label], section[aria-labelledby], [role="region"]'));
+  return regions.find((s) => regionName(s).startsWith('내보내기') && Array.from(s.querySelectorAll('h2')).some((h) => textOf(h) === '내보내기')) ?? null;
 }
 
 /** C-9 drawn with the 내보내기 구역 and its five lines. */

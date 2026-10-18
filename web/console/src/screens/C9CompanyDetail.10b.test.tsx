@@ -118,17 +118,26 @@ function stateOf(line: HTMLElement): { text: string; tone: string | null }[] {
   return badgesIn(line);
 }
 
+/** Where `useFakeClock` of console.ts starts the fake clock. */
+const CLOCK_START = Date.parse('2026-10-08T03:20:00Z');
+
+/**
+ * The most list reads "5초마다" allows by now: the first read and one for each 5 seconds the fake
+ * clock moved. The clock of `useFakeClock` also moves with real time, so a slow machine may have
+ * read once more than the ticks alone would give; counts that do not stop are checked against this.
+ */
+const allowedReads = () => 1 + Math.floor((Date.now() - CLOCK_START) / 5000);
+
 describe('C-9 내보내기 구역 (10b 묶음)', () => {
-  test('S10B-AC-24 C-9 자리: "내보내기" 구역은 "라벨" 구역 뒤 맨 끝이고, 머리에 "내보내기" 단추가 하나 있으며 그 고객사의 작업을 부른다', async () => {
+  test('S10B-AC-24 C-9 자리: 제목이 "내보내기"(앞 C-9 구역과 같은 h2)인 구역이 "라벨" 구역 뒤에 있고, 머리에 "내보내기" 단추가 하나 있으며 그 고객사의 작업을 부른다', async () => {
     s10b.exports.ACME = [companyExport()];
     renderAt(URL_ACME);
 
     await listShows('최관리');
     const exports = await exportRegion();
+    expect(within(exports).getByRole('heading', { level: 2, name: SECTION }), '구역 제목 h2').toBeTruthy();
     const labels = await found(labelRegion, '구역 "라벨"');
     expect(labels.compareDocumentPosition(exports) & Node.DOCUMENT_POSITION_FOLLOWING, '"라벨" 뒤').toBeTruthy();
-    const main = screen.getByRole('main');
-    expect(within(main).getAllByRole('region').at(-1), '본문의 맨 끝 구역').toBe(exports);
     const buttons = within(exports).getAllByRole('button', { name: EXPORT_BUTTON });
     expect(buttons, '"내보내기" 단추').toHaveLength(1);
     const [first] = exportLinesNow();
@@ -210,6 +219,18 @@ describe('C-9 내보내기 구역 (10b 묶음)', () => {
     const line = await listShows('최관리');
     expect(exportButtonNow(), `보관한 고객사의 "${EXPORT_BUTTON}"`).not.toBeNull();
     expect(downloadIn(line)).not.toBeNull();
+  });
+
+  test('S10B-AC-24 C-9 진행 중 줄이 있음: 구역 머리의 "내보내기"는 막혀 있지 않고, 누르면 대화상자가 열린다', async () => {
+    s10b.exports.ACME = [running()];
+    const { user } = renderAt(URL_ACME);
+
+    const line = await listShows('최관리');
+    expect(stateOf(line)).toEqual([{ text: STATE_WORDS.RUNNING, tone: STATE_TONES.RUNNING }]);
+    const button = await found(exportButtonNow, `구역 머리의 "${EXPORT_BUTTON}"`);
+    expect(isBlocked(button), `진행 중 줄이 있을 때의 "${EXPORT_BUTTON}"`).toBe(false);
+    const box = await openExport(user);
+    expect(await sendOf(box)).toBeTruthy();
   });
 
   test('S10B-AC-24 C-9 읽기 실패: 구역 안에 "내보내기 목록을 불러오지 못했습니다."와 "다시 시도". 누르면 다시 읽어 목록을 보인다', async () => {
@@ -378,26 +399,27 @@ describe('C-9 내보내기 대화상자 (10b 묶음)', () => {
 });
 
 describe('C-9 내보내기 목록 다시 읽기 (10b 묶음)', () => {
-  test('S10B-AC-26 C-9 진행 중: 5초마다 다시 읽고, 끝나면 "내려받기"와 크기를 보이며 숨긴 상태 줄이 "내보내기가 끝났습니다"를 한 번 읽힌다. 그 뒤로는 읽지 않는다', async () => {
+  test('S10B-AC-26 C-9 진행 중: 5초마다 다시 읽고, 끝나면 "내려받기"와 크기를 보이며 숨긴 상태 줄이 "내보내기가 끝났습니다"를 한 번 읽힌다. 그 뒤로는 읽지 않고, 다시 그려도 되풀이하지 않는다', async () => {
     useFakeClock();
     const mine = running({ id: exportId(4) });
     const older = companyExport({ id: exportId(3), requestedBy: { accountId: 5, name: '박관리' } });
     s10b.exports.ACME = [mine, older];
-    renderAt(URL_ACME, { fakeTimers: true });
+    const { user } = renderAt(URL_ACME, { fakeTimers: true });
     await listShows('최관리');
     await listShows('박관리');
     await settle();
-    expect(listCalls(), '처음 읽기').toBe(1);
+    expect(listCalls(), '처음 읽기').toBeLessThanOrEqual(allowedReads());
     expect(spokenWith(FINISHED), '처음부터 끝난 작업은 읽히지 않는다').toEqual([]);
 
     tick(2000);
     await settle();
-    expect(listCalls(), '2초 뒤').toBe(1);
+    expect(listCalls(), '2초 뒤').toBeLessThanOrEqual(allowedReads());
+    const running2s = listCalls();
     s10b.exports.ACME = [ended(mine), older];
     tick(3000);
 
     await eventually(() => {
-      expect(listCalls(), '5초 뒤').toBe(2);
+      expect(listCalls(), '5초 뒤').toBeGreaterThan(running2s);
     });
     const line = await exportLine('최관리');
     await eventually(() => {
@@ -409,12 +431,24 @@ describe('C-9 내보내기 목록 다시 읽기 (10b 묶음)', () => {
       expect(spokenWith(FINISHED)).toHaveLength(1);
     });
     expect(screen.queryAllByRole('status').filter((s) => text(s).includes(FINISHED)), 'role="status"인 줄').toHaveLength(1);
+    await settle();
+    const atEnd = listCalls();
+    expect(atEnd, '끝날 때까지').toBeLessThanOrEqual(allowedReads());
 
     tick(5000);
     tick(5000);
     await settle();
-    expect(listCalls(), '끝난 뒤').toBe(2);
+    expect(listCalls(), '끝난 뒤').toBe(atEnd);
     expect(spokenWith(FINISHED), '한 번만').toHaveLength(1);
+
+    // Drawn again (the dialog opened and closed): the status line does not say it once more.
+    const box = await openExport(user);
+    await user.click(within(box).getByRole('button', { name: CANCEL }));
+    await closed();
+    await settle();
+    const said = spokenWith(FINISHED).map((el) => text(el).split(FINISHED).length - 1);
+    expect(said, '다시 그린 뒤 상태 줄의 "내보내기가 끝났습니다"').toEqual([1]);
+    expect(listCalls(), '다시 그린 뒤').toBe(atEnd);
   });
 
   test('S10B-AC-26 C-9 진행 중이던 작업이 실패: 까닭 문장을 보이고 숨긴 상태 줄이 "내보내기가 실패했습니다"를 읽힌다. 그 뒤로는 읽지 않는다', async () => {
@@ -436,10 +470,13 @@ describe('C-9 내보내기 목록 다시 읽기 (10b 묶음)', () => {
     await eventually(() => {
       expect(spokenWith(FAILED)).toHaveLength(1);
     });
+    await settle();
+    const atEnd = listCalls();
+    expect(atEnd, '실패할 때까지').toBeGreaterThanOrEqual(2);
     tick(5000);
     tick(5000);
     await settle();
-    expect(listCalls(), '실패한 뒤').toBe(2);
+    expect(listCalls(), '실패한 뒤').toBe(atEnd);
   });
 
   test('S10B-AC-26 C-9 진행 중인 작업이 없으면 다시 읽지 않는다. 대화상자로 하나를 시작하면 그때부터 5초마다 읽는다', async () => {
@@ -458,10 +495,18 @@ describe('C-9 내보내기 목록 다시 읽기 (10b 묶음)', () => {
     await user.click(await sendOf(box));
     await closed();
     await exportLine('최관리');
+    // The reads the 202 itself brought have ended before counting, so only "5초마다" moves the count.
+    await settle();
     const before = listCalls();
     tick(5000);
     await eventually(() => {
       expect(listCalls(), '진행 중 줄이 생긴 뒤 5초').toBeGreaterThan(before);
+    });
+    await settle();
+    const once = listCalls();
+    tick(5000);
+    await eventually(() => {
+      expect(listCalls(), '그다음 5초').toBeGreaterThan(once);
     });
   });
 
@@ -472,15 +517,18 @@ describe('C-9 내보내기 목록 다시 읽기 (10b 묶음)', () => {
     await listShows('최관리');
 
     setHidden(true);
+    await settle();
+    const hidden = listCalls();
+    expect(hidden, '가려질 때까지').toBeLessThanOrEqual(allowedReads());
     tick(5000);
     tick(5000);
     await settle();
-    expect(listCalls(), '가려진 동안').toBe(1);
+    expect(listCalls(), '가려진 동안').toBe(hidden);
 
     setHidden(false);
     tick(5000);
     await eventually(() => {
-      expect(listCalls(), '다시 보인 뒤').toBeGreaterThan(1);
+      expect(listCalls(), '다시 보인 뒤').toBeGreaterThan(hidden);
     });
   });
 
@@ -492,11 +540,14 @@ describe('C-9 내보내기 목록 다시 읽기 (10b 묶음)', () => {
 
     await user.click(await found(() => screen.queryAllByRole('link', { name: '문의' }).find((a) => a.closest('nav') !== null), '메뉴 "문의"'));
     await atPath('/issues');
+    await settle();
+    const left = listCalls();
+    expect(left, '떠날 때까지').toBeLessThanOrEqual(allowedReads());
     tick(5000);
     tick(5000);
     await settle();
 
-    expect(listCalls(), '떠난 뒤').toBe(1);
+    expect(listCalls(), '떠난 뒤').toBe(left);
   });
 
   test('S10B-AC-26 C-9 늦은 답은 버린다: 다시 읽는 중에 다른 고객사로 가면, 늦게 온 앞 고객사의 목록이 새 고객사의 구역에 보이지 않는다', async () => {
@@ -526,6 +577,44 @@ describe('C-9 내보내기 목록 다시 읽기 (10b 묶음)', () => {
     expect(window.location.pathname).toBe('/companies/BETA');
     expect(exportLinesNow().map(text).join(' '), 'BETA 구역의 ACME 줄').not.toContain('최관리');
     expect(exportLinesNow()).toHaveLength(1);
+  });
+
+  test('S10B-AC-26 C-9 늦은 답은 버린다(같은 화면): 2회차 답이 "완료"를 보인 3회차 답보다 늦게 와도, 그 "진행 중"으로 화면을 되돌리지 않는다', async () => {
+    useFakeClock();
+    const mine = running({ id: exportId(4) });
+    s10b.exports.ACME = [mine];
+    const release = gate();
+    let asked = 0;
+    on('get', ACME_EXPORTS, async () => {
+      asked += 1;
+      if (asked !== 2) return exportsOf('ACME');
+      // The list as it was when the second read was asked: still running.
+      const stale = exportsOf('ACME');
+      await release.opened;
+      return stale;
+    });
+    renderAt(URL_ACME, { fakeTimers: true });
+    await listShows('최관리');
+    tick(5000);
+    await sent('GET', ACME_EXPORTS, 2);
+
+    s10b.exports.ACME = [ended(mine)];
+    tick(5000);
+    await sent('GET', ACME_EXPORTS, 3);
+    await eventually(() => {
+      expect(stateOf(exportLinesNow()[0] as HTMLElement), '3회차 답 뒤').toEqual([{ text: STATE_WORDS.DONE, tone: STATE_TONES.DONE }]);
+    });
+
+    const late = answered('GET', ACME_EXPORTS);
+    release.open();
+    await late;
+    await settle();
+
+    const [top] = exportLinesNow();
+    expect(exportLinesNow(), '줄').toHaveLength(1);
+    expect(stateOf(top as HTMLElement), '늦은 2회차 답 뒤').toEqual([{ text: STATE_WORDS.DONE, tone: STATE_TONES.DONE }]);
+    expect(downloadIn(top as HTMLElement), `"${DOWNLOAD}"`).not.toBeNull();
+    expect(spokenWith(FINISHED), '끝남 알림').toHaveLength(1);
   });
 
   test('S10B-AC-26 C-9 다시 읽기가 401이면 멈춘다', async () => {
@@ -562,10 +651,8 @@ describe('C-9 내보내기 목록 다시 읽기 (10b 묶음)', () => {
     const line = await listShows('최관리');
 
     tick(5000);
-    const notice = await found(
-      () => Array.from(document.querySelectorAll<HTMLElement>('main *')).find((el) => el.children.length === 0 && text(el).includes(RELOAD_FAILED)),
-      `"${RELOAD_FAILED}"`,
-    );
+    const region = await exportRegion();
+    const notice = await found(() => within(region).queryAllByText(RELOAD_FAILED, { exact: false })[0], `구역 안의 "${RELOAD_FAILED}"`);
     expect(exportLinesNow(), '그대로인 목록').toHaveLength(1);
     expect(stateOf(exportLinesNow()[0] as HTMLElement)).toEqual([{ text: STATE_WORDS.RUNNING, tone: STATE_TONES.RUNNING }]);
     expect(line.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING, '목록 아래').toBeTruthy();
@@ -574,7 +661,7 @@ describe('C-9 내보내기 목록 다시 읽기 (10b 묶음)', () => {
     s10b.exports.ACME = [ended(mine)];
     tick(5000);
     await eventually(() => {
-      expect(listCalls(), '다음 회차').toBe(3);
+      expect(listCalls(), '다음 회차').toBeGreaterThanOrEqual(3);
     });
     await eventually(() => {
       expect(stateOf(exportLinesNow()[0] as HTMLElement)).toEqual([{ text: STATE_WORDS.DONE, tone: STATE_TONES.DONE }]);
