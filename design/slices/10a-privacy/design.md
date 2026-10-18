@@ -21,7 +21,7 @@
 | 9 | 내보내기는 `StreamingResponseBody`로 읽기 전용 `REPEATABLE READ` 하나에서 Jackson `JsonGenerator`로 흘려 쓴다(감사 내보내기와 같은 꼴) [소스: `ConsoleAuditController` 내보내기]. 동시 둘은 감사 내보내기와 따로 센 세마포어, 넘으면 503 `SERVER_BUSY`와 `Retry-After`. `HEAD`도 둔다(화면이 먼저 확인한다) |
 | 10 | 웹 계약 탭은 따로 두지 않는다. 공용 컴포넌트 API를 바꾸지 않는다: `ConfirmDialog`에는 막힌 확인 단추와 입력 칸 자리가 없으므로, 익명화 대화상자는 C-10 안에서 `Dialog`와 폼으로 만든다(`RenameDialog`와 같은 꼴, 확인 단추는 `Button blocked`, 열 때 초점은 이메일 칸, Enter로 보냄). 이메일 맞춤은 순수 함수 `matchesEmail(typed, email)`로 옆 모듈에 둔다(Stryker 대상) |
 | 11 | 내보내기 확인(`HEAD` → 상태별 문구 → `window.location.assign`)을 `C12AuditLog.tsx`에서 `console/src/app`의 도움 함수로 옮겨 C-10과 C-12가 같이 쓴다. 503은 `Retry-After`의 초를 문구에 넣고, 401은 로그인으로 보낸다(지금 C-12와 같음). 두 번 누름을 막는다 |
-| 12 | C-12 종류 묶음: `ACCOUNT_EXPORTED`는 "내보내기"(지금 `AUDIT_EXPORTED`가 있는 묶음 [소스: `auditWords.ts:73`]), `ACCOUNT_ANONYMIZED`와 `AUDIT_RECHAINED`는 "계정". 바뀐 값 이름: `fromSeq` "시작 번호", `toSeq` "끝 번호", `headHash` "마지막 hash", `clearedIssues` "비운 담당 문의" |
+| 12 | C-12 종류 묶음: `ACCOUNT_EXPORTED`는 "내보내기"(지금 `AUDIT_EXPORTED`가 있는 묶음 [소스: `auditWords.ts:73`]), `ACCOUNT_ANONYMIZED`와 `AUDIT_RECHAINED`는 "계정". 종류 이름: `ACCOUNT_EXPORTED` "계정 정보 내보내기", `ACCOUNT_ANONYMIZED` "익명화", `AUDIT_RECHAINED` "감사 사슬 다시 계산". 바뀐 값 이름: `fromSeq` "시작 번호", `toSeq` "끝 번호", `headHash` "마지막 hash", `clearedIssues`는 지금 이름 "비운 담당" 그대로(잠긴 `C12AuditLog.cleared.test.tsx`) |
 
 ## 1. 표 (V22)
 
