@@ -254,6 +254,8 @@ function AddCustomerDialog(props: { code: string; members: readonly Member[]; on
         <AccountFinder
           legend="더할 고객"
           role="CUSTOMER"
+          // An anonymized customer can never be added (S10A-AC-36).
+          anonymized={false}
           value={chosen}
           onChange={(v) => {
             setChosen(v);

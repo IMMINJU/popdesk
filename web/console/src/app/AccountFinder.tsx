@@ -15,6 +15,8 @@ export interface AccountFinderProps {
   legend: string;
   /** Only accounts of this role. Default: every role. */
   role?: Account['role'];
+  /** Sent as `anonymized`: false leaves anonymized accounts out (C-9, S10A-AC-36). Default: not sent. */
+  anonymized?: boolean;
   /** The chosen choice: an account ID as text, or the value of a `fixed` choice. */
   value: string | null;
   onChange: (value: string, account: Account | null) => void;
@@ -42,7 +44,7 @@ export function AccountFinder(props: AccountFinderProps) {
   const [query, setQuery] = useState('');
   const [found, setFound] = useState<{ q: string; items: Account[] } | null>(null);
   const q = query.trim();
-  const { role } = props;
+  const { role, anonymized } = props;
   const handlers = useRef({ onFound: props.onFound, onFailure: props.onFailure });
   useLayoutEffect(() => {
     handlers.current = { onFound: props.onFound, onFailure: props.onFailure };
@@ -52,7 +54,7 @@ export function AccountFinder(props: AccountFinderProps) {
     if (q === '') return undefined;
     let current = true;
     const timer = setTimeout(() => {
-      void call(api.GET('/api/console/accounts', { params: { query: { ...(role === undefined ? {} : { role }), q, size: 20 } } })).then((result) => {
+      void call(api.GET('/api/console/accounts', { params: { query: { ...(role === undefined ? {} : { role }), ...(anonymized === undefined ? {} : { anonymized }), q, size: 20 } } })).then((result) => {
         if (!current) return;
         if (result.ok) {
           setFound({ q, items: result.data.items });
@@ -67,7 +69,7 @@ export function AccountFinder(props: AccountFinderProps) {
       current = false;
       clearTimeout(timer);
     };
-  }, [q, role]);
+  }, [q, role, anonymized]);
 
   const results = q !== '' && found?.q === q ? found.items.filter((a) => role === undefined || a.role === role) : null;
   const options: Option[] = [
