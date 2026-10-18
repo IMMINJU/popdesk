@@ -30,11 +30,11 @@
 | ID | 기준 |
 |---|---|
 | S10B-AC-01 | When 관리자가 `POST /api/console/companies/{code}/exports`에 `includeInternal`, `includePrivate`(참·거짓, 둘 다 필수)을 보내면, the system shall 202로 작업(ID, 상태 `RUNNING`, 요청한 사람, 요청 시각, 두 선택)을 주고 백그라운드에서 ZIP을 만든다. 보관(`ARCHIVED`)·정지 고객사도 된다. (PII-8) |
-| S10B-AC-02 | If 다른 내보내기 작업이 `RUNNING`이면(어느 고객사든), then the system shall 409 `EXPORT_RUNNING`으로 답하고 작업을 만들지 않는다. 이 앱이 아직 단일 실행 잠금을 쥐지 못했으면 503 `SERVER_BUSY`다. (5절 3) |
+| S10B-AC-02 | If 다른 내보내기 작업이 `RUNNING`이면(어느 고객사든), then the system shall 409 `EXPORT_RUNNING`으로 답하고 작업을 만들지 않는다. 이 앱이 단일 실행 잠금을 잃은 동안(DB 연결이 끊겨 다시 잡는 중)이면 503 `SERVER_BUSY`(`Retry-After: 5`)다. (5절 3, 5절 15) |
 | S10B-AC-03 | When 관리자가 `GET /api/console/companies/{code}/exports`를 부르면, the system shall 그 고객사의 작업을 최신순으로 준다(상태, 시각, 끝난 시각, 파일 크기, 실패면 까닭 code). 24시간 지난 `DONE`은 `EXPIRED`로 보인다. (PII-8) |
-| S10B-AC-04 | When ZIP이 다 만들어지면, the system shall 작업을 `DONE`으로 바꾸고 요청한 관리자의 알림함에 `COMPANY_EXPORT_READY`(고객사 코드)를 남긴다. (PII-8) |
+| S10B-AC-04 | When ZIP이 다 만들어지면, the system shall 작업을 `DONE`으로 바꾸고 요청한 관리자의 알림함에 `COMPANY_EXPORT_READY`(고객사 코드)를 남긴다. 요청한 관리자가 그 사이 정지되거나 익명화되었으면 남기지 않는다. (PII-8, 5절 16) |
 | S10B-AC-05 | If ZIP을 만들다 실패하면, then the system shall 작업을 `FAILED`(까닭 code)로 바꾸고, 만들던 파일을 지우고, 관리자 전부의 알림함에 `COMPANY_EXPORT_FAILED`(고객사 코드)를 남긴다. (PII-8, OPS-1) |
-| S10B-AC-06 | When 앱이 단일 실행 잠금을 쥐면(뜰 때), the system shall 새 작업을 받기 전에 그 전에 `RUNNING`이던 작업을 `FAILED`(`INTERRUPTED`)로 바꾸고, 파일 자리에서 `DONE` 작업의 파일이 아닌 것을 모두 지우고, 파일이 없어진 `DONE` 작업을 `EXPIRED`로 바꾼다. (PII-8) |
+| S10B-AC-06 | When 앱이 뜰 때(마이그레이션 뒤, 웹 서버가 요청을 받기 전), the system shall 그 전에 `RUNNING`이던 작업을 `FAILED`(`INTERRUPTED`)로 바꾸고, 파일 자리에서 `DONE` 작업의 파일이 아닌 것을 모두 지우고, 파일이 없어진 `DONE` 작업을 `EXPIRED`로 바꾼다. (PII-8) |
 | S10B-AC-07 | When 관리자가 `GET`(또는 `HEAD`) `/api/console/company-exports/{id}/file`을 부르면, the system shall `DONE` 작업의 ZIP을 `application/zip`, `Content-Disposition: attachment; filename="popdesk-{code}-{날짜}.zip"`, `no-store`로 흘려 준다. 요청한 사람이 아닌 관리자도 받는다. `RUNNING`·`FAILED`·`EXPIRED`이거나 `DONE`이 된 지 24시간이 지났으면(정리 작업이 아직 돌지 않았어도) 404다. 날짜는 UTC다. (PII-8) |
 | S10B-AC-08 | When `DONE`이 된 지 24시간이 지나면, the system shall 정리 작업이 파일을 지우고 작업을 `EXPIRED`로 바꾼다. 작업 행은 남는다. (PII-8, OPS-2) |
 | S10B-AC-09 | When 내보내기를 요청하면, the system shall 감사 `COMPANY_EXPORTED` 하나를 남긴다: 대상 `{type: COMPANY, code}`, 바뀐 값 `includeInternal`, `includePrivate`. 파일을 내려받으면(`GET`) 감사 `COMPANY_EXPORT_DOWNLOADED`(같은 대상, 바뀐 값 작업 ID)를 남긴다. (PII-8, AUDIT-1, 5절 8) |
@@ -48,7 +48,7 @@
 | S10B-AC-12 | The system shall `issue.json`에 고객용 칸만 넣는다: 키, 제목, 내용, 상태, 우선순위, 비공개 여부, 올린 사람(고객이면 계정 ID·이름, 상담 쪽이면 "지원팀"), 지원팀이 올렸는지, 해결·종료·올린·고친 시각. 담당자, 라벨, 마감일, 이력, SLA, 대리 등록한 상담원, 연결은 넣지 않는다. (PII-8, TM-40) |
 | S10B-AC-13 | The system shall `comments.json`에 공개 댓글(지운 댓글은 빼고)을 작성자(고객이면 계정 ID·이름, 상담 쪽이면 "지원팀"), 내용, 쓴·고친 시각과 함께 넣는다. `includeInternal`이면 내부 댓글과 작업(제목, 상태, 마감일, 기록 내용과 시각)을 넣고 표시한다. 내부 것에서도 상담 쪽 사람은 "지원팀"이다. (PII-8, ANON-1) |
 | S10B-AC-14 | The system shall 문의 첨부와 넣은 댓글의 첨부(본문 이미지 포함) 파일을 넣는다. `includeInternal`이 아니면 내부 댓글의 첨부를 넣지 않는다. 지운 첨부는 넣지 않는다. 저장소에서 읽지 못한 파일은 빼고 `manifest.json`의 빠진 목록에 ID와 이름을 적는다. (PII-8) |
-| S10B-AC-15 | The system shall `customers.json`에 그 고객사의 지금 소속 고객을 이메일과 이름으로만 넣는다(다른 고객사 소속, 역할, 상태, 담당자 표시 없음). 익명 계정은 익명 값이다. (PII-8, TM-05) |
+| S10B-AC-15 | The system shall `customers.json`에 그 고객사의 지금 소속 고객을 이메일과 이름으로만 넣는다(다른 고객사 소속, 역할, 상태, 담당자 표시 없음). 정지·익명 계정도 소속이면 넣는다. 익명 계정은 계정 행의 익명 값(`deleted-{id}@invalid`, 익명 이름) 그대로이고 따로 표시하지 않는다. 문의·댓글의 작성자 이름도 행의 값이라 익명 계정은 익명 이름이다. (PII-8, TM-05, 5절 17) |
 | S10B-AC-16 | The system shall 그 고객사의 문의만 넣는다. 비공개 문의는 `includePrivate`일 때만 넣는다(고객끼리도 보지 못하는 것이라). 휴지통의 문의와 영구 삭제한 문의는 넣지 않는다. 다른 고객사 문의와의 연결, 그 문의의 키나 제목은 어디에도 넣지 않는다. (PII-8, RULE-01, TM-41) |
 | S10B-AC-17 | The system shall 목록(문의, 댓글, 작업, 첨부 행, 계정)을 읽기 전용 스냅샷 하나에서 읽는다. 내보내는 동안 바뀐 문의·댓글은 ZIP에서 앞 값이거나 뒤 값 하나로만 보이고 섞이지 않는다. 첨부 파일의 바이트는 스냅샷을 닫은 뒤 읽고, 그 사이 지워진 파일은 빠진 목록으로 간다. (PII-8, 5절 11) |
 
@@ -56,7 +56,7 @@
 
 | ID | 기준 |
 |---|---|
-| S10B-AC-18 | If `POPDESK_ISSUE_RETENTION`이 ISO-8601 기간이 아니거나 `P90D`보다 짧으면, then the system shall 뜨지 않고(프로세스가 끝남) 그 키와 까닭을 로그에 남긴다. 값이 없으면 자동 정리는 꺼져 있다. (PII-6) |
+| S10B-AC-18 | If `POPDESK_ISSUE_RETENTION`이 일·시간의 ISO-8601 기간(`PnD`, `PTnH`, 둘을 함께. `AuditRetention`과 같다)이 아니거나(`P1Y`, `P3M` 같은 해·달은 거절) `P90D`보다 짧으면, then the system shall 뜨지 않고(프로세스가 끝남) 그 키와 까닭을 로그에 남긴다. 값이 없으면 자동 정리는 꺼져 있다. (PII-6) |
 | S10B-AC-19 | When 자동 정리가 처음 켜지거나(꺼져 있다가 켜짐) 기간이 지난번 본 값보다 짧아진 뒤 정리 작업이 처음 돌면, the system shall 문의를 옮기지 않고 그때의 대상 수를 관리자 전부의 알림함에 `ISSUE_RETENTION_ARMED`(대상 수, 기간의 일수)로 남기고, 24시간 뒤부터 옮긴다. 기다리는 동안 또 짧아지면 그때부터 다시 24시간이다. 길어지거나 같으면(기간은 길이로 견준다, `P90D`와 `PT2160H`는 같다) 기다림을 새로 걸지 않는다. 꺼지면 기다림이 없어진다. (PII-6, OPS-1, 5절 5) |
 | S10B-AC-20 | When 기다림이 끝난 뒤 하루 한 번(지난번 옮긴 때에서 24시간 뒤) 정리 작업이 돌면, the system shall 자동 정리 대상을 문의 하나씩 휴지통으로 옮긴다(30일 뒤 영구 삭제는 TRASH-3대로). 옮긴 문의의 지운 사람은 "자동 정리"(계정 없음)이고 이력에 popdesk가 옮긴 것으로 남는다. 감사는 남기지 않는다. (PII-6, 5절 4) |
 | S10B-AC-21 | When 옮기는 사이에 사람이 그 문의를 다시 열거나 지우면, the system shall 그 문의를 옮기지 않는다(조건부 쓰기, STATUS-7). (PII-6) |
@@ -79,7 +79,7 @@
 |---|---|
 | S10B-AC-28 | The system shall V23으로 내보내기 작업 표, 자동 정리 상태 표(행 하나), 문의의 마지막 복구 시각 칸, 종료된 문의를 찾는 부분 색인, 알림의 자동 정리 수·일수 칸을 더한다. (D-18) |
 | S10B-AC-29 | The system shall 업그레이드 견본이 끝난 내보내기 작업 하나와 자동 정리로 휴지통에 간 문의 하나를 만들고, 견본으로 올린 설치에서 그것이 보인다(파일은 `EXPIRED`). |
-| S10B-AC-30 | The system shall `docs/operate/privacy.md`에 보관 기간 표, 문의 자동 정리(켜는 법, 최소값, 첫날 기다림, 되돌리는 법), 고객사 내보내기 절차를 적고, `docs/operate/configuration.md`에 내보내기 파일 자리(`POPDESK_EXPORT_DIR`)와 그 디스크 크기 안내를 적는다. 내부 댓글 본문에 쓴 사람 이름은 그대로 나간다고 적는다. `deploy/compose.yml`이 두 키를 앱에 넘긴다. 릴리스 노트에 "`POPDESK_ISSUE_RETENTION`이 틀리거나 짧으면 업그레이드 뒤 뜨지 않는다"를 적는다. (PII-1, PII-6, PII-8) |
+| S10B-AC-30 | The system shall `docs/operate/privacy.md`(10a가 "What popdesk keeps"와 로그 문장을 이미 썼다)에 보관 기간 표, 문의 자동 정리(켜는 법, 최소값, 첫날 기다림, 되돌리는 법), 고객사 내보내기 절차를 더하고, "What an anonymization leaves"에 만들어 둔 고객사 내보내기 파일(최대 24시간)을 더하고, `docs/operate/configuration.md`에 내보내기 파일 자리(`POPDESK_EXPORT_DIR`)와 그 디스크 크기 안내를 적는다. 내부 댓글 본문에 쓴 사람 이름은 그대로 나간다고 적는다. `deploy/compose.yml`이 두 키를 앱에 넘긴다. 릴리스 노트에 "`POPDESK_ISSUE_RETENTION`이 틀리거나 짧으면 업그레이드 뒤 뜨지 않는다"를 적는다. (PII-1, PII-6, PII-8) |
 
 ## 3. 센 검증을 받는 기준
 
@@ -118,3 +118,8 @@
 | 12 | 휴지통에서 복구하면 문의에 복구 시각을 남기고 자동 정리는 그 시각부터 다시 센다 | 복구는 상태를 `CLOSED`로, 종료 시각을 그대로 두므로 다음 회차에 다시 옮겨진다(서버 검토) | 복구하면 종료 시각을 바꿈(종료 시각의 뜻이 바뀐다) |
 | 13 | 비공개 문의는 고를 때만 넣는다(`includePrivate`) | 고객은 같은 고객사 동료의 비공개 문의를 보지 못한다(RULE-02). ZIP을 받는 고객사 담당자가 그것을 보게 된다 | 늘 넣음 |
 | 14 | 다 됨 알림은 요청한 관리자 한 사람에게 가므로 `AdminInbox`에 계정 하나에게 남기는 메서드를 더한다. 첫날 알림의 수와 일수는 알림 표의 새 칸에 숫자로 둔다 | 지금 `AdminInbox`는 관리자 전부에게만 보낸다. 웹이 ISO 기간을 읽지 않게 한다(웹 검토) | – |
+| 15 | 뜰 때 정리(AC-06)는 마이그레이션 뒤 웹 서버가 열리기 전에 한 번 한다. 503은 잠금을 잃은 동안에만 낸다. 잠금을 다시 잡아도 정리를 또 하지 않는다 | 단일 실행 잠금은 Flyway보다 먼저 잡혀[소스: `InstanceLock.java:23-24`] 뜰 때 "아직 못 쥔" 때가 없다. 잠금을 잃는 것은 DB 연결이 끊긴 때이고 그 동안 이 앱의 작업은 실행기가 멈춘다. 10a 뒤 다시 봄(2026-10-19) | 잠금을 다시 잡을 때마다 정리 |
+| 16 | 요청한 관리자가 `ACTIVE`가 아니거나 익명화되었으면 다 됨 알림을 남기지 않는다 | 익명화가 그 사람의 알림함을 지운다[소스: `AnonymizationService.java:93`]. 익명 계정에 새 항목이 생기지 않게 한다. 다른 관리자는 C-9 목록에서 본다. 10a 뒤 다시 봄 | 관리자 전부에게 |
+| 17 | 소속 고객 목록과 작성자 이름은 계정 행에서 읽어 익명 계정이 익명 값으로 나간다. 익명 표시 칸은 두지 않는다 | 10a가 익명화할 때 계정 행의 이름·이메일을 바꾸고 소속은 두므로 따로 할 일이 없다[소스: `AccountService.java:253`]. 칸을 더하면 PII-8의 "이메일·이름만"을 넘는다. 10a 뒤 다시 봄 | `anonymized` 칸 / 익명 계정 빼기 |
+| 18 | 내려받기는 첨부의 동시 전송 한도(16) 밖이다 | 관리자만, 작업 하나에 파일 하나이고 내보내기는 설치에 하나씩이다[소스: `TransferLimitFilter.java:38-41`이 첨부·이미지 경로에만 걸림] | 한도 안에 넣기 |
+| 19 | 고객사 내보내기 코드는 10a의 `helpdesk.privacy` 패키지에 둔다. 저장소 클래스(`CompanyExportRepository`)는 `PrivacyRepository`와 따로다 | PII-8이 PII-3·4와 같은 규칙 묶음이고 `privacy.md`와 한곳에 모인다. `export`라는 이름은 감사·계정 내보내기와 헷갈린다. `PrivacyRepository`는 다른 계정의 이름·이메일을 읽지 않는다고 약속했는데[소스: `PrivacyRepository.java:16-18`] 고객사 내보내기는 소속 고객 이메일을 읽는다. 10a 뒤 다시 봄 | 새 패키지 `helpdesk.export` |

@@ -48,7 +48,7 @@
 
 ## C-12 감사 로그
 
-`COMPANY_EXPORTED`("고객사 내보내기"), `COMPANY_EXPORT_DOWNLOADED`("고객사 내보내기 받기")는 "내보내기" 묶음. 바뀐 값 이름: `includeInternal` "내부 넣기", `includePrivate` "비공개 넣기", `exportId` "작업".
+`COMPANY_EXPORTED`("고객사 내보내기"), `COMPANY_EXPORT_DOWNLOADED`("고객사 내보내기 받기")는 "고객사" 묶음(10a의 잠긴 테스트가 "내보내기" 묶음을 둘로 못박음, `design.md` 2절). 바뀐 값 이름: `includeInternal` "내부 넣기", `includePrivate` "비공개 넣기", `exportId` "작업".
 
 ## C-11 휴지통
 

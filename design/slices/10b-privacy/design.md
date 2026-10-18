@@ -7,14 +7,14 @@
 
 | # | 정한 것 |
 |---|---|
-| 1 | 새 서버 패키지 `helpdesk.export`: `CompanyExportService`(작업 만들기, 목록, 파일 열기), `CompanyExportWriter`(스냅샷에서 읽어 ZIP을 씀), `CompanyExportRepository`, 순수 계산 `ZipEntryNames`. 자동 정리는 `helpdesk.trash`에 `IssueRetention`(정리 작업), `RetentionSchedule`(순수 계산), `IssueRetentionSettings`(설정 읽기와 시작 검사)를 둔다 |
+| 1 | 10a의 `helpdesk.privacy` 패키지에 둔다(`acceptance.md` 5절 19, 10a 뒤 다시 봄): `CompanyExportService`(작업 만들기, 목록, 파일 열기), `CompanyExportWriter`(스냅샷에서 읽어 ZIP을 씀), `CompanyExportRepository`, 순수 계산 `ZipEntryNames`. 자동 정리는 `helpdesk.trash`에 `IssueRetention`(정리 작업), `RetentionSchedule`(순수 계산), `IssueRetentionSettings`(설정 읽기와 시작 검사)를 둔다 |
 | 2 | 작업 실행: 작업 하나를 위한 단일 스레드 실행기를 `CompanyExportService`가 쥔다(`SmartLifecycle`로 멈출 때 끝냄). 앱 안의 잠금(`AtomicBoolean`)으로 한 번에 하나(409). 실행기 스레드는 `InstanceLock.held()`일 때만 시작한다 [소스: Housekeeping이 같은 조건]. 다른 일반 실행기는 없다 [소스] |
-| 3 | 스냅샷: `CompanyExportWriter`는 읽기 전용 `REPEATABLE READ` 트랜잭션 하나에서(무결성 확인의 꼴 [소스: `AuditService.verify`]. 감사 내보내기는 기본 격리에 한 쿼리다) 계정, 문의, 댓글, 작업, 첨부 행을 `fetchSize`를 준 커서로 흘려 읽으며 JSON을 ZIP에 쓰고 첨부 행 목록(ID, 이름, 저장소 자리)을 모은다. 트랜잭션을 닫은 뒤 첨부 바이트를 `AttachmentService`에 행을 받는 공개 메서드를 더해 읽어 붙인다(`AttachmentStorages.read`는 `AttachmentService`만 부른다 [소스: javadoc]). 그 사이 지워진 파일은 빠진 목록으로 간다. `manifest.json`은 맨 끝에 쓴다 |
+| 3 | 스냅샷: `CompanyExportWriter`는 읽기 전용 `REPEATABLE READ` 트랜잭션 하나에서(10a 계정 내보내기의 꼴 [소스: `AccountExportService.java:66-69`, 읽기 전용 `REPEATABLE READ` `TransactionTemplate`]. 감사 내보내기는 기본 격리에 한 쿼리다) 계정, 문의, 댓글, 작업, 첨부 행을 `fetchSize`를 준 커서로 흘려 읽으며 JSON을 ZIP에 쓰고 첨부 행 목록(ID, 이름, 저장소 자리)을 모은다. 트랜잭션을 닫은 뒤 첨부 바이트를 `AttachmentService`에 행을 받는 공개 메서드를 더해 읽어 붙인다(`AttachmentStorages.read`는 `AttachmentService`만 부른다 [소스: javadoc]). 그 사이 지워진 파일은 빠진 목록으로 간다. `manifest.json`은 맨 끝에 쓴다 |
 | 4 | 직렬화는 포털 DTO를 다시 쓰지 않고 내보내기 전용 record(`ExportIssue`, `ExportComment`, `ExportTask`, `ExportCustomer`, `ExportManifest`)로 한다. 칸을 바꿀 때 포털 응답이 따라 바뀌지 않게 하려는 것이다. 칸 목록은 `acceptance.md` 2.2절이고 잠긴 칸 스냅샷 테스트가 지킨다 |
 | 5 | 파일 자리: `POPDESK_EXPORT_DIR`(기본 `/tmp/popdesk-exports`). 쓰는 동안 `{작업 ID}.zip.part`, 다 되면 이름을 바꾼다. 시작할 때 `.part`를 모두 지운다 |
-| 6 | 단일 실행 잠금을 쥔 때 한 번(새 작업을 받기 전): `RUNNING` → `FAILED`(`INTERRUPTED`), 파일 자리에서 `DONE` 작업의 파일이 아닌 것(`.part`, 이름을 바꾼 뒤 `DONE`을 쓰기 전에 죽은 `.zip`) 지우기, 파일 없는 `DONE` → `EXPIRED`. 그 전에 온 `POST`는 503 |
+| 6 | 뜰 때 한 번, 마이그레이션 뒤 웹 서버가 열리기 전(`InitializingBean` 또는 웹 서버보다 앞 단계의 `SmartLifecycle`. 단일 실행 잠금은 Flyway보다 먼저 잡혀 이때 이미 쥐고 있다, `acceptance.md` 5절 15): `RUNNING` → `FAILED`(`INTERRUPTED`), 파일 자리에서 `DONE` 작업의 파일이 아닌 것(`.part`, 이름을 바꾼 뒤 `DONE`을 쓰기 전에 죽은 `.zip`) 지우기, 파일 없는 `DONE` → `EXPIRED`. 그 전에 온 `POST`는 503 |
 | 7 | 정리 작업 둘(`CleanupJob`): `company-export-expiry`(10분, 24시간 지난 `DONE`의 파일을 지우고 `EXPIRED`), `issue-retention`(1시간 간격으로 돌고, 상태 표의 `last_moved_at`에서 24시간이 지났을 때만 옮긴다). 잠긴 `PasswordResetCleanupTest`, `IdempotencyKeyTest`는 목록에 없는 정리 작업을 새것으로 본다. 함께 쓰는 테스트 컨텍스트에서 새 작업 둘은 늘 0을 남겨야 한다(자동 정리 꺼짐, 작업 없음) [소스: `CleanupJob`, `Housekeeping`] |
-| 8 | 자동 정리 옮기기는 잠그지 않는 쿼리로 대상 ID를 100개씩 고른 뒤, 문의 하나에 트랜잭션 하나로 `sla.begin()` → 그 문의 잠금 → 조건을 다시 본 `update` → 지우기 몸통(대기 메일·웹훅 버리기, 이력, SLA 멈춤)을 한다(영구 삭제 작업 `purgeDue`와 같은 꼴 [소스]). SLA 잠금 순서가 문의 잠금보다 먼저다(서버 검토). `TrashService`에 사람 확인과 감사를 뺀 `deleteBySystem`을 두고 `deleted_by`는 `NULL`(이미 널 가능 [소스: V17, 영구 삭제가 이미 널을 넘김]) |
+| 8 | 자동 정리 옮기기는 잠그지 않는 쿼리로 대상 ID를 100개씩 고른 뒤, 문의 하나에 트랜잭션 하나로 `sla.begin()` → 그 문의 잠금 → 조건을 다시 본 `update` → 지우기 몸통(대기 메일·웹훅 버리기, 이력, SLA 멈춤)을 한다(대상 고르기는 영구 삭제 작업 `purgeDue`의 묶음 꼴 [소스: `TrashService.java:208-230`], 잠금 차례는 사람이 지울 때의 `delete`와 같게 `sla.begin()` 뒤 문의 잠금 [소스: `TrashService.java:111-112`]. `purgeDue`는 `sla.begin()`을 부르지 않는다). `TrashService`에 사람 확인과 감사를 뺀 `deleteBySystem`을 두고 `deleted_by`는 `NULL`(이미 널 가능 [소스: V17, 영구 삭제가 이미 널을 넘김]) |
 | 9 | 시작 검사: `IssueRetentionSettings`가 `InitializingBean`에서 던진다(프로세스가 끝남) [소스: `StorageStartCheck`, `configuration.md:26`이 이미 "멈춘다"]. 감사 보관 키(`AuditRetention`)는 앱을 띄운 채 요청을 막는 꼴인데, 문서와 규칙이 이 키는 "뜨지 않는다"라 다르게 둔다 |
 | 10 | 알림 종류 셋(`COMPANY_EXPORT_READY`, `COMPANY_EXPORT_FAILED`, `ISSUE_RETENTION_ARMED`)은 `AdminInbox`에 메서드를 더하고 `NotificationKind`에 더한다. `notification.kind`에는 CHECK가 없다 [소스: V8 주석]. 포털 쪽 종류에는 더하지 않는다 |
 | 11 | 웹: C-9에 구역 하나와 대화상자 하나(C-9 안, 공용 컴포넌트 API 바꾸지 않음), C-7 문장 셋, C-11 "자동 정리" 표시 |
@@ -58,23 +58,25 @@ ALTER TABLE issue ADD COLUMN restored_at timestamptz;
 ALTER TABLE notification ADD COLUMN retention_count integer, ADD COLUMN retention_days integer;
 ```
 
-- `issue.deleted_by`는 이미 널 가능이다 [소스: 서버 검토].
-- 기간을 일수로 바꾸는 법은 `AuditRetention`과 같게 한다 [소스].
+- `issue.deleted_by`는 이미 널 가능이다 [소스: `V17` 8줄]. 휴지통 목록은 left join이라 널이어도 줄이 빠지지 않는다 [소스: `IssueRepository.java:585`]. `purgeDue`가 널을 넘기는 곳은 첨부의 `deleted_by`다(앞 판의 근거를 고침).
+- 기간을 일수로 바꾸는 법과 받는 꼴(일·시간만, 해·달은 거절)은 `AuditRetention`과 같게 한다 [소스: `AuditRetention.java:10-14`].
 
 ## 2. 계약 (C-4)
 
 | 경로 | 요청 | 응답 | 오류 |
 |---|---|---|---|
-| `POST /api/console/companies/{code}/exports` | `{includeInternal, includePrivate}` | 202 `CompanyExport` | 400(값 없음), 401, 403, 404, 409 `EXPORT_RUNNING`, 503 `SERVER_BUSY` |
+| `POST /api/console/companies/{code}/exports` | `{includeInternal, includePrivate}` | 202 `CompanyExport` | 400(값 없음), 401, 403, 404, 409 `EXPORT_RUNNING`, 503 `SERVER_BUSY`(잠금을 잃은 동안, `Retry-After: 5`. `conventions.md` 181줄의 `SERVER_BUSY` 설명에 이 경우를 더한다) |
 | `GET /api/console/companies/{code}/exports` | – | 200 `CompanyExport[]`(최신순, 최근 50) | 401, 403, 404 |
 | `GET`·`HEAD /api/console/company-exports/{id}/file` | – | 200 `application/zip` | 401, 403, 404 |
 
 - `CompanyExport`: `id`, `state`, `failure`(`INTERRUPTED`, `STORAGE`, `DISK`, `UNEXPECTED` 가운데 하나 또는 `null`), `includeInternal`, `requestedBy`(`{id, name}`), `requestedAt`, `finishedAt`, `size`.
 - 휴지통 응답(`TrashedIssue.deletedBy`)이 `null`일 수 있게 하고 설명에 "자동 정리"를 적는다.
 - 알림 종류 셋과 그 칸(`companyCode`, 첫날 알림의 대상 수와 기간).
-- 감사 종류 `COMPANY_EXPORTED`, `COMPANY_EXPORT_DOWNLOADED`. C-12 종류 묶음은 둘 다 "내보내기"(잠긴 `KIND_GROUPS`의 "고객사" 묶음에 넣으면 `C12AuditLog.7a.test.tsx`가 깨진다).
+- 감사 종류 `COMPANY_EXPORTED`, `COMPANY_EXPORT_DOWNLOADED`. C-12 종류 묶음은 둘 다 "고객사"다. 10a의 잠긴 `C12AuditLog.10a.test.tsx` 70·73줄이 "내보내기" 묶음을 정확히 둘(`AUDIT_EXPORTED`, `ACCOUNT_EXPORTED`)로 단언하고, 7a·6b 테스트는 "고객사"를 `arrayContaining`으로 본다(앞 판의 판단이 거꾸로였다, 10a 뒤 다시 봄). C-5에서 잠긴 `__tests__/console1b.ts`의 `KIND_GROUPS`를 테스트 쪽이 맞춘다.
 - 설정 키 `POPDESK_EXPORT_DIR`을 `SettingKeys`에 더한다(없으면 시작할 때 모르는 키 경고). `deploy/compose.yml`이 `POPDESK_ISSUE_RETENTION`과 `POPDESK_EXPORT_DIR`을 넘긴다.
 - 웹 테스트 쪽이 앱의 기본 가짜 서버(`console.ts`)에 `GET /companies/{code}/exports`의 빈 목록을 더한다(빠지면 C-9 앞 테스트가 오류 띠로 깨진다, 6a의 라벨과 같은 꼴).
+- 정리 작업 목록을 가진 잠긴 테스트가 셋이다: `PasswordResetCleanupTest`, `IdempotencyKeyTest`, `ops/CleanupStall.java:61`의 `JOBS`(`CleanupStalledTest`가 씀, 목록에 없는 작업은 기다리지 않는다). C-5에서 셋 모두 영향을 본다. `configuration.md`의 정리 작업 목록과 `upgrade.md`에 두 작업을 더한다.
+- 내려받기 `GET`의 감사 쓰기는 익명화가 사슬 머리를 쥔 동안 기다린다(10만 건에서 수십 초) [소스: `AnonymizationService.java:95`의 `rechain.finish`]. 자동 정리는 감사를 남기지 않아 `AuditRechain`과 겹치지 않는다.
 - 계약 뒤 한 번 돌 것: `project.NoStoreTest`, `ops.CheckOrderTest`, `ops.EndpointMappingsTest`, `boundary.BoundaryListTest`, `boundary.AdminOnlyContractTest`, `PortalNotificationContractTest`.
 
 ## 3. 테스트 쓰는 법 (C-5)
