@@ -1,6 +1,5 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.AccountStatus;
@@ -8,6 +7,8 @@ import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
 import io.popdesk.helpdesk.account.AccountService;
 import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.privacy.AccountExportService;
+import io.popdesk.helpdesk.privacy.AnonymizationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
@@ -17,7 +18,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.ZoneOffset;
 import org.jspecify.annotations.Nullable;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,9 +40,14 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 class ConsoleAccountController {
 
     private final AccountService accounts;
+    private final AccountExportService exports;
+    private final AnonymizationService anonymizations;
 
-    ConsoleAccountController(AccountService accounts) {
+    ConsoleAccountController(AccountService accounts, AccountExportService exports,
+            AnonymizationService anonymizations) {
         this.accounts = accounts;
+        this.exports = exports;
+        this.anonymizations = anonymizations;
     }
 
     static Account account(AccountRow a) {
@@ -130,10 +139,22 @@ class ConsoleAccountController {
     SuspendedAccount suspendAccount(@PathVariable long accountId,
             @Parameter(description = CLEAR_ASSIGNMENTS) @RequestParam(defaultValue = "false")
                     boolean clearAssignments) {
-        AccountService.Suspension suspension = accounts.suspend(CurrentAccount.get(), accountId, clearAssignments);
+        return suspended(accounts.suspend(CurrentAccount.get(), accountId, clearAssignments));
+    }
+
+    private static SuspendedAccount suspended(AccountService.Suspension suspension) {
         Account a = account(suspension.account());
         return new SuspendedAccount(a.id(), a.email(), a.name(), a.role(), a.status(), a.createdAt(),
                 a.photoUpdatedAt(), a.anonymized(), new ClearedAssignments(suspension.clearedIssues()));
+    }
+
+    private static HttpHeaders exportHeaders(long accountId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setContentDisposition(ContentDisposition.attachment().filename("popdesk-account-" + accountId
+                + ".json").build());
+        headers.setCacheControl(CacheControl.noStore());
+        return headers;
     }
 
     @Operation(operationId = "countOpenAssignments", summary = "What an account is still assigned to",
@@ -198,7 +219,8 @@ class ConsoleAccountController {
                     schema = @Schema(type = "integer")))
     @GetMapping("/api/console/accounts/{accountId}/export")
     ResponseEntity<StreamingResponseBody> exportAccount(@PathVariable long accountId) {
-        throw new NotImplementedException();
+        AccountExportService.Export export = exports.export(CurrentAccount.get(), accountId);
+        return ResponseEntity.ok().headers(exportHeaders(accountId)).body(export::writeTo);
     }
 
     @Operation(operationId = "headAccountExport", summary = "Headers of an account export",
@@ -218,7 +240,8 @@ class ConsoleAccountController {
                     schema = @Schema(type = "integer")))
     @RequestMapping(path = "/api/console/accounts/{accountId}/export", method = RequestMethod.HEAD)
     ResponseEntity<Void> headAccountExport(@PathVariable long accountId) {
-        throw new NotImplementedException();
+        exports.check(accountId);
+        return ResponseEntity.ok().headers(exportHeaders(accountId)).build();
     }
 
     @Operation(operationId = "anonymizeAccount", summary = "Anonymize an account",
@@ -245,6 +268,6 @@ class ConsoleAccountController {
     SuspendedAccount anonymizeAccount(@PathVariable long accountId,
             @Parameter(description = CLEAR_ASSIGNMENTS) @RequestParam(defaultValue = "false")
                     boolean clearAssignments) {
-        throw new NotImplementedException();
+        return suspended(anonymizations.anonymize(CurrentAccount.get(), accountId, clearAssignments));
     }
 }
