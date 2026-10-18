@@ -19,6 +19,8 @@ const PATH = '/trash';
 const CHANGE_FAILED = '휴지통을 바꾸지 못했습니다. 다시 해 보세요.';
 const PURGE_TITLE = '이 문의를 영구 삭제할까요?';
 const PURGE_TEXT = '내용, 댓글, 첨부, 작업, 연결이 지워지고 되돌릴 수 없습니다.';
+/** The "지운 사람" of an issue the retention cleanup moved (10b screens.md C-11): the API gives no person. */
+const BY_CLEANUP = '자동 정리';
 
 /** What happened to a row on this page since it was read. */
 type Mark = { restoring: true } | { restored: true } | { error: string };
@@ -156,7 +158,7 @@ export function C11Trash() {
     { key: 'company', header: '고객사', cell: (t) => t.companyName },
     { key: 'status', header: '상태', cell: (t) => <StatusBadge kind="issue" status={t.status} audience="agent" /> },
     { key: 'deletedAt', header: '지운 시각', cell: (t) => <RelativeTime dateTime={t.deletedAt} /> },
-    { key: 'deletedBy', header: '지운 사람', cell: (t) => t.deletedBy.name },
+    { key: 'deletedBy', header: '지운 사람', cell: (t) => (t.deletedBy === null ? <span className="pd-muted">{BY_CLEANUP}</span> : t.deletedBy.name) },
     { key: 'purgeAt', header: '영구 삭제', cell: (t) => purgeInText(t.purgeAt, now) },
     { key: 'actions', header: <span className="pd-sr-only">동작</span>, cell: actions },
   ];
