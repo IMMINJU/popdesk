@@ -1,0 +1,80 @@
+# 실패 확인
+
+- 단언 실패 73, 통과 0, 허용한 통과 0, 오류 0, 건너뜀 0
+- 판정: 통과
+
+## 단언에서 실패한 테스트
+
+- `io.popdesk.privacy.CompanyExportAccessTest.askingNeedsTheCsrfToken`: Expected 202 from POST /api/console/companies/C005Y/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.unknownCompanyIsNotFound(Call)[1]`: Expected 202 from POST /api/console/companies/C0062/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.unknownCompanyIsNotFound(Call)[2]`: Expected 202 from POST /api/console/companies/C0066/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.customerHostGets404(Call)[1]`: Expected 202 from POST /api/console/companies/C006A/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.customerHostGets404(Call)[2]`: Expected 202 from POST /api/console/companies/C006E/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.customerHostGets404(Call)[3]`: Expected 202 from POST /api/console/companies/C006I/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.customerHostGets404(Call)[4]`: Expected 202 from POST /api/console/companies/C006M/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.signedOutGets401(Call)[1]`: Expected 202 from POST /api/console/companies/C006Q/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.signedOutGets401(Call)[2]`: Expected 202 from POST /api/console/companies/C006U/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.signedOutGets401(Call)[3]`: Expected 202 from POST /api/console/companies/C006Y/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.signedOutGets401(Call)[4]`: Expected 202 from POST /api/console/companies/C0072/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.unknownExportIsNotFound(String)[1]`: Expected 202 from POST /api/console/companies/C0076/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.unknownExportIsNotFound(String)[2]`: Expected 202 from POST /api/console/companies/C007A/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.unknownExportIsNotFound(String)[3]`: Expected 202 from POST /api/console/companies/C007E/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.agentsAreForbidden(Call)[1]`: Expected 202 from POST /api/console/companies/C007I/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.agentsAreForbidden(Call)[2]`: Expected 202 from POST /api/console/companies/C007M/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.agentsAreForbidden(Call)[3]`: Expected 202 from POST /api/console/companies/C007Q/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportAccessTest.agentsAreForbidden(Call)[4]`: Expected 202 from POST /api/console/companies/C007U/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportBoundaryTest.privateIssuesWhenAsked`: Expected 202 from POST /api/console/companies/C003O/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportBoundaryTest.zipHoldsNothingOfTheOtherCompany`: Expected 202 from POST /api/console/companies/C004B/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportDownloadTest.anyAdminDownloads`: Expected 202 from POST /api/console/companies/C0052/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportDownloadTest.exportAndDownloadsAreRecorded`: Expected 202 from POST /api/console/companies/C005A/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportDownloadTest.noFileIsNotFound(NoFile)[1]`: [tables of the app (design.md 1절)] 
+- `io.popdesk.privacy.CompanyExportDownloadTest.noFileIsNotFound(NoFile)[2]`: Expected 202 from POST /api/console/companies/C005C/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportDownloadTest.noFileIsNotFound(NoFile)[3]`: Expected 202 from POST /api/console/companies/C005D/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportJobTest.checksComeInOrder`: [tables of the app (design.md 1절)] 
+- `io.popdesk.privacy.CompanyExportJobTest.oneExportRunsAtATime`: [tables of the app (design.md 1절)] 
+- `io.popdesk.privacy.CompanyExportJobTest.expiryJobDeletesTheZipAndKeepsTheExport`: Expected 202 from POST /api/console/companies/C000A/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportJobTest.askingAnswers202WithARunningExport(String)[1]`: Expected 202 from POST /api/console/companies/C000B/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportJobTest.askingAnswers202WithARunningExport(String)[2]`: Expected 202 from POST /api/console/companies/C000C/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportJobTest.askingAnswers202WithARunningExport(String)[3]`: Expected 202 from POST /api/console/companies/C000D/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportJobTest.listIsLatestFirst`: Expected 202 from POST /api/console/companies/C000E/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportJobTest.bothChoicesAreRequired(String, String)[1]`: Expected 400 INVALID_INPUT from POST /api/console/companies/C000J/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built ye
+- `io.popdesk.privacy.CompanyExportJobTest.bothChoicesAreRequired(String, String)[2]`: Expected 400 INVALID_INPUT from POST /api/console/companies/C000K/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built ye
+- `io.popdesk.privacy.CompanyExportJobTest.bothChoicesAreRequired(String, String)[3]`: Expected 400 INVALID_INPUT from POST /api/console/companies/C000L/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built ye
+- `io.popdesk.privacy.CompanyExportJobTest.bothChoicesAreRequired(String, String)[4]`: Expected 400 INVALID_INPUT from POST /api/console/companies/C000M/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built ye
+- `io.popdesk.privacy.CompanyExportJobTest.bothChoicesAreRequired(String, String)[5]`: Expected 400 INVALID_INPUT from POST /api/console/companies/C000N/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built ye
+- `io.popdesk.privacy.CompanyExportJobTest.overADayOldIsListedExpired`: Expected 202 from POST /api/console/companies/C000O/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportNotifyTest.readyGoesToTheAdminWhoAsked`: Expected 202 from POST /api/console/companies/C005M/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportNotifyTest.failureGoesToEveryAdmin`: Expected 202 from POST /api/console/companies/C005R/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportNotifyTest.noReadyForAnAdminSuspendedMeanwhile`: [tables of the app (design.md 1절)] 
+- `io.popdesk.privacy.CompanyExportRestartTest.startEndsTheLastRun`: [what went wrong putting the last run in] 
+- `io.popdesk.privacy.CompanyExportSnapshotTest.changesWhileExportingAreNotMixed`: Expected 202 from POST /api/console/companies/C005E/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportZipTest.issueJsonHoldsWhatTheCustomerSees`: Expected 202 from POST /api/console/companies/C000P/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportZipTest.filesOfTheIssueAndItsComments(boolean)[1]`: Expected 202 from POST /api/console/companies/C000W/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportZipTest.filesOfTheIssueAndItsComments(boolean)[2]`: Expected 202 from POST /api/console/companies/C001C/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportZipTest.commentsAndTheInternalPart(boolean)[1]`: Expected 202 from POST /api/console/companies/C001S/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportZipTest.commentsAndTheInternalPart(boolean)[2]`: Expected 202 from POST /api/console/companies/C0024/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportZipTest.fileNamesAreMadeSafe`: Expected 202 from POST /api/console/companies/C002G/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportZipTest.customersAsTheyAreNow`: Expected 202 from POST /api/console/companies/C002S/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.CompanyExportZipTest.pathsAndManifest`: Expected 202 from POST /api/console/companies/C0039/exports on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.privacy.ExportRetentionSchemaTest.issueRetentionTable`: [tables] 
+- `io.popdesk.privacy.ExportRetentionSchemaTest.companyExportTable`: [tables] 
+- `io.popdesk.privacy.ExportRetentionSchemaTest.issueAndNotificationColumns`: [columns of issue] 
+- `io.popdesk.privacy.IssueRetentionArmTest.asLongOrLongerStartsNoWait(Before)[1]`: [tables of the app (V23 adds issue_retention)] 
+- `io.popdesk.privacy.IssueRetentionArmTest.asLongOrLongerStartsNoWait(Before)[2]`: [tables of the app (V23 adds issue_retention)] 
+- `io.popdesk.privacy.IssueRetentionArmTest.turnedOnOrShortenedWaitsADay(Before)[1]`: [tables of the app (V23 adds issue_retention)] 
+- `io.popdesk.privacy.IssueRetentionArmTest.turnedOnOrShortenedWaitsADay(Before)[2]`: [tables of the app (V23 adds issue_retention)] 
+- `io.popdesk.privacy.IssueRetentionArmTest.changeDuringTheWait(During)[1]`: [tables of the app (V23 adds issue_retention)] 
+- `io.popdesk.privacy.IssueRetentionArmTest.changeDuringTheWait(During)[2]`: [tables of the app (V23 adds issue_retention)] 
+- `io.popdesk.privacy.IssueRetentionInboxTest.inboxItemsAreHiddenAndComeBack`: Timed out after PT1M waiting for issue-retention in the system status with a run at or after 2027-10-07T03:24:09Z
+- `io.popdesk.privacy.IssueRetentionMoveTest.movesOnlyTheDueIssuesOnceADay`: Timed out after PT1M waiting for issue-retention in the system status with a run at or after 2027-07-08T03:24:09Z
+- `io.popdesk.privacy.IssueRetentionRaceTest.adminsDeleteMeetsTheCleanup`: Timed out after PT1M waiting for the job waits for the row or finished
+- `io.popdesk.privacy.IssueRetentionRestoreTest.restoredIssueCountsFromTheRestore`: Timed out after PT1M waiting for issue-retention in the system status with a run at or after 2027-04-08T03:23:08Z
+- `io.popdesk.privacy.RetentionOffTest.offRunsAndMovesNothing`: Timed out after PT1M waiting for issue-retention in the system status with a run at or after 2027-01-07T03:16:01Z
+- `io.popdesk.privacy.RetentionOffTest.offForgetsTheWait`: [tables of the app (V23 adds issue_retention)] 
+- `io.popdesk.start.IssueRetentionSettingTest.refusedValueEndsTheStart(String)[1]`: The app started, but it should not: POPDESK_ISSUE_RETENTION=P30D
+- `io.popdesk.start.IssueRetentionSettingTest.refusedValueEndsTheStart(String)[2]`: The app started, but it should not: POPDESK_ISSUE_RETENTION=P89DT23H
+- `io.popdesk.start.IssueRetentionSettingTest.refusedValueEndsTheStart(String)[3]`: The app started, but it should not: POPDESK_ISSUE_RETENTION=P1Y
+- `io.popdesk.start.IssueRetentionSettingTest.refusedValueEndsTheStart(String)[4]`: The app started, but it should not: POPDESK_ISSUE_RETENTION=P3M
+- `io.popdesk.start.IssueRetentionSettingTest.refusedValueEndsTheStart(String)[5]`: The app started, but it should not: POPDESK_ISSUE_RETENTION=abc
+- `io.popdesk.start.IssueRetentionSettingTest.ninetyDaysStarts(String)[1]`: Timed out after PT1M waiting for an ISSUE_RETENTION_ARMED item of the first admin
+- `io.popdesk.start.IssueRetentionSettingTest.ninetyDaysStarts(String)[2]`: Timed out after PT1M waiting for an ISSUE_RETENTION_ARMED item of the first admin
