@@ -144,7 +144,7 @@ export function attachment(over: Partial<Attachment> = {}): Attachment {
 }
 
 export function account(over: Partial<Account> = {}): Account {
-  return { id: 1, email: ADMIN.email, name: ADMIN.name, role: 'ADMIN', status: 'ACTIVE', createdAt: T0, photoUpdatedAt: null, ...over };
+  return { id: 1, email: ADMIN.email, name: ADMIN.name, role: 'ADMIN', status: 'ACTIVE', createdAt: T0, photoUpdatedAt: null, anonymized: false, ...over };
 }
 
 export function member(over: Partial<CompanyMember> = {}): CompanyMember {

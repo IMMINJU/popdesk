@@ -34,6 +34,9 @@ export const KIND_GROUPS: readonly { group: string; kinds: Readonly<Record<strin
       ACCOUNT_PASSWORD_RESET: '비밀번호 초기화',
       PASSWORD_CHANGED: '비밀번호 바꾸기',
       PASSWORD_RESET_COMPLETED: '비밀번호 재설정',
+      // Slice 10a (design.md 0절 12).
+      ACCOUNT_ANONYMIZED: '익명화',
+      AUDIT_RECHAINED: '감사 사슬 다시 계산',
     },
   },
   {
@@ -75,7 +78,7 @@ export const KIND_GROUPS: readonly { group: string; kinds: Readonly<Record<strin
     },
   },
   { group: '운영 명령', kinds: { ADMIN_PASSWORD_RESET: '관리자 비밀번호 복구', BACKUP_CREATED: '백업', DATABASE_RESTORED: '복원' } },
-  { group: '내보내기', kinds: { AUDIT_EXPORTED: '감사 로그 내보내기' } },
+  { group: '내보내기', kinds: { AUDIT_EXPORTED: '감사 로그 내보내기', ACCOUNT_EXPORTED: '계정 정보 내보내기' } },
   { group: '설정', kinds: { SLA_POLICY_CHANGED: 'SLA 정책 바꾸기', BRANDING_CHANGED: '브랜딩 바꾸기', BRANDING_LOGO_CHANGED: '로고 바꾸기' } },
   { group: '보내기', kinds: { DELIVERY_RESENT: '다시 보내기', TEST_MAIL_SENT: '시험 메일' } },
 ];
