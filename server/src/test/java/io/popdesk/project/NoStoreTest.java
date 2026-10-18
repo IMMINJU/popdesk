@@ -59,6 +59,14 @@ class NoStoreTest extends BareAppTest {
     private static final String LOGO_READ = "/api/public/branding/logos/{theme}";
 
     /**
+     * The company export's file ({@code GET} and {@code HEAD}), left out of the reads that succeed: it
+     * needs a {@code DONE} export, and an export here would take the one export an installation runs
+     * at a time from the tests of slice 10b (acceptance.md 5절 21). Without one it is a 404, which the
+     * other checks hold to {@code no-store}; the export tests check the headers of its success.
+     */
+    private static final String EXPORT_FILE_READ = "/api/console/company-exports/{id}/file";
+
+    /**
      * The query a read cannot be sent without: the audit log export answers 400 without its
      * {@code format} (S1B-AC-23), the accent preview of slice 9 without its {@code color}.
      */
@@ -177,7 +185,7 @@ class NoStoreTest extends BareAppTest {
             if (!op.method().equals("GET") && !op.method().equals("HEAD")) {
                 continue;
             }
-            if (PHOTO_READS.contains(op.path()) || op.path().equals(LOGO_READ)) {
+            if (PHOTO_READS.contains(op.path()) || op.path().equals(LOGO_READ) || op.path().equals(EXPORT_FILE_READ)) {
                 continue;
             }
             String path = withValues(imageReads.getOrDefault(op.path(), op.path()), values)

@@ -53,6 +53,9 @@ final class BoundaryList {
     private static final String BRANDING_ACCESS = "branding.BrandingAccessTest#";
     private static final String ACCOUNT_EXPORT = "/api/console/accounts/{accountId}/export";
     private static final String PRIVACY_ACCESS = "privacy.PrivacyAccessTest#";
+    private static final String COMPANY_EXPORTS = "/api/console/companies/{code}/exports";
+    private static final String COMPANY_EXPORT_FILE = "/api/console/company-exports/{id}/file";
+    private static final String COMPANY_EXPORT_ACCESS = "privacy.CompanyExportAccessTest#";
 
     static final List<Entry> ENTRIES = List.of(
             // Before sign-in, both hosts
@@ -555,5 +558,22 @@ final class BoundaryList {
                     PRIVACY_ACCESS + "customerHostGets404"),
             tested("POST", "/api/console/accounts/{accountId}/anonymize",
                     PRIVACY_ACCESS + "agentsAreForbidden",
-                    PRIVACY_ACCESS + "customerHostGets404"));
+                    PRIVACY_ACCESS + "customerHostGets404"),
+
+            // Slice 10b (S10B-AC-10): the company export, on the console for admins only, also for a company an
+            // agent is assigned to; agents get 403, customers on the portal host 404. The ZIP holds one company
+            // (S10B-AC-16, privacy.CompanyExportBoundaryTest).
+            tested("POST", COMPANY_EXPORTS,
+                    COMPANY_EXPORT_ACCESS + "agentsAreForbidden",
+                    COMPANY_EXPORT_ACCESS + "customerHostGets404"),
+            tested("GET", COMPANY_EXPORTS,
+                    COMPANY_EXPORT_ACCESS + "agentsAreForbidden",
+                    COMPANY_EXPORT_ACCESS + "customerHostGets404"),
+            tested("GET", COMPANY_EXPORT_FILE,
+                    COMPANY_EXPORT_ACCESS + "agentsAreForbidden",
+                    COMPANY_EXPORT_ACCESS + "customerHostGets404",
+                    "privacy.CompanyExportBoundaryTest#zipHoldsNothingOfTheOtherCompany"),
+            tested("HEAD", COMPANY_EXPORT_FILE,
+                    COMPANY_EXPORT_ACCESS + "agentsAreForbidden",
+                    COMPANY_EXPORT_ACCESS + "customerHostGets404"));
 }
