@@ -676,12 +676,15 @@ public class IssueRepository {
      * Takes an issue out of the trash (S7A-AC-21) with a new version. A {@code RESOLVED} issue closes 7
      * days after now, not 7 days after it was resolved (S7A-AC-22). The caller has locked the row and seen
      * it in the trash. With {@code sla}, the SLA clocks running on are written in the same UPDATE (S8A-AC-16).
+     * {@code restored_at} becomes now: automatic cleanup counts its period from then (S10B-AC-31).
      */
     public void updateRestored(UUID id, Instant now, IssueClocks sla) {
-        jdbc.sql("update issue i set deleted_at = null, deleted_by = null, updated_at = ?, version = version + 1, "
+        jdbc.sql("update issue i set deleted_at = null, deleted_by = null, updated_at = ?, restored_at = ?, "
+                        + "version = version + 1, "
                         + "auto_close_from = case when i.status = 'RESOLVED' then cast(? as timestamptz) end"
                         + clocks(sla) + " where i.id = ? and " + IN_TRASH)
-                .params(withClocks(new Object[] {Timestamp.from(now), Timestamp.from(now)}, sla, id))
+                .params(withClocks(new Object[] {Timestamp.from(now), Timestamp.from(now), Timestamp.from(now)}, sla,
+                        id))
                 .update();
     }
 
