@@ -3,10 +3,12 @@
 // INVITE-3), and 초대 링크 복사 on accounts not accepted yet when SMTP is off
 // (INVITE-6, S0-AC-38). Slice 3: the filters live in the address (S3-AC-86), and
 // 정지 of a staff member offers to clear the open issues they are the assignee of (S3-AC-85).
+// Slice 10a: 정보 내보내기 and 익명화 of a row, and the 익명화됨 badge (10a screens.md).
 import {
   ACCOUNT_STATUS_WORDS,
   Alert,
   Avatar,
+  Badge,
   Button,
   ConfirmDialog,
   DataTable,
@@ -26,10 +28,12 @@ import { api, type Schemas } from '../api';
 import { FieldSummary, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { ClearAssignments } from '../app/ClearAssignments';
+import { startExport } from '../app/exportDownload';
 import { useFieldErrors, useLive, useLoad } from '../app/hooks';
 import { InviteDialog } from '../app/InviteDialog';
 import { InviteLink } from '../app/InviteLink';
 import { LoadFailed, PageTitle } from '../app/layout';
+import { matchesEmail } from '../app/matchesEmail';
 import { rateLimitedText, TEXT } from '../app/messages';
 import { clearedText, useOpenAssignments } from '../app/openAssignments';
 import { PageNav } from '../app/PageNav';
@@ -37,7 +41,7 @@ import { PAGE_SIZE, usePageMove, usePageParam } from '../app/paging';
 import { photoUrl } from '../app/photos';
 import { call, type Failure, type Result } from '../app/result';
 import { RowMenu, type RowMenuItem } from '../app/RowMenu';
-import { useSession } from '../app/sessionContext';
+import { useSession, useToLogin } from '../app/sessionContext';
 import { useToast } from '../app/toastContext';
 
 type Account = Schemas['Account'];
@@ -57,7 +61,19 @@ const ACCOUNT_ERRORS: Record<string, string> = {
   INVITATION_NOT_ACCEPTED: '초대를 수락한 적이 없는 계정입니다. 초대를 다시 보내세요.',
   INVITATION_ALREADY_ACCEPTED: '이미 초대를 수락한 계정입니다.',
   NOT_FOUND: '계정을 찾을 수 없습니다.',
+  ACCOUNT_ANONYMIZED: '이미 익명화한 계정입니다.',
+  ANONYMIZATION_RUNNING: '다른 익명화가 진행 중입니다. 잠시 뒤 다시 시도해 주세요.',
 };
+
+/** The 익명화 dialog says OWN_ACCOUNT in its own words: the shared text is about 정지 and 역할. */
+const ANONYMIZE_ERRORS: Record<string, string> = { ...ACCOUNT_ERRORS, OWN_ACCOUNT: '자기 계정은 익명화할 수 없습니다.' };
+
+/** The 503 of 정보 내보내기, with the seconds of `Retry-After`. */
+function exportBusyText(seconds: number | null): string {
+  return seconds === null
+    ? '내보내기가 몰려 있습니다. 잠시 뒤 다시 시도해 주세요.'
+    : `내보내기가 몰려 있습니다. ${String(seconds)}초 뒤 다시 시도해 주세요.`;
+}
 
 interface ListData {
   accounts: Schemas['PagedAccount'];
@@ -68,9 +84,9 @@ interface ListData {
 }
 
 /** A failed row action. 429 has no countdown here: the text says when to try again. */
-function ActionFailure(props: { failure: Failure | null }) {
+function ActionFailure(props: { failure: Failure | null; known?: Record<string, string> }) {
   if (props.failure?.kind === 'rateLimited') return <Alert tone="error">{rateLimitedText(props.failure.seconds)}</Alert>;
-  return <SaveFailure failure={props.failure} known={ACCOUNT_ERRORS} />;
+  return <SaveFailure failure={props.failure} known={props.known ?? ACCOUNT_ERRORS} />;
 }
 
 /** The new link of one account, shown once in a dialog. */
@@ -150,6 +166,8 @@ function NewLinkDialog(props: { account: Account | null; onClose: () => void }) 
 
 /** A row action that asks first. */
 type AskedAction = 'suspend' | 'role' | 'reset' | 'cancel';
+/** A row action with a dialog. */
+type OpenedAction = AskedAction | 'rename' | 'anonymize';
 
 interface ActionDialogProps {
   account: Account;
@@ -356,6 +374,93 @@ function RenameDialog(props: ActionDialogProps) {
   );
 }
 
+const ANONYMIZE_FORM_ID = 'anonymize-account';
+
+/**
+ * 익명화 (S10A-AC-30, 31). Mounted anew for every opening, like AskDialog: an answer
+ * that comes after closing reads the list again and shows nothing, and the next
+ * dialog starts with an empty field. The button is inside the form, so Enter sends.
+ */
+function AnonymizeDialog(props: ActionDialogProps) {
+  const toast = useToast();
+  const live = useLive();
+  const { account } = props;
+  const field = useRef<HTMLInputElement>(null);
+  const [typed, setTyped] = useState('');
+  const [pending, setPending] = useState(false);
+  const [failure, setFailure] = useState<Failure | null>(null);
+  // Like 정지: a customer is nobody's assignee, so nothing is asked.
+  const open = useOpenAssignments(
+    account.role === 'CUSTOMER'
+      ? null
+      : () => api.GET('/api/console/accounts/{accountId}/open-assignments', { params: { path: { accountId: account.id } } }),
+  );
+  const [clear, setClear] = useState(false);
+  const matches = matchesEmail(typed, account.email);
+
+  const submit = async (e: SubmitEvent) => {
+    e.preventDefault();
+    if (pending || !matches) return;
+    setPending(true);
+    setFailure(null);
+    const result = await call(
+      api.POST('/api/console/accounts/{accountId}/anonymize', {
+        params: { path: { accountId: account.id }, ...(clear ? { query: { clearAssignments: true } } : {}) },
+      }),
+    );
+    // The row may have changed on the server either way.
+    props.onChanged();
+    if (!live()) return;
+    setPending(false);
+    if (!result.ok) {
+      setFailure(result.failure);
+      return;
+    }
+    toast(`익명화했습니다${clearedText(clear ? result.data.cleared.issues : undefined)}`);
+    props.onClose();
+  };
+
+  return (
+    <Dialog open title={`${account.name} 님을 익명화할까요?`} closeLabel={TEXT.close} pending={pending} initialFocus={field} onClose={props.onClose}>
+      <form
+        id={ANONYMIZE_FORM_ID}
+        className="pd-form"
+        noValidate
+        onSubmit={(e) => {
+          void submit(e);
+        }}
+      >
+        <p>
+          <strong>되돌릴 수 없습니다.</strong>
+        </p>
+        <ul className="pd-anonymize-changes">
+          <li>{`이름은 '삭제된 사용자', 이메일은 'deleted-${String(account.id)}@invalid'로 바뀝니다`}</li>
+          <li>프로필 사진과 로그인한 세션을 지웁니다</li>
+          <li>{"이 사람이 쓴 문의와 댓글은 남고 작성자는 '삭제된 사용자'로 보입니다"}</li>
+          <li>감사 로그의 이름과 이메일도 바뀝니다</li>
+        </ul>
+        <ClearAssignments name={account.name} open={open} scope="all" checked={clear} onChange={setClear} />
+        <TextField
+          ref={field}
+          id="anonymize-email"
+          label={`확인하려면 이 사람의 이메일 ${account.email}을 입력하세요`}
+          value={typed}
+          onChange={setTyped}
+        />
+        <ActionFailure failure={failure} known={ANONYMIZE_ERRORS} />
+        <div className="pd-form-actions">
+          <Button variant="secondary" onClick={props.onClose}>
+            {TEXT.cancel}
+          </Button>
+          <Button type="submit" variant="danger" blocked={!matches} pending={pending} pendingLabel="익명화하는 중…">
+            익명화
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
 /** A link the server gave once: a new invitation link or a password reset link. */
 interface ShownLink {
   kind: 'invite' | 'reset';
@@ -369,6 +474,7 @@ export function C10MemberList() {
   const { me } = useSession();
   const toast = useToast();
   const live = useLive();
+  const toLogin = useToLogin();
   const heading = useRef<HTMLHeadingElement>(null);
   const searchBox = useRef<HTMLInputElement>(null);
   const [inviting, setInviting] = useState(false);
@@ -388,11 +494,13 @@ export function C10MemberList() {
   };
 
   // Row actions
-  const [opened, setOpened] = useState<{ action: AskedAction | 'rename'; account: Account } | null>(null);
+  const [opened, setOpened] = useState<{ action: OpenedAction; account: Account } | null>(null);
   // Counts openings: the key that makes every opening a new dialog.
   const [openings, setOpenings] = useState(0);
   const [shownLink, setShownLink] = useState<ShownLink | null>(null);
   const [rowFailure, setRowFailure] = useState<Failure | null>(null);
+  // The band of 정보 내보내기, in the place of a failed row action.
+  const [exportProblem, setExportProblem] = useState<string | null>(null);
   const sending = useRef(false);
 
   const load = useLoad(
@@ -436,10 +544,27 @@ export function C10MemberList() {
     void load.reload();
   };
 
-  const open = (action: AskedAction | 'rename', account: Account) => {
+  const open = (action: OpenedAction, account: Account) => {
     setOpenings((n) => n + 1);
     setRowFailure(null);
+    setExportProblem(null);
     setOpened({ action, account });
+  };
+
+  // 정보 내보내기 asks first, like the audit log export. No toast: the browser shows the download (S10A-AC-29).
+  const exportOf = async (account: Account) => {
+    setRowFailure(null);
+    setExportProblem(null);
+    const check = await startExport(`/api/console/accounts/${String(account.id)}/export`, {
+      navigate: (url) => {
+        if (live()) window.location.assign(url);
+      },
+      busyText: exportBusyText,
+      known: { NOT_FOUND: '이 계정을 찾을 수 없습니다.' },
+    });
+    if (!live() || check.ok) return;
+    if (check.status === 401) toLogin();
+    else setExportProblem(check.text);
   };
 
   // 정지 풀기 and 초대 다시 보내기 do not ask first (screens.md C-10).
@@ -468,8 +593,21 @@ export function C10MemberList() {
     else setShownLink({ kind: 'invite', account, link: result.data.inviteLink });
   };
 
+  /**
+   * The menu of a row (10a screens.md C-10): the usual items, then 정보 내보내기, then 정지 or
+   * 초대 취소, then 익명화. An anonymized account is `SUSPENDED` in the API, so it is asked
+   * first, or it would offer 정지 풀기.
+   */
   const actionsOf = (a: Account): RowMenuItem[] => {
+    const exportItem: RowMenuItem = {
+      label: '정보 내보내기',
+      onSelect: () => {
+        void exportOf(a);
+      },
+    };
+    if (a.anonymized) return [exportItem];
     const shown = shownStatus(a);
+    const mine = a.id === me?.id;
     const items: RowMenuItem[] = [
       {
         label: '이름 고치기',
@@ -479,7 +617,6 @@ export function C10MemberList() {
       },
     ];
     if (shown === 'ACTIVE') {
-      const mine = a.id === me?.id;
       // Only staff roles change into each other, and never my own (S1A-AC-32, 33).
       if (!mine && a.role !== 'CUSTOMER') {
         items.push({
@@ -495,6 +632,7 @@ export function C10MemberList() {
           open('reset', a);
         },
       });
+      items.push(exportItem);
       if (!mine) {
         items.push({
           label: '정지',
@@ -511,6 +649,7 @@ export function C10MemberList() {
           void reactivate(a);
         },
       });
+      items.push(exportItem);
     } else {
       items.push({
         label: '초대 다시 보내기',
@@ -518,6 +657,7 @@ export function C10MemberList() {
           void resend(a);
         },
       });
+      items.push(exportItem);
       if (shown === 'INVITED') {
         items.push({
           label: '초대 취소',
@@ -527,6 +667,15 @@ export function C10MemberList() {
           },
         });
       }
+    }
+    if (!mine) {
+      items.push({
+        label: '익명화',
+        tone: 'danger',
+        onSelect: () => {
+          open('anonymize', a);
+        },
+      });
     }
     return items;
   };
@@ -546,7 +695,12 @@ export function C10MemberList() {
     },
     { key: 'email', header: '이메일', cell: (a) => a.email },
     { key: 'role', header: '역할', cell: (a) => ROLE_WORDS[a.role] },
-    { key: 'status', header: '상태', cell: (a) => <StatusBadge kind="account" status={shownStatus(a)} /> },
+    {
+      key: 'status',
+      header: '상태',
+      // Neither 정지 nor 초대 취소됨: the account is gone for good (S10A-AC-32).
+      cell: (a) => (a.anonymized ? <Badge tone="neutral">익명화됨</Badge> : <StatusBadge kind="account" status={shownStatus(a)} />),
+    },
     { key: 'created', header: '만든 시각', cell: (a) => <RelativeTime dateTime={a.createdAt} focusable={false} /> },
     {
       key: 'actions',
@@ -627,6 +781,7 @@ export function C10MemberList() {
       </div>
       {load.status === 'failed' && <LoadFailed onRetry={reload} />}
       <ActionFailure failure={rowFailure} />
+      {exportProblem !== null && <Alert tone="error">{exportProblem}</Alert>}
       {(load.status !== 'failed' || data) && (
         <DataTable
           caption={`구성원 목록, ${String(data?.accounts.totalElements ?? 0)}명`}
@@ -681,7 +836,17 @@ export function C10MemberList() {
           onChanged={reload}
         />
       )}
-      {opened && opened.action !== 'rename' && (
+      {opened?.action === 'anonymize' && (
+        <AnonymizeDialog
+          key={openings}
+          account={opened.account}
+          onClose={() => {
+            setOpened(null);
+          }}
+          onChanged={reload}
+        />
+      )}
+      {opened && opened.action !== 'rename' && opened.action !== 'anonymize' && (
         <AskDialog
           key={openings}
           action={opened.action}
