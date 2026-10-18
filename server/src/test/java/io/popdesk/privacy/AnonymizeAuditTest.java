@@ -187,7 +187,8 @@ class AnonymizeAuditTest extends PrivacyAppTest {
     @Test
     @DisplayName("S10A-AC-35 a manager's invitation that is held in the database while the manager is anonymized "
             + "ends after the commit, and every entry of the manager, that one too when it was appended, holds the "
-            + "anonymous values; so does an entry about the account appended later")
+            + "anonymous values; an export of the account appended later (actor the admin, target the account) "
+            + "holds no old value of the person")
     void lateEntryIsAnonymous() {
         ManagerSteps.Scene scene = ManagerSteps.scene(fixtures, fixtures.signInAdmin());
         Session admin = scene.admin();
@@ -202,7 +203,7 @@ class AnonymizeAuditTest extends PrivacyAppTest {
             hold.release();
             invited = Concurrently.finish(inviting, "the held invitation");
         }
-        admin.client().post(PrivacySteps.ACCOUNTS + "/" + manager.accountId() + "/suspend").expect(200);
+        ExportSteps.export(admin, manager.accountId());
 
         List<JsonNode> entries = entriesOf(admin, manager.accountId());
         if (invited.status() == 204) {
@@ -210,7 +211,17 @@ class AnonymizeAuditTest extends PrivacyAppTest {
                     .contains("MEMBERSHIP_REQUESTED");
         }
         assertThat(entries).extracting(e -> e.path("action").asString("")).as("kinds of the manager's entries")
-                .contains("ACCOUNT_ANONYMIZED", "ACCOUNT_SUSPENDED");
+                .contains("ACCOUNT_ANONYMIZED", "ACCOUNT_EXPORTED");
+        List<JsonNode> exported = entries.stream()
+                .filter(e -> "ACCOUNT_EXPORTED".equals(e.path("action").asString(null))).toList();
+        assertThat(exported).as("ACCOUNT_EXPORTED entries of the manager").hasSize(1);
+        JsonNode export = exported.getFirst();
+        assertThat(export.path("actor").path("accountId").asLong(-1)).as("actor of %s", export)
+                .isEqualTo(admin.accountId());
+        assertThat(export.path("target").path("accountId").asLong(-1)).as("target of %s", export)
+                .isEqualTo(manager.accountId());
+        assertThat(chainJson(export)).as("the export entry %s", export).doesNotContain(manager.email())
+                .doesNotContain(manager.name());
         assertAllAnonymous(entries, manager.accountId(), manager.name(), manager.email());
         assertChainValid(admin);
     }

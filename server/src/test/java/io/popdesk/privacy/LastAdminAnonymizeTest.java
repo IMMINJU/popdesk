@@ -3,6 +3,9 @@ package io.popdesk.privacy;
 import static io.popdesk.issue.TalkFlow.assertRefused;
 import static io.popdesk.privacy.PrivacySteps.accounts;
 import static io.popdesk.privacy.PrivacySteps.anonymizeRequest;
+import static io.popdesk.support.AuditChainMath.chainJson;
+import static io.popdesk.support.AuditChainMath.number;
+import static io.popdesk.support.AuditChainMath.text;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.support.ApiResponse;
@@ -15,6 +18,7 @@ import io.popdesk.support.HeldWrite;
 import io.popdesk.support.Wait;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -85,7 +89,8 @@ class LastAdminAnonymizeTest extends BareAppTest {
     @ParameterizedTest(name = "{0} first")
     @EnumSource(First.class)
     @DisplayName("S10A-AC-12 when the only two active admins anonymize and suspend each other in overlapping "
-            + "requests, one succeeds, the other is 400 LAST_ADMIN and changes nothing, and one active admin is left")
+            + "requests, one succeeds, the other is 400 LAST_ADMIN and changes nothing (a refused anonymization leaves "
+            + "the person's audit entries and hashes as they were), and one active admin is left")
     void anonymizeAndSuspendEachOther(First order) {
         Session first = fixtures.signInAdmin();
         for (JsonNode other : activeAdmins(first)) {
@@ -99,6 +104,7 @@ class LastAdminAnonymizeTest extends BareAppTest {
         assertThat(activeAdmins(first)).as("active admins before the two requests")
                 .extracting(n -> n.path("id").asLong(-1))
                 .containsExactlyInAnyOrder(first.accountId(), second.accountId());
+        List<JsonNode> secondsEntries = PrivacySteps.entriesOf(first, second.accountId());
         boolean anonymizeFirst = order == First.ANONYMIZE;
         Session heldTarget = anonymizeFirst ? second : first;
         ApiResponse anonymized;
@@ -146,6 +152,30 @@ class LastAdminAnonymizeTest extends BareAppTest {
             assertThat(kept.path("status").asString(null)).as("status of the second admin").isEqualTo("ACTIVE");
             assertThat(suspended.json().path("status").asString(null)).as("status in the suspension's answer")
                     .isEqualTo("SUSPENDED");
+            assertEntriesKept(after, second.accountId(), secondsEntries);
         }
+    }
+
+    /**
+     * The refused anonymization changed none of the person's entries: the recalculation runs before the last-admin
+     * check (design.md 0절 2, 7), so an implementation that commits it on its own fails here.
+     */
+    private static void assertEntriesKept(Session admin, long accountId, List<JsonNode> before) {
+        Map<Long, JsonNode> now = new HashMap<>();
+        PrivacySteps.entriesOf(admin, accountId).forEach(e -> now.put(number(e, "id"), e));
+        assertThat(before).as("entries of account %d before", accountId).isNotEmpty();
+        for (JsonNode entry : before) {
+            JsonNode same = now.get(number(entry, "id"));
+            assertThat(same).as("entry %s after the refused anonymization", entry).isNotNull();
+            assertThat(chainJson(same)).as("person fields of %s after the refused anonymization", entry)
+                    .isEqualTo(chainJson(entry));
+            assertThat(text(same, "hash")).as("hash of %s after the refused anonymization", entry)
+                    .isEqualTo(text(entry, "hash"));
+        }
+        long from = number(before.getFirst(), "seq");
+        assertThat(PrivacySteps.entries(admin, "action", "AUDIT_RECHAINED"))
+                .as("AUDIT_RECHAINED entries from seq %d", from)
+                .noneMatch(e -> e.path("changes").path("fromSeq").asLong(-1) == from);
+        PrivacySteps.assertChainValid(admin);
     }
 }

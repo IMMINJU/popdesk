@@ -31,10 +31,16 @@ import tools.jackson.databind.JsonNode;
  * requests.
  *
  * <p>The tokens are compared with a token nobody has: after anonymizing, a token that was good gets the same answer.
- * The inbox and the send queue of a person who can no longer sign in are read as rows ({@code notification},
- * {@code outbox} of V3), and the mail by what the mail server got.
+ * A suspended account already gets those answers, so the sessions, the tokens, the inbox and the send queue are also
+ * counted as rows ({@code spring_session.principal_name} of V1, {@code invitation}, {@code password_reset} of V5,
+ * {@code notification} and {@code outbox} of V3), and the mail by what the mail server got.
  */
 class AnonymizeRemovesTest extends PrivacyAppTest {
+
+    /** The session rows of an account: the app indexes a session by the account ID as text. */
+    private long sessionRows(long accountId) {
+        return db.count("select count(*) from spring_session where principal_name = ?", Long.toString(accountId));
+    }
 
     private static ApiResponse accept(ApiClient browser, String token) {
         return browser.post("/api/public/invitations/accept").json(Map.of("token", token, "password",
@@ -49,7 +55,7 @@ class AnonymizeRemovesTest extends PrivacyAppTest {
     }
 
     @Test
-    @DisplayName("S10A-AC-09 after anonymizing, the old session cookie is 401, the photo is 404, and the person's "
+    @DisplayName("S10A-AC-09 after anonymizing, the old session cookie is 401, the person's session rows, photo and "
             + "inbox items are gone")
     void sessionPhotoAndInbox() {
         Session admin = fixtures.signInAdmin();
@@ -63,19 +69,21 @@ class AnonymizeRemovesTest extends PrivacyAppTest {
                 () -> TalkFlow.inboxOf(customer, issue.key()).isEmpty() ? null : Boolean.TRUE);
         assertThat(PhotoSteps.photo(agent, customer.accountId()).status()).as("the photo before").isEqualTo(200);
         assertThat(customer.client().get("/api/portal/me").send().status()).as("the session before").isEqualTo(200);
+        assertThat(sessionRows(customer.accountId())).as("session rows of the customer before").isPositive();
 
         anonymize(admin, customer.accountId());
 
         assertThat(customer.client().get("/api/portal/me").send().status()).as("GET /me with the old session")
                 .isEqualTo(401);
+        assertThat(sessionRows(customer.accountId())).as("session rows of the anonymized customer").isZero();
         assertThat(PhotoSteps.photo(agent, customer.accountId()).status()).as("the photo after").isEqualTo(404);
         assertThat(db.count("select count(*) from notification where account_id = ?", customer.accountId()))
                 .as("inbox rows of the anonymized customer").isZero();
     }
 
     @Test
-    @DisplayName("S10A-AC-09 after anonymizing, an invitation link that was not used and a password reset link "
-            + "answer like a token nobody has")
+    @DisplayName("S10A-AC-09 after anonymizing, the accounts have no invitation or reset rows, and an invitation link "
+            + "that was not used and a password reset link answer like a token nobody has")
     void tokensStopWorking() {
         Session admin = fixtures.signInAdmin();
         Company company = fixtures.createCompany(admin);
@@ -85,10 +93,18 @@ class AnonymizeRemovesTest extends PrivacyAppTest {
         String resetToken = Fixtures.tokenOf(mail().awaitMessage("the reset mail to " + agent.email(),
                 m -> m.isTo(agent.email()) && m.text().contains("#token=") && !m.text().contains("/invite#token="))
                 .text());
+        assertThat(db.count("select count(*) from invitation where account_id = ?", invited.accountId()))
+                .as("invitation rows of the invited customer before").isPositive();
+        assertThat(db.count("select count(*) from password_reset where account_id = ?", agent.accountId()))
+                .as("reset rows of the agent before").isPositive();
 
         anonymize(admin, invited.accountId());
         anonymize(admin, agent.accountId());
 
+        assertThat(db.count("select count(*) from invitation where account_id in (?, ?)", invited.accountId(),
+                agent.accountId())).as("invitation rows of the two anonymized accounts").isZero();
+        assertThat(db.count("select count(*) from password_reset where account_id in (?, ?)", invited.accountId(),
+                agent.accountId())).as("reset rows of the two anonymized accounts").isZero();
         assertSameRefusal(accept(portal(), invited.token()), accept(portal(), "inv-" + Unique.text("unknown")),
                 "accepting the old invitation");
         assertSameRefusal(PasswordSteps.confirm(console(), resetToken, "new-Password-" + Unique.number()),
@@ -98,7 +114,8 @@ class AnonymizeRemovesTest extends PrivacyAppTest {
 
     @Test
     @DisplayName("S10A-AC-09 mail to the person that waits in the send queue when they are anonymized is never sent: "
-            + "its row is gone, and after a later mail went out the old address got nothing more")
+            + "its row is gone right after anonymizing, before the queue tries again, and after a later mail went out "
+            + "the old address got nothing more")
     void queuedMailIsDropped() {
         Session admin = fixtures.signInAdmin();
         Company company = fixtures.createCompany(admin);
@@ -113,6 +130,9 @@ class AnonymizeRemovesTest extends PrivacyAppTest {
                 customer.accountId())).as("mail rows to the customer before").isPositive();
 
         anonymize(admin, customer.accountId());
+        assertThat(db.count("select count(*) from outbox where channel = 'MAIL' and recipient_account_id = ?",
+                customer.accountId())).as("mail rows to the customer right after anonymizing, before the queue "
+                        + "tries again").isZero();
         letMailGo();
         TalkFlow.awaitALaterMail(fixtures, admin);
 

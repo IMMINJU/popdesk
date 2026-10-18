@@ -5,7 +5,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
 import io.popdesk.support.AuditChainMath;
+import io.popdesk.support.Fixtures;
+import io.popdesk.support.Fixtures.Invitation;
+import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
+import io.popdesk.support.MailServer;
+import io.popdesk.support.ReceivedMail;
+import io.popdesk.support.Wait;
 import io.popdesk.support.WebhookReceiver;
 import io.popdesk.support.WebhookReceiver.Received;
 import java.util.ArrayList;
@@ -51,6 +57,35 @@ public final class PrivacySteps {
     /** Anonymizes with {@code clearAssignments} and expects 200; returns the answer. */
     public static JsonNode anonymize(Session admin, long accountId, boolean clearAssignments) {
         return anonymizeRequest(admin, accountId).query("clearAssignments", clearAssignments).expect(200).json();
+    }
+
+    // Invitations
+
+    /**
+     * Invites an email that got an invitation mail before and reads the token from the newest invitation mail to it
+     * ({@code Fixtures.invite} reads the first mail to the address, which holds the old token).
+     */
+    public static Invitation inviteAgain(Session admin, MailServer mail, Role role, String email, String name,
+            List<String> companyCodes) {
+        int before = invitationMails(mail, email).size();
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("email", email);
+        body.put("name", name);
+        body.put("role", role.name());
+        body.put("companyCodes", companyCodes);
+        long accountId = admin.client().post("/api/console/invitations").json(body).expect(201)
+                .jsonLong("accountId");
+        ReceivedMail newest = Wait.until("a new invitation mail to " + email, () -> {
+            List<ReceivedMail> found = invitationMails(mail, email);
+            return found.size() > before ? found.getLast() : null;
+        });
+        String link = Fixtures.linkIn(newest.text());
+        return new Invitation(accountId, email, name, role, List.copyOf(companyCodes), link, Fixtures.tokenOf(link));
+    }
+
+    /** The mails to {@code email} that hold an invitation link, oldest first. */
+    private static List<ReceivedMail> invitationMails(MailServer mail, String email) {
+        return mail.messagesTo(email).stream().filter(m -> m.text().contains("/invite#token=")).toList();
     }
 
     // Accounts

@@ -265,7 +265,30 @@ class AuditVerifyRechainTest {
                 .doesNotContain("BROKEN");
     }
 
+    @Test
+    @DisplayName("S10A-AC-24 a file with the old copies up to the end of the range and the new copies from the "
+            + "AUDIT_RECHAINED on (its prevHash is headHash.to, not the hash of the line before) is whole")
+    void rechainedEntryAfterOldCopies(@TempDir Path directory) throws IOException, InterruptedException {
+        Versions v = versions();
+        List<ObjectNode> lines = concat(Versions.seqs(v.v0(), 1, 5), Versions.seqs(v.v1(), 6, 7));
+
+        Run run = verify(directory, lines);
+
+        assertThat(lines.get(5).get("prevHash").asString()).as("prevHash of the AUDIT_RECHAINED")
+                .isNotEqualTo(hashOf(v.v0(), 5));
+        assertThat(run.exit()).as("exit code with the old copies before the AUDIT_RECHAINED: %s", run.output())
+                .isZero();
+        assertThat(run.output()).contains("rechained 2-5 at 6").contains("OK").doesNotContain("BROKEN");
+    }
+
     // Broken
+
+    /** The values of seq {@code seq} of a version, without its place in the chain. */
+    private static ObjectNode valuesOf(List<ObjectNode> version, int seq) {
+        ObjectNode values = Versions.seqs(version, seq, seq).getFirst().deepCopy();
+        List.of("id", "seq", "prevHash", "hash").forEach(values::remove);
+        return values;
+    }
 
     static Stream<Arguments> breaks() {
         Versions v = versions();
@@ -294,6 +317,11 @@ class AuditVerifyRechainTest {
         otherSeven.put("occurredAt", "2026-10-08T03:16:00.000002Z");
         otherSeven.put("hash", AuditChainMath.hash(otherSeven.get("prevHash").asString(), otherSeven));
 
+        List<ObjectNode> offItsHead = new ArrayList<>(concat(Versions.seqs(v.v0(), 1, 3), Versions.seqs(v.v1(), 4, 5)));
+        ObjectNode offR = line(valuesOf(v.v1(), 6), 6, hashOf(v.v0(), 5));
+        offItsHead.add(offR);
+        offItsHead.add(line(valuesOf(v.v1(), 7), 7, offR.get("hash").asString()));
+
         return Stream.of(
                 Arguments.of("a prevHash after the range that is not the hash before it",
                         concat(afterRange, List.of(seven)), 7),
@@ -301,7 +329,9 @@ class AuditVerifyRechainTest {
                 Arguments.of("a line in the range whose hash does not match its own values",
                         ownHash, 5),
                 Arguments.of("the same seq twice with another hash and no later range around it",
-                        concat(Versions.seqs(v.v0(), 1, 3), mixedTail, List.of(otherSeven)), 8));
+                        concat(Versions.seqs(v.v0(), 1, 3), mixedTail, List.of(otherSeven)), 8),
+                Arguments.of("an AUDIT_RECHAINED off the line before it and off its headHash.to, in no later range",
+                        offItsHead, 6));
     }
 
     @ParameterizedTest(name = "{0}")

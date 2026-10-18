@@ -152,13 +152,15 @@ class AnonymizeAccountTest extends PrivacyAppTest {
         Session old = fixtures.customer(admin, company.code());
         Issue issue = fixtures.fileIssue(old, company.code());
         anonymize(admin, old.accountId());
+        Company another = fixtures.createCompany(admin);
 
-        Invitation again = fixtures.invite(admin, Role.CUSTOMER, old.email(), old.name(), List.of());
+        Invitation again = PrivacySteps.inviteAgain(admin, mail(), Role.CUSTOMER, old.email(), old.name(),
+                List.of(another.code()));
         Session fresh = fixtures.accept(again);
 
         assertThat(again.accountId()).as("account ID of the new invitation").isNotEqualTo(old.accountId());
         assertThat(fresh.client().get("/api/portal/me").expect(200).json().path("companies").findValuesAsString("code"))
-                .as("companies of the new account").doesNotContain(company.code());
+                .as("companies of the new account").contains(another.code()).doesNotContain(company.code());
         assertThat(IssueFlow.list(fresh).json().path("items").findValuesAsString("key")).as("issues the new account lists")
                 .doesNotContain(issue.key());
         assertThat(anonymizedAccount(admin, old.accountId()).path("anonymized").asBoolean(false))
