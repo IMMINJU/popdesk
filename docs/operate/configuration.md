@@ -23,7 +23,8 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | The bucket and the key pair when `POPDESK_STORAGE=s3`. All three are required then; the key pair is also required while any attachment is still stored in S3. popdesk takes its credentials from these two keys only, never from `AWS_` variables, a profile file, or an instance role | None |
 | `S3_ENDPOINT`, `S3_REGION` | Where the bucket is. With `S3_ENDPOINT` (an S3-compatible server) requests go to that address in path style, `https://host/bucket/key`, and `S3_REGION` is optional (`us-east-1` is used to sign). Without `S3_ENDPOINT` requests go to AWS in the region `S3_REGION`. One of the two is required. An `http` address is taken, with a warning in the log at start: the files and the signed requests then travel unencrypted | None |
 | `POPDESK_AUDIT_RETENTION` | How long audit log entries are kept: an ISO-8601 duration of days and time, such as `P365D` or `PT720H` (no years or months), at least `P30D`. Older entries are deleted once a day, and only from the start of the log as far as old entries follow one another ([audit-log.md](audit-log.md#how-long-entries-are-kept)) | `P365D` when the variable is not set. With a shorter value, an empty value, or one that is not such a duration, popdesk does not serve requests and deletes no entry, as with a missing first admin: the process keeps running, logs the name of the setting, and its health check stays unhealthy |
-| `POPDESK_ISSUE_RETENTION` | How long after closing an issue it is moved to the trash. At least `P90D`; a shorter value stops startup | None (off) |
+| `POPDESK_ISSUE_RETENTION` | How long after closing an issue it is moved to the trash ([automatic issue cleanup](#automatic-issue-cleanup)): an ISO-8601 duration of days and time, such as `P1095D` or `PT26280H` (no years or months), at least `P90D` | None (off). An empty value is off too. With a shorter value, or one that is not such a duration, popdesk does not start: the process ends and its log names the setting and why |
+| `POPDESK_EXPORT_DIR` | The folder on the app's disk where [company exports](#company-exports) are written. It needs room for the largest company's attachments | `/tmp/popdesk-exports` |
 | `AUDIT_FORWARD_URL` | Address that receives a copy of every audit log entry written from then on, as an HTTP `POST` ([audit-log.md](audit-log.md#a-copy-outside-popdesk)) | None (off). Also off while `POPDESK_SANDBOX=true` |
 | `AUDIT_FORWARD_TOKEN` | Token for the receiver of the audit copy: sent as `Authorization: Bearer <token>` with every entry | None. Without it, no `Authorization` header is sent |
 | `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` | Incoming email | None. Without them, incoming email is off. `IMAP_FOLDER` defaults to `INBOX` |
@@ -282,6 +283,24 @@ Two cleanup jobs, without settings. Both show in the system status and in the cl
 - `trash-purge` runs every hour and purges each issue that was deleted into the trash 30 days ago or longer: its title, content, comments, attachments with their files, tasks, links, labels, and inbox items are deleted; the issue's row and its history stay. Each issue is purged in a transaction of its own. A file that cannot be removed is removed later by `attachment-cleanup`. The count is the number of issues purged.
 - `issue-auto-close` runs every 10 minutes and closes each `RESOLVED` issue 7 days after it was resolved, or 7 days after it was restored from the trash. It closes as popdesk itself (account 0) and sends what closing by staff sends: the reporter's inbox item and email and the webhook message `ISSUE_CLOSED`. The count is the number of issues closed. Issues in the trash are not closed.
 - Times are measured in UTC; `POPDESK_TIMEZONE` does not change them. A job that was not running (the app was stopped) does its work at its next run.
+
+## Automatic issue cleanup
+
+Off unless `POPDESK_ISSUE_RETENTION` is set; what it does for the people who use popdesk is in [privacy.md](privacy.md#automatic-issue-cleanup). One cleanup job shows in the system status and in the cleanup metrics like the other jobs.
+
+- `issue-retention` runs every hour. Once a day, 24 hours after the last run that moved an issue, it moves to the trash every issue that is `CLOSED`, not in the trash, and was closed (or last restored from the trash) longer ago than the period, one issue per transaction, as popdesk itself: the trash shows no admin as who deleted it, and no audit entry is written. The count is the number of issues moved; while the cleanup is off it runs and records 0.
+- When the cleanup is turned on or its period is made shorter, the next run moves nothing, gives every admin an `ISSUE_RETENTION_ARMED` item with the number of issues it would move, and moves from 24 hours later. What the last run saw is kept in the table `issue_retention`, because the setting itself has no history.
+- A value that is not taken stops the start, unlike `POPDESK_AUDIT_RETENTION`: a period shorter than meant would move issues to the trash at the first run.
+
+## Company exports
+
+An admin exports one company's data as a ZIP ([privacy.md](privacy.md#exporting-a-companys-data)). popdesk writes it in the background into `POPDESK_EXPORT_DIR` as `{export ID}.zip` (`{export ID}.zip.part` while it is written) and keeps it 24 hours. One export runs at a time in the installation.
+
+- **Room.** A ZIP holds every file of the company's issues, so it can be as large as the company's share of the attachment storage (`popdesk attachments check` and the attachment quota tell how much that is), plus a little for the JSON. The default folder is in the container's `/tmp`, which is lost when the container is replaced and shares its disk with the rest of the container; mount a volume there, or set `POPDESK_EXPORT_DIR` to a folder on a volume, when companies have many files. A ZIP that cannot be written ends the export `FAILED` with `DISK`, its part is deleted, and every admin gets an inbox item. popdesk does not measure the free space first.
+- **The user.** The folder must be one that the app's user (10001 in the image) can write. popdesk makes it when it is not there.
+- **Restarts.** When the app starts, an export that was running becomes `FAILED` (`INTERRUPTED`), every file in the folder that is not the ZIP of a `DONE` export is deleted, and a `DONE` export whose ZIP is gone (a new container) becomes `EXPIRED`. Put nothing else in that folder.
+- `company-export-expiry` runs every 10 minutes and deletes the ZIP of each export that became `DONE` 24 hours ago or longer; the export stays in the list as `EXPIRED`. The count is the number of exports expired. It shows in the system status and in the cleanup metrics like the other jobs.
+- Downloading a ZIP does not take one of the 16 download places of attachments.
 
 ## SLA due times
 

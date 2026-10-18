@@ -42,6 +42,9 @@ class ConsoleCompanyExportController {
     static final String NO_FILE = "`NOT_FOUND`: no such export, or its ZIP cannot be downloaded: the export is "
             + "`RUNNING`, `FAILED`, or `EXPIRED`, or it became `DONE` over 24 hours ago, even before the cleanup "
             + "job deleted the file (S10B-AC-07). One body for all of these.";
+    static final String CONTENT_DISPOSITION = "`attachment; filename=\"popdesk-{code}-{yyyy-MM-dd}.zip\"`, with the "
+            + "company code and the date the export was asked for, in UTC.";
+
     private static final MediaType ZIP = MediaType.parseMediaType("application/zip");
 
     private final CompanyExportService exports;
@@ -49,9 +52,6 @@ class ConsoleCompanyExportController {
     ConsoleCompanyExportController(CompanyExportService exports) {
         this.exports = exports;
     }
-
-    static final String CONTENT_DISPOSITION = "`attachment; filename=\"popdesk-{code}-{yyyy-MM-dd}.zip\"`, with the "
-            + "company code and the date the export was asked for, in UTC.";
 
     @Operation(operationId = "createCompanyExport", summary = "Export a company's data",
             description = "Starts writing one ZIP in the background with the company's issues, public comments, "

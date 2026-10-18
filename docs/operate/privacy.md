@@ -1,6 +1,6 @@
 # Personal data
 
-What personal data popdesk keeps, how to answer a person who asks for their data or for its deletion, and what an anonymization changes and what it leaves. The API is in [the API conventions](../integrate/conventions.md#account-export-and-anonymization-pii-3-pii-4).
+What personal data popdesk keeps and for how long, how to answer a person who asks for their data or for its deletion, what an anonymization changes and what it leaves, how to export one company's data, and how closed issues can be cleaned up on their own. The API is in [the API conventions](../integrate/conventions.md#account-export-and-anonymization-pii-3-pii-4) and its [company export](../integrate/conventions.md#company-export-pii-8).
 
 popdesk is not released yet. Values here are the planned contract and may change before the first release.
 
@@ -15,8 +15,28 @@ popdesk is not released yet. Values here are the planned contract and may change
 | Membership requests | A copy of the requesting customer's email and name |
 | Email queue and inbox | Which account a queued email or an inbox item is for, and what it is about. The address is read when the email is sent |
 | Audit log | The person who acted (account ID, name, email) and the values that changed, often the name and email of the account it was done to |
+| Received email | The sender's address and the `Message-ID` of email turned into issues and comments |
+| Company exports | The ZIP files of [company exports](#exporting-a-companys-data), in `POPDESK_EXPORT_DIR`, for 24 hours |
 
 popdesk does not keep IP addresses: sign-in limits are counted in memory only. Its log masks every email address after the first character and holds no password, token, invitation link, or issue content.
+
+## How long popdesk keeps it
+
+| Data | Kept |
+|---|---|
+| Issues, comments, attachments, tasks | Until they are deleted. A deleted issue stays in the trash for 30 days and is then purged. Optionally, `POPDESK_ISSUE_RETENTION` moves issues closed longer than that to the trash ([below](#automatic-issue-cleanup)) |
+| Accounts | Until they are anonymized |
+| Audit log | `POPDESK_AUDIT_RETENTION`, 365 days by default, at least 30 ([audit-log.md](audit-log.md)) |
+| Inbox items | Until their issue is purged or their account is anonymized |
+| Emails and webhook messages that failed | 7 days |
+| Images uploaded for content and not used | 24 hours |
+| Sessions | 8 hours after the sign-in |
+| `Message-ID` (or a hash of the message) of received email | 90 days |
+| `Message-ID` of sent notification email | 90 days; a reply after that is found by the `[issue key]` in its subject only |
+| Password reset tokens | Until used or expired (1 hour) |
+| `Idempotency-Key` of a filing | 24 hours |
+| Company export files | 24 hours. A customer anonymized meanwhile keeps the old values in a file made before |
+| App log (standard output) | popdesk keeps none; the log collector of the installation decides |
 
 Copies outside the database hold the same data: backups (`popdesk backup`), files in `disk` or `s3` storage, audit log exports, the [outside copy of the audit log](audit-log.md#a-copy-outside-popdesk), and emails already sent.
 
@@ -40,6 +60,27 @@ The anonymization checks the audit log's hash chain from the person's first entr
 
 Tell the person that the deletion is delayed and why, as the law that applies to you requires.
 
+## Exporting a company's data
+
+When a customer company leaves, or asks for what it gave you, an admin exports the company in the console: company detail (C-9), section "Export".
+
+1. **Choose what goes in.** Every export has the company's issues, their public comments, the files of both, and the company's member customers (email and name). Two choices add more, both off by default: private issues (other customers of the company cannot see them, so the person you send the ZIP to would see what their colleagues could not), and internal comments and tasks with their files. Staff are always "support team" in the ZIP, also in internal comments and tasks, but a name written inside the text of a comment goes out as written: read the internal comments before you choose them.
+2. **Wait for the ZIP.** popdesk writes it in the background. One export runs at a time in the installation. The list shows it as running; when it is done, the admin who asked gets an inbox item, and when it fails every admin does, with the reason in the list (`STORAGE`: the attachment storage could not be read; `DISK`: the ZIP could not be written; `INTERRUPTED`: the app stopped meanwhile). A file the storage no longer has is left out and named in `manifest.json`.
+3. **Download it within 24 hours.** Any admin can download it. Each download is recorded in the audit log (`COMPANY_EXPORT_DOWNLOADED`), as the export is (`COMPANY_EXPORTED`). After 24 hours popdesk deletes the file; the list keeps the export as expired. Send the ZIP by a channel you trust.
+
+What the ZIP holds is listed in [the API conventions](../integrate/conventions.md#company-export-pii-8). It holds nothing of other companies: not their issues, not links to them, not customers who belong only to them. The ZIP is written to the app's disk ([configuration.md](configuration.md#company-exports)): give that folder room for the company's attachments.
+
+## Automatic issue cleanup
+
+Off by default. With `POPDESK_ISSUE_RETENTION` set, popdesk moves to the trash, once a day, every issue that is `CLOSED` and was closed longer ago than that; 30 days later the trash purges it, as it purges any. It is a way to keep issues no longer than you need them.
+
+- **Turning it on.** Set an ISO-8601 period of days or hours, at least `P90D` (for example `P1095D`, three years) and start the app again. A value of years or months (`P3Y`), any other text, or a period shorter than `P90D` stops the app at its start, with the key and the reason in its log.
+- **The first day.** When the cleanup is turned on, or its period is made shorter, it moves nothing for 24 hours. Every admin gets an inbox item with the number of issues it would move and the period in days. That is the time to fix a wrong value: set it back and start the app again, and the shorter period moves nothing. A longer period, or the same one written otherwise (`P90D` and `PT2160H`), starts no wait.
+- **What is moved.** An issue whose period counts from when it was closed or, if later, when it was last restored from the trash. An issue reopened, open, or already in the trash is not moved; an issue an admin deletes while the cleanup comes for it ends deleted by the admin.
+- **How it shows.** The trash lists a moved issue with "automatic cleanup" as who deleted it, and its history says popdesk moved it. No audit entry is written; the cleanup record (system status, `issue-retention`) has the time and the count of each run.
+- **Undoing it.** Restore the issue from the trash within 30 days. It comes back as it was, and the cleanup counts its period again from the restore.
+- **Turning it off.** Remove the key and start the app again. The next time it is turned on is a first day again.
+
 ## What an anonymization changes
 
 - The name becomes `Deleted user` or `삭제된 사용자`, in the installation's language at that moment (`POPDESK_LOCALE`), and the email `deleted-{id}@invalid`. The account becomes `SUSPENDED` and is marked as anonymized in the member list.
@@ -54,4 +95,5 @@ Tell the person that the deletion is delayed and why, as the law that applies to
 - What the person wrote: issues, comments, attachments, task notes. They stay and show the anonymous name as their author. Customers still see staff as the support team.
 - Other people's text that names the person (see step 3 above).
 - An outside copy of the audit log that was being sent at the moment of the anonymization can go out with the old values: popdesk reads the entry when it sends it. Treat it like a copy already sent.
-- Data outside the database: audit entries already sent to the outside copy, audit log exports and account exports already downloaded, emails already sent, and backups taken before. They keep the old name and email. Remove them under your own rules, or keep backups only as long as you need them.
+- Company export files made before the anonymization, for at most 24 hours: they keep the person's old name and email as a member customer and as an author. Wait for them to expire, or delete them in `POPDESK_EXPORT_DIR`.
+- Data outside the database: audit entries already sent to the outside copy, audit log exports, account exports, and company exports already downloaded, emails already sent, and backups taken before. They keep the old name and email. Remove them under your own rules, or keep backups only as long as you need them.

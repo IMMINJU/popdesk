@@ -83,6 +83,10 @@ The next version stores attachment files in a folder (`POPDESK_STORAGE=disk`) or
 - **New kinds of audit entry**: `ISSUE_DELETED`, `ISSUE_RESTORED`, and `ISSUE_PURGED`. A receiver of the audit copy or of exports that lists the kinds it knows needs these three.
 - **New inbox item for admins**: `CLEANUP_STALLED`, when a cleanup job has not succeeded for its interval plus 24 hours ([configuration.md](configuration.md#sending-email-and-webhook-messages)). After the upgrade, a job that has not succeeded for that long already raises it in the first minutes.
 - **Statistics**: staff see issue counts per company in the console (`GET /api/console/stats`); agents only for the companies assigned to them. No migration and no setting.
+- **`POPDESK_ISSUE_RETENTION` is read now (migration 23).** The key has been in [configuration.md](configuration.md#environment-variables) since 0.1.0 without effect. From this version, a value that is not a duration of days and hours, or one shorter than `P90D`, stops the app at its start: check the value before you upgrade, or remove it. A valid value turns [automatic issue cleanup](configuration.md#automatic-issue-cleanup) on: the first run after the upgrade moves nothing, tells every admin how many issues it would move, and moves them 24 hours later.
+- **Company exports and their folder (migration 23).** Admins export one company's data as a ZIP, written into `POPDESK_EXPORT_DIR` (default `/tmp/popdesk-exports` in the container). Give it room or a volume before the first large export ([configuration.md](configuration.md#company-exports)). The release Compose file passes `POPDESK_ISSUE_RETENTION` and `POPDESK_EXPORT_DIR` to the app when you set them.
+- **New cleanup jobs**: `issue-retention` and `company-export-expiry` ([configuration.md](configuration.md#automatic-issue-cleanup)). A receiver of the cleanup metrics that lists the jobs it knows needs these two.
+- **New kinds of audit entry**: `COMPANY_EXPORTED` and `COMPANY_EXPORT_DOWNLOADED`. **New inbox items for admins**: `COMPANY_EXPORT_READY`, `COMPANY_EXPORT_FAILED`, and `ISSUE_RETENTION_ARMED`.
 
 ## A migration failed
 
