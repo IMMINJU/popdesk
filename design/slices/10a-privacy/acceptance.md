@@ -57,14 +57,14 @@
 | ID | 기준 |
 |---|---|
 | S10A-AC-17 | When 계정을 익명화하면, the system shall 그 사람의 감사 항목의 사람 칸을 익명 값으로 바꾼다. 다른 칸, 다른 계정의 항목, 같은 이름을 가진 다른 계정의 항목은 그대로다. (PII-5) |
-| S10A-AC-18 | When 감사 값을 바꾸면, the system shall 바뀐 첫 항목부터 사슬 머리까지 `prev_hash`와 `hash`를 다시 계산하고, 바로 다음 항목(seq `toSeq + 1`, `ACCOUNT_ANONYMIZED`보다 앞)으로 감사 `AUDIT_RECHAINED` 하나를 남긴다: 대상 `{type: AUDIT_LOG}`, 바뀐 값 `fromSeq`, `toSeq`, `headHash` `{from, to}`(재계산 전과 뒤의 `toSeq` 항목 hash). 바뀐 항목이 없으면 다시 계산하지 않고 이 항목도 남기지 않는다. (AUDIT-6) |
+| S10A-AC-18 | When 감사 값을 바꾸면, the system shall 바뀐 첫 항목부터 사슬 머리까지 `prev_hash`와 `hash`를 다시 계산하고, 바로 다음 항목(seq `toSeq + 1`, `ACCOUNT_ANONYMIZED`보다 앞)으로 감사 `AUDIT_RECHAINED` 하나를 남긴다: 대상 `{type: AUDIT_LOG}`, 바뀐 값 `fromSeq`, `toSeq`, `headHash` `{from, to}`(재계산 전과 뒤의 `toSeq` 항목 hash). 바뀐 항목이 없으면 다시 계산하지 않고 이 항목도 남기지 않는다(이 경우는 HTTP로 만들 수 없어 C-10의 `AuditAnonymizer` 단위 테스트로 본다). (AUDIT-6) |
 | S10A-AC-19 | When 익명화가 끝난 뒤 관리자가 무결성 확인을 돌리면, the system shall 사슬이 맞다고 답한다. 재계산 중 앱이 죽으면 익명화 전체가 되돌아가고 무결성 확인도 맞다고 답한다. (AUDIT-6, AUDIT-7) |
 | S10A-AC-20 | When 익명화와 다른 감사 남기기(로그인, 관리 작업)가 함께 오면, the system shall 둘 다 끝내고 사슬을 하나로 둔다(갈라지지 않고 무결성 확인이 맞다). 감사 항목 10만 건이 있는 설치에서 익명화가 도는 동안 다른 요청(로그인 20번)이 모두 성공한다(사슬 머리는 익명화가 시작된 뒤 붙은 항목을 이어 계산하는 동안만 잡는다, 5절 2). (AUDIT-6) |
 | S10A-AC-21 | If 다른 익명화가 돌고 있으면, then the system shall 409 `ANONYMIZATION_RUNNING`으로 답하고 아무것도 바꾸지 않는다. (5절 3) |
 | S10A-AC-35 | When 익명화가 커밋되기 전에 값을 만든 그 사람의 감사 항목(그 사람의 로그인 실패 따위)이 커밋 뒤에 붙으면, the system shall 그 항목의 사람 칸도 익명 값으로 붙인다. 익명화 뒤에 그 사람을 대상으로 붙는 모든 감사 항목도 같다. (PII-5, 5절 2) |
 | S10A-AC-22 | When 감사 보관 작업(AUDIT-4)이 익명화와 같은 때 돌면, the system shall 어떤 한 순서로 한 것과 같게 끝낸다(무결성 확인이 맞다). (AUDIT-4, AUDIT-6) |
 | S10A-AC-23 | When 바깥 사본(AUDIT-9)이 켜져 있으면, the system shall 아직 보내지 않은 그 사람의 감사 사본을 익명 값과 새 hash로 보내고, `AUDIT_RECHAINED` 항목도 다른 항목처럼 보낸다. 이미 보낸 사본은 다시 보내지 않는다. (PII-5, AUDIT-6) |
-| S10A-AC-24 | When `docs/integrate/audit-verify.py`가 재계산 앞에 받은 사본과 뒤에 받은 사본이 섞인 JSON Lines를 읽으면, the system shall `AUDIT_RECHAINED` 항목(seq R, 구간 F~T)을 경계로 구간을 나눠 본다: 항목의 `prevHash`가 앞 항목의 hash와 다른 곳이 F~T 안이거나 R이면 끊긴 곳이 아니라 "다시 계산됨, seq F~T"로 적는다. 다만 R의 `prevHash`는 `headHash.to`와 같아야 하고, 각 항목의 hash는 그 항목 자신의 값과 `prevHash`로 다시 계산해 맞아야 한다. 그 밖의 어긋남은 지금처럼 끊긴 곳으로 알린다. 같은 seq가 두 번 오면(최소 한 번 보내기) hash가 같으면 하나로 보고, 다르면 그 seq가 뒤에 오는 어느 재계산 구간 안일 때만 뒤의 것을 쓴다. 재계산 구간이 겹쳐도 각 경계를 따로 본다. (AUDIT-7) |
+| S10A-AC-24 | When `docs/integrate/audit-verify.py`가 재계산 앞에 받은 사본과 뒤에 받은 사본이 섞인 JSON Lines를 읽으면, the system shall `AUDIT_RECHAINED` 항목(seq R, 구간 F~T)을 경계로 구간을 나눠 본다: 항목의 `prevHash`가 앞 항목의 hash와 다른 곳이 F~T 안이거나 R이면 끊긴 곳이 아니라 "다시 계산됨, seq F~T"로 적는다. 다만 R의 `prevHash`는 `headHash.to`와 같아야 하고, 각 항목의 hash는 그 항목 자신의 값과 `prevHash`로 다시 계산해 맞아야 한다. 그 밖의 어긋남은 지금처럼 끊긴 곳으로 알린다. 같은 seq가 두 번 오면(최소 한 번 보내기) hash가 같으면 하나로 보고, 다르면 그 seq가 뒤에 오는 어느 재계산 구간 안일 때만 뒤의 것을 쓴다. 재계산 구간이 겹쳐도 각 경계를 따로 본다. `AUDIT_RECHAINED` 항목 자신의 seq가 뒤의 재계산 구간 안에 들면 그 항목의 "`prevHash` = `headHash.to`" 검사는 하지 않고 뒤 구간의 이음으로 본다. (AUDIT-7) |
 
 ### 2.4 권한과 문서
 
