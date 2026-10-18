@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.helpdesk.account.CurrentAccount;
+import io.popdesk.helpdesk.privacy.CompanyExportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
@@ -8,9 +9,14 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.InputStream;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,6 +42,14 @@ class ConsoleCompanyExportController {
     static final String NO_FILE = "`NOT_FOUND`: no such export, or its ZIP cannot be downloaded: the export is "
             + "`RUNNING`, `FAILED`, or `EXPIRED`, or it became `DONE` over 24 hours ago, even before the cleanup "
             + "job deleted the file (S10B-AC-07). One body for all of these.";
+    private static final MediaType ZIP = MediaType.parseMediaType("application/zip");
+
+    private final CompanyExportService exports;
+
+    ConsoleCompanyExportController(CompanyExportService exports) {
+        this.exports = exports;
+    }
+
     static final String CONTENT_DISPOSITION = "`attachment; filename=\"popdesk-{code}-{yyyy-MM-dd}.zip\"`, with the "
             + "company code and the date the export was asked for, in UTC.";
 
@@ -65,7 +79,8 @@ class ConsoleCompanyExportController {
     @PostMapping("/api/console/companies/{code}/exports")
     @ResponseStatus(HttpStatus.ACCEPTED)
     CompanyExport createCompanyExport(@PathVariable String code, @RequestBody CreateCompanyExportRequest request) {
-        throw new NotImplementedException();
+        return export(exports.create(CurrentAccount.get(), code, request.includeInternal(),
+                request.includePrivate()));
     }
 
     @Operation(operationId = "listCompanyExports", summary = "Exports of a company",
@@ -77,7 +92,7 @@ class ConsoleCompanyExportController {
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: no such company.")
     @GetMapping("/api/console/companies/{code}/exports")
     List<CompanyExport> listCompanyExports(@PathVariable String code) {
-        throw new NotImplementedException();
+        return exports.list(CurrentAccount.get(), code).stream().map(ConsoleCompanyExportController::export).toList();
     }
 
     @Operation(operationId = "downloadCompanyExport", summary = "Download a company export",
@@ -94,7 +109,13 @@ class ConsoleCompanyExportController {
     @GetMapping("/api/console/company-exports/{id}/file")
     ResponseEntity<StreamingResponseBody> downloadCompanyExport(
             @Parameter(schema = @Schema(type = "string", format = "uuid")) @PathVariable String id) {
-        throw new NotImplementedException();
+        CompanyExportService.Download download = exports.download(CurrentAccount.get(), id);
+        InputStream contents = download.contents();
+        return ResponseEntity.ok().headers(headers(download.file())).body(out -> {
+            try (contents) {
+                contents.transferTo(out);
+            }
+        });
     }
 
     @Operation(operationId = "headCompanyExport", summary = "Headers of a company export download",
@@ -109,6 +130,24 @@ class ConsoleCompanyExportController {
     @RequestMapping(path = "/api/console/company-exports/{id}/file", method = RequestMethod.HEAD)
     ResponseEntity<Void> headCompanyExport(
             @Parameter(schema = @Schema(type = "string", format = "uuid")) @PathVariable String id) {
-        throw new NotImplementedException();
+        return ResponseEntity.ok().headers(headers(exports.check(CurrentAccount.get(), id))).build();
+    }
+
+    /** The headers of a download (S10B-AC-07): the ZIP, its name with the UTC date it was asked for, no-store. */
+    private static HttpHeaders headers(CompanyExportService.ZipFile file) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(ZIP);
+        headers.setContentLength(file.size());
+        headers.setContentDisposition(ContentDisposition.attachment().filename("popdesk-" + file.companyCode() + "-"
+                + file.requestedAt().atZone(ZoneOffset.UTC).toLocalDate() + ".zip").build());
+        headers.setCacheControl(CacheControl.noStore());
+        return headers;
+    }
+
+    private static CompanyExport export(CompanyExportService.Export e) {
+        return new CompanyExport(e.id(), CompanyExportState.valueOf(e.state()),
+                e.failure() == null ? null : CompanyExportFailure.valueOf(e.failure()), e.includeInternal(),
+                e.includePrivate(), new CompanyExportRequester(e.requestedById(), e.requestedByName()),
+                ConsoleIssueController.utc(e.requestedAt()), ConsoleIssueController.utc(e.finishedAt()), e.size());
     }
 }

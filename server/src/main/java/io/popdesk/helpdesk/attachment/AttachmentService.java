@@ -13,6 +13,7 @@ import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.attachment.AttachmentRepository.AttachmentRow;
 import io.popdesk.helpdesk.attachment.AttachmentRepository.FilePlace;
 import io.popdesk.helpdesk.attachment.storage.AttachmentStorages;
+import io.popdesk.helpdesk.attachment.storage.StorageFileMissingException;
 import io.popdesk.helpdesk.comment.CommentRepository;
 import io.popdesk.helpdesk.comment.CommentRepository.CommentRow;
 import io.popdesk.helpdesk.company.CompanyRepository;
@@ -421,6 +422,38 @@ public class AttachmentService implements IssueAttachments {
         }
         return new AttachmentContents(attachment.size(), first,
                 (offset, length) -> piece(attachment, offset, length));
+    }
+
+    /**
+     * The contents of an attachment a company export read in its snapshot (S10B-AC-14, slice 10b design 0절 3), from
+     * the place its row named then, or empty when that place has no file for it: it was deleted after the snapshot.
+     * The first piece is read here; any other failure of the storage (connection, permission) is thrown, and so is a
+     * file that goes missing after its first piece. Not for a request: no scope is checked, as the caller read the row
+     * among one company's issues.
+     *
+     * @param storage the storage kind of the row ({@code db}, {@code disk}, {@code s3})
+     * @param storageLocation the location of the row
+     * @param size the size of the row, bytes
+     */
+    public Optional<AttachmentContents> exportContents(UUID id, String storage, String storageLocation, long size) {
+        byte[] first;
+        try {
+            first = this.storage.read(storage, storageLocation, id, 0, (int) Math.min(AttachmentContents.PIECE, size));
+        } catch (StorageFileMissingException e) {
+            log.warn("The file of attachment {} is not in the {} storage; the company export leaves it out.", id,
+                    storage);
+            return Optional.empty();
+        } catch (RuntimeException e) {
+            log.error("Reading the file of attachment {} from the {} storage failed ({}).", id, storage,
+                    e.getClass().getSimpleName());
+            throw e;
+        }
+        if (first.length == 0 && size > 0) {
+            log.error("The file of attachment {} in the {} storage is empty.", id, storage);
+            throw new IllegalStateException("The attachment's contents ended before its size");
+        }
+        return Optional.of(new AttachmentContents(size, first,
+                (offset, length) -> this.storage.read(storage, storageLocation, id, offset, length)));
     }
 
     /** One piece of a file. A failure is logged with the attachment's ID and storage kind, never its name. */
