@@ -61,6 +61,8 @@ export function notification(over: Partial<Notification> = {}): Notification {
     task: null,
     linkedIssue: null,
     slaSummary: null,
+    retentionCount: null,
+    retentionDays: null,
     ...over,
   };
 }

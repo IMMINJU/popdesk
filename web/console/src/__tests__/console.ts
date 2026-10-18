@@ -473,6 +473,9 @@ const defaultHandlers = [
   // C-3 (with a company chosen), C-4 and C-9 ask for a company's labels (slice 6a): none, so the
   // earlier screen tests see an empty label part and no error band. console6a.ts answers with labels.
   http.get('*/api/console/companies/:code/labels', () => requireSession() ?? HttpResponse.json<Schemas['CompanyLabels']>({ items: [] })),
+  // C-9 asks for a company's exports (slice 10b): none, so the earlier screen tests see an empty
+  // 내보내기 구역 and no error band. console10b.ts answers with exports.
+  http.get('*/api/console/companies/:code/exports', () => requireAdmin() ?? HttpResponse.json<Schemas['CompanyExport'][]>([])),
   // C-4 asks for the tasks of the issue and C-15 for the caller's tasks (slice 6b): none, so the
   // earlier screen tests see an empty 작업 구역. console6b.ts answers with tasks.
   http.get('*/api/console/issues/:key/tasks', () => requireSession() ?? HttpResponse.json<Schemas['IssueTasks']>({ items: [], openCount: 0 })),

@@ -60,6 +60,9 @@ export const KIND_GROUPS: readonly { group: string; kinds: Readonly<Record<strin
       ISSUE_DELETED: '문의 지우기',
       ISSUE_RESTORED: '문의 복구',
       ISSUE_PURGED: '문의 영구 삭제',
+      // Slice 10b (design.md 2절): in 고객사, so the 10a group 내보내기 stays two.
+      COMPANY_EXPORTED: '고객사 내보내기',
+      COMPANY_EXPORT_DOWNLOADED: '고객사 내보내기 받기',
     },
   },
   {

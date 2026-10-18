@@ -65,6 +65,8 @@ describe('changeLines', () => {
       'ISSUE_DELETED',
       'ISSUE_RESTORED',
       'ISSUE_PURGED',
+      'COMPANY_EXPORTED',
+      'COMPANY_EXPORT_DOWNLOADED',
       'CUSTOMER_ADDED',
       'CUSTOMER_REMOVED',
       'AGENT_ASSIGNED',

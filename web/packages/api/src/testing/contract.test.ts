@@ -358,7 +358,11 @@ describe('계약 검증기 checkResponse: 7a 묶음 웹 테스트의 견본', ()
     expect(checkResponse('console', 'listTrash', 200, page)).toBe(page);
     const withoutPurgeAt = Object.fromEntries(Object.entries(trashed()).filter(([name]) => name !== 'purgeAt'));
     expect(() => checkResponse('console', 'listTrash', 200, paged([withoutPurgeAt]))).toThrow('$.items[0].purgeAt: required, but missing');
-    expect(() => checkResponse('console', 'listTrash', 200, paged([trashed({ deletedBy: null })]))).toThrow('$.items[0].deletedBy');
+    // Since 10b an issue automatic cleanup moved has no person (S10B-AC-22); the field stays required.
+    const byCleanup = paged([trashed({ deletedBy: null })]);
+    expect(checkResponse('console', 'listTrash', 200, byCleanup)).toBe(byCleanup);
+    const withoutDeletedBy = Object.fromEntries(Object.entries(trashed()).filter(([name]) => name !== 'deletedBy'));
+    expect(() => checkResponse('console', 'listTrash', 200, paged([withoutDeletedBy]))).toThrow('$.items[0].deletedBy: required, but missing');
   });
 
   test('console: 복구의 409 RESTORE_LINK_CONFLICT 견본(issueKeys)과 404 견본이 계약에 맞는다', () => {
@@ -426,6 +430,8 @@ describe('계약 검증기 checkResponse: 7a 묶음 웹 테스트의 견본', ()
       task: null,
       linkedIssue: null,
       slaSummary: null,
+      retentionCount: null,
+      retentionDays: null,
       readAt: null,
       createdAt: '2026-10-08T03:15:00Z',
       ...over,
@@ -475,6 +481,8 @@ describe('계약 검증기 checkResponse: 7b 묶음 웹 테스트의 견본', ()
       task: null,
       linkedIssue: null,
       slaSummary: null,
+      retentionCount: null,
+      retentionDays: null,
       readAt: null,
       createdAt: '2026-10-08T03:15:00Z',
     };
@@ -628,6 +636,8 @@ describe('계약 검증기 checkResponse: 8b 묶음 웹 테스트의 견본', ()
       task: null,
       linkedIssue: null,
       slaSummary: null,
+      retentionCount: null,
+      retentionDays: null,
       readAt: null,
       createdAt: T0,
     };
