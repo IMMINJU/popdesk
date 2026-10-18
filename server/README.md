@@ -47,7 +47,7 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 
 | Module | Package | Owns |
 |---|---|---|
-| `helpdesk` | `io.popdesk.helpdesk` | Accounts, invitations, sign-in, customer companies, issues, comments, attachments, labels, audit log, statistics |
+| `helpdesk` | `io.popdesk.helpdesk` | Accounts, invitations, sign-in, customer companies, issues, comments, attachments, labels, audit log, statistics, account export and anonymization (`helpdesk.privacy`) |
 | `notification` | `io.popdesk.notification` | Outbox, outgoing email, webhooks, incoming email |
 
 ### Tables
@@ -56,10 +56,10 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 |---|---|---|
 | `tenant` | `helpdesk` | The team. One row, `id` 1, made on the first start |
 | `account` | `helpdesk` | Accounts: email, name, role, status, Argon2id hash, language, sign-in lockout, and when the password last changed (V5): a session of a sign-in from before that time lets nobody in. `anonymized_at` (V22) is set for an anonymized account only; such an account keeps the anonymous name and `deleted-{id}@invalid` and is never brought back |
-| `invitation` | `helpdesk` | The invitation of an account: SHA-256 of the token, when it was sent and expires, and when it was cancelled (V5). The row stays after acceptance; a token works only while the account is `INVITED` |
+| `invitation` | `helpdesk` | The invitation of an account: SHA-256 of the token, when it was sent and expires, and when it was cancelled (V5). The row stays after acceptance until an anonymization deletes it; a token works only while the account is `INVITED` |
 | `password_reset` | `helpdesk` | The password reset link of an account (V5): SHA-256 of the token, when it was made, expires, and was used. One row per account; a new link replaces it. The cleanup `password-reset-cleanup` deletes used and expired rows |
 | `account_photo` | `helpdesk` | The profile photo of an account (V5): a PNG of at most 256 px a side, its size, and when it changed |
-| `audit_log` | `helpdesk` | Audit rows: action, person (`{accountId, name, email}`), target, changes, time |
+| `audit_log` | `helpdesk` | Audit rows: action, person (`{accountId, name, email}`), target, changes, time. An anonymization puts the anonymous values into a person's rows and computes the hashes again from the first changed row (`AuditRechain`, ADR D-62); nothing else changes a row |
 | `company` | `helpdesk` | Customer companies, and the number of each company's last issue |
 | `company_member` | `helpdesk` | Which customers belong to which company |
 | `company_agent` | `helpdesk` | Which agents are assigned to which company |

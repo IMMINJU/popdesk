@@ -430,15 +430,16 @@ The integrity check (`verifyAuditLog`) computes the same from the database and a
 
 Anonymizing an account (`anonymizeAccount`) puts the anonymous name and email into every entry of that person: the actor when its `accountId` is the account, and the `name` and `email` at the top of `changes` when the target's `accountId` is the account. Entries are found by account ID only, so another account with the same name is not changed. Nothing else in an entry changes.
 
-The `hash` of every entry from the first changed one (`fromSeq`) to the end of the chain (`toSeq`), and the `prevHash` of every entry after the first, are then computed again by the same rules, in the same transaction; the `AUDIT_RECHAINED` entry records the range. When no entry names the account, nothing is computed again and no `AUDIT_RECHAINED` is written. Entries of the person that join the chain after the anonymization, also ones made just before it and committed after, are written with the anonymous values.
+The `hash` of every entry from the first changed one (`fromSeq`) to the end of the chain (`toSeq`), and the `prevHash` of every entry after the first, are then computed again by the same rules, in the same transaction; the `AUDIT_RECHAINED` entry records the range; its actor is the admin who anonymized. When no entry changes (none names the account, or those that do hold the anonymous values already), nothing is computed again and no `AUDIT_RECHAINED` is written. Entries of the person that join the chain after the anonymization, also ones made just before it and committed after, are written with the anonymous values.
 
 The integrity check afterwards says the chain holds. A copy or an export made before holds the old values and hashes for the entries `fromSeq` to `toSeq`; [`audit-verify.py`](audit-verify.py) reads such a mix as follows (AUDIT-7):
 
 - Each `AUDIT_RECHAINED` entry (seq R, range F to T) is a boundary. Where an entry's `prevHash` is not the `hash` of the entry before it, and the entry is in F to T or is R itself, it is reported as "computed again, seq F-T", not as a break.
-- R's `prevHash` must still be `headHash.to` of its `changes`, and every entry's `hash` must still match its own values and its own `prevHash`.
+- R's `prevHash` must still be `headHash.to` of its `changes`, and every entry's `hash` must still match its own values and its own `prevHash`. An `AUDIT_RECHAINED` entry whose own `seq` lies in the range of a later `AUDIT_RECHAINED` is not checked against its `headHash.to`: the later range computed its `prevHash` again, and the later boundary is checked instead.
 - Any other mismatch is a break, as before.
 - The same `seq` twice (delivery is at least once): the same `hash` counts as one entry; a different `hash` is taken only when the `seq` lies in the range of an `AUDIT_RECHAINED` that comes after it, and then the later entry is used.
 - Ranges may overlap; each boundary is checked on its own.
+- Lines may come in any order; the entries are checked in the order of `seq`. The script prints `rechained F-T at R` for each range, then `OK: …` as before.
 
 ## Account export and anonymization (PII-3, PII-4)
 

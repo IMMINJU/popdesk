@@ -58,7 +58,8 @@ Order of checks: sign-in (401) → target in scope (404) → permission (403) �
 | Invite customers | Manager: to their company only (see below) | – | Yes, with at least one company |
 | Resend or cancel an invitation | Manager: resends, and cancels by removing (see below) | – | Yes, for accounts that have not accepted yet. Resending revives a cancelled invitation |
 | Export one person's data | – | – | Yes (`PII-3`) |
-| Anonymize an account | – | – | Yes, not self, not the last admin (`PII-4`) |
+| Anonymize an account | – | – | Yes, not self, not the last admin (`PII-4`). One at a time |
+| Act on an anonymized account | – | – | Export and suspend only. Renaming, changing the role, reactivating, resetting the password, resending the invitation or a new invitation link, adding it to a company, approving its membership request, and anonymizing again are refused (`ACCOUNT_ANONYMIZED`) |
 
 ## Customer companies
 

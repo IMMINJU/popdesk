@@ -43,4 +43,5 @@ Other people's issues and comments may name the person in their text. popdesk do
 
 - What the person wrote: issues, comments, attachments, task notes. They stay and show the anonymous name as their author. Customers still see staff as the support team.
 - Other people's text that names the person (see step 3 above).
+- An outside copy of the audit log that was being sent at the moment of the anonymization can go out with the old values: popdesk reads the entry when it sends it. Treat it like a copy already sent.
 - Data outside the database: audit entries already sent to the outside copy, audit log exports and account exports already downloaded, emails already sent, and backups taken before. They keep the old name and email. Remove them under your own rules, or keep backups only as long as you need them.
