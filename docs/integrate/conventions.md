@@ -474,7 +474,7 @@ Two admin endpoints under `/api/console/accounts/{accountId}`. Agents get 403, a
 - What the account wrote stays and shows the anonymous name wherever its name is shown.
 - One anonymization runs at a time (409 `ANONYMIZATION_RUNNING`). Own account is 400 `OWN_ACCOUNT`, the last `ACTIVE` admin 400 `LAST_ADMIN`, an anonymized account 400 `ACCOUNT_ANONYMIZED`.
 - An anonymized account cannot come back: every request that would make it usable again is 400 `ACCOUNT_ANONYMIZED` (see the error codes). Its old email can be invited again, which makes a new account with nothing of the old one.
-- The account list and every answer with an `Account` or a `SuspendedAccount` have `anonymized`.
+- The account list and every answer with an `Account` or a `SuspendedAccount` have `anonymized`. `listAccounts` takes `anonymized=false` to leave anonymized accounts out; the console's customer search for a company sends it.
 
 ## Audit log export
 

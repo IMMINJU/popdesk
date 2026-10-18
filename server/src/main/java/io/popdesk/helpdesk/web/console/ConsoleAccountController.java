@@ -56,7 +56,7 @@ class ConsoleAccountController {
 
     @Operation(operationId = "listAccounts", summary = "Accounts",
             description = "Every account, newest first (C-10). `role` narrows it, for example to pick an agent to "
-                    + "assign (C-9); `status` and `q` narrow it further (S1A-AC-29).")
+                    + "assign (C-9); `status`, `q`, and `anonymized` narrow it further (S1A-AC-29, S10A-AC-36).")
     @ApiResponse(responseCode = "200", description = "One page.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `page` or `size` out of range "
             + "(`OUT_OF_RANGE`), unknown `role` or `status` (`UNKNOWN_VALUE`), `q` empty or over 100 characters "
@@ -73,6 +73,9 @@ class ConsoleAccountController {
             @Parameter(description = "Only accounts whose name or email holds this text, 1 to 100 characters. Case "
                     + "is ignored; `%` and `_` are ordinary characters (COM-5).")
                     @RequestParam(required = false) @Nullable String q,
+            @Parameter(description = "`false`: only accounts that are not anonymized; `true`: only anonymized "
+                    + "ones. Left out, both. The customer search of C-9 sends `false` (S10A-AC-36).")
+                    @RequestParam(required = false) @Nullable Boolean anonymized,
             @Parameter(description = "Page number, from 1.") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "1 to 100.") @RequestParam(defaultValue = "20") int size) {
         Paged<AccountRow> rows = accounts.list(CurrentAccount.get(), role, status, q, page, size);
