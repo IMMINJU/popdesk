@@ -3,7 +3,6 @@ package io.popdesk.helpdesk.privacy;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.attachment.AttachmentContents;
 import io.popdesk.helpdesk.attachment.AttachmentService;
-import io.popdesk.helpdesk.attachment.storage.StorageException;
 import io.popdesk.helpdesk.privacy.CompanyExportRepository.AttachmentData;
 import io.popdesk.helpdesk.privacy.CompanyExportRepository.CommentData;
 import io.popdesk.helpdesk.privacy.CompanyExportRepository.Company;
@@ -50,8 +49,9 @@ import tools.jackson.databind.json.JsonMapper;
  *       issue {@code issue.json} and {@code comments.json}, written into the ZIP as they are read, and the list of the
  *       attachment rows whose files go in.
  *   <li>With that transaction closed, so no database connection is held while the storage is read: the bytes of each
- *       file. A file the storage no longer has is left out and listed in {@code manifest.json}; any other failure of
- *       the storage fails the export ({@code STORAGE}), so a ZIP never misses a file silently.
+ *       file, through {@link AttachmentService#exportContents}. A file the storage no longer has is left out and
+ *       listed in {@code manifest.json}; any other failure of the storage fails the export ({@code STORAGE}), so a
+ *       ZIP never misses a file silently.
  * </ol>
  *
  * {@code manifest.json} comes last, with the counts. The ZIP is written as {@code {id}.zip.part} in the export folder
@@ -155,8 +155,6 @@ class CompanyExportWriter {
             throw new Failed(DISK, e);
         } catch (JacksonException e) {
             throw new Failed(e.getCause() instanceof IOException ? DISK : UNEXPECTED, e);
-        } catch (StorageException e) {
-            throw new Failed(STORAGE, e);
         } catch (Failed e) {
             throw e;
         } catch (RuntimeException e) {
@@ -270,13 +268,16 @@ class CompanyExportWriter {
 
     /**
      * The second part: one file's bytes, read piece by piece. False when the storage has no file for it. A failure to
-     * read is a {@link StorageException} or {@link Failed} with {@code STORAGE}; a failure to write is an
-     * {@link IOException}.
+     * read is {@link Failed} with {@code STORAGE}; a failure to write is an {@link IOException}.
      */
     private boolean addFile(ZipOutputStream zip, File f) throws IOException {
         AttachmentData row = f.row();
-        Optional<AttachmentContents> contents = attachments.exportContents(row.id(), row.storage(),
-                row.storageLocation(), row.size());
+        Optional<AttachmentContents> contents;
+        try {
+            contents = attachments.exportContents(row.id(), row.storage(), row.storageLocation(), row.size());
+        } catch (RuntimeException e) {
+            throw new Failed(STORAGE, e);
+        }
         if (contents.isEmpty()) {
             return false;
         }
@@ -287,7 +288,7 @@ class CompanyExportWriter {
                 int n;
                 try {
                     n = in.read(buffer);
-                } catch (IOException e) {
+                } catch (IOException | RuntimeException e) {
                     throw new Failed(STORAGE, e);
                 }
                 if (n < 0) {

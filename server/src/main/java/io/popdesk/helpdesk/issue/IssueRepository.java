@@ -699,12 +699,13 @@ public class IssueRepository {
 
     /**
      * The issues due for automatic cleanup with a period that started before {@code startedBefore}, the earliest
-     * closed first, at most {@code limit}; not locked (S10B-AC-20).
+     * closed first, at most {@code limit}, if the viewer is an admin (popdesk itself); not locked (S10B-AC-20).
      */
-    public List<UUID> findDueForRetention(Instant startedBefore, int limit) {
+    public List<UUID> findDueForRetention(Viewer viewer, Instant startedBefore, int limit) {
         Timestamp before = Timestamp.from(startedBefore);
-        return jdbc.sql("select i.id from issue i where " + DUE_FOR_RETENTION + " order by i.closed_at, i.id limit ?")
-                .params(before, before, limit)
+        return jdbc.sql("select i.id from issue i where " + DUE_FOR_RETENTION + " and " + TRASH_READER
+                        + " order by i.closed_at, i.id limit ?")
+                .params(before, before, viewer.role().name(), limit)
                 .query(UUID.class).list();
     }
 
@@ -725,10 +726,14 @@ public class IssueRepository {
                 .optional();
     }
 
-    /** How many issues of the installation {@link #findDueForRetention} finds over all its batches (S10B-AC-19). */
-    public long countDueForRetention(Instant startedBefore) {
+    /**
+     * How many issues of the installation {@link #findDueForRetention} finds over all its batches, if the viewer is an
+     * admin; 0 otherwise (S10B-AC-19).
+     */
+    public long countDueForRetention(Viewer viewer, Instant startedBefore) {
         Timestamp before = Timestamp.from(startedBefore);
-        return jdbc.sql("select count(*) from issue i where " + DUE_FOR_RETENTION).params(before, before)
+        return jdbc.sql("select count(*) from issue i where " + DUE_FOR_RETENTION + " and " + TRASH_READER)
+                .params(before, before, viewer.role().name())
                 .query(Long.class).single();
     }
 

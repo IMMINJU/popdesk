@@ -1,6 +1,7 @@
 package io.popdesk.helpdesk.trash;
 
 import io.popdesk.Transactions;
+import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.issue.IssueRepository;
 import io.popdesk.helpdesk.trash.RetentionSchedule.Decision;
 import io.popdesk.helpdesk.trash.RetentionSchedule.State;
@@ -71,7 +72,7 @@ class IssueRetention implements CleanupJob {
             }
             state.update(decided.next());
             if (decided.step() == Step.ARM) {
-                long due = issues.countDueForRetention(now.minus(period));
+                long due = issues.countDueForRetention(Viewer.system(), now.minus(period));
                 inbox.issueRetentionArmed(due, period.toDays());
                 log.info("Automatic issue cleanup was turned on or shortened: it moves {} issues to the trash in 24 "
                         + "hours, and nothing before.", due);

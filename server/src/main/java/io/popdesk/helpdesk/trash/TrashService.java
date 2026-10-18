@@ -246,7 +246,7 @@ public class TrashService {
         List<UUID> due;
         int movedOfBatch;
         do {
-            due = issues.findDueForRetention(startedBefore, PURGE_BATCH);
+            due = issues.findDueForRetention(Viewer.system(), startedBefore, PURGE_BATCH);
             movedOfBatch = 0;
             for (UUID id : due) {
                 if (deleteBySystem(id, now, startedBefore)) {
