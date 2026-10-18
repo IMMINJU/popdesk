@@ -30,6 +30,11 @@
       "ApiError" : {
         "description" : "Error body. Clients choose the text they show by `code`; `message` is a default text for a `code` they do not know.",
         "properties" : {
+          "brokenSeq" : {
+            "description" : "Present only when the audit log's hash chain is broken (409 `AUDIT_CHAIN_BROKEN`, S10A-AC-37): the `seq` of the first entry that does not hold.",
+            "format" : "int64",
+            "type" : "integer"
+          },
           "code" : {
             "description" : "Stable error key. See docs/integrate/conventions.md for the list.",
             "type" : "string"

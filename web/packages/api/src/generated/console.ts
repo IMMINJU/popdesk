@@ -1902,6 +1902,11 @@ export interface components {
         };
         /** @description Error body. Clients choose the text they show by `code`; `message` is a default text for a `code` they do not know. */
         ApiError: {
+            /**
+             * Format: int64
+             * @description Present only when the audit log's hash chain is broken (409 `AUDIT_CHAIN_BROKEN`, S10A-AC-37): the `seq` of the first entry that does not hold.
+             */
+            brokenSeq?: number;
             /** @description Stable error key. See docs/integrate/conventions.md for the list. */
             code: string;
             /** @description Present only when the error is about specific fields (400 `INVALID_INPUT`). */
@@ -3583,7 +3588,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
-            /** @description `ANONYMIZATION_RUNNING`: another anonymization is running; one runs at a time (S10A-AC-21). Nothing changed. */
+            /** @description `ANONYMIZATION_RUNNING`: another anonymization is running; one runs at a time (S10A-AC-21). `AUDIT_CHAIN_BROKEN`: the audit log's hash chain does not hold from the account's first entry to the end of the chain (an entry changed, an entry that does not follow the one before, or an end that does not match the last entry); `brokenSeq` is the `seq` of the first entry that does not hold, or of the last entry when only the end does not match (S10A-AC-37). Run the integrity check. Nothing changed. */
             409: {
                 headers: {
                     [name: string]: unknown;

@@ -658,6 +658,11 @@ export interface components {
         };
         /** @description Error body. Clients choose the text they show by `code`; `message` is a default text for a `code` they do not know. */
         ApiError: {
+            /**
+             * Format: int64
+             * @description Present only when the audit log's hash chain is broken (409 `AUDIT_CHAIN_BROKEN`, S10A-AC-37): the `seq` of the first entry that does not hold.
+             */
+            brokenSeq?: number;
             /** @description Stable error key. See docs/integrate/conventions.md for the list. */
             code: string;
             /** @description Present only when the error is about specific fields (400 `INVALID_INPUT`). */
