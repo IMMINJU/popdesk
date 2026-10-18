@@ -69,6 +69,12 @@ function sentence(n: Notification): string {
       return t('inbox.slaResolutionBreached');
     case 'SLA_RECALCULATED':
       return recalculated(n.slaSummary);
+    case 'COMPANY_EXPORT_READY':
+      return tf('inbox.companyExportReady', { code: n.companyCode ?? '' });
+    case 'COMPANY_EXPORT_FAILED':
+      return tf('inbox.companyExportFailed', { code: n.companyCode ?? '' });
+    case 'ISSUE_RETENTION_ARMED':
+      return tf('inbox.retentionArmed', { days: (n.retentionDays ?? 0).toLocaleString('ko'), count: (n.retentionCount ?? 0).toLocaleString('ko') });
     default:
       return t('inbox.other');
   }
@@ -97,6 +103,8 @@ function hrefOf(n: Notification): string | undefined {
   }
   switch (n.kind) {
     case 'MEMBERSHIP_REQUESTED':
+    case 'COMPANY_EXPORT_READY':
+    case 'COMPANY_EXPORT_FAILED':
       return n.companyCode === null ? undefined : `/companies/${encodeURIComponent(n.companyCode)}`;
     case 'DELIVERY_FAILED':
     case 'ATTACHMENT_QUOTA_WARNING':
@@ -108,6 +116,9 @@ function hrefOf(n: Notification): string | undefined {
     // Slice 8b: the issues by due time, the soonest first (8b screens.md 1절).
     case 'SLA_RECALCULATED':
       return '/issues?sort=slaDue';
+    // Slice 10b: the trash, which may still be empty today (10b screens.md "C-7 알림 문장").
+    case 'ISSUE_RETENTION_ARMED':
+      return '/trash';
     default:
       return undefined;
   }
