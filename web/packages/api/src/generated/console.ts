@@ -514,6 +514,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/console/companies/{code}/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exports of a company
+         * @description The company's last 50 exports, the latest asked for first (S10B-AC-03). A `DONE` export whose ZIP is over 24 hours old is `EXPIRED`.
+         */
+        get: operations["listCompanyExports"];
+        put?: never;
+        /**
+         * Export a company's data
+         * @description Starts writing one ZIP in the background with the company's issues, public comments, attachments, and member customers (email and name), and answers at once with the export as `RUNNING` (S10B-AC-01, S10B-AC-11 to S10B-AC-17). An `ARCHIVED` or `SUSPENDED` company can be exported too. One export runs at a time in the whole installation (S10B-AC-02). When the ZIP is ready the export becomes `DONE` and the admin who asked gets `COMPANY_EXPORT_READY` (S10B-AC-04); when it fails it becomes `FAILED` and every admin gets `COMPANY_EXPORT_FAILED` (S10B-AC-05). Recorded as `COMPANY_EXPORTED` (S10B-AC-09). Checks, in this order: role (403), the company (404), the body (400), another export running (409).
+         */
+        post: operations["createCompanyExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/console/companies/{code}/labels": {
         parameters: {
             query?: never;
@@ -599,6 +623,30 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/company-exports/{id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a company export
+         * @description The ZIP of a `DONE` export, streamed, for any admin, not only the one who asked (S10B-AC-07). Recorded as `COMPANY_EXPORT_DOWNLOADED` (S10B-AC-09). The response has `Cache-Control: no-store`.
+         */
+        get: operations["downloadCompanyExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        /**
+         * Headers of a company export download
+         * @description Answers as `downloadCompanyExport` would, without the body. The console calls it before it starts the download. It records nothing in the audit log.
+         */
+        head: operations["headCompanyExport"];
         patch?: never;
         trace?: never;
     };
@@ -1992,7 +2040,7 @@ export interface components {
              * @description The entry's place in the hash chain, from 1.
              */
             seq: number;
-            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`, `SLA_POLICY`, `BRANDING`) and the keys that name it (`accountId`, `code`). An issue deleted, restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is `{"type": "COMPANY", "code": …, "issueKey": …}`, with the issue's company and key and never its title, and `changes` is null (S7A-AC-07). A change of the SLA policy (`SLA_POLICY_CHANGED`) is `{"type": "SLA_POLICY", "version": …}` with the new version (S8A-AC-06). A change of the display name or the accent color (`BRANDING_CHANGED`) is `{"type": "BRANDING"}` (S9-AC-20); a new or removed logo (`BRANDING_LOGO_CHANGED`) is `{"type": "BRANDING", "theme": …}` with `LIGHT` or `DARK` (S9-AC-21). An account export or anonymization (`ACCOUNT_EXPORTED`, `ACCOUNT_ANONYMIZED`) is `{"type": "ACCOUNT", "accountId": …}`; the chain computed again after an anonymization (`AUDIT_RECHAINED`) is `{"type": "AUDIT_LOG"}` (S10A-AC-06, S10A-AC-16, S10A-AC-18). */
+            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`, `SLA_POLICY`, `BRANDING`) and the keys that name it (`accountId`, `code`). An issue deleted, restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is `{"type": "COMPANY", "code": …, "issueKey": …}`, with the issue's company and key and never its title, and `changes` is null (S7A-AC-07). A change of the SLA policy (`SLA_POLICY_CHANGED`) is `{"type": "SLA_POLICY", "version": …}` with the new version (S8A-AC-06). A change of the display name or the accent color (`BRANDING_CHANGED`) is `{"type": "BRANDING"}` (S9-AC-20); a new or removed logo (`BRANDING_LOGO_CHANGED`) is `{"type": "BRANDING", "theme": …}` with `LIGHT` or `DARK` (S9-AC-21). An account export or anonymization (`ACCOUNT_EXPORTED`, `ACCOUNT_ANONYMIZED`) is `{"type": "ACCOUNT", "accountId": …}`; the chain computed again after an anonymization (`AUDIT_RECHAINED`) is `{"type": "AUDIT_LOG"}` (S10A-AC-06, S10A-AC-16, S10A-AC-18). A company export asked for or downloaded (`COMPANY_EXPORTED`, `COMPANY_EXPORT_DOWNLOADED`) is `{"type": "COMPANY", "code": …}` (S10B-AC-09). */
             target: {
                 [key: string]: unknown;
             } | null;
@@ -2158,6 +2206,42 @@ export interface components {
             /** @enum {string} */
             status: "ACTIVE" | "SUSPENDED" | "ARCHIVED";
         };
+        CompanyExport: {
+            /**
+             * @description Why a `FAILED` export stopped; null for the other states.
+             * @enum {string|null}
+             */
+            failure: "INTERRUPTED" | "STORAGE" | "DISK" | "UNEXPECTED" | null;
+            /**
+             * Format: date-time
+             * @description When the export became `DONE` or `FAILED`; null while it is `RUNNING`. An `EXPIRED` export keeps the time it became `DONE`.
+             */
+            finishedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            /** @description Internal comments and tasks are in the ZIP (S10B-AC-13). */
+            includeInternal: boolean;
+            /** @description Private issues are in the ZIP (S10B-AC-16). */
+            includePrivate: boolean;
+            /** Format: date-time */
+            requestedAt: string;
+            requestedBy: components["schemas"]["CompanyExportRequester"];
+            /**
+             * Format: int64
+             * @description Bytes of the ZIP; null unless the export became `DONE`.
+             */
+            size: number | null;
+            /**
+             * @description A `DONE` export whose ZIP is over 24 hours old is `EXPIRED`, even before the cleanup job deletes the file (S10B-AC-03).
+             * @enum {string}
+             */
+            state: "RUNNING" | "DONE" | "FAILED" | "EXPIRED";
+        };
+        CompanyExportRequester: {
+            /** Format: int64 */
+            accountId: number;
+            name: string;
+        };
         CompanyLabels: {
             items: components["schemas"]["Label"][];
         };
@@ -2244,6 +2328,12 @@ export interface components {
             internal?: boolean;
             /** @description Account IDs to mention, up to 10, each one of `listMentionCandidates` for this kind of comment (MNT-1). An ID given twice counts once. Left out is the same as an empty list. */
             mentions?: number[];
+        };
+        CreateCompanyExportRequest: {
+            /** @description Also put internal comments and tasks in the ZIP, with the attachments of those comments (S10B-AC-13, S10B-AC-14). */
+            includeInternal: boolean;
+            /** @description Also put private issues in the ZIP: issues other customers of the same company cannot see either (S10B-AC-16). */
+            includePrivate: boolean;
         };
         CreateCompanyRequest: {
             /** @description 2 to 10 capital letters and digits, unique. Cannot be changed later. */
@@ -2440,7 +2530,7 @@ export interface components {
             actor: components["schemas"]["IssueHistoryActor"];
             /** Format: date-time */
             createdAt: string;
-            /** @description The field that changed: `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, `PRIORITY`, or `ATTACHMENT` (a file or content image was attached to the issue or one of its comments, or deleted; one entry for each attachment, S5-AC-40, S5-AC-41), `LABEL` (a label was put on or taken off; one entry for each label, S6A-AC-60), `DUE_DATE` (the due date was set, changed, or cleared, S6A-AC-61), or `LINK` (a link to another issue was made or removed; the same change is an entry of the other issue too, S6C-AC-20). A `LINK` entry whose other issue the caller cannot see is left out, also from the count of pages, and is back when the caller can see it again (S6C-AC-22). `TRASH`: the issue was deleted into the trash (new value `TRASHED`), restored from it (old value `TRASHED`, new value null), or purged (old value `TRASHED`, new value `PURGED`); the actor is the admin, or popdesk itself for a purge after 30 days (S7A-AC-06). Later releases add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `CREATED`. */
+            /** @description The field that changed: `STATUS`, `ASSIGNEE`, `TITLE`, `CONTENT`, `PRIORITY`, or `ATTACHMENT` (a file or content image was attached to the issue or one of its comments, or deleted; one entry for each attachment, S5-AC-40, S5-AC-41), `LABEL` (a label was put on or taken off; one entry for each label, S6A-AC-60), `DUE_DATE` (the due date was set, changed, or cleared, S6A-AC-61), or `LINK` (a link to another issue was made or removed; the same change is an entry of the other issue too, S6C-AC-20). A `LINK` entry whose other issue the caller cannot see is left out, also from the count of pages, and is back when the caller can see it again (S6C-AC-22). `TRASH`: the issue was deleted into the trash (new value `TRASHED`), restored from it (old value `TRASHED`, new value null), or purged (old value `TRASHED`, new value `PURGED`); the actor is the admin, or popdesk itself for a purge after 30 days (S7A-AC-06) and for a delete by automatic cleanup (`POPDESK_ISSUE_RETENTION`, S10B-AC-20). Later releases add names, so this is a plain string; show an entry with a name you do not know as a change without detail. Null for `CREATED`. */
             field: string | null;
             /**
              * Format: int64
@@ -2645,16 +2735,16 @@ export interface components {
              * @description The comment the item is about; null when it is about no comment.
              */
             commentId: number | null;
-            /** @description The company of the issue, or the company a `MEMBERSHIP_REQUESTED` item is about; null for the other kinds. */
+            /** @description The company of the issue, or the company a `MEMBERSHIP_REQUESTED`, `COMPANY_EXPORT_READY`, or `COMPANY_EXPORT_FAILED` item is about; null for the other kinds. */
             companyCode: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: int64 */
             id: number;
-            /** @description The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, `CLEANUP_STALLED`, `MEMBERSHIP_REQUESTED` (S4-AC-40), and `SLA_RECALCULATED` (S8B-AC-15). */
+            /** @description The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, `CLEANUP_STALLED`, `MEMBERSHIP_REQUESTED` (S4-AC-40), `SLA_RECALCULATED` (S8B-AC-15), `COMPANY_EXPORT_READY`, `COMPANY_EXPORT_FAILED`, and `ISSUE_RETENTION_ARMED` (S10B-AC-27). */
             issue: components["schemas"]["NotificationIssue"] | null;
             /** @enum {string} */
-            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MAIL_STALLED" | "WEBHOOK_STALLED" | "AUDIT_FORWARD_STALLED" | "CLEANUP_STALLED" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED" | "TASK_ASSIGNED" | "LINKED_ISSUE_RESOLVED" | "LINKED_ISSUE_CLOSED" | "SLA_RESPONSE_WARNING" | "SLA_RESPONSE_BREACHED" | "SLA_RESOLUTION_WARNING" | "SLA_RESOLUTION_BREACHED" | "SLA_RECALCULATED";
+            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MAIL_STALLED" | "WEBHOOK_STALLED" | "AUDIT_FORWARD_STALLED" | "CLEANUP_STALLED" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED" | "TASK_ASSIGNED" | "LINKED_ISSUE_RESOLVED" | "LINKED_ISSUE_CLOSED" | "SLA_RESPONSE_WARNING" | "SLA_RESPONSE_BREACHED" | "SLA_RESOLUTION_WARNING" | "SLA_RESOLUTION_BREACHED" | "SLA_RECALCULATED" | "COMPANY_EXPORT_READY" | "COMPANY_EXPORT_FAILED" | "ISSUE_RETENTION_ARMED";
             /** @description For `LINKED_ISSUE_RESOLVED` and `LINKED_ISSUE_CLOSED`: the linked issue that was resolved or closed, with its key and title as they are now; `issue` is the caller's own issue it is linked to (S6C-AC-31). Such an item is listed only while the caller can see both issues (S6C-AC-33). Null for the other kinds (S6C-AC-34). */
             linkedIssue: components["schemas"]["NotificationIssue"] | null;
             /**
@@ -2662,6 +2752,16 @@ export interface components {
              * @description When the caller marked it read.
              */
             readAt: string | null;
+            /**
+             * Format: int32
+             * @description For `ISSUE_RETENTION_ARMED`: how many issues automatic cleanup would move to the trash when the item was written (S10B-AC-19). Null for the other kinds.
+             */
+            retentionCount: number | null;
+            /**
+             * Format: int32
+             * @description For `ISSUE_RETENTION_ARMED`: `POPDESK_ISSUE_RETENTION` in whole days, rounded down (S10B-AC-19). Null for the other kinds.
+             */
+            retentionDays: number | null;
             /** @description For `SLA_RECALCULATED`: how many issues working the SLA due times out again made overdue, due soon, or no longer either, counted as changes to an issue (S8B-AC-12). Null for the other kinds (S8B-AC-15). */
             slaSummary: components["schemas"]["SlaSummary"] | null;
             /** @description The task a `TASK_ASSIGNED` item is about, with its title as it is now; null for the other kinds (S6B-AC-33). Deleting the task deletes its items (S6B-AC-36). */
@@ -3288,8 +3388,8 @@ export interface components {
             companyName: string;
             /** Format: date-time */
             deletedAt: string;
-            /** @description The admin who deleted the issue, by the account's current name. */
-            deletedBy: components["schemas"]["Person"];
+            /** @description The admin who deleted the issue, by the account's current name. null: automatic cleanup (PII-6) moved it here, because it was closed longer ago than `POPDESK_ISSUE_RETENTION` (S10B-AC-20, S10B-AC-22). */
+            deletedBy: components["schemas"]["Person"] | null;
             key: string;
             /**
              * Format: date-time
@@ -4013,7 +4113,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED" | "COMPANY_EXPORTED" | "COMPANY_EXPORT_DOWNLOADED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -4081,7 +4181,7 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED" | "COMPANY_EXPORTED" | "COMPANY_EXPORT_DOWNLOADED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -4161,7 +4261,7 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED" | "COMPANY_EXPORTED" | "COMPANY_EXPORT_DOWNLOADED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -5317,6 +5417,137 @@ export interface operations {
             };
         };
     };
+    listCompanyExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The exports. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyExport"][];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, also for an agent assigned to the company (S10B-AC-10). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createCompanyExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCompanyExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Started. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyExport"];
+                };
+            };
+            /** @description `INVALID_INPUT`: `includeInternal` or `includePrivate` missing or `null` (`REQUIRED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, also for an agent assigned to the company (S10B-AC-10). `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `EXPORT_RUNNING`: another company export is `RUNNING`, of this company or any other (S10B-AC-02). Nothing was started. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `SERVER_BUSY`: the app has lost its single-instance lock and is taking it again, for example after the database connection broke; try again after `Retry-After` (S10B-AC-02). Nothing was started. */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listCompanyLabels: {
         parameters: {
             query?: never;
@@ -5665,6 +5896,106 @@ export interface operations {
                 };
             };
             /** @description `NOT_FOUND`: no such company, or the caller cannot see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    downloadCompanyExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file. */
+            200: {
+                headers: {
+                    /** @description `attachment; filename="popdesk-{code}-{yyyy-MM-dd}.zip"`, with the company code and the date the export was asked for, in UTC. */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, also for an agent assigned to the company (S10B-AC-10). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such export, or its ZIP cannot be downloaded: the export is `RUNNING`, `FAILED`, or `EXPIRED`, or it became `DONE` over 24 hours ago, even before the cleanup job deleted the file (S10B-AC-07). One body for all of these. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    headCompanyExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The download would start. */
+            200: {
+                headers: {
+                    /** @description `attachment; filename="popdesk-{code}-{yyyy-MM-dd}.zip"`, with the company code and the date the export was asked for, in UTC. */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only, also for an agent assigned to the company (S10B-AC-10). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such export, or its ZIP cannot be downloaded: the export is `RUNNING`, `FAILED`, or `EXPIRED`, or it became `DONE` over 24 hours ago, even before the cleanup job deleted the file (S10B-AC-07). One body for all of these. A `HEAD` response has no body. */
             404: {
                 headers: {
                     [name: string]: unknown;
