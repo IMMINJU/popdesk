@@ -568,6 +568,7 @@ a09a16630812e487b95e3aa531de8351c38689a7d0a7d3dc567ee19bc83cd74d  server/src/tes
 fb96d453b5eb75a7922966a72202bec1c30b6aac6917ca63bcd0291624be3f27  server/src/test/java/io/popdesk/support/HeldWrite.java
 f39671fdb8db9b594cedead0aff7506f221dcaf262cbb472eef8a1da10096b02  server/src/test/java/io/popdesk/support/JdkHttp.java
 2f38b25c3f3648bca79df9ce2f878aec37eee713625708070c77e7ce5f675928  server/src/test/java/io/popdesk/support/MailServer.java
+6e01eb63066dc251724f0d26dd9976c659f5266ae4922650ffa535019397203b  server/src/test/java/io/popdesk/support/ManagementContextCloser.java
 81e9eb80470803144e7cf2c3ff4108f24867cd772fa2b725c398996d70f57b80  server/src/test/java/io/popdesk/support/README.md
 7ed8753192641cc4788591269d9fc8dde1152d7df2acc71ee7c0bad79b0c548d  server/src/test/java/io/popdesk/support/ReceivedMail.java
 01ee466bf366d95e41b03645fe22540954359e457ed644855e7705278b56d1ab  server/src/test/java/io/popdesk/support/StartTlsAppTest.java
@@ -611,6 +612,7 @@ e7852bdd0aa357f78cf4e6471daa9a731dcd627f0657179f64308712ebc9dd3b  server/src/tes
 6259092899789d8a1e7c7e56275f5c9903e19037eaf91b312235f657a3c22087  server/src/test/java/io/popdesk/trash/TrashedLinkTest.java
 a6a2c59b2f03a9f0175d1c0cb4f1262a8027437142a95ffc833e2add0346071e  server/src/test/resources/META-INF/services/java.net.spi.InetAddressResolverProvider
 d66b5b992b42114ea6ed059efaaed7db4b77bb3f2a413dec8b957ca5d9bf1c9c  server/src/test/resources/META-INF/spring.factories
+83b6578027171770be5c5dc50ca1332855340c3d0d39a0b534a98ce0dbedb3ca  server/src/test/resources/META-INF/spring/org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration.imports
 5d63090e8301254fa8b07058403e5ed354341bc44b49bef7ce175eec6ef5b804  server/src/test/resources/architecture/open-paths.txt
 acb7b0171636255aaf7505adec5e1bb07139876b11c11b46903579a38fcec87e  server/src/test/resources/architecture/package-cycles.txt
 91db8a3861c3efd65e78fb2f5829ca76f416608c2ea2f1e13d87fe0185783855  server/src/test/resources/architecture/production-code-rules.txt
