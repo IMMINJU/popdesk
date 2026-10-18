@@ -209,6 +209,7 @@ class AnonymizeRaceTest extends PrivacyAppTest {
         clock.advance(Duration.ofSeconds(2));
         Company company = fixtures.createCompany(before);
         Session person = fixtures.customer(before, company.code());
+        fixtures.signInAgain(person);
         ApiResponse answer;
         Instant due;
 
