@@ -689,6 +689,49 @@ public class IssueRepository {
     }
 
     /**
+     * A live issue due for automatic cleanup (acceptance.md 2절 "말의 뜻", PII-6), as SQL on {@code i} with two
+     * parameters, both the latest time the period may have started: {@code CLOSED}, not in the trash, and closed or
+     * last restored before it. {@code closed_at} on its own lets the partial index {@code issue_closed_for_retention}
+     * find the rows; the later of the two times decides.
+     */
+    private static final String DUE_FOR_RETENTION = "i.status = 'CLOSED' and i.deleted_at is null "
+            + "and i.closed_at < ? and greatest(i.closed_at, i.restored_at) < ?";
+
+    /**
+     * The issues due for automatic cleanup with a period that started before {@code startedBefore}, the earliest
+     * closed first, at most {@code limit}; not locked (S10B-AC-20).
+     */
+    public List<UUID> findDueForRetention(Instant startedBefore, int limit) {
+        Timestamp before = Timestamp.from(startedBefore);
+        return jdbc.sql("select i.id from issue i where " + DUE_FOR_RETENTION + " order by i.closed_at, i.id limit ?")
+                .params(before, before, limit)
+                .query(UUID.class).list();
+    }
+
+    /** How many issues of the installation {@link #findDueForRetention} finds over all its batches (S10B-AC-19). */
+    public long countDueForRetention(Instant startedBefore) {
+        Timestamp before = Timestamp.from(startedBefore);
+        return jdbc.sql("select count(*) from issue i where " + DUE_FOR_RETENTION).params(before, before)
+                .query(Long.class).single();
+    }
+
+    /**
+     * Moves an issue to the trash for automatic cleanup (S10B-AC-20, acceptance.md 5절 4): the time, no account in
+     * {@code deleted_by}, and a new version, only while it is still due (STATUS-7): a write meanwhile, such as an
+     * admin's delete, leaves it as it is (S10B-AC-21). The caller has locked the row. With {@code sla}, the paused SLA
+     * clocks are written in the same UPDATE (S8A-AC-16).
+     *
+     * @return whether the issue was moved
+     */
+    public boolean updateDeletedBySystem(UUID id, Instant now, Instant startedBefore, IssueClocks sla) {
+        Timestamp before = Timestamp.from(startedBefore);
+        return jdbc.sql("update issue i set deleted_at = ?, deleted_by = null, updated_at = ?, version = version + 1"
+                        + clocks(sla) + " where i.id = ? and " + DUE_FOR_RETENTION)
+                .params(withClocks(new Object[] {Timestamp.from(now), Timestamp.from(now)}, sla, id, before, before))
+                .update() == 1;
+    }
+
+    /**
      * Empties a purged issue (TRASH-3, S7A-AC-30): an empty title, content, and search text, and the time
      * it was purged. The row with its key, company, status, and times stays; the version does not change,
      * as nobody reads the issue again. The caller has locked the row and seen it in the trash.

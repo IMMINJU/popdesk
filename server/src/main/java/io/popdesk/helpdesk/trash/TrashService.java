@@ -27,6 +27,7 @@ import io.popdesk.notification.IssueInbox;
 import io.popdesk.notification.MailQueue;
 import io.popdesk.notification.WebhookQueue;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
@@ -227,6 +228,63 @@ public class TrashService {
             }
         } while (due.size() == PURGE_BATCH);
         return purged;
+    }
+
+    /**
+     * The moves of automatic cleanup (S10B-AC-20, S10B-AC-21): every issue due with {@code period} is moved to the
+     * trash by {@link #deleteBySystem}, one issue per transaction. The issues are picked without a lock, at most
+     * {@value #PURGE_BATCH} at a time, as {@link #purgeDue} picks them.
+     *
+     * @param now the time of the run
+     * @param period the period of {@code POPDESK_ISSUE_RETENTION}, positive
+     * @return how many issues were moved
+     */
+    public long moveDue(Instant now, Duration period) {
+        Instant startedBefore = now.minus(period);
+        long moved = 0;
+        List<UUID> due;
+        int movedOfBatch;
+        do {
+            due = issues.findDueForRetention(startedBefore, PURGE_BATCH);
+            movedOfBatch = 0;
+            for (UUID id : due) {
+                if (deleteBySystem(id, now, startedBefore)) {
+                    movedOfBatch++;
+                }
+            }
+            moved += movedOfBatch;
+            // A batch of which nothing moved was changed meanwhile; the next run picks again.
+        } while (due.size() == PURGE_BATCH && movedOfBatch > 0);
+        return moved;
+    }
+
+    /**
+     * Moves one issue to the trash as automatic cleanup (S10B-AC-20, acceptance.md 5절 4): what an admin's
+     * {@link #delete} does without the admin and the audit entry. In a transaction of its own, the SLA policy's
+     * version held first and then the issue row locked, as {@link #delete} takes them; then the issue is moved only
+     * if it is still due under that lock (S10B-AC-21), with {@code deleted_by} null, its waiting messages dropped, and
+     * a {@code TRASH} history entry by popdesk (account 0).
+     *
+     * @param startedBefore the latest time the issue's period may have started: the run's time less the period
+     * @return whether the issue was moved
+     */
+    boolean deleteBySystem(UUID id, Instant now, Instant startedBefore) {
+        Viewer system = Viewer.system();
+        return transactions.run(() -> {
+            SlaWrite slaWrite = sla.begin();
+            TrashedRow issue = issues.lockTrashedByIds(system, List.of(id)).stream().findFirst().orElse(null);
+            if (issue == null || issue.deletedAt() != null) {
+                return false;
+            }
+            if (!issues.updateDeletedBySystem(id, now, startedBefore,
+                    issue.sla() == null ? null : slaWrite.deleted(issue.sla(), issue.priority(), now))) {
+                return false;
+            }
+            mail.dropAbout(id);
+            webhooks.dropAbout(id);
+            history.insertChanged(id, Field.TRASH, null, Field.TRASHED, system.accountId(), now);
+            return true;
+        });
     }
 
     /**
