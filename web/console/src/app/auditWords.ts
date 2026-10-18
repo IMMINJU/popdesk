@@ -189,6 +189,22 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
 
 const LOGO_THEME_WORDS: Readonly<Record<string, string>> = { LIGHT: '밝은 테마', DARK: '어두운 테마' };
 
+/**
+ * Fields read in a fixed order whatever order the server wrote them in: the part of the chain
+ * AUDIT_RECHAINED computed again reads 시작 번호, 끝 번호, 마지막 hash (slice 10a).
+ */
+const FIELD_ORDER: readonly string[] = ['fromSeq', 'toSeq', 'headHash'];
+
+/** The changed values with the fields of FIELD_ORDER in that order, before the rest; the rest keep theirs. */
+function orderedFields(entries: [string, unknown][]): [string, unknown][] {
+  const rank = (field: string) => {
+    const at = FIELD_ORDER.indexOf(field);
+    return at === -1 ? FIELD_ORDER.length : at;
+  };
+  // A stable sort: fields outside FIELD_ORDER stay as the server wrote them.
+  return [...entries].sort(([a], [b]) => rank(a) - rank(b));
+}
+
 /** Fields that hold a time. */
 const TIME_FIELDS: ReadonlySet<string> = new Set(['expiresAt', 'lockedUntil']);
 const NONE = '없음';
@@ -394,7 +410,7 @@ function brandingWord(action: string, field: string, from: unknown, to: unknown)
 
 /** One line for each changed field: "역할: 상담원 → 관리자", or "칸: 값" for a value that is not from and to. */
 export function changeLines(action: string, changes: Readonly<Record<string, unknown>> | null): string[] {
-  return Object.entries(changes ?? {}).map(([field, value]) => {
+  return orderedFields(Object.entries(changes ?? {})).map(([field, value]) => {
     const sla = action === 'SLA_POLICY_CHANGED' && isFromTo(value) ? slaPartWord(field, value.from, value.to) : null;
     if (sla !== null) return `${word(FIELD_WORDS, field)}: ${sla}`;
     const branding = isFromTo(value) ? brandingWord(action, field, value.from, value.to) : null;
