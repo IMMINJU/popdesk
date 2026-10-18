@@ -309,6 +309,17 @@ def fill(project):
                {"version": branding["version"], "displayName": "Sample Desk", "accent": "#6D28D9"})
     admin.upload("/api/console/branding/logos/light", "file", "logo.png", png(9, 600, 150), expect=200, method="PUT")
 
+    # What slice 10a added (S10A-AC-34, design.md 1절): an anonymized customer (account.anonymized_at) who
+    # reported an issue, wrote a comment, and signed in, so their audit entries were computed again and the
+    # chain holds an AUDIT_RECHAINED entry.
+    gone, gone_id = join(project, admin, "CUSTOMER", "gone@sample.popdesk.test", "Gone Customer", ["BETA"])
+    gone.sign_in("gone@sample.popdesk.test", PEOPLE_PASSWORD)
+    gone_issue = gone.json("POST", "/api/portal/issues",
+                           {"companyCode": "BETA", "title": "Please delete my data",
+                            "content": "I am leaving the company."}, expect=201)
+    gone.json("POST", f"/api/portal/issues/{gone_issue['key']}/comments", {"content": "Thank you."}, expect=201)
+    admin.json("POST", f"/api/console/accounts/{gone_id}/anonymize", expect=200)
+
     # Mail rows of this run are sent (SMTP is off: one log line each) and deleted. Wait for that, so the
     # queue holds only the failed row added below when it is dumped.
     end = time.monotonic() + 60
