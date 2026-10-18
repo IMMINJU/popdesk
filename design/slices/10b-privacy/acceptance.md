@@ -34,7 +34,7 @@
 | S10B-AC-03 | When 관리자가 `GET /api/console/companies/{code}/exports`를 부르면, the system shall 그 고객사의 작업을 최신순으로 준다(상태, 시각, 끝난 시각, 파일 크기, 실패면 까닭 code). 24시간 지난 `DONE`은 `EXPIRED`로 보인다. (PII-8) |
 | S10B-AC-04 | When ZIP이 다 만들어지면, the system shall 작업을 `DONE`으로 바꾸고 요청한 관리자의 알림함에 `COMPANY_EXPORT_READY`(고객사 코드)를 남긴다. 요청한 관리자가 그 사이 정지되거나 익명화되었으면 남기지 않는다. (PII-8, 5절 16) |
 | S10B-AC-05 | If ZIP을 만들다 실패하면, then the system shall 작업을 `FAILED`(까닭 code)로 바꾸고, 만들던 파일을 지우고, 관리자 전부의 알림함에 `COMPANY_EXPORT_FAILED`(고객사 코드)를 남긴다. (PII-8, OPS-1) |
-| S10B-AC-06 | When 앱이 뜰 때(마이그레이션 뒤, 웹 서버가 요청을 받기 전), the system shall 그 전에 `RUNNING`이던 작업을 `FAILED`(`INTERRUPTED`)로 바꾸고, 파일 자리에서 `DONE` 작업의 파일이 아닌 것을 모두 지우고, 파일이 없어진 `DONE` 작업을 `EXPIRED`로 바꾼다. (PII-8) |
+| S10B-AC-06 | When 앱이 뜰 때(마이그레이션 뒤, 웹 서버가 요청을 받기 전), the system shall 그 전에 `RUNNING`이던 작업을 `FAILED`(`INTERRUPTED`)로 바꾸고, 파일 자리의 내보내기 파일(`{id}.zip`, `{id}.zip.part` 꼴) 가운데 `DONE` 작업의 파일이 아닌 것을 지우고, 파일이 없어진 `DONE` 작업을 `EXPIRED`로 바꾼다. (PII-8) |
 | S10B-AC-07 | When 관리자가 `GET`(또는 `HEAD`) `/api/console/company-exports/{id}/file`을 부르면, the system shall `DONE` 작업의 ZIP을 `application/zip`, `Content-Disposition: attachment; filename="popdesk-{code}-{날짜}.zip"`, `no-store`로 흘려 준다. 요청한 사람이 아닌 관리자도 받는다. `RUNNING`·`FAILED`·`EXPIRED`이거나 `DONE`이 된 지 24시간이 지났으면(정리 작업이 아직 돌지 않았어도) 404다. 날짜는 UTC다. (PII-8) |
 | S10B-AC-08 | When `DONE`이 된 지 24시간이 지나면, the system shall 정리 작업이 파일을 지우고 작업을 `EXPIRED`로 바꾼다. 작업 행은 남는다. (PII-8, OPS-2) |
 | S10B-AC-09 | When 내보내기를 요청하면, the system shall 감사 `COMPANY_EXPORTED` 하나를 남긴다: 대상 `{type: COMPANY, code}`, 바뀐 값 `includeInternal`, `includePrivate`. 파일을 내려받으면(`GET`) 감사 `COMPANY_EXPORT_DOWNLOADED`(같은 대상, 바뀐 값 작업 ID)를 남긴다. (PII-8, AUDIT-1, 5절 8) |
@@ -127,3 +127,5 @@
 | 21 | 내려받기 경로는 `NoStoreTest`의 성공 읽기 목록에서 빼고(`LOGO_READ`와 같은 꼴), 내보내기 테스트가 `no-store`를 본다 | 공용 컨텍스트에서 `DONE` 작업을 만들면 설치에 하나뿐인 내보내기 자리를 쓴다. C-4 탭 질문 3 | `NoStoreTest`가 작업을 만듦 |
 | 22 | 작업 상태 `FAILED`의 배지는 `Badge`의 `warning` 톤이다. 공용 `Badge` API를 바꾸지 않는다 | 이 묶음은 공용 컴포넌트 API를 바꾸지 않는다(웹 계약 탭 없음). 까닭 문장이 배지 옆에 함께 보인다. C-4 탭 질문 4 | 실패 톤 더하기 |
 | 23 | `docs/use/permissions.md`의 고객사 내보내기 줄은 C-9 서버 구현 탭이 더한다 | 문서는 구현과 함께 맞춘다. C-4 탭 질문 2 | – |
+| 24 | 뜰 때 정리(AC-06)는 내보내기 파일 이름 꼴(`{id}.zip`, `{id}.zip.part`)의 파일만 지운다 | `POPDESK_EXPORT_DIR`를 `/tmp` 같은 공용 폴더로 두면 다른 프로그램의 파일까지 지우게 된다. C-9 서버 탭 질문 1 | 폴더의 모든 파일 |
+| 25 | ZIP 안 파일 이름은 6의 바꿈에 더해 점 뒤에 오는 점도 `_`로 바꾼다(`../x.txt` → `___x.txt`) | 이름 안의 `..`도 풀 때 경로로 읽히지 않게 한다. conventions에 적었다. C-9 서버 탭이 정함 | 앞의 점만 |

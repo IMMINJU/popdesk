@@ -2,22 +2,3 @@
 # 구현 탭이 이 테스트들을 통과시키고 병합되면 메인이 그 줄을 지운다. 묶음이 끝나면 파일이 빈다.
 # server: Surefire 제외 패턴(클래스 경로). web: 각 패키지 안에서 Vitest --exclude 글롭.
 # 실패 확인(C-6)은 이 목록과 상관없이 모든 새 테스트를 check-red.py로 본다.
-server io/popdesk/privacy/CompanyExportAccessTest.java
-server io/popdesk/privacy/CompanyExportBoundaryTest.java
-server io/popdesk/privacy/CompanyExportDownloadTest.java
-server io/popdesk/privacy/CompanyExportJobTest.java
-server io/popdesk/privacy/CompanyExportNotifyTest.java
-server io/popdesk/privacy/CompanyExportRestartTest.java
-server io/popdesk/privacy/CompanyExportSnapshotTest.java
-server io/popdesk/privacy/CompanyExportZipTest.java
-server io/popdesk/privacy/IssueRetentionMoveTest.java
-server io/popdesk/privacy/IssueRetentionArmTest.java
-server io/popdesk/privacy/IssueRetentionRaceTest.java
-server io/popdesk/privacy/IssueRetentionRestoreTest.java
-server io/popdesk/privacy/IssueRetentionInboxTest.java
-server io/popdesk/privacy/RetentionOffTest.java
-server io/popdesk/privacy/ExportRetentionSchemaTest.java
-server io/popdesk/start/IssueRetentionSettingTest.java
-server io/popdesk/deploy/ExportRetentionSampleTest.java
-server io/popdesk/project/NoStoreTest.java
-server io/popdesk/ops/CleanupStalledTest.java
