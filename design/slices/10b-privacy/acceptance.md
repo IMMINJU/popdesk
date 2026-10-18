@@ -45,8 +45,8 @@
 | ID | 기준 |
 |---|---|
 | S10B-AC-11 | The system shall ZIP에 `manifest.json`(고객사 코드·이름, 만든 시각, `includeInternal`, 문의·댓글·첨부·계정 수, 빠진 첨부 목록), `customers.json`, 문의마다 `issues/{key}/issue.json`, `issues/{key}/comments.json`, `issues/{key}/files/{첨부 ID}-{파일 이름}`을 둔다. ZIP 안의 경로는 `..`·절대 경로·역슬래시를 담지 않는다(파일 이름은 바꿔 담는다). (PII-8, 5절 6) |
-| S10B-AC-12 | The system shall `issue.json`에 고객용 칸만 넣는다: 키, 제목, 내용, 상태, 우선순위, 비공개 여부, 올린 사람(고객이면 계정 ID·이름, 상담 쪽이면 "지원팀"), 지원팀이 올렸는지, 해결·종료·올린·고친 시각. 담당자, 라벨, 마감일, 이력, SLA, 대리 등록한 상담원, 연결은 넣지 않는다. (PII-8, TM-40) |
-| S10B-AC-13 | The system shall `comments.json`에 공개 댓글(지운 댓글은 빼고)을 작성자(고객이면 계정 ID·이름, 상담 쪽이면 "지원팀"), 내용, 쓴·고친 시각과 함께 넣는다. `includeInternal`이면 내부 댓글과 작업(제목, 상태, 마감일, 기록 내용과 시각)을 넣고 표시한다. 내부 것에서도 상담 쪽 사람은 "지원팀"이다. (PII-8, ANON-1) |
+| S10B-AC-12 | The system shall `issue.json`에 고객용 칸만 넣는다: 키, 제목, 내용, 상태, 우선순위, 비공개 여부, 올린 사람(포털 `Person`에서 사진을 뺀 `{kind, accountId, name}`: 고객이면 `CUSTOMER`와 계정 ID·이름, 상담 쪽이면 `SUPPORT_TEAM`에 둘 다 null. 설치 언어와 상관없다), 지원팀이 올렸는지, 해결·종료·올린·고친 시각. 담당자, 라벨, 마감일, 이력, SLA, 대리 등록한 상담원, 연결은 넣지 않는다. (PII-8, TM-40) |
+| S10B-AC-13 | The system shall `comments.json`에 공개 댓글(지운 댓글은 빼고)을 작성자(올린 사람과 같은 꼴), 내용, 쓴·고친 시각과 함께 넣는다. `includeInternal`이면 내부 댓글과 작업(제목, 상태, 마감일, 기록 내용과 시각)을 넣고 표시한다. 내부 것에서도 상담 쪽 사람은 "지원팀"이다. (PII-8, ANON-1) |
 | S10B-AC-14 | The system shall 문의 첨부와 넣은 댓글의 첨부(본문 이미지 포함) 파일을 넣는다. `includeInternal`이 아니면 내부 댓글의 첨부를 넣지 않는다. 지운 첨부는 넣지 않는다. 저장소에서 읽지 못한 파일은 빼고 `manifest.json`의 빠진 목록에 ID와 이름을 적는다. (PII-8) |
 | S10B-AC-15 | The system shall `customers.json`에 그 고객사의 지금 소속 고객을 이메일과 이름으로만 넣는다(다른 고객사 소속, 역할, 상태, 담당자 표시 없음). 정지·익명 계정도 소속이면 넣는다. 익명 계정은 계정 행의 익명 값(`deleted-{id}@invalid`, 익명 이름) 그대로이고 따로 표시하지 않는다. 문의·댓글의 작성자 이름도 행의 값이라 익명 계정은 익명 이름이다. (PII-8, TM-05, 5절 17) |
 | S10B-AC-16 | The system shall 그 고객사의 문의만 넣는다. 비공개 문의는 `includePrivate`일 때만 넣는다(고객끼리도 보지 못하는 것이라). 휴지통의 문의와 영구 삭제한 문의는 넣지 않는다. 다른 고객사 문의와의 연결, 그 문의의 키나 제목은 어디에도 넣지 않는다. (PII-8, RULE-01, TM-41) |
@@ -123,3 +123,7 @@
 | 17 | 소속 고객 목록과 작성자 이름은 계정 행에서 읽어 익명 계정이 익명 값으로 나간다. 익명 표시 칸은 두지 않는다 | 10a가 익명화할 때 계정 행의 이름·이메일을 바꾸고 소속은 두므로 따로 할 일이 없다[소스: `AccountService.java:253`]. 칸을 더하면 PII-8의 "이메일·이름만"을 넘는다. 10a 뒤 다시 봄 | `anonymized` 칸 / 익명 계정 빼기 |
 | 18 | 내려받기는 첨부의 동시 전송 한도(16) 밖이다 | 관리자만, 작업 하나에 파일 하나이고 내보내기는 설치에 하나씩이다[소스: `TransferLimitFilter.java:38-41`이 첨부·이미지 경로에만 걸림] | 한도 안에 넣기 |
 | 19 | 고객사 내보내기 코드는 10a의 `helpdesk.privacy` 패키지에 둔다. 저장소 클래스(`CompanyExportRepository`)는 `PrivacyRepository`와 따로다 | PII-8이 PII-3·4와 같은 규칙 묶음이고 `privacy.md`와 한곳에 모인다. `export`라는 이름은 감사·계정 내보내기와 헷갈린다. `PrivacyRepository`는 다른 계정의 이름·이메일을 읽지 않는다고 약속했는데[소스: `PrivacyRepository.java:16-18`] 고객사 내보내기는 소속 고객 이메일을 읽는다. 10a 뒤 다시 봄 | 새 패키지 `helpdesk.export` |
+| 20 | ZIP 안의 사람은 포털 `Person`에서 사진을 뺀 꼴(`kind`가 `CUSTOMER`·`SUPPORT_TEAM`)이다 | 포털 계약이 이미 "고객 또는 지원팀"을 이렇게 나타낸다. 설치 언어에 따라 값이 바뀌면 받는 쪽이 읽기 어렵다. C-4 탭 질문 1 | 설치 언어의 "지원팀" 글자 |
+| 21 | 내려받기 경로는 `NoStoreTest`의 성공 읽기 목록에서 빼고(`LOGO_READ`와 같은 꼴), 내보내기 테스트가 `no-store`를 본다 | 공용 컨텍스트에서 `DONE` 작업을 만들면 설치에 하나뿐인 내보내기 자리를 쓴다. C-4 탭 질문 3 | `NoStoreTest`가 작업을 만듦 |
+| 22 | 작업 상태 `FAILED`의 배지는 `Badge`의 `warning` 톤이다. 공용 `Badge` API를 바꾸지 않는다 | 이 묶음은 공용 컴포넌트 API를 바꾸지 않는다(웹 계약 탭 없음). 까닭 문장이 배지 옆에 함께 보인다. C-4 탭 질문 4 | 실패 톤 더하기 |
+| 23 | `docs/use/permissions.md`의 고객사 내보내기 줄은 C-9 서버 구현 탭이 더한다 | 문서는 구현과 함께 맞춘다. C-4 탭 질문 2 | – |
