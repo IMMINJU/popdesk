@@ -99,6 +99,15 @@ public final class PrivacySteps {
         return out;
     }
 
+    /** The newest entry of the log: the head of the chain. */
+    public static JsonNode newest(Session admin) {
+        JsonNode items = admin.client().get(AUDIT_LOG).query("size", 1).expect(200).json().path("items");
+        if (!items.isArray() || items.isEmpty()) {
+            throw new AssertionError("No entry in the audit log");
+        }
+        return items.get(0);
+    }
+
     /**
      * The entries of a person (acceptance.md "그 사람의 감사 항목"): {@code actor.accountId} or {@code target.accountId}
      * is the account, each once, by {@code seq}.
