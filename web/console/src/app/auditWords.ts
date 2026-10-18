@@ -43,7 +43,8 @@ export const KIND_GROUPS: readonly KindGroup[] = [
   {
     key: 'COMPANY',
     name: '고객사',
-    // Slice 6b: a company's labels are in this group (6b-tasks screens.md 4절); slice 7a its issues in the trash.
+    // Slice 6b: a company's labels are in this group (6b-tasks screens.md 4절); slice 7a its issues in the trash;
+    // slice 10b its export, so the group 내보내기 stays the two of slice 10a (10b design.md 2절).
     kinds: {
       COMPANY_CREATED: '고객사 만들기',
       COMPANY_UPDATED: '고객사 고치기',
@@ -54,6 +55,8 @@ export const KIND_GROUPS: readonly KindGroup[] = [
       ISSUE_DELETED: '문의 지우기',
       ISSUE_RESTORED: '문의 복구',
       ISSUE_PURGED: '문의 영구 삭제',
+      COMPANY_EXPORTED: '고객사 내보내기',
+      COMPANY_EXPORT_DOWNLOADED: '고객사 내보내기 받기',
     },
   },
   {
@@ -185,6 +188,10 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
   fromSeq: '시작 번호',
   toSeq: '끝 번호',
   headHash: '마지막 hash',
+  // Slice 10b: what a company export took in, and which export was downloaded.
+  includeInternal: '내부 넣기',
+  includePrivate: '비공개 넣기',
+  exportId: '작업',
 };
 
 const LOGO_THEME_WORDS: Readonly<Record<string, string>> = { LIGHT: '밝은 테마', DARK: '어두운 테마' };
