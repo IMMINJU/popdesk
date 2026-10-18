@@ -25,6 +25,7 @@ import { api, type Schemas } from '../api';
 import { AccountFinder } from '../app/AccountFinder';
 import { FieldSummary, SaveFailure } from '../app/bands';
 import { ClearAssignments } from '../app/ClearAssignments';
+import { CompanyExports } from '../app/CompanyExports';
 import { CompanyLabels } from '../app/CompanyLabels';
 import { useMainBusy } from '../app/busy';
 import { useFieldErrors, useFocusWhenReady, useLive, useLoad } from '../app/hooks';
@@ -1016,6 +1017,7 @@ function CompanyDetail(props: { code: string }) {
       </section>
 
       <CompanyLabels code={company.code} archived={archived} />
+      <CompanyExports key={company.code} code={company.code} name={company.name} />
 
       <AssignDialog
         open={assigning}
