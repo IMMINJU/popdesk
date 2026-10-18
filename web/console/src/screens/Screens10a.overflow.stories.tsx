@@ -1,6 +1,7 @@
 // 10a 묶음이 바꾼 콘솔 화면(C-10 구성원 목록의 익명 계정 줄, 익명화 대화상자)을 상태마다 360·820·1280 폭, 밝게·어둡게에서 그리고,
 // play에서 테마가 그것인지, 페이지와 바뀐 부분이 가로로 넘치지 않는지, axe(대비 포함) 위반이 없는지 본다(screens.md).
 // C-10: 익명 계정 줄과 긴 이메일 줄. 익명화 대화상자: 긴 이름·이메일, 담당 수 있음, 오류 있음.
+// C-12: "감사 사슬 다시 계산" 줄. 바뀐 값의 "마지막 hash"는 64자 hash 둘을 줄이지 않고 보인다(design.md 0절 13, C-7 웹 점검 D5).
 // 360에서 구성원 표는 안에서 옆으로 스크롤하므로 표의 스크롤 틀은 부품으로 넘기지 않고, 페이지와 화면 본문(main)을 본다.
 // 화면은 가짜 fetch(__tests__/storyFetch.ts, storyFetch10a.ts)의 답으로 그린다.
 //
@@ -10,7 +11,7 @@
 import { ADMIN, company, issue, scenario, setScenario, summary } from '../__tests__/storyFetch';
 import { setTaskScenario } from '../__tests__/storyFetch6b';
 import { setLinkScenario } from '../__tests__/storyFetch6c';
-import { LONG_EMAIL, LONG_PERSON, anonymized, member, setMemberScenario, type MemberScenario } from '../__tests__/storyFetch10a';
+import { LONG_EMAIL, LONG_PERSON, RECHAINED, anonymized, hashOf, member, setAuditScenario, setMemberScenario, type MemberScenario } from '../__tests__/storyFetch10a';
 import type { ReactElement } from 'react';
 import '@popdesk/ui/tokens.css';
 import '@popdesk/ui/styles.css';
@@ -46,7 +47,7 @@ const LIST = members({});
 const WITH_COUNT = members({ open: { issues: 4, tasks: 2 } });
 const REFUSED = members({ open: { issues: 4, tasks: 0 }, refuse: { code: 'LAST_ADMIN', status: 400 } });
 
-function screenStory(width: Width, theme: Theme, given: MemberScenario, parts: (canvas: HTMLElement) => Promise<Found>): Story {
+function screenStory(width: Width, theme: Theme, given: MemberScenario, parts: (canvas: HTMLElement) => Promise<Found>, path = '/members'): Story {
   const { parameters, globals } = at(width, theme, 'console');
   return {
     parameters: { ...parameters, layout: 'fullscreen' },
@@ -57,7 +58,8 @@ function screenStory(width: Width, theme: Theme, given: MemberScenario, parts: (
       setTaskScenario({ tasks: [], mine: [] });
       setLinkScenario({ links: [], others: [], linkError: null });
       setMemberScenario(given);
-      window.history.replaceState(null, '', '/members');
+      setAuditScenario([RECHAINED]);
+      window.history.replaceState(null, '', path);
       return <App />;
     },
     play: async ({ canvasElement }) => {
@@ -129,7 +131,25 @@ async function dialogRefused(canvas: HTMLElement): Promise<Found> {
   return [...found, { el: box, what: '오류가 있는 익명화 대화상자' }];
 }
 
-export const C10Anonymous360Light = screenStory(360, 'light', LIST, list);
+/** C-12 with the row of AUDIT_RECHAINED: its changed values hold two whole hashes of 64 characters. */
+async function rechainedRow(canvas: HTMLElement): Promise<Found> {
+  await waitFor(() => Array.from(document.querySelectorAll('h1')).find((h) => textOf(h) === '감사 로그'), 'C-12의 h1 "감사 로그"', 8000);
+  const main = await waitFor(() => mainOf(canvas), 'C-12의 main');
+  const row = await waitFor(
+    () => Array.from(main.querySelectorAll('tr')).find((r) => textOf(r).includes('감사 사슬 다시 계산')),
+    'C-12의 줄 "감사 사슬 다시 계산"',
+  );
+  const cell = await waitFor(
+    () => Array.from(row.querySelectorAll('td')).find((c) => textOf(c).includes(`마지막 hash: ${hashOf(4410)}`) && textOf(c).includes('ab'.repeat(32))),
+    'C-12 줄의 바뀐 값 "마지막 hash: 앞 → 뒤"(64자 둘)',
+  );
+  return [
+    { el: main, what: 'C-12의 main' },
+    { el: cell, what: 'C-12 감사 사슬 다시 계산의 바뀐 값 칸' },
+  ];
+}
+
+export const C10Anonymous360Light =screenStory(360, 'light', LIST, list);
 export const C10Anonymous360Dark = screenStory(360, 'dark', LIST, list);
 export const C10Anonymous820Light = screenStory(820, 'light', LIST, list);
 export const C10Anonymous820Dark = screenStory(820, 'dark', LIST, list);
@@ -149,3 +169,10 @@ export const AnonymizeRefused820Light = screenStory(820, 'light', REFUSED, dialo
 export const AnonymizeRefused820Dark = screenStory(820, 'dark', REFUSED, dialogRefused);
 export const AnonymizeRefused1280Light = screenStory(1280, 'light', REFUSED, dialogRefused);
 export const AnonymizeRefused1280Dark = screenStory(1280, 'dark', REFUSED, dialogRefused);
+
+export const C12Rechained360Light = screenStory(360, 'light', LIST, rechainedRow, '/audit-log');
+export const C12Rechained360Dark = screenStory(360, 'dark', LIST, rechainedRow, '/audit-log');
+export const C12Rechained820Light = screenStory(820, 'light', LIST, rechainedRow, '/audit-log');
+export const C12Rechained820Dark = screenStory(820, 'dark', LIST, rechainedRow, '/audit-log');
+export const C12Rechained1280Light = screenStory(1280, 'light', LIST, rechainedRow, '/audit-log');
+export const C12Rechained1280Dark = screenStory(1280, 'dark', LIST, rechainedRow, '/audit-log');

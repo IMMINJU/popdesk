@@ -48,7 +48,7 @@ describe('C-12 감사 로그의 익명화 항목 (10a 묶음)', () => {
     expect(shown).not.toContain('headHash');
   });
 
-  test('S10A-AC-16 C-12 익명화의 바뀐 값: 비운 담당이 있으면 "비운 담당: 3건", 없는 항목은 빈 칸. 옛 이름·이메일은 없다', async () => {
+  test('S10A-AC-16 C-12 익명화의 바뀐 값: 비운 담당이 있으면 "비운 담당: 3건", 없는 항목은 빈 칸', async () => {
     audit.entries = [ANONYMIZED, entry({ id: 9304, action: 'ACCOUNT_ANONYMIZED', target: { type: 'ACCOUNT', accountId: 13 }, changes: null })];
     renderAt(URL_LOG);
 
