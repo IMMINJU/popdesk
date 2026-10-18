@@ -4,16 +4,19 @@ import static io.popdesk.issue.TalkFlow.assertRefused;
 import static io.popdesk.issue.TalkFlow.isNull;
 import static io.popdesk.privacy.CompanyExportSteps.EXPORT_FIELDS;
 import static io.popdesk.privacy.CompanyExportSteps.awaitEnded;
+import static io.popdesk.privacy.CompanyExportSteps.awaitStoredExpired;
 import static io.popdesk.privacy.CompanyExportSteps.createRequest;
 import static io.popdesk.privacy.CompanyExportSteps.done;
 import static io.popdesk.privacy.CompanyExportSteps.exportFiles;
 import static io.popdesk.privacy.CompanyExportSteps.exportsPath;
 import static io.popdesk.privacy.CompanyExportSteps.fieldNames;
+import static io.popdesk.privacy.CompanyExportSteps.holdUpdatesOf;
 import static io.popdesk.privacy.CompanyExportSteps.id;
 import static io.popdesk.privacy.CompanyExportSteps.list;
 import static io.popdesk.privacy.CompanyExportSteps.listed;
 import static io.popdesk.privacy.CompanyExportSteps.start;
 import static io.popdesk.privacy.CompanyExportSteps.state;
+import static io.popdesk.privacy.CompanyExportSteps.storedState;
 import static io.popdesk.privacy.ExportSteps.time;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -195,14 +198,26 @@ class CompanyExportJobTest extends CompanyExportAppTest {
         clock.advance(Duration.ofHours(2));
         String young = id(done(admin, company.code(), false, false));
 
-        clock.advance(Duration.ofHours(22).plusSeconds(1));
-        Session again = fixtures.signInAdmin();
+        Session again;
+        JsonNode oldListed;
+        // The cleanup job's UPDATE of the old export waits, so the list is read before it stored EXPIRED.
+        try (HeldWrite expiry = holdUpdatesOf(db, postgres, old)) {
+            clock.advance(Duration.ofHours(22).plusSeconds(1));
+            again = fixtures.signInAdmin();
+            oldListed = listed(again, company.code(), old);
+            assertThat(storedState(db, old)).as("stored state of %s while the cleanup job is held", old)
+                    .isEqualTo("DONE");
+            expiry.release();
+        }
 
-        JsonNode oldListed = listed(again, company.code(), old);
         assertThat(state(oldListed)).as("state of the export done 24 hours and a second ago").isEqualTo("EXPIRED");
         assertThat(time(oldListed, "finishedAt")).as("finishedAt of the expired export").isEqualTo(oldEnd);
         assertThat(state(listed(again, company.code(), young))).as("state of the export done 22 hours ago")
                 .isEqualTo("DONE");
+        awaitStoredExpired(db, old);
+        JsonNode stored = listed(again, company.code(), old);
+        assertThat(state(stored)).as("state once stored as EXPIRED").isEqualTo("EXPIRED");
+        assertThat(time(stored, "finishedAt")).as("finishedAt once stored as EXPIRED").isEqualTo(oldEnd);
     }
 
     @Test

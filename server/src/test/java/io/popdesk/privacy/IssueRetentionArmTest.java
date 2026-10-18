@@ -129,7 +129,7 @@ class IssueRetentionArmTest extends RetentionAppTest {
     @ParameterizedTest(name = "{0}")
     @EnumSource(During.class)
     @DisplayName("S10B-AC-19 during the wait, a setting shorter than the period seen last starts the 24 hours again with a new "
-            + "ISSUE_RETENTION_ARMED item, and a longer one keeps the wait as it was")
+            + "ISSUE_RETENTION_ARMED item, and a longer one keeps the wait as it was: nothing moves before it ends")
     void changeDuringTheWait(During during) {
         Scene s = scene();
         lastSeen(null);
@@ -153,6 +153,9 @@ class IssueRetentionArmTest extends RetentionAppTest {
         } else {
             assertThat(armedSince(fixtures.signInAdmin(), changedAt)).as("%s items since the longer period", ARMED)
                     .isEmpty();
+            assertLive(s.issue(), "after the longer period");
+            runAt(armedAt.plus(WAIT).minus(Duration.ofHours(1)));
+            assertLive(s.issue(), "23 hours after the first item, before its wait ends");
             runAt(firstEnd);
             assertMoved(s.issue(), "24 hours after the first item");
         }

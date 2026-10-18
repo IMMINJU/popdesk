@@ -1,11 +1,14 @@
 package io.popdesk.privacy;
 
 import static io.popdesk.privacy.CompanyExportSteps.awaitEnded;
+import static io.popdesk.privacy.CompanyExportSteps.awaitStoredExpired;
 import static io.popdesk.privacy.CompanyExportSteps.done;
 import static io.popdesk.privacy.CompanyExportSteps.filePath;
+import static io.popdesk.privacy.CompanyExportSteps.holdUpdatesOf;
 import static io.popdesk.privacy.CompanyExportSteps.id;
 import static io.popdesk.privacy.CompanyExportSteps.start;
 import static io.popdesk.privacy.CompanyExportSteps.state;
+import static io.popdesk.privacy.CompanyExportSteps.storedState;
 import static io.popdesk.privacy.CompanyExportSteps.withExportDirAFile;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,7 +18,6 @@ import io.popdesk.support.ApiResponse;
 import io.popdesk.support.Fixtures.Company;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.HeldWrite;
-import io.popdesk.support.Wait;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -104,23 +106,31 @@ class CompanyExportDownloadTest extends CompanyExportAppTest {
                 awaitEnded(admin, company.code(), id);
             }
             case FAILED -> {
+                // The export ends while the folder is still a file, so a late writer cannot make it DONE.
                 List<String> ids = new ArrayList<>();
-                withExportDirAFile(() -> ids.add(id(start(admin, company.code(), false, false))));
+                withExportDirAFile(() -> {
+                    ids.add(id(start(admin, company.code(), false, false)));
+                    assertThat(state(awaitEnded(admin, company.code(), ids.getFirst()))).as("state")
+                            .isEqualTo("FAILED");
+                });
                 id = ids.getFirst();
-                assertThat(state(awaitEnded(admin, company.code(), id))).as("state").isEqualTo("FAILED");
                 answers.add(admin.client().get(filePath(id)).send());
                 answers.add(admin.client().head(filePath(id)).send());
             }
             default -> {
                 String doneId = id(done(admin, company.code(), false, false));
                 id = doneId;
-                clock.advance(Duration.ofHours(24).plusSeconds(1));
-                reader = fixtures.signInAdmin();
-                answers.add(reader.client().get(filePath(id)).send());
-                answers.add(reader.client().head(filePath(id)).send());
-                Wait.until("the export " + id + " stored as EXPIRED", () -> "EXPIRED".equals(
-                        db.row("select state from " + CompanyExportSteps.TABLE + " where id::text = ?", doneId)
-                                .get("state")) ? Boolean.TRUE : null);
+                // The cleanup job's UPDATE of this export waits, so the first answers come before it stored EXPIRED.
+                try (HeldWrite expiry = holdUpdatesOf(db, postgres, doneId)) {
+                    clock.advance(Duration.ofHours(24).plusSeconds(1));
+                    reader = fixtures.signInAdmin();
+                    answers.add(reader.client().get(filePath(id)).send());
+                    answers.add(reader.client().head(filePath(id)).send());
+                    assertThat(storedState(db, doneId)).as("stored state of %s while the cleanup job is held",
+                            doneId).isEqualTo("DONE");
+                    expiry.release();
+                }
+                awaitStoredExpired(db, doneId);
                 answers.add(reader.client().get(filePath(id)).send());
                 answers.add(reader.client().head(filePath(id)).send());
             }

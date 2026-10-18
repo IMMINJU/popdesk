@@ -1,11 +1,14 @@
 package io.popdesk.privacy;
 
+import static io.popdesk.privacy.CompanyExportSteps.COMMENT_FIELDS;
 import static io.popdesk.privacy.CompanyExportSteps.ISSUE_FIELDS;
+import static io.popdesk.privacy.CompanyExportSteps.MANIFEST_FIELDS;
+import static io.popdesk.privacy.CompanyExportSteps.MISSING_FIELDS;
+import static io.popdesk.privacy.CompanyExportSteps.NOTE_FIELDS;
 import static io.popdesk.privacy.CompanyExportSteps.PERSON_FIELDS;
+import static io.popdesk.privacy.CompanyExportSteps.TASK_FIELDS;
 import static io.popdesk.privacy.CompanyExportSteps.fieldNames;
 import static io.popdesk.privacy.CompanyExportSteps.integers;
-import static io.popdesk.privacy.CompanyExportSteps.objects;
-import static io.popdesk.privacy.CompanyExportSteps.objectsHolding;
 import static io.popdesk.privacy.CompanyExportSteps.only;
 import static io.popdesk.privacy.CompanyExportSteps.storedFile;
 import static io.popdesk.privacy.CompanyExportSteps.texts;
@@ -30,6 +33,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.HashSet;
@@ -51,6 +55,8 @@ import tools.jackson.databind.JsonNode;
 class CompanyExportZipTest extends CompanyExportAppTest {
 
     private static final String SUPPORT_TEAM = "SUPPORT_TEAM";
+
+    private static final String DUE_DATE = "2099-06-01";
 
     /** A company, its admin, a customer who reports, and an agent assigned to it. */
     private record Cast(Session admin, Company company, Session reporter, Session agent) {
@@ -110,8 +116,8 @@ class CompanyExportZipTest extends CompanyExportAppTest {
 
     @Test
     @DisplayName("S10B-AC-11 the ZIP holds manifest.json, customers.json, and per issue issue.json, comments.json, "
-            + "and files/{attachment ID}-{file name}, nothing else; manifest.json has the company's code and name, "
-            + "when it was made, both choices, and the counts of issues, comments, attachments, and customers")
+            + "and files/{attachment ID}-{file name}, nothing else; manifest.json has exactly code, name, exportedAt, "
+            + "both choices, the counts issues, comments, attachments, and customers, and an empty missingFiles")
     void pathsAndManifest() {
         Cast c = cast();
         // A second member customer: customers.json counts 2.
@@ -143,10 +149,24 @@ class CompanyExportZipTest extends CompanyExportAppTest {
                 .as("includeInternal false in %s", manifest).isTrue();
         assertThat(manifest.path("includePrivate").isBoolean() && !manifest.path("includePrivate").asBoolean())
                 .as("includePrivate false in %s", manifest).isTrue();
-        assertThat(integers(manifest)).as("numbers in %s: 1 issue, 2 customers, 3 comments, 4 attachments",
-                manifest).containsExactlyInAnyOrder(1L, 2L, 3L, 4L);
-        assertThat(texts(manifest)).as("texts of %s", manifest)
-                .anyMatch(t -> isTime(t) && OffsetDateTime.parse(t).toInstant().toString().equals(made));
+        assertThat(fieldNames(manifest)).as("fields of %s", manifest)
+                .containsExactlyInAnyOrderElementsOf(MANIFEST_FIELDS);
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (String count : List.of("issues", "comments", "attachments", "customers")) {
+            assertThat(manifest.path(count).isIntegralNumber()).as("%s is a whole number in %s", count, manifest)
+                    .isTrue();
+            counts.put(count, manifest.path(count).asLong());
+        }
+        assertThat(counts).as("counts in %s", manifest)
+                .containsExactlyInAnyOrderEntriesOf(Map.of("issues", 1L, "comments", 3L, "attachments", 4L,
+                        "customers", 2L));
+        assertThat(integers(manifest)).as("numbers in %s: the four counts only", manifest)
+                .containsExactlyInAnyOrder(1L, 2L, 3L, 4L);
+        String exportedAt = manifest.path("exportedAt").asString("");
+        assertThat(isTime(exportedAt) && OffsetDateTime.parse(exportedAt).toInstant().toString().equals(made))
+                .as("exportedAt '%s' is %s", exportedAt, made).isTrue();
+        assertThat(manifest.path("missingFiles").isArray() && manifest.path("missingFiles").isEmpty())
+                .as("missingFiles is an empty array in %s", manifest).isTrue();
     }
 
     @Test
@@ -187,8 +207,9 @@ class CompanyExportZipTest extends CompanyExportAppTest {
     }
 
     @Test
-    @DisplayName("S10B-AC-12 issue.json has the fields a customer sees, with the portal's values, and the reporter as "
-            + "{kind, accountId, name}; no assignee, label, due date, or agent who filed it on behalf")
+    @DisplayName("S10B-AC-12 issue.json has exactly the twelve fields a customer sees (no companyCode), with the "
+            + "portal's values, and the reporter as {kind, accountId, name}; no assignee, label, due date, or agent "
+            + "who filed it on behalf")
     void issueJsonHoldsWhatTheCustomerSees() {
         Cast c = cast();
         Issue own = fixtures.fileIssue(c.reporter(), NewIssue.in(c.code()).priority("HIGH"));
@@ -203,9 +224,8 @@ class CompanyExportZipTest extends CompanyExportAppTest {
             JsonNode inZip = zip.issue(issue.key());
             JsonNode portal = flow.detail(c.reporter(), issue.key());
             List<String> fields = fieldNames(inZip);
-            assertThat(fields).as("fields of issue.json of %s", issue.key()).containsAll(ISSUE_FIELDS);
-            assertThat(fields).as("fields of issue.json of %s beyond acceptance.md S10B-AC-12", issue.key())
-                    .filteredOn(f -> !ISSUE_FIELDS.contains(f)).isSubsetOf("companyCode");
+            assertThat(fields).as("fields of issue.json of %s, exactly those of S10B-AC-12", issue.key())
+                    .containsExactlyInAnyOrderElementsOf(ISSUE_FIELDS);
             for (String field : ISSUE_FIELDS) {
                 if (field.endsWith("At")) {
                     assertThat(ExportSteps.time(inZip, field)).as("%s of %s, as the portal gives it", field,
@@ -224,9 +244,10 @@ class CompanyExportZipTest extends CompanyExportAppTest {
 
     @ParameterizedTest(name = "includeInternal {0}")
     @ValueSource(booleans = {false, true})
-    @DisplayName("S10B-AC-13 comments.json has the public comments that are not deleted, with author, content, and "
-            + "times; internal comments and tasks with their notes only with includeInternal, marked internal; staff "
-            + "are always the support team")
+    @DisplayName("S10B-AC-13 comments.json is {comments, tasks}: the public comments that are not deleted, oldest "
+            + "first, each {author, content, createdAt, editedAt, internal}; internal comments and tasks {title, "
+            + "status, dueDate, internal, notes} only with includeInternal, marked internal; staff are always the "
+            + "support team")
     void commentsAndTheInternalPart(boolean includeInternal) {
         Cast c = cast();
         Issue issue = fixtures.fileIssue(c.reporter(), c.code());
@@ -236,41 +257,72 @@ class CompanyExportZipTest extends CompanyExportAppTest {
         String deleted = Unique.text("Deleted");
         String taskTitle = Unique.text("Task");
         String note = Unique.text("Note");
+        // A minute between the comments, so "oldest first" is an order of the times.
         fixtures.comment(c.reporter(), issue.key(), byCustomer);
+        clock.advance(Duration.ofMinutes(1));
         fixtures.comment(c.agent(), issue.key(), byAgent);
+        clock.advance(Duration.ofMinutes(1));
         fixtures.internalComment(c.agent(), issue.key(), internal);
+        clock.advance(Duration.ofMinutes(1));
         TalkFlow.delete(c.reporter(), issue.key(), fixtures.comment(c.reporter(), issue.key(), deleted).id());
-        long taskId = TaskSteps.id(TaskSteps.create(c.agent(), issue.key(), taskTitle));
+        long taskId = TaskSteps.id(TaskSteps.create(c.agent(), issue.key(),
+                TaskSteps.body("title", taskTitle, "dueDate", DUE_DATE)));
         TaskSteps.note(c.agent(), issue.key(), taskId, note);
+        JsonNode taskInConsole = TaskSteps.task(c.agent(), issue.key(), taskId);
 
         Zip zip = zipOf(c.admin(), c.code(), includeInternal, false);
 
-        JsonNode comments = zip.comments(issue.key());
-        List<String> texts = texts(comments);
+        JsonNode root = zip.comments(issue.key());
+        assertThat(fieldNames(root)).as("fields of comments.json").containsExactlyInAnyOrder("comments", "tasks");
+        JsonNode comments = root.path("comments");
+        JsonNode tasks = root.path("tasks");
+        assertThat(comments.isArray() && tasks.isArray()).as("comments and tasks are arrays in %s", root).isTrue();
+        List<String> texts = texts(root);
         assertThat(texts).as("texts of comments.json").doesNotContain(deleted);
+        List<String> expectedOrder = includeInternal ? List.of(byCustomer, byAgent, internal)
+                : List.of(byCustomer, byAgent);
+        assertThat(comments.values()).extracting(n -> n.path("content").asString(null))
+                .as("contents of comments, oldest first").containsExactlyElementsOf(expectedOrder);
+        for (JsonNode comment : comments.values()) {
+            assertThat(fieldNames(comment)).as("fields of %s", comment)
+                    .containsExactlyInAnyOrderElementsOf(COMMENT_FIELDS);
+            assertThat(comment.path("internal").isBoolean()).as("internal is a boolean in %s", comment).isTrue();
+        }
         JsonNode ofCustomer = only(comments, "content", byCustomer);
         JsonNode ofAgent = only(comments, "content", byAgent);
         assertCustomer(ofCustomer.path("author"), c.reporter(), c.reporter().name());
         assertSupportTeam(ofAgent.path("author"));
         for (JsonNode comment : List.of(ofCustomer, ofAgent)) {
-            assertThat(fieldNames(comment)).as("fields of %s", comment).contains("author", "content", "createdAt",
-                    "editedAt");
-            assertThat(comment.path("internal").asBoolean(false)).as("internal of the public %s", comment).isFalse();
+            assertThat(comment.path("internal").asBoolean(true)).as("internal of the public %s", comment).isFalse();
         }
         if (includeInternal) {
             JsonNode ofInternal = only(comments, "content", internal);
             assertSupportTeam(ofInternal.path("author"));
             assertThat(ofInternal.path("internal").asBoolean(false)).as("internal of %s", ofInternal).isTrue();
-            JsonNode task = only(comments, "title", taskTitle);
-            assertThat(task.path("internal").asBoolean(false)).as("internal of the task %s", task).isTrue();
-            assertThat(objectsHolding(task, note)).as("the note in the task %s", task).isNotEmpty();
-            objects(task).stream().filter(o -> o.has("kind") && o.has("accountId"))
-                    .forEach(CompanyExportZipTest::assertSupportTeam);
+            assertThat(tasks.values()).as("tasks of %s", issue.key()).hasSize(1);
+            JsonNode task = tasks.get(0);
+            assertThat(fieldNames(task)).as("fields of the task %s", task)
+                    .containsExactlyInAnyOrderElementsOf(TASK_FIELDS);
+            assertThat(task.path("title").asString(null)).as("title of %s", task).isEqualTo(taskTitle);
+            assertThat(task.path("status")).as("status of %s, as the console gives it", task)
+                    .isEqualTo(taskInConsole.path("status"));
+            assertThat(task.path("dueDate").asString(null)).as("dueDate of %s", task).isEqualTo(DUE_DATE);
+            assertThat(task.path("internal").isBoolean() && task.path("internal").asBoolean())
+                    .as("internal true in %s", task).isTrue();
+            JsonNode notes = task.path("notes");
+            assertThat(notes.isArray()).as("notes is an array in %s", task).isTrue();
+            for (JsonNode n : notes.values()) {
+                assertThat(fieldNames(n)).as("fields of the note %s", n)
+                        .containsExactlyInAnyOrderElementsOf(NOTE_FIELDS);
+            }
+            JsonNode ofNote = only(notes, "content", note);
+            assertSupportTeam(ofNote.path("author"));
         } else {
+            assertThat(tasks.isEmpty()).as("tasks without includeInternal: %s", tasks).isTrue();
             assertThat(texts).as("texts of comments.json without the internal part").doesNotContain(internal,
                     taskTitle, note);
         }
-        assertNoTraceOf(comments, c.agent(), "comments.json");
+        assertNoTraceOf(root, c.agent(), "comments.json");
     }
 
     @ParameterizedTest(name = "includeInternal {0}")
@@ -321,12 +373,52 @@ class CompanyExportZipTest extends CompanyExportAppTest {
             assertThat(zip.bytes(of.getFirst())).as("bytes of %s", of.getFirst()).isEqualTo(bytes);
         });
         JsonNode manifest = zip.manifest();
-        assertThat(objectsHolding(manifest, unreadable.id())).as("the unreadable file in %s", manifest)
-                .anyMatch(o -> objectsHolding(o, "unreadable.txt").contains(o));
+        JsonNode missing = manifest.path("missingFiles");
+        assertThat(missing.isArray()).as("missingFiles is an array in %s", manifest).isTrue();
+        assertThat(missing.values()).as("missingFiles of %s", manifest).singleElement().satisfies(m -> {
+            assertThat(fieldNames(m)).as("fields of %s", m).containsExactlyInAnyOrderElementsOf(MISSING_FIELDS);
+            assertThat(m.path("attachmentId").isString()).as("attachmentId is text in %s", m).isTrue();
+            assertThat(m.path("attachmentId").asString(null)).as("attachmentId of %s", m).isEqualTo(unreadable.id());
+            assertThat(m.path("fileName").asString(null)).as("fileName of %s", m).isEqualTo("unreadable.txt");
+        });
         assertThat(texts(manifest)).as("texts of %s", manifest).doesNotContain(gone.id(), ofPublic.id());
         if (!includeInternal) {
             assertThat(zip.allText()).as("the ZIP without the internal part").doesNotContain(ofInternal.id());
         }
+    }
+
+    @Test
+    @DisplayName("S10B-AC-14 a storage error other than a missing file (a folder where the stored file is, so reading "
+            + "it fails) ends the export FAILED with STORAGE and leaves no ZIP, instead of a DONE ZIP without the file")
+    void storageErrorFailsTheExport() {
+        Cast c = cast();
+        Issue issue = fixtures.fileIssue(c.reporter(), c.code());
+        Attachment broken = fixtures.attach(c.reporter(), issue.key(), file("broken.txt"));
+        Path stored = storedFile(broken.id());
+        assertThat(stored).as("the stored file of %s on disk", broken.id()).exists();
+        JsonNode ended;
+        try {
+            Files.delete(stored);
+            Files.createDirectory(stored);
+            String id = CompanyExportSteps.id(CompanyExportSteps.start(c.admin(), c.code(), false, false));
+            ended = CompanyExportSteps.awaitEnded(c.admin(), c.code(), id);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not put a folder where " + stored + " is", e);
+        } finally {
+            try {
+                Files.deleteIfExists(stored);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        String id = CompanyExportSteps.id(ended);
+
+        assertThat(CompanyExportSteps.state(ended)).as("state of %s", ended).isEqualTo("FAILED");
+        assertThat(ended.path("failure").asString(null)).as("failure of %s", ended).isEqualTo("STORAGE");
+        assertThat(TalkFlow.isNull(ended, "size")).as("size of %s is null", ended).isTrue();
+        assertThat(CompanyExportSteps.exportFiles()).as("files in the export folder").noneMatch(n -> n.contains(id));
+        assertThat(c.admin().client().get(CompanyExportSteps.filePath(id)).send().status())
+                .as("download of the failed export").isEqualTo(404);
     }
 
     @Test
@@ -350,7 +442,9 @@ class CompanyExportZipTest extends CompanyExportAppTest {
 
         Zip zip = zipOf(c.admin(), c.code(), false, false);
 
-        List<JsonNode> people = objects(zip.customers()).stream().filter(o -> o.has("email")).toList();
+        JsonNode customers = zip.customers();
+        assertThat(customers.isArray()).as("customers.json is an array: %s", customers).isTrue();
+        List<JsonNode> people = List.copyOf(customers.values());
         people.forEach(p -> assertThat(fieldNames(p)).as("fields of %s", p).containsExactlyInAnyOrder("email",
                 "name"));
         assertThat(people).extracting(p -> p.path("email").asString(null) + " / " + p.path("name").asString(null))

@@ -24,7 +24,7 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * The inbox items of an export's end (S10B-AC-04, S10B-AC-05): {@code COMPANY_EXPORT_READY} to the admin who asked
- * and to nobody else, none for an admin suspended meanwhile, and {@code COMPANY_EXPORT_FAILED} to every admin when the
+ * and to nobody else, none for an admin suspended or anonymized meanwhile, and {@code COMPANY_EXPORT_FAILED} to every admin when the
  * ZIP cannot be written.
  */
 class CompanyExportNotifyTest extends CompanyExportAppTest {
@@ -94,6 +94,34 @@ class CompanyExportNotifyTest extends CompanyExportAppTest {
         awaitItem(first, READY, company.code());
         assertThat(items(askerAgain, READY, company.code())).as("READY items of the admin suspended meanwhile")
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("S10B-AC-04 an admin anonymized while the export ran gets no COMPANY_EXPORT_READY (no inbox row at "
+            + "all); the admin who asks next gets it")
+    void noReadyForAnAdminAnonymizedMeanwhile() {
+        Session first = fixtures.signInAdmin();
+        // Another admin besides the one who asks, so anonymizing it is not refused as the last admin.
+        fixtures.admin(first);
+        Session asker = fixtures.admin(first);
+        Company company = fixtures.createCompany(first);
+        String id;
+
+        try (HeldWrite end = holdEnd()) {
+            id = id(start(asker, company.code(), false, false));
+            try {
+                PrivacySteps.anonymize(first, asker.accountId());
+            } finally {
+                end.release();
+            }
+        }
+        assertThat(state(awaitEnded(first, company.code(), id))).as("state at the end").isEqualTo("DONE");
+        String next = id(start(first, company.code(), false, false));
+        awaitEnded(first, company.code(), next);
+
+        awaitItem(first, READY, company.code());
+        assertThat(db.count("select count(*) from notification where account_id = ?", asker.accountId()))
+                .as("inbox rows of the admin anonymized meanwhile").isZero();
     }
 
     @Test

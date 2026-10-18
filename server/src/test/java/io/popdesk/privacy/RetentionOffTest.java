@@ -57,8 +57,8 @@ class RetentionOffTest extends BareAppTest {
     }
 
     @Test
-    @DisplayName("S10B-AC-19 without POPDESK_ISSUE_RETENTION, the next run of issue-retention leaves no period seen in "
-            + "the state row, although it held 90 days and a wait")
+    @DisplayName("S10B-AC-19 without POPDESK_ISSUE_RETENTION, the next run of issue-retention leaves no period seen and "
+            + "no wait (moves_from) in the state row, although it held 90 days and a wait")
     void offForgetsTheWait() {
         assertThat(db.tables()).as("tables of the app (V23 adds %s)", RetentionAppTest.STATE_TABLE)
                 .contains(RetentionAppTest.STATE_TABLE);
@@ -71,5 +71,6 @@ class RetentionOffTest extends BareAppTest {
 
         Map<String, Object> state = db.row("select * from " + RetentionAppTest.STATE_TABLE);
         assertThat(state.get("period_seconds")).as("period_seconds of %s after the run", state).isNull();
+        assertThat(state.get("moves_from")).as("moves_from of %s after the run: the wait is gone", state).isNull();
     }
 }

@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ApiResponse;
+import io.popdesk.support.DbInspector;
 import io.popdesk.support.Fixtures.Session;
+import io.popdesk.support.HeldWrite;
 import io.popdesk.support.Wait;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -21,6 +23,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -30,10 +33,11 @@ import tools.jackson.databind.json.JsonMapper;
  * the list, waiting for the end, the file as a {@link Zip}, and looking through the JSON of the ZIP by values a test
  * made itself. Every failure is an {@link AssertionError}.
  *
- * <p>The contract names the paths of the ZIP and the fields of {@code issue.json}, the person, {@code customers.json},
- * and of {@code manifest.json} only {@code code}, {@code name}, {@code includeInternal}, and {@code includePrivate}.
- * The other parts (the counts, the missing list, how {@code comments.json} holds comments and tasks) are found by the
- * values in them ({@link #objectsHolding}, {@link #integers}), not by a field name.
+ * <p>conventions.md names the paths of the ZIP and every field in it: {@code manifest.json} ({@link #MANIFEST_FIELDS},
+ * {@code missingFiles} items {@link #MISSING_FIELDS}), {@code issue.json} ({@link #ISSUE_FIELDS}), the person
+ * ({@link #PERSON_FIELDS}), {@code customers.json} (an array of {@code {email, name}}), and {@code comments.json}
+ * ({@code {comments, tasks}}, {@link #COMMENT_FIELDS}, {@link #TASK_FIELDS}, {@link #NOTE_FIELDS}). Tests read them
+ * by these names; {@link #objectsHolding} and {@link #texts} look for a value anywhere in a tree.
  */
 final class CompanyExportSteps {
 
@@ -52,6 +56,22 @@ final class CompanyExportSteps {
 
     /** The person in the ZIP: the portal's {@code Person} without the photo (acceptance.md 5절 20). */
     static final List<String> PERSON_FIELDS = List.of("kind", "accountId", "name");
+
+    /** The fields of {@code manifest.json} (conventions.md "Company export"). */
+    static final List<String> MANIFEST_FIELDS = List.of("code", "name", "exportedAt", "includeInternal",
+            "includePrivate", "issues", "comments", "attachments", "customers", "missingFiles");
+
+    /** The fields of an item of {@code missingFiles}. */
+    static final List<String> MISSING_FIELDS = List.of("attachmentId", "fileName");
+
+    /** The fields of a comment in {@code comments.json}. */
+    static final List<String> COMMENT_FIELDS = List.of("author", "content", "createdAt", "editedAt", "internal");
+
+    /** The fields of a task in {@code comments.json}. */
+    static final List<String> TASK_FIELDS = List.of("title", "status", "dueDate", "internal", "notes");
+
+    /** The fields of a task's note. */
+    static final List<String> NOTE_FIELDS = List.of("author", "content", "createdAt");
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -142,6 +162,27 @@ final class CompanyExportSteps {
     /** An export of the company, done and downloaded. */
     static Zip zipOf(Session admin, String code, boolean includeInternal, boolean includePrivate) {
         return download(admin, id(done(admin, code, includeInternal, includePrivate)));
+    }
+
+    /** The state stored in the export's row, which the list may show otherwise ({@code EXPIRED}). */
+    static Object storedState(DbInspector db, String id) {
+        return db.row("select state from " + TABLE + " where id::text = ?", id).get("state");
+    }
+
+    /** Waits until the export's row holds {@code EXPIRED}, which the cleanup job stores. */
+    static void awaitStoredExpired(DbInspector db, String id) {
+        Wait.until("the export " + id + " stored as EXPIRED", () -> "EXPIRED".equals(storedState(db, id))
+                ? Boolean.TRUE : null);
+    }
+
+    /**
+     * Holds every {@code UPDATE} of this one export's row ({@link HeldWrite} with its ID as the marker), such as the
+     * cleanup job's {@code EXPIRED}, so a test can read the list and the file before it is stored. Fails on an
+     * assertion while the table is not there.
+     */
+    static HeldWrite holdUpdatesOf(DbInspector db, PostgreSQLContainer postgres, String id) {
+        assertThat(db.tables()).as("tables of the app (design.md 1절)").contains(TABLE);
+        return new HeldWrite(db, postgres, TABLE, "update", id);
     }
 
     // The folders
