@@ -151,6 +151,8 @@ function answer(method: string, path: string): Response {
   if (issueMatch) return decodeURIComponent(issueMatch[1] ?? '') === s.issue.key ? json(s.issue) : notFound();
   const labels = /^\/api\/console\/companies\/([^/]+)\/labels$/.exec(path);
   if (labels) return json({ items: byName(s.labels[decodeURIComponent(labels[1] ?? '')] ?? []) });
+  // The company exports of slice 10b: an empty list, as the contract's array (CompanyExport[]).
+  if (/^\/api\/console\/companies\/[^/]+\/exports$/.test(path)) return json([]);
   const companyMatch = /^\/api\/console\/companies\/([^/]+)$/.exec(path);
   if (companyMatch) {
     const found = s.companies.find((c) => c.code === decodeURIComponent(companyMatch[1] ?? ''));
