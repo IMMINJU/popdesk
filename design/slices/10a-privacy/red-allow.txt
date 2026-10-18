@@ -1,3 +1,4 @@
 # 처음부터 통과해도 되는 테스트 | 까닭
 src/screens/C12AuditLog.10a.test.tsx.C-12 감사 로그의 익명화 항목 (10a 묶음) > S10A-AC-36 C-12 한 사람 필터: 계정 찾기에 anonymized를 보내지 않고 익명 계정도 고를 수 있다 | 지금 동작을 지키는 쪽이다. C-12 한 사람 필터는 거르지 않는다(C-9만 anonymized=false를 보낸다)
 src/screens/C12AuditLog.10a.test.tsx.C-12 감사 로그의 익명화 항목 (10a 묶음) > C-12 axe (10a): 새 종류 셋의 줄에 접근성 위반이 없다 | axe만 본다. 모르는 종류도 영문 이름으로 그려져 위반이 없다
+io.popdesk.privacy.AnonymizeTamperedChainTest.breakBeforeTheRangeIsLeft | 대조 경우다. 재계산은 그 사람의 첫 항목부터만 다시 쓰므로 그 앞의 변조는 구현 전에도 건드리지 않는다

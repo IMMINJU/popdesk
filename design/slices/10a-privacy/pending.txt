@@ -11,3 +11,4 @@ web **/C12AuditLog.test.tsx
 web **/C12AuditLog.filters.test.tsx
 web **/auditWords.words.test.ts
 web **/exportDownload.10a.test.ts
+server io/popdesk/privacy/AnonymizeTamperedChainTest.java
