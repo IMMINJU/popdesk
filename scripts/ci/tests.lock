@@ -260,6 +260,7 @@ eba01141ca1667892f907cc462687651bfe23afd66d9a7ae02647802f5d48e8c  server/src/tes
 859bdd3153072f09c28fbbc79ef7b69a642f90d4aa892dbd3c9b9f0899e93e39  server/src/test/java/io/popdesk/inbox/InboxSteps.java
 69191c5155df3cb4fc29e45b7a9f7ec6f1b736e26f70f444912df6411d789e1c  server/src/test/java/io/popdesk/inbox/PortalNotificationContractTest.java
 c5c4d9479f64729c228fbe755f69406c4c282c7a747de37aebe5a56dfd0b66ec  server/src/test/java/io/popdesk/inbox/TaskInboxTest.java
+136936240ae603b7fb795ef27de439fd3b6a73bb084235311077659b70f890eb  server/src/test/java/io/popdesk/issue/AssigneeChangeRaceTest.java
 aab294298c4b3d0f3a43100c0050a28745854c58fc8b8e1a504e1ef41bb55777  server/src/test/java/io/popdesk/issue/ClearAssignmentsTest.java
 2c6fac23a92f31c67a470a986fe8884c0a639d372e9b2b24bfdf5ae3ca7efd62  server/src/test/java/io/popdesk/issue/CommentDeleteTest.java
 0ca5072a208ee407f861494b61a197c02b1d81e59d0958be391b9ba90453f848  server/src/test/java/io/popdesk/issue/CommentEditRateLimitTest.java
@@ -620,6 +621,7 @@ b7fc8df7055b82fe6892830ec6f03a261857a3219ce77116c8b0e4c45a9af3fc  server/src/tes
 f23443c3ae372c1b3f82047ad44348908d05782a91e82ed45c2e795418249006  server/src/test/java/io/popdesk/trash/IssueDeleteTest.java
 f0adebb83d0545a55a09e882813b231ca6943389d48902f7d2ca7da35fe4cf59  server/src/test/java/io/popdesk/trash/IssuePurgeTest.java
 310829225825f67cbe746e76422754dcf4ae499e1937cfba33186cce1f6c8804  server/src/test/java/io/popdesk/trash/IssueRestoreTest.java
+2310c26dd153075e19df07300a5f74a43b882664dc983dc5cf2ae38be6ce27a9  server/src/test/java/io/popdesk/trash/RestoreDuringLinkedDeleteTest.java
 2fe5e933bbc5b79372fbc14873e1af7be894ab853314e693b655f07e8fbe24ff  server/src/test/java/io/popdesk/trash/RowLock.java
 9006296add3d66e76677bed82e0961caf0deef6ff42f394bf3487b187b9a13bc  server/src/test/java/io/popdesk/trash/TrashJobs.java
 f42b14519df6a823e2461af03551685ed695d8d609456fbd3cc533c88b7ca60a  server/src/test/java/io/popdesk/trash/TrashListTest.java

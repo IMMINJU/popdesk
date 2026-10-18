@@ -129,3 +129,4 @@
 | 23 | `docs/use/permissions.md`의 고객사 내보내기 줄은 C-9 서버 구현 탭이 더한다 | 문서는 구현과 함께 맞춘다. C-4 탭 질문 2 | – |
 | 24 | 뜰 때 정리(AC-06)는 내보내기 파일 이름 꼴(`{id}.zip`, `{id}.zip.part`)의 파일만 지운다 | `POPDESK_EXPORT_DIR`를 `/tmp` 같은 공용 폴더로 두면 다른 프로그램의 파일까지 지우게 된다. C-9 서버 탭 질문 1 | 폴더의 모든 파일 |
 | 25 | ZIP 안 파일 이름은 6의 바꿈에 더해 점 뒤에 오는 점도 `_`로 바꾼다(`../x.txt` → `___x.txt`) | 이름 안의 `..`도 풀 때 경로로 읽히지 않게 한다. conventions에 적었다. C-9 서버 탭이 정함 | 앞의 점만 |
+| 26 | C-10에서 찾은 잠금 읽기 경합(문의를 잠그며 붙여 읽은 담당자·삭제자 계정이 기다린 뒤 비는 것)도 이 묶음에서 고친다. 담당자 바꾸기와 다른 쓰기는 S3-AC-24에 STATUS-7(어떤 한 순서)을, 복구와 연결 문의 지우기는 S7A-AC-21·05를 기준으로 본다(복구는 어느 순서든 200). 새 기준 ID는 두지 않는다 | 10b 서버 구현이 자동 정리에서 같은 꼴의 NPE를 겪었고, 앞 묶음 코드 두 곳(`IssueRepository.lockByKey`·`lockPair`, `lockTrashedByIds`)이 경합 테스트에서 500으로 재현됐다(`AssigneeChangeRaceTest`, `RestoreDuringLinkedDeleteTest`) | 다음 묶음으로 넘기기 |
