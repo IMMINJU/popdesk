@@ -90,7 +90,7 @@ class ConsoleNotificationController {
                         : new NotificationIssue(item.linkedIssue().key(), item.linkedIssue().title()),
                 item.slaSummary() == null ? null : new SlaSummary(item.slaSummary().becameBreached(),
                         item.slaSummary().becameWarning(), item.slaSummary().released()),
-                null, null);
+                item.retentionCount(), item.retentionDays());
     }
 
     private static NotificationActor actor(Actor actor) {

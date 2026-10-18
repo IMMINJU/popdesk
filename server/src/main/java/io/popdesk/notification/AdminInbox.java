@@ -28,4 +28,28 @@ public interface AdminInbox {
      * @param released issues that moved back from overdue or warning, 0 or more
      */
     void slaRecalculated(int becameBreached, int becameWarning, int released);
+
+    /**
+     * A company export the account asked for became {@code DONE} (S10B-AC-04): one {@code COMPANY_EXPORT_READY} item
+     * with the company's code for that account alone, and only while it is an {@code ACTIVE} admin: an account
+     * suspended or anonymized meanwhile gets none (acceptance.md 5절 16). No email. Joins the caller's transaction,
+     * so call it after the export's row is written, and the account is read as that transaction sees it.
+     */
+    void companyExportReady(String companyCode, long accountId);
+
+    /**
+     * A company export became {@code FAILED} (S10B-AC-05, OPS-1): a {@code COMPANY_EXPORT_FAILED} item with the
+     * company's code for each admin who is {@code ACTIVE} now. No email. Joins the caller's transaction.
+     */
+    void companyExportFailed(String companyCode);
+
+    /**
+     * Automatic issue cleanup was turned on or shortened and moves issues 24 hours from now (S10B-AC-19, OPS-1): an
+     * {@code ISSUE_RETENTION_ARMED} item for each admin who is {@code ACTIVE} now, about no issue, without an email.
+     * Joins the caller's transaction.
+     *
+     * @param dueIssues how many issues the cleanup would move now, 0 or more
+     * @param days the period in whole days, rounded down, 90 or more
+     */
+    void issueRetentionArmed(long dueIssues, long days);
 }

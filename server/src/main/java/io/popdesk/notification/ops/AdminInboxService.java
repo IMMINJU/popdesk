@@ -21,6 +21,13 @@ class AdminInboxService implements AdminInbox {
     /** The inbox item's {@code kind} of an SLA summary (S8B-AC-14). */
     static final String SLA_RECALCULATED = "SLA_RECALCULATED";
 
+    /** The inbox item's {@code kind}s of a company export's end (S10B-AC-04, S10B-AC-05). */
+    static final String COMPANY_EXPORT_READY = "COMPANY_EXPORT_READY";
+    static final String COMPANY_EXPORT_FAILED = "COMPANY_EXPORT_FAILED";
+
+    /** The inbox item's {@code kind} of automatic issue cleanup's first day (S10B-AC-19). */
+    static final String ISSUE_RETENTION_ARMED = "ISSUE_RETENTION_ARMED";
+
     private final OpsRepository ops;
     private final Recipients recipients;
     private final MailQueue mail;
@@ -52,5 +59,37 @@ class AdminInboxService implements AdminInbox {
         for (long admin : recipients.activeAdmins()) {
             ops.insertInboxSlaSummary(admin, SLA_RECALCULATED, becameBreached, becameWarning, released, now);
         }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void companyExportReady(String companyCode, long accountId) {
+        if (recipients.activeAdmins().contains(accountId)) {
+            ops.insertInbox(accountId, COMPANY_EXPORT_READY, companyCode, now());
+        }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void companyExportFailed(String companyCode) {
+        Instant now = now();
+        for (long admin : recipients.activeAdmins()) {
+            ops.insertInbox(admin, COMPANY_EXPORT_FAILED, companyCode, now);
+        }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void issueRetentionArmed(long dueIssues, long days) {
+        Instant now = now();
+        int count = (int) Math.min(dueIssues, Integer.MAX_VALUE);
+        int whole = (int) Math.min(days, Integer.MAX_VALUE);
+        for (long admin : recipients.activeAdmins()) {
+            ops.insertInboxRetention(admin, ISSUE_RETENTION_ARMED, count, whole, now);
+        }
+    }
+
+    private Instant now() {
+        return clock.instant().truncatedTo(ChronoUnit.MICROS);
     }
 }

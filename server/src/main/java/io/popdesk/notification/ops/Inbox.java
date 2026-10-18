@@ -53,9 +53,12 @@ public class Inbox {
      * company, or the company a membership request is about. {@code linkedIssue} is the linked issue that
      * changed, as it is now, of the items {@code LINKED_ISSUE_*}; null for the other kinds (S6C-AC-33).
      * {@code slaSummary} is the counts of a {@code SLA_RECALCULATED} item; null for the other kinds (S8B-AC-15).
+     * {@code retentionCount} and {@code retentionDays} are the numbers of an {@code ISSUE_RETENTION_ARMED} item; null
+     * for the other kinds (S10B-AC-19).
      */
     public record Item(long id, String kind, Issue issue, String companyCode, Long commentId, Actor actor,
-            Instant createdAt, Instant readAt, Task task, Issue linkedIssue, SlaCounts slaSummary) {}
+            Instant createdAt, Instant readAt, Task task, Issue linkedIssue, SlaCounts slaSummary,
+            Integer retentionCount, Integer retentionDays) {}
 
     /** The task an item is about, with its title as it is now (S6B-AC-33). */
     public record Task(long id, String title) {}
@@ -125,7 +128,8 @@ public class Inbox {
         return new Item(row.id(), row.kind(), issue, issue == null ? row.companyCode() : issue.companyCode(),
                 row.commentId(), row.actorId() == null ? null : actors.get(row.actorId()), row.createdAt(),
                 row.readAt(), taskTitle == null ? null : new Task(row.taskId(), taskTitle),
-                row.linkedIssueId() == null ? null : issues.get(row.linkedIssueId()), row.slaSummary());
+                row.linkedIssueId() == null ? null : issues.get(row.linkedIssueId()), row.slaSummary(),
+                row.retentionCount(), row.retentionDays());
     }
 
     private static <T> Set<T> distinct(List<InboxRow> rows, Function<InboxRow, T> value) {

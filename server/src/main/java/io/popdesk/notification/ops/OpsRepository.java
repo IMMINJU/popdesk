@@ -24,10 +24,13 @@ public class OpsRepository {
      * null for the other kinds. {@code issueId}, {@code commentId}, and {@code actorId} are those of an
      * item about an issue; all null for the items of admins that are about none. {@code linkedIssueId} is the
      * linked issue that changed, of the items {@code LINKED_ISSUE_*} only (S6C-AC-31). {@code slaSummary} holds the
-     * counts of a {@code SLA_RECALCULATED} item, null for the other kinds (S8B-AC-15).
+     * counts of a {@code SLA_RECALCULATED} item, null for the other kinds (S8B-AC-15). {@code retentionCount} and
+     * {@code retentionDays} are the numbers of an {@code ISSUE_RETENTION_ARMED} item, null for the other kinds
+     * (S10B-AC-19).
      */
     public record InboxRow(long id, String kind, String companyCode, UUID issueId, Long commentId, Long actorId,
-            Instant createdAt, Instant readAt, Long taskId, UUID linkedIssueId, SlaCounts slaSummary) {}
+            Instant createdAt, Instant readAt, Long taskId, UUID linkedIssueId, SlaCounts slaSummary,
+            Integer retentionCount, Integer retentionDays) {}
 
     /** The three counts of a {@code SLA_RECALCULATED} item (S8B-AC-14). */
     public record SlaCounts(int becameBreached, int becameWarning, int released) {}
@@ -109,6 +112,13 @@ public class OpsRepository {
                 .params(accountId, kind, becameBreached, becameWarning, released, Timestamp.from(now)).update();
     }
 
+    /** An {@code ISSUE_RETENTION_ARMED} item: about no issue, with the count and the days (S10B-AC-19). */
+    void insertInboxRetention(long accountId, String kind, int count, int days, Instant now) {
+        jdbc.sql("insert into notification (tenant_id, account_id, kind, retention_count, retention_days, created_at) "
+                        + "values (1, ?, ?, ?, ?, ?)")
+                .params(accountId, kind, count, days, Timestamp.from(now)).update();
+    }
+
     /** An item about an issue: the issue, the comment if it is about one, and who did it. */
     void insertInbox(long accountId, String kind, UUID issueId, Long commentId, long actorId, Instant now) {
         jdbc.sql("insert into notification (tenant_id, account_id, kind, issue_id, comment_id, actor_id, "
@@ -141,7 +151,8 @@ public class OpsRepository {
      */
     List<InboxRow> listInbox(Shown shown, long offset, int limit) {
         return jdbc.sql("select id, kind, company_code, issue_id, comment_id, actor_id, created_at, read_at, task_id, "
-                        + "linked_issue_id, sla_became_breached, sla_became_warning, sla_released from notification "
+                        + "linked_issue_id, sla_became_breached, sla_became_warning, sla_released, retention_count, "
+                        + "retention_days from notification "
                         + "where " + Shown.SQL
                         + " order by account_id desc, id desc offset ? limit ?")
                 .params(with(shown.params(), offset, limit)).query(OpsRepository::inbox).list();
@@ -249,7 +260,8 @@ public class OpsRepository {
                 rs.getObject("actor_id", Long.class), instant(rs.getTimestamp("created_at")),
                 instant(rs.getTimestamp("read_at")), rs.getObject("task_id", Long.class),
                 rs.getObject("linked_issue_id", UUID.class), breached == null ? null
-                        : new SlaCounts(breached, rs.getInt("sla_became_warning"), rs.getInt("sla_released")));
+                        : new SlaCounts(breached, rs.getInt("sla_became_warning"), rs.getInt("sla_released")),
+                rs.getObject("retention_count", Integer.class), rs.getObject("retention_days", Integer.class));
     }
 
     private static Object[] with(Object[] first, Object... more) {
