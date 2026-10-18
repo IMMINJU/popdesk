@@ -337,6 +337,17 @@
   overflow-wrap: anywhere;
 }
 
+/* The 대상 button breaks between words too: "고객사 ACME · 계정 12" on one line pushed the table out
+   of its frame at 820px beside the 14rem of 바뀐 값 (slice 10a). Its height follows the lines. */
+.pd-audit .pd-table td .pd-button {
+  height: auto;
+  min-height: var(--button-height-sm);
+  padding-block: var(--space-1);
+  line-height: var(--text-sm-line);
+  text-align: start;
+  white-space: normal;
+}
+
 /* C-11 문의: a long company name does not squeeze the title to a few characters a line; a narrow
    window scrolls the table instead. */
 .pd-trash .pd-table .pd-trash-issue {
