@@ -24,13 +24,14 @@ import { AccountFinder } from '../app/AccountFinder';
 import { changeLines, KIND_GROUPS, kindsOfChoice, kindWord, NOT_SIGN_IN, targetOf, targetWord, type Target } from '../app/auditWords';
 import { SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
+import { startExport } from '../app/exportDownload';
 import { useLive, useLoad } from '../app/hooks';
 import { LoadFailed, NoPermission, PageTitle } from '../app/layout';
 import { t } from '../app/locale';
 import { TEXT } from '../app/messages';
 import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, pageHref, usePageMove, usePageParam } from '../app/paging';
-import { call, failureOf, type Failure } from '../app/result';
+import { call, type Failure } from '../app/result';
 import { useToLogin } from '../app/sessionContext';
 
 type AuditEntry = Schemas['AuditEntry'];
@@ -50,6 +51,7 @@ const TARGET_TYPES = ['ACCOUNT', 'COMPANY', 'DATABASE', 'AUDIT_LOG'] as const;
  * cannot see. The list is read again at once and once more after this long.
  */
 const EXPORT_RELOAD_MS = 1500;
+const EXPORT_BUSY = '다른 내보내기가 돌고 있습니다. 잠시 뒤 다시 하세요.';
 
 const KIND_OPTIONS: SelectOption[] = [
   { value: NOT_SIGN_IN, label: '로그인 기록 빼고' },
@@ -150,20 +152,6 @@ function exportHref(format: ExportFormat, query: FilterQuery): string {
     for (const item of Array.isArray(value) ? value : [value]) params.append(name, String(item));
   }
   return `${EXPORT_PATH}?${params.toString()}`;
-}
-
-type ExportCheck = { ok: true } | { ok: false; busy: boolean; failure: Failure };
-
-/** `HEAD` before the download (like an attachment), so a 503 or a 403 shows a band instead of an error page. */
-async function checkExport(format: ExportFormat, query: FilterQuery): Promise<ExportCheck> {
-  try {
-    const answer = await api.HEAD(EXPORT_PATH, { params: { query: { format, ...query } } });
-    if (answer.response.ok) return { ok: true };
-    // The 503 of a `HEAD` has no body to tell it by, only the status.
-    return { ok: false, busy: answer.response.status === 503, failure: failureOf(answer.response, answer.error) };
-  } catch {
-    return { ok: false, busy: false, failure: { kind: 'network' } };
-  }
 }
 
 /** "2026년 10월 6일 14:07" in the browser's time zone. */
@@ -303,7 +291,7 @@ export function C12AuditLog() {
   const [choosingActor, setChoosingActor] = useState(false);
   // Names of the accounts picked here; the address holds only the ID.
   const [actorNames, setActorNames] = useState<Record<number, string>>({});
-  const [exportProblem, setExportProblem] = useState<{ busy: boolean; failure: Failure } | null>(null);
+  const [exportProblem, setExportProblem] = useState<string | null>(null);
   const [verify, setVerify] = useState<Verify>({ state: 'idle' });
 
   // An answer to the export's `HEAD` belongs to the filters it was asked with (S1B-AC-38).
@@ -363,18 +351,22 @@ export function C12AuditLog() {
     return actorNames[accountId] ?? data?.items.find((e) => e.actor.accountId === accountId)?.actor.name ?? `계정 ${String(accountId)}`;
   };
 
-  const startExport = async (format: ExportFormat) => {
+  const exportAs = async (format: ExportFormat) => {
     setExportProblem(null);
     const asked = filterKey;
-    const query = queryOf(filters);
-    const check = await checkExport(format, query);
-    if (!live() || filterKeyRef.current !== asked) return;
+    const current = () => live() && filterKeyRef.current === asked;
+    const check = await startExport(exportHref(format, queryOf(filters)), {
+      navigate: (url) => {
+        if (current()) window.location.assign(url);
+      },
+      busyText: () => EXPORT_BUSY,
+    });
+    if (!current()) return;
     if (!check.ok) {
-      if (check.failure.kind === 'unauthenticated') toLogin();
-      else setExportProblem(check);
+      if (check.status === 401) toLogin();
+      else setExportProblem(check.text);
       return;
     }
-    window.location.assign(exportHref(format, query));
     reload();
     clearTimeout(laterReload.current);
     laterReload.current = setTimeout(reload, EXPORT_RELOAD_MS);
@@ -524,7 +516,7 @@ export function C12AuditLog() {
             <Button
               variant="secondary"
               onClick={() => {
-                void startExport('CSV');
+                void exportAs('CSV');
               }}
             >
               CSV로 내보내기
@@ -532,7 +524,7 @@ export function C12AuditLog() {
             <Button
               variant="secondary"
               onClick={() => {
-                void startExport('JSONL');
+                void exportAs('JSONL');
               }}
             >
               JSON Lines로 내보내기
@@ -557,12 +549,7 @@ export function C12AuditLog() {
           <p className="pd-audit-help">항목의 해시를 처음부터 다시 계산해, 고치거나 지운 흔적이 있는지 봅니다.</p>
         </div>
       </div>
-      {exportProblem &&
-        (exportProblem.busy ? (
-          <Alert tone="error">다른 내보내기가 돌고 있습니다. 잠시 뒤 다시 하세요.</Alert>
-        ) : (
-          <SaveFailure failure={exportProblem.failure} />
-        ))}
+      {exportProblem && <Alert tone="error">{exportProblem}</Alert>}
       <VerifyResult
         verify={verify}
         onShow={(occurredAt) => {
