@@ -47,7 +47,7 @@ describe('changeLines: 내보내기의 조건', () => {
     expect(filtered({ action: ['ACCOUNT_LOCKED', 'SIGN_IN_SUCCEEDED', 'SIGN_IN_FAILED'] })).toEqual(['조건: 종류: 로그인 기록']);
     expect(
       filtered({
-        action: ['COMPANY_STATUS_CHANGED', 'ISSUE_PURGED', 'LABEL_DELETED', 'COMPANY_CREATED', 'ISSUE_DELETED', 'LABEL_CREATED', 'COMPANY_UPDATED', 'ISSUE_RESTORED', 'LABEL_UPDATED'],
+        action: ['COMPANY_STATUS_CHANGED', 'ISSUE_PURGED', 'LABEL_DELETED', 'COMPANY_CREATED', 'ISSUE_DELETED', 'LABEL_CREATED', 'COMPANY_UPDATED', 'ISSUE_RESTORED', 'LABEL_UPDATED', 'COMPANY_EXPORTED', 'COMPANY_EXPORT_DOWNLOADED'],
       }),
     ).toEqual(['조건: 종류: 고객사']);
   });

@@ -31,3 +31,4 @@ web **/C12AuditLog.6b.test.tsx
 web **/C12AuditLog.7a.test.tsx
 web **/C12AuditLog.filters.test.tsx
 web **/C12AuditLog.test.tsx
+web **/auditWords.survivors.test.ts
