@@ -206,6 +206,11 @@ public class OpsRepository {
                 .update();
     }
 
+    /** Deletes every item of the account (S10A-AC-09). */
+    void deleteInboxOfAccount(long accountId) {
+        jdbc.sql("delete from notification where account_id = ?").param(accountId).update();
+    }
+
     /** Deletes the account's unread items of this kind about the comment. */
     void deleteUnreadInbox(long commentId, long accountId, String kind) {
         jdbc.sql("delete from notification where comment_id = ? and account_id = ? and kind = ? "

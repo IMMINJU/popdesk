@@ -55,4 +55,10 @@ public interface MailQueue {
      * the trash, so nothing about it is sent, not after a restore either.
      */
     void dropAbout(UUID issueId);
+
+    /**
+     * Deletes, in the caller's transaction, every email row to the account, whatever its state (S10A-AC-09):
+     * the account was anonymized, and nothing is sent to it again.
+     */
+    void dropTo(long recipientAccountId);
 }

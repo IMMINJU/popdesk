@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -103,6 +104,7 @@ public class AccountService {
     public AccountRow rename(CurrentAccount admin, long accountId, PatchText name) {
         return transactions.run(() -> {
             AccountRow account = accounts.lockById(accountId).orElseThrow(ApiException::notFound);
+            refuseAnonymized(account);
             List<ApiError.FieldError> errors = new ArrayList<>();
             String cleanName = name.required("name", InvitationService.NAME_MAX, errors);
             if (!errors.isEmpty()) {
@@ -173,6 +175,9 @@ public class AccountService {
             List<AccountRow> locked = accounts.lockWithActiveAdmins(accountId);
             AccountRow account = locked.stream().filter(a -> a.id() == accountId).findFirst()
                     .orElseThrow(ApiException::notFound);
+            if (!suspension) {
+                refuseAnonymized(account);
+            }
             if (!suspension && role == null) {
                 throw ApiException.invalid("role", "REQUIRED");
             }
@@ -229,6 +234,52 @@ public class AccountService {
     }
 
     /**
+     * The account's part of an anonymization (PII-4, S10A-AC-08 to S10A-AC-16, design.md 0절 7), in the
+     * caller's transaction, after the first part of the audit recalculation and before its second
+     * ({@code privacy.AnonymizationService}). As {@link #changeRoleOrSuspend} it locks the account and
+     * every {@code ACTIVE} admin first, then checks, in this order: an anonymized account (400
+     * {@code ACCOUNT_ANONYMIZED}), the caller's own (400 {@code OWN_ACCOUNT}), the last {@code ACTIVE}
+     * admin (400 {@code LAST_ADMIN}). Unlike a suspension it takes an account that is suspended already,
+     * or that never accepted its invitation.
+     *
+     * <p>Then the name and email become the anonymous ones and the account {@code SUSPENDED}; its password
+     * becomes {@link PasswordHashes#RESET}, never null, so it is not taken for an account that never
+     * accepted; the sign-in lock goes, and so do its invitation and reset link. With
+     * {@code clearAssignments} its open issues and {@code OPEN} tasks lose it as assignee, as a suspension
+     * does (S10A-AC-14). {@code ACCOUNT_ANONYMIZED} is recorded without the old name or email, with
+     * {@code clearedIssues} and {@code clearedTasks} as a suspension has them, and every session ends.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Suspension anonymize(CurrentAccount admin, long accountId, boolean clearAssignments,
+            AnonymousValues anonymous) {
+        List<AccountRow> locked = accounts.lockWithActiveAdmins(accountId);
+        AccountRow account = locked.stream().filter(a -> a.id() == accountId).findFirst()
+                .orElseThrow(ApiException::notFound);
+        refuseAnonymized(account);
+        if (account.id() == admin.id()) {
+            throw refused("OWN_ACCOUNT", "This cannot be done to your own account.");
+        }
+        if (activeAdmin(account) && locked.stream().noneMatch(a -> a.id() != accountId && activeAdmin(a))) {
+            throw refused("LAST_ADMIN", "This would leave no active admin.");
+        }
+        accounts.updateAnonymized(accountId, anonymous, PasswordHashes.RESET, now());
+        accounts.deleteInvitation(accountId);
+        resets.deleteOf(accountId);
+        Map<String, Object> changes = null;
+        int cleared = 0;
+        if (clearAssignments) {
+            OpenAssignments.Cleared both = assignments.clear(accountId, null, admin.id());
+            cleared = both.issues();
+            changes = new LinkedHashMap<>();
+            changes.put("clearedIssues", cleared);
+            both.putTasks(changes);
+        }
+        audit.record(admin.actor(), AuditAction.ACCOUNT_ANONYMIZED, target(accountId), changes);
+        sessions.endAll(accountId);
+        return new Suspension(accounts.findById(accountId).orElseThrow(), cleared);
+    }
+
+    /**
      * Makes a {@code SUSPENDED} account {@code ACTIVE} again (S1A-AC-35). An active account stays as it
      * is. An account that never accepted its invitation is not brought back this way; its invitation is
      * sent again instead.
@@ -236,6 +287,7 @@ public class AccountService {
     public AccountRow reactivate(CurrentAccount admin, long accountId) {
         AccountRow changed = transactions.run(() -> {
             AccountRow account = accounts.lockById(accountId).orElseThrow(ApiException::notFound);
+            refuseAnonymized(account);
             if (account.passwordHash() == null) {
                 throw refused("INVITATION_NOT_ACCEPTED", "This account never accepted its invitation. Send the "
                         + "invitation again instead.");
@@ -263,6 +315,7 @@ public class AccountService {
     public Optional<String> resetPassword(CurrentAccount admin, long accountId) {
         Optional<String> link = transactions.run(() -> {
             AccountRow account = accounts.lockById(accountId).orElseThrow(ApiException::notFound);
+            refuseAnonymized(account);
             if (account.status() != AccountStatus.ACTIVE) {
                 throw accountNotActive();
             }
@@ -294,6 +347,16 @@ public class AccountService {
         change.put("from", from);
         change.put("to", to);
         return change;
+    }
+
+    /**
+     * 400 {@code ACCOUNT_ANONYMIZED} for an anonymized account: nothing brings one back, and this check
+     * comes before the other 400s of a request (S10A-AC-13).
+     */
+    public static void refuseAnonymized(AccountRow account) {
+        if (account.anonymized()) {
+            throw refused("ACCOUNT_ANONYMIZED", "This account is anonymized.");
+        }
     }
 
     private static ApiException accountNotActive() {

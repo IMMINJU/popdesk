@@ -10,6 +10,7 @@ import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.account.AccountRepository;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
+import io.popdesk.helpdesk.account.AccountService;
 import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
@@ -21,6 +22,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -92,6 +94,7 @@ public class MembershipRequestService {
             CompanyRow company = companies.findByCode(viewer, request.companyCode())
                     .orElseThrow(ApiException::notFound);
             AccountRow account = accounts.findById(request.accountId()).orElseThrow(ApiException::notFound);
+            AccountService.refuseAnonymized(account);
             if (account.role() != Role.CUSTOMER) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "NOT_A_CUSTOMER", "The account is not a customer.");
             }
@@ -120,6 +123,15 @@ public class MembershipRequestService {
                     CompanyService.target(request.companyCode(), request.accountId()),
                     Map.of("email", request.email()));
         });
+    }
+
+    /**
+     * Puts the anonymous email and name of an anonymized account into its requests, in the caller's
+     * transaction (S10A-AC-10): the email and name the manager typed are copies of the person.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void anonymize(long accountId, String email, String name) {
+        requests.updateAnonymized(accountId, email, name);
     }
 
     private static ApiException closed() {

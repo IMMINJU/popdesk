@@ -14,6 +14,7 @@ import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
 import io.popdesk.helpdesk.account.AccountRepository;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
+import io.popdesk.helpdesk.account.AccountService;
 import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
 import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
@@ -272,14 +273,15 @@ public class CompanyService {
     }
 
     /**
-     * Makes a customer, invited or active, a member of a company (S1A-AC-50). Adding again changes
-     * nothing and is not audited again. A membership request that waits for this account in this company
+     * Makes a customer, invited or active, a member of a company (S1A-AC-50); an anonymized account is
+     * 400 {@code ACCOUNT_ANONYMIZED} (S10A-AC-13). Adding again changes nothing and is not audited again. A membership request that waits for this account in this company
      * is closed as approved (S2-AC-38).
      */
     public MemberRow addCustomer(Viewer viewer, AuditLog.Actor admin, String code, long accountId) {
         return transactions.run(() -> {
             CompanyRow company = companies.findByCode(viewer, code).orElseThrow(ApiException::notFound);
             AccountRow customer = accounts.findById(accountId).orElseThrow(ApiException::notFound);
+            AccountService.refuseAnonymized(customer);
             if (customer.role() != Role.CUSTOMER) {
                 throw ApiException.invalid("accountId", "UNKNOWN_VALUE");
             }

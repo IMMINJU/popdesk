@@ -52,7 +52,8 @@ public class PhotoRepository {
                 .params(accountId, png, png.length, Timestamp.from(now)).update();
     }
 
-    void delete(long accountId) {
+    /** Removes the account's photo; also for an anonymization, in its transaction (S10A-AC-09). */
+    public void delete(long accountId) {
         jdbc.sql("delete from account_photo where account_id = ?").param(accountId).update();
     }
 }

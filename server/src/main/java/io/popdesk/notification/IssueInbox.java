@@ -108,4 +108,10 @@ public interface IssueInbox {
      * account out of its mentions (S4-AC-56). Joins the caller's transaction.
      */
     void deleteUnreadMention(long commentId, long accountId);
+
+    /**
+     * Deletes every item in the account's inbox, read or not, of any kind (S10A-AC-09): the account was
+     * anonymized. Joins the caller's transaction.
+     */
+    void deleteOfAccount(long accountId);
 }

@@ -57,6 +57,11 @@ class PasswordResetRepository {
                 .params(Timestamp.from(now), accountId).update();
     }
 
+    /** The account's link, whatever its state (S10A-AC-09). */
+    void deleteOf(long accountId) {
+        jdbc.sql("delete from password_reset where account_id = ?").param(accountId).update();
+    }
+
     /** Deletes the links that were used or have expired by {@code now}; returns how many. */
     long deleteEnded(Instant now) {
         return jdbc.sql("delete from password_reset where used_at is not null or expires_at <= ?")

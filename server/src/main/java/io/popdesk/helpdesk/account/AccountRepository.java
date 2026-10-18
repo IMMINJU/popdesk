@@ -202,6 +202,17 @@ public class AccountRepository {
                 .params(role.name(), Timestamp.from(now), id).update();
     }
 
+    /**
+     * Anonymizing (PII-4, S10A-AC-08, S10A-AC-09): the anonymous name and email, {@code SUSPENDED}, the time
+     * of it, a password hash no password matches, and no wrong passwords or lock.
+     */
+    void updateAnonymized(long id, AnonymousValues anonymous, String passwordHash, Instant now) {
+        jdbc.sql("update account set name = ?, email = ?, status = ?, anonymized_at = ?, password_hash = ?, "
+                        + "failed_sign_ins = 0, locked_until = null, updated_at = ? where id = ?")
+                .params(anonymous.name(), anonymous.email(), AccountStatus.SUSPENDED.name(), Timestamp.from(now),
+                        passwordHash, Timestamp.from(now), id).update();
+    }
+
     void updateStatus(long id, AccountStatus status, Instant now) {
         jdbc.sql("update account set status = ?, updated_at = ? where id = ?")
                 .params(status.name(), Timestamp.from(now), id).update();
@@ -282,6 +293,11 @@ public class AccountRepository {
     void updateInvitationToken(long accountId, String tokenHash, Instant expiresAt) {
         jdbc.sql("update invitation set token_hash = ?, expires_at = ? where account_id = ?")
                 .params(tokenHash, Timestamp.from(expiresAt), accountId).update();
+    }
+
+    /** The account's invitation, accepted or not, and its token (S10A-AC-09). */
+    void deleteInvitation(long accountId) {
+        jdbc.sql("delete from invitation where account_id = ?").param(accountId).update();
     }
 
     /** When the invitation was cancelled; null for one that is open (again). */

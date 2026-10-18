@@ -190,9 +190,11 @@ public class InvitationService implements InvitationLinks {
 
     /**
      * A new link for an account that has not accepted yet (S0-AC-38): a new token, so the previous link
-     * stops working, valid for 7 days from now. Only without SMTP (S0-AC-39).
+     * stops working, valid for 7 days from now. Only without SMTP (S0-AC-39). An anonymized account is
+     * 400 {@code ACCOUNT_ANONYMIZED} before anything else (S10A-AC-13).
      */
     public String newLink(CurrentAccount admin, long accountId) {
+        accounts.findById(accountId).ifPresent(AccountService::refuseAnonymized);
         if (mail.enabled()) {
             throw ApiException.notFound();
         }
@@ -315,12 +317,11 @@ public class InvitationService implements InvitationLinks {
 
     /**
      * The invitation of an account that never accepted, with both rows locked: 404 for an account that
-     * does not exist, 400 for one that accepted before, also one suspended since.
+     * does not exist, 400 {@code ACCOUNT_ANONYMIZED} for an anonymized one (S10A-AC-13), 400 for one that
+     * accepted before, also one suspended since.
      */
     private InvitationState lockNeverAccepted(long accountId) {
-        if (accounts.findById(accountId).isEmpty()) {
-            throw ApiException.notFound();
-        }
+        AccountService.refuseAnonymized(accounts.findById(accountId).orElseThrow(ApiException::notFound));
         // An account without an invitation row was never invited: the first admin, who has a password.
         InvitationState state = accounts.lockInvitationState(accountId).orElse(null);
         if (state == null || state.accepted()) {

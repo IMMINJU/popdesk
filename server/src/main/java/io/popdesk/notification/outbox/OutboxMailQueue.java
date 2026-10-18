@@ -60,4 +60,10 @@ class OutboxMailQueue implements MailQueue {
     public void dropAbout(UUID issueId) {
         repository.deleteOfIssue(OutboxRepository.MAIL, issueId);
     }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void dropTo(long recipientAccountId) {
+        repository.deleteTo(OutboxRepository.MAIL, recipientAccountId);
+    }
 }

@@ -126,6 +126,15 @@ class MembershipRequestRepository {
                 .query(Long.class).optional();
     }
 
+    /**
+     * The copies of an anonymized account's email and name in its requests, whatever their state, become
+     * the anonymous values (S10A-AC-10).
+     */
+    void updateAnonymized(long accountId, String email, String name) {
+        jdbc.sql("update membership_request set email = ?, name = ? where account_id = ?")
+                .params(email, name, accountId).update();
+    }
+
     /** Closes an open request; false when it was closed already. */
     boolean updateClosed(long id, State state, long closedBy, Instant now) {
         return jdbc.sql("update membership_request set state = ?, closed_at = ?, closed_by = ? "

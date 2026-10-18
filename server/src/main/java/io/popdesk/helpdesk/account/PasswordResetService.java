@@ -160,6 +160,11 @@ public class PasswordResetService implements PasswordResetLinks {
         return Optional.empty();
     }
 
+    /** Deletes the account's link, whatever its state, in the caller's transaction (S10A-AC-09). */
+    void deleteOf(long accountId) {
+        resets.deleteOf(accountId);
+    }
+
     /**
      * A new token for the reset email the send loop is about to send: the database keeps only token
      * hashes, so the token made with the link cannot be mailed. The link keeps its expiry. Empty when the

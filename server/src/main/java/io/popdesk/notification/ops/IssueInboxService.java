@@ -75,4 +75,10 @@ class IssueInboxService implements IssueInbox {
     public void deleteUnreadMention(long commentId, long accountId) {
         ops.deleteUnreadInbox(commentId, accountId, Kind.MENTIONED.name());
     }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void deleteOfAccount(long accountId) {
+        ops.deleteInboxOfAccount(accountId);
+    }
 }
