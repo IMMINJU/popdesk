@@ -10,7 +10,7 @@ export interface paths {
         };
         /**
          * Accounts
-         * @description Every account, newest first (C-10). `role` narrows it, for example to pick an agent to assign (C-9); `status` and `q` narrow it further (S1A-AC-29).
+         * @description Every account, newest first (C-10). `role` narrows it, for example to pick an agent to assign (C-9); `status`, `q`, and `anonymized` narrow it further (S1A-AC-29, S10A-AC-36).
          */
         get: operations["listAccounts"];
         put?: never;
@@ -39,6 +39,50 @@ export interface paths {
          * @description Also for an account that has not accepted its invitation yet (S1A-AC-30).
          */
         patch: operations["updateAccount"];
+        trace?: never;
+    };
+    "/api/console/accounts/{accountId}/anonymize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Anonymize an account
+         * @description Cannot be undone (PII-4). The name becomes the anonymous name in the installation's language (`POPDESK_LOCALE`), the email `deleted-{id}@invalid`, and the status `SUSPENDED`; an `INVITED` account too (S10A-AC-08). In the same transaction it ends every session of the account and removes its profile photo, password, sign-in lock, invitation and password reset tokens, queued emails to it, and its inbox items (S10A-AC-09), puts the anonymous values into its membership requests (S10A-AC-10) and into its audit entries, and computes the audit chain again from the first changed entry (S10A-AC-17, S10A-AC-18). What it wrote stays, shown with the anonymous name (S10A-AC-11). Its old email can be invited again as a new account (S10A-AC-15). Recorded as `AUDIT_RECHAINED` and then `ACCOUNT_ANONYMIZED` (S10A-AC-16). Issues keep the account as assignee, marked `assigneeUnavailable`, unless `clearAssignments` is sent (S10A-AC-14).
+         */
+        post: operations["anonymizeAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/console/accounts/{accountId}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export an account's data
+         * @description One JSON file with the account, its profile photo, the issues it reported, and the comments and attachments it wrote (PII-3, S10A-AC-01 to S10A-AC-05), streamed. It holds no other account's ID, name, or email. An anonymized account is exported with its anonymous values and what it wrote (S10A-AC-07). The export is recorded as `ACCOUNT_EXPORTED` (S10A-AC-06). The response has `Cache-Control: no-store`.
+         */
+        get: operations["exportAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        /**
+         * Headers of an account export
+         * @description Answers as `exportAccount` would, without the body. The console calls it before it starts the download. It records nothing in the audit log and takes none of the 2 export places; it only answers 503 while both are taken.
+         */
+        head: operations["headAccountExport"];
+        patch?: never;
         trace?: never;
     };
     "/api/console/accounts/{accountId}/open-assignments": {
@@ -132,7 +176,7 @@ export interface paths {
         put?: never;
         /**
          * Suspend an account
-         * @description Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, S1A-AC-34). A suspended account cannot sign in and gets no email. Suspending an account that is already `SUSPENDED` is 200 too. Issues keep the account as assignee, marked `assigneeUnavailable`, unless `clearAssignments` is sent (S3-AC-31).
+         * @description Makes an `ACTIVE` account `SUSPENDED` and ends every session of it (S1A-AC-01, S1A-AC-34). A suspended account cannot sign in and gets no email. Suspending an account that is already `SUSPENDED` is 200 too, also when it is anonymized (S10A-AC-13). Issues keep the account as assignee, marked `assigneeUnavailable`, unless `clearAssignments` is sent (S3-AC-31).
          */
         post: operations["suspendAccount"];
         delete?: never;
@@ -1748,6 +1792,8 @@ export interface components {
             token: string;
         };
         Account: {
+            /** @description The account was anonymized (PII-4): `name` and `email` are the anonymous values, `status` is `SUSPENDED`, and nothing brings it back (S10A-AC-13). */
+            anonymized: boolean;
             /** Format: date-time */
             createdAt: string;
             email: string;
@@ -1763,6 +1809,96 @@ export interface components {
             role: "CUSTOMER" | "AGENT" | "ADMIN";
             /** @enum {string} */
             status: "INVITED" | "ACTIVE" | "SUSPENDED";
+        };
+        AccountExport: {
+            account: components["schemas"]["AccountExportAccount"];
+            /** @description Files the account uploaded and did not delete, without their content; temporary images not attached yet are left out (S10A-AC-04). Oldest first (`createdAt`, then ID). */
+            attachments: components["schemas"]["AccountExportAttachment"][];
+            /** @description Comments the account wrote and did not delete, internal ones included, on issues that are not purged (S10A-AC-03). Oldest first (`createdAt`, then ID). */
+            comments: components["schemas"]["AccountExportComment"][];
+            /**
+             * Format: date-time
+             * @description When the export started.
+             */
+            exportedAt: string;
+            /** @description Issues the account is the reporter of, filed on its behalf included; not the ones it filed for someone else. Issues in the trash are in it, purged ones are not (S10A-AC-02). Oldest first (`createdAt`, then ID). */
+            issues: components["schemas"]["AccountExportIssue"][];
+            /** @description Null without a profile photo, and for an anonymized account (S10A-AC-07). */
+            photo: components["schemas"]["AccountExportPhoto"] | null;
+        };
+        AccountExportAccount: {
+            anonymized: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description `deleted-{id}@invalid` for an anonymized account. */
+            email: string;
+            /** Format: int64 */
+            id: number;
+            /** @description The account's language, `en` or `ko`. */
+            locale: string;
+            /** @description The anonymous name for an anonymized account. */
+            name: string;
+            /** @enum {string} */
+            role: "CUSTOMER" | "AGENT" | "ADMIN";
+            /** @enum {string} */
+            status: "INVITED" | "ACTIVE" | "SUSPENDED";
+        };
+        AccountExportAttachment: {
+            /**
+             * Format: int64
+             * @description The comment it belongs to; null for a file on the issue itself.
+             */
+            commentId: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            fileName: string;
+            issueKey: string;
+            /**
+             * Format: int64
+             * @description Bytes.
+             */
+            size: number;
+        };
+        AccountExportComment: {
+            /** @description Markdown, as written (COM-6). */
+            content: string;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Null when it never changed.
+             */
+            editedAt: string | null;
+            internal: boolean;
+            issueKey: string;
+        };
+        AccountExportIssue: {
+            /**
+             * Format: date-time
+             * @description Null while it is open.
+             */
+            closedAt: string | null;
+            companyCode: string;
+            /** @description Markdown, as written (COM-6). */
+            content: string;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description When it went into the trash; null when it is not there.
+             */
+            deletedAt: string | null;
+            key: string;
+            private: boolean;
+            /** @enum {string} */
+            status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+            title: string;
+        };
+        AccountExportPhoto: {
+            /** @description The PNG file, Base64 (RFC 4648, with padding, no line breaks). */
+            base64: string;
+            /** @description Always `image/png`. */
+            contentType: string;
         };
         /** @description Error body. Clients choose the text they show by `code`; `message` is a default text for a `code` they do not know. */
         ApiError: {
@@ -1851,7 +1987,7 @@ export interface components {
              * @description The entry's place in the hash chain, from 1.
              */
             seq: number;
-            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`, `SLA_POLICY`, `BRANDING`) and the keys that name it (`accountId`, `code`). An issue deleted, restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is `{"type": "COMPANY", "code": …, "issueKey": …}`, with the issue's company and key and never its title, and `changes` is null (S7A-AC-07). A change of the SLA policy (`SLA_POLICY_CHANGED`) is `{"type": "SLA_POLICY", "version": …}` with the new version (S8A-AC-06). A change of the display name or the accent color (`BRANDING_CHANGED`) is `{"type": "BRANDING"}` (S9-AC-20); a new or removed logo (`BRANDING_LOGO_CHANGED`) is `{"type": "BRANDING", "theme": …}` with `LIGHT` or `DARK` (S9-AC-21). */
+            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`, `SLA_POLICY`, `BRANDING`) and the keys that name it (`accountId`, `code`). An issue deleted, restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is `{"type": "COMPANY", "code": …, "issueKey": …}`, with the issue's company and key and never its title, and `changes` is null (S7A-AC-07). A change of the SLA policy (`SLA_POLICY_CHANGED`) is `{"type": "SLA_POLICY", "version": …}` with the new version (S8A-AC-06). A change of the display name or the accent color (`BRANDING_CHANGED`) is `{"type": "BRANDING"}` (S9-AC-20); a new or removed logo (`BRANDING_LOGO_CHANGED`) is `{"type": "BRANDING", "theme": …}` with `LIGHT` or `DARK` (S9-AC-21). An account export or anonymization (`ACCOUNT_EXPORTED`, `ACCOUNT_ANONYMIZED`) is `{"type": "ACCOUNT", "accountId": …}`; the chain computed again after an anonymization (`AUDIT_RECHAINED`) is `{"type": "AUDIT_LOG"}` (S10A-AC-06, S10A-AC-16, S10A-AC-18). */
             target: {
                 [key: string]: unknown;
             } | null;
@@ -3002,6 +3138,8 @@ export interface components {
         };
         StreamingResponseBody: unknown;
         SuspendedAccount: {
+            /** @description The account was anonymized (PII-4): `name` and `email` are the anonymous values, `status` is `SUSPENDED`, and nothing brings it back (S10A-AC-13). */
+            anonymized: boolean;
             cleared: components["schemas"]["ClearedAssignments"];
             /** Format: date-time */
             createdAt: string;
@@ -3264,6 +3402,8 @@ export interface operations {
                 status?: "INVITED" | "ACTIVE" | "SUSPENDED";
                 /** @description Only accounts whose name or email holds this text, 1 to 100 characters. Case is ignored; `%` and `_` are ordinary characters (COM-5). */
                 q?: string;
+                /** @description `false`: only accounts that are not anonymized; `true`: only anonymized ones. Left out, both. The customer search of C-9 sends `false` (S10A-AC-36). */
+                anonymized?: boolean;
                 /** @description Page number, from 1. */
                 page?: number;
                 /** @description 1 to 100. */
@@ -3346,7 +3486,7 @@ export interface operations {
                     "application/json": components["schemas"]["Account"];
                 };
             };
-            /** @description `INVALID_INPUT`: `name` empty or over 50, or `null` (`REQUIRED`). */
+            /** @description `ACCOUNT_ANONYMIZED`: the account is anonymized; checked before the other 400s (S10A-AC-13). `INVALID_INPUT`: `name` empty or over 50, or `null` (`REQUIRED`). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3376,6 +3516,198 @@ export interface operations {
             /** @description `NOT_FOUND`: no such account. */
             404: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    anonymizeAccount: {
+        parameters: {
+            query?: {
+                /** @description `true`: in the same request, also clear the assignee of every issue counted by `countOpenAssignments` (S3-AC-69). Each of them gets a history entry by the caller, and no webhook message is sent (S3-AC-70). Left out or `false`, assignees stay. */
+                clearAssignments?: boolean;
+            };
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Anonymized; `anonymized` is `true`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuspendedAccount"];
+                };
+            };
+            /** @description `ACCOUNT_ANONYMIZED`: the account is anonymized; checked before the other 400s (S10A-AC-13). `OWN_ACCOUNT`: the caller's own account. `LAST_ADMIN`: no `ACTIVE` admin would be left (S10A-AC-12). Nothing changed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account. Also account 0, popdesk itself. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `ANONYMIZATION_RUNNING`: another anonymization is running; one runs at a time (S10A-AC-21). Nothing changed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    exportAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file. */
+            200: {
+                headers: {
+                    /** @description `attachment; filename="popdesk-account-{accountId}.json"`. */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountExport"];
+                };
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account. Also account 0, popdesk itself. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `SERVER_BUSY`: 2 account exports are running; try again after `Retry-After`. Counted apart from audit log exports. */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    headAccountExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The export would start. */
+            200: {
+                headers: {
+                    /** @description `attachment; filename="popdesk-account-{accountId}.json"`. */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account. Also account 0, popdesk itself. A `HEAD` response has no body. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `SERVER_BUSY`: 2 account exports are running; try again after `Retry-After`. A `HEAD` response has no body. */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again. */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -3453,7 +3785,7 @@ export interface operations {
                     "application/json": components["schemas"]["PasswordResetLink"];
                 };
             };
-            /** @description `ACCOUNT_NOT_ACTIVE`: the account is `INVITED` or `SUSPENDED`. */
+            /** @description `ACCOUNT_ANONYMIZED`: the account is anonymized; checked before the other 400s (S10A-AC-13). `ACCOUNT_NOT_ACTIVE`: the account is `INVITED` or `SUSPENDED`. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3511,7 +3843,7 @@ export interface operations {
                     "application/json": components["schemas"]["Account"];
                 };
             };
-            /** @description `INVITATION_NOT_ACCEPTED`: the account never accepted its invitation (a cancelled invitation); send the invitation again instead (S1A-AC-35). */
+            /** @description `ACCOUNT_ANONYMIZED`: the account is anonymized; checked before the other 400s (S10A-AC-13). `INVITATION_NOT_ACCEPTED`: the account never accepted its invitation (a cancelled invitation); send the invitation again instead (S1A-AC-35). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3573,7 +3905,7 @@ export interface operations {
                     "application/json": components["schemas"]["Account"];
                 };
             };
-            /** @description `INVALID_INPUT`: `role` missing (`REQUIRED`) or unknown (`UNKNOWN_VALUE`). `CUSTOMER_ROLE_FIXED`: `role` is `CUSTOMER`, or the account is a customer (S1A-AC-32). `OWN_ACCOUNT`: the caller's own account (S1A-AC-33). `LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81). */
+            /** @description `ACCOUNT_ANONYMIZED`: the account is anonymized; checked before the other 400s (S10A-AC-13). `INVALID_INPUT`: `role` missing (`REQUIRED`) or unknown (`UNKNOWN_VALUE`). `CUSTOMER_ROLE_FIXED`: `role` is `CUSTOMER`, or the account is a customer (S1A-AC-32). `OWN_ACCOUNT`: the caller's own account (S1A-AC-33). `LAST_ADMIN`: no `ACTIVE` admin would be left (S1A-AC-81). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3676,7 +4008,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -3744,7 +4076,7 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -3824,7 +4156,7 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -4785,7 +5117,7 @@ export interface operations {
                     "application/json": components["schemas"]["CompanyMember"];
                 };
             };
-            /** @description `INVALID_INPUT`: the account is not a customer (field `accountId` `UNKNOWN_VALUE`) (S1A-AC-51). `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S1A-AC-48). */
+            /** @description `ACCOUNT_ANONYMIZED`: the account is anonymized; checked before the other 400s (S10A-AC-13). `INVALID_INPUT`: the account is not a customer (field `accountId` `UNKNOWN_VALUE`) (S1A-AC-51). `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S1A-AC-48). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -5705,6 +6037,15 @@ export interface operations {
                     "application/json": components["schemas"]["InvitationLink"];
                 };
             };
+            /** @description `ACCOUNT_ANONYMIZED`: the account is anonymized; checked before the 404 for an account that is not `INVITED` (S10A-AC-13). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
             /** @description `UNAUTHENTICATED`. */
             401: {
                 headers: {
@@ -5754,7 +6095,7 @@ export interface operations {
                     "application/json": components["schemas"]["InvitationResult"];
                 };
             };
-            /** @description `INVITATION_ALREADY_ACCEPTED`: the account accepted its invitation before (S1A-AC-41). */
+            /** @description `ACCOUNT_ANONYMIZED`: the account is anonymized; checked before the other 400s (S10A-AC-13). `INVITATION_ALREADY_ACCEPTED`: the account accepted its invitation before (S1A-AC-41). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -8165,7 +8506,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description `NOT_A_CUSTOMER`: the account is an agent or an admin. `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-36). */
+            /** @description `ACCOUNT_ANONYMIZED`: the account of the request is anonymized; checked before the other 400s (S10A-AC-13). `NOT_A_CUSTOMER`: the account is an agent or an admin. `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-36). */
             400: {
                 headers: {
                     [name: string]: unknown;
