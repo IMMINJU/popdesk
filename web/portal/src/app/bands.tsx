@@ -1,1 +1,1 @@
-export { FieldSummary, RateLimitBand, SaveFailure } from '@popdesk/app/bands';
+export { FieldSummary, OidcSignIn, RateLimitBand, SaveFailure } from '@popdesk/app/bands';

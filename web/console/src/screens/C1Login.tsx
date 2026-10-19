@@ -3,8 +3,8 @@ import { Alert, Button, PasswordField, TextField } from '@popdesk/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type SubmitEvent } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
 import { api } from '../api';
-import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
-import { useCooldown, useDocumentTitle, useFieldErrors } from '../app/hooks';
+import { FieldSummary, OidcSignIn, RateLimitBand, SaveFailure } from '../app/bands';
+import { useCooldown, useDocumentTitle, useFieldErrors, useOidcBand, useSignInOptions } from '../app/hooks';
 import { TEXT } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { call, type Failure } from '../app/result';
@@ -13,6 +13,8 @@ import { Brand } from '../app/layout';
 
 const SIGN_IN_FAILED = '이메일 또는 비밀번호가 맞지 않습니다.';
 
+const loadSignInOptions = () => call(api.GET('/api/public/sign-in-options'));
+
 export function C1Login() {
   const navigate = useLiveNavigate();
   const location = useLocation();
@@ -20,6 +22,8 @@ export function C1Login() {
   const { setMe } = useSession();
   const next = safeNext(params.get('next'));
   const expired = (location.state as LoginState | null)?.expired === true;
+  const oidc = useSignInOptions(loadSignInOptions);
+  const oidcBand = useOidcBand();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,6 +73,7 @@ export function C1Login() {
     setPending(true);
     setFailure(null);
     setWrong(false);
+    oidcBand.clear();
     cooldown.clearEnded();
     fields.clear();
     const result = await call(api.POST('/api/public/sign-in', { body: { email, password } }));
@@ -108,6 +113,7 @@ export function C1Login() {
             void submit(e);
           }}
         >
+          {oidcBand.text !== null && <Alert tone="error">{oidcBand.text}</Alert>}
           {expired && !wrong && <Alert tone="info">{TEXT.sessionEnded}</Alert>}
           {wrong && <Alert tone="error">{SIGN_IN_FAILED}</Alert>}
           <FieldSummary summary={fields.summary} />
@@ -143,6 +149,8 @@ export function C1Login() {
         <p className="pd-auth-links">
           <Link to="/forgot-password">비밀번호를 잊었나요?</Link>
         </p>
+        {/* The address's next as it is: the server checks it (11 screens.md, C-7 웹 점검 D1). */}
+        {oidc && <OidcSignIn next={params.get('next')} />}
       </div>
     </main>
   );
