@@ -148,7 +148,7 @@ export function account(over: Partial<Account> = {}): Account {
 }
 
 export function member(over: Partial<CompanyMember> = {}): CompanyMember {
-  return { accountId: 11, email: 'kim@acme.test', name: '김고객', status: 'ACTIVE', photoUpdatedAt: null, manager: false, ...over };
+  return { accountId: 11, email: 'kim@acme.test', name: '김고객', status: 'ACTIVE', photoUpdatedAt: null, manager: false, anonymized: false, ...over };
 }
 
 export function invitation(over: Partial<PendingInvitation> = {}): PendingInvitation {
