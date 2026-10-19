@@ -69,6 +69,9 @@ const ACCOUNT_ERRORS: Record<string, string> = {
  * The 익명화 dialog says OWN_ACCOUNT in its own words: the shared text is about 정지 and 역할.
  * AUDIT_CHAIN_BROKEN comes only from 익명화; its `brokenSeq` is not shown (S10A-AC-37).
  */
+// 연결 풀기 (11 screens.md C-10): a 404 means the link is gone already.
+const UNLINK_ERRORS: Record<string, string> = { ...ACCOUNT_ERRORS, NOT_FOUND: '이미 연결이 풀렸습니다.' };
+
 const ANONYMIZE_ERRORS: Record<string, string> = {
   ...ACCOUNT_ERRORS,
   OWN_ACCOUNT: '자기 계정은 익명화할 수 없습니다.',
@@ -172,7 +175,7 @@ function NewLinkDialog(props: { account: Account | null; onClose: () => void }) 
 }
 
 /** A row action that asks first. */
-type AskedAction = 'suspend' | 'role' | 'reset' | 'cancel';
+type AskedAction = 'suspend' | 'role' | 'reset' | 'cancel' | 'unlink';
 /** A row action with a dialog. */
 type OpenedAction = AskedAction | 'rename' | 'anonymize';
 
@@ -188,7 +191,9 @@ interface ActionDialogProps {
  * opening, so an answer that comes after it closed finds nothing to change: the
  * next dialog starts without the error or the link of the one before (S1A-AC-58).
  */
-function AskDialog(props: ActionDialogProps & { action: AskedAction; mailEnabled: boolean; onLink: (link: string) => void }) {
+function AskDialog(
+  props: ActionDialogProps & { action: AskedAction; mailEnabled: boolean; onLink: (link: string) => void; onUnlinked: (accountId: number) => void },
+) {
   const toast = useToast();
   const live = useLive();
   const [pending, setPending] = useState(false);
@@ -224,12 +229,18 @@ function AskDialog(props: ActionDialogProps & { action: AskedAction; mailEnabled
       const result = await call(api.POST('/api/console/accounts/{accountId}/password-reset', path));
       if (result.ok) link = result.data.resetLink;
       else failed = result.failure;
-    } else {
+    } else if (action === 'cancel') {
       const result = await call(api.POST('/api/console/invitations/{accountId}/cancel', path));
       if (!result.ok) failed = result.failure;
+    } else {
+      const result = await call(api.DELETE('/api/console/accounts/{accountId}/oidc-link', path));
+      if (!result.ok) failed = result.failure;
+      // The badge goes before the list comes back; a late answer leaves it to the list (C-7 웹 점검 D2).
+      else if (live()) props.onUnlinked(account.id);
     }
     // The row may have changed on the server either way (a 400 often means the list is old).
-    if (failed === null || failed.kind === 'rejected' || failed.kind === 'notFound') props.onChanged();
+    // 연결 풀기 reads the list again after any answer, like 익명화.
+    if (failed === null || failed.kind === 'rejected' || failed.kind === 'notFound' || action === 'unlink') props.onChanged();
     if (!live()) return;
     setPending(false);
     if (failed !== null) {
@@ -239,6 +250,7 @@ function AskDialog(props: ActionDialogProps & { action: AskedAction; mailEnabled
     if (action === 'suspend') toast(`${account.name} 님을 정지했습니다${clearedText(cleared)}`);
     else if (action === 'role') toast(`${account.name} 님의 역할을 ${ROLE_TO[nextRole]} 바꿨습니다`);
     else if (action === 'cancel') toast('초대를 취소했습니다');
+    else if (action === 'unlink') toast('OIDC 연결을 풀었습니다.');
     else if (link === null) toast('재설정 메일을 보냈습니다.');
     else props.onLink(link);
     props.onClose();
@@ -269,6 +281,12 @@ function AskDialog(props: ActionDialogProps & { action: AskedAction; mailEnabled
       confirm: '초대 취소',
       danger: true,
     },
+    unlink: {
+      title: 'OIDC 연결을 풀까요?',
+      text: `${account.name}님이 로그인한 곳에서 모두 로그아웃됩니다. 다음에 회사 계정으로 로그인하면 그때의 이메일로 다시 연결됩니다.`,
+      confirm: '연결 풀기',
+      danger: true,
+    },
   }[action];
 
   return (
@@ -280,12 +298,12 @@ function AskDialog(props: ActionDialogProps & { action: AskedAction; mailEnabled
           <p>{asks.text}</p>
           {action === 'reset' && !props.mailEnabled && <p>메일 설정이 없으면 메일 대신 재설정 링크를 이 화면에 한 번 보입니다.</p>}
           {action === 'suspend' && <ClearAssignments name={account.name} open={open} scope="all" checked={clear} onChange={setClear} />}
-          {action !== 'suspend' && action !== 'role' && (
+          {action !== 'suspend' && action !== 'role' && action !== 'unlink' && (
             <p className="pd-muted">
               {account.name}({account.email})
             </p>
           )}
-          <ActionFailure failure={failure} />
+          <ActionFailure failure={failure} {...(action === 'unlink' ? { known: UNLINK_ERRORS } : {})} />
         </>
       }
       confirmLabel={asks.confirm}
@@ -544,6 +562,10 @@ export function C10MemberList() {
   const cancelled = new Set(data?.cancelled ?? []);
   const filtered = role !== '' || status !== '' || q !== '';
 
+  // 연결 풀기 took: those rows lose the badge until the list read again comes back (C-7 웹 점검 D2).
+  const [unlinked, setUnlinked] = useState<{ of: ListData | undefined; ids: readonly number[] }>({ of: undefined, ids: [] });
+  const linked = (a: Account) => a.oidcLinked && !(unlinked.of === data && unlinked.ids.includes(a.id));
+
   /** What the row shows: an account whose invitation was cancelled is `SUSPENDED` in the API. */
   const shownStatus = (a: Account): AccountStatus => (a.status === 'SUSPENDED' && cancelled.has(a.id) ? 'INVITE_CANCELLED' : a.status);
 
@@ -675,6 +697,15 @@ export function C10MemberList() {
         });
       }
     }
+    // 11 screens.md C-10: only a linked account, whatever its status.
+    if (linked(a)) {
+      items.push({
+        label: 'OIDC 연결 풀기',
+        onSelect: () => {
+          open('unlink', a);
+        },
+      });
+    }
     if (!mine) {
       items.push({
         label: '익명화',
@@ -695,6 +726,7 @@ export function C10MemberList() {
         <span className="pd-person">
           <Avatar name={a.name} photoUrl={photoUrl(a.id, a.photoUpdatedAt)} size="sm" decorative />
           <span>{a.name}</span>
+          {linked(a) && <Badge tone="neutral">OIDC 연결</Badge>}
         </span>
       ),
       sticky: true,
@@ -865,6 +897,9 @@ export function C10MemberList() {
           onChanged={reload}
           onLink={(link) => {
             setShownLink({ kind: 'reset', account: opened.account, link });
+          }}
+          onUnlinked={(accountId) => {
+            setUnlinked((now) => ({ of: data, ids: [...(now.of === data ? now.ids : []), accountId] }));
           }}
         />
       )}
