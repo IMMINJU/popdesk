@@ -15,7 +15,15 @@ import io.popdesk.support.MailInServer.Folder;
 import io.popdesk.support.MailServer;
 import io.popdesk.support.ReceivedMail;
 import io.popdesk.support.Unique;
+import jakarta.mail.Flags;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -41,7 +49,7 @@ import tools.jackson.databind.JsonNode;
  * else of {@code fixtures} works.
  *
  * <p>Tests share the mailbox, the clock, and the rounds: each one makes its own people and companies, finds its mail by
- * the {@code Message-ID} or subject it made, and moves the clock only through {@link #rounds}.
+ * the {@code Message-ID} or subject it made, and moves the clock only through {@link #rounds} and {@link #passTime}.
  */
 @Import(MailInAppTest.MailInSettings.class)
 @TestPropertySource(properties = {MailInAppTest.OWN_CONTEXT,
@@ -203,9 +211,17 @@ public abstract class MailInAppTest extends ConnectedAppTest {
 
     // Mail in
 
-    /** Puts the mail in the incoming folder (unread, received now). */
+    /**
+     * Puts the mail in the incoming folder, unread, received ({@code INTERNALDATE}) at the app's time now, so the
+     * mailbox cleanup (90 days by the app's clock) never takes a mail a test has just put in.
+     */
     protected void send(Inbound mail) {
-        mailIn().deliver(mail.bytes());
+        send(mail.bytes());
+    }
+
+    /** Puts these raw bytes in the incoming folder as {@link #send(Inbound)} does. */
+    protected void send(byte[] raw) {
+        mailIn().deliver(Folder.INBOUND, raw, new Flags(), clock.instant());
     }
 
     /** A mail from the person (their registered address in {@code From}). */
@@ -218,20 +234,76 @@ public abstract class MailInAppTest extends ConnectedAppTest {
         return mailIn().foldersOf(mail.messageId());
     }
 
+    // Time
+
+    /**
+     * Moves the clock by {@code time} (more than a round), signs {@link #admin} in again (the session may have ended),
+     * and waits for a good round after the move. Gives the time of that round.
+     */
+    protected Instant passTime(Duration time) {
+        clock.advance(time);
+        admin = fixtures.signInAgain(admin);
+        rounds = new Rounds(admin, clock);
+        return rounds.next();
+    }
+
+    // Received-mail records (DB: what HTTP does not show)
+
+    /**
+     * The received-mail record of a mail with one {@code From} address and a {@code Message-ID}, found by its key
+     * (acceptance.md 2절: SHA-256 of the address in lower case, a line break, and the {@code Message-ID} without its
+     * angle brackets); null while there is none. The key may be stored as hex or base64.
+     */
+    protected Map<String, Object> received(String fromAddress, String messageId) {
+        List<Map<String, Object>> rows = receivedRows(fromAddress, messageId);
+        assertThat(rows).as("received-mail records of " + messageId).hasSizeLessThanOrEqualTo(1);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    /** Every received-mail record with the key of {@link #received}. */
+    protected List<Map<String, Object>> receivedRows(String fromAddress, String messageId) {
+        String id = messageId.strip().replaceAll("^<", "").replaceAll(">$", "").strip();
+        byte[] key = sha256((fromAddress.toLowerCase(Locale.ROOT) + "\n" + id).getBytes(StandardCharsets.UTF_8));
+        String hex = HexFormat.of().formatHex(key);
+        return db.rows("select * from mail_received where message_key in (?, ?, ?, ?)", hex,
+                hex.toUpperCase(Locale.ROOT), Base64.getEncoder().encodeToString(key),
+                Base64.getUrlEncoder().withoutPadding().encodeToString(key));
+    }
+
+    /** The {@code id} of the issue row with this key. */
+    protected Object issueId(String key) {
+        return db.row("select i.id from issue i join company c on c.id = i.company_id where c.code = ? and i.number = ?",
+                key.substring(0, key.lastIndexOf('-')), Integer.parseInt(key.substring(key.lastIndexOf('-') + 1)))
+                .get("id");
+    }
+
+    private static byte[] sha256(byte[] bytes) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(bytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     // Issues, comments, attachments
 
     /** Every issue the person filed, in any company, as the admin's console list ({@code reporter=}), all pages. */
     protected List<JsonNode> issuesOf(Session person) {
+        return issuesOf(person.accountId());
+    }
+
+    /** Every issue the account filed, as {@link #issuesOf(Session)}. */
+    protected List<JsonNode> issuesOf(long accountId) {
         List<JsonNode> out = new ArrayList<>();
         for (int page = 1; page <= 50; page++) {
-            ApiResponse r = admin.client().get("/api/console/issues").query("reporter", person.accountId())
+            ApiResponse r = admin.client().get("/api/console/issues").query("reporter", accountId)
                     .query("page", page).query("size", 100).expect(200);
             out.addAll(TalkFlow.items(r));
             if (page >= r.json().path("totalPages").asInt(0)) {
                 return out;
             }
         }
-        throw new AssertionError("More than 50 pages of issues of " + person.email());
+        throw new AssertionError("More than 50 pages of issues of account " + accountId);
     }
 
     /** The one issue the person filed; fails unless there is exactly one. Gives the console detail. */

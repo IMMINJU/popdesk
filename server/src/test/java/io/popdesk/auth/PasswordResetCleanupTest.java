@@ -36,7 +36,8 @@ class PasswordResetCleanupTest extends ConnectedAppTest {
      */
     private static final Set<String> EARLIER_JOBS = Set.of("outbox-failed-cleanup", "attachment-cleanup",
             "session-cleanup", "audit-retention", "idempotency-key-cleanup", "temporary-image-cleanup",
-            "trash-purge", "issue-auto-close", "sla-recalculate", "issue-retention", "company-export-expiry");
+            "trash-purge", "issue-auto-close", "sla-recalculate", "issue-retention", "company-export-expiry",
+            "mail-record-cleanup");
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
