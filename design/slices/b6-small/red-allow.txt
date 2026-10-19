@@ -1,0 +1,12 @@
+# 처음부터 통과해도 되는 테스트 | 까닭
+src/retention.b6.test.ts.자동 정리 켜짐 문장의 영어 (b6 묶음) > B6-AC-05 inbox.retentionArmedNone en, days 30: 수에 맞는 단수·복수와 같은 머리 | 0건 문장은 머리가 이미 "Automatic issue cleanup is on."이고 지금 글의 "days"가 30일의 복수와 같다. 단수(days 1)는 같은 묶음의 다른 경우가 본다
+src/retention.b6.test.ts.자동 정리 켜짐 문장의 영어 (b6 묶음) > B6-AC-05 한국어 두 문장은 그대로다 | 한국어 두 문장은 바뀌지 않는 것이 기준이다(screens.md 4절)
+src/indexHtml.b6.test.ts.포털 index.html (b6 묶음) > B6-AC-06 포털 index.html의 <title>은 하나이고 "popdesk"이며 한글이 없다 | 포털 index.html 제목은 이미 "popdesk"다(acceptance.md 1절 라-9). 바뀌지 않게 지킨다
+/../../console/src/screens/ScreensB6.overflow.stories.tsx.C 9 Customers 1280 Light Ko | 이 견본의 한국어 1280에서는 표 틀이 밀리지 않고 "삭제된 사용자"가 한 줄이다(오십 자 이름이 이름 칸을 넓힌다). 영어 1280과 820은 실패한다
+/../../console/src/screens/ScreensB6.overflow.stories.tsx.C 9 Customers 1280 Dark Ko | 위와 같다(어둡게)
+/../../console/src/screens/ScreensB6.overflow.stories.tsx.C 11 Trash 1280 Light Ko | 한국어 1280에서는 휴지통 표가 이미 틀 안에 든다. 영어 1280과 820은 실패한다
+/../../console/src/screens/ScreensB6.overflow.stories.tsx.C 11 Trash 1280 Dark Ko | 위와 같다(어둡게)
+/../../portal/src/screens/ScreensB6.overflow.stories.tsx.P 3 Filters 1280 Light Ko | 한국어에서는 체크가 둘째 줄에 고객사 Select와 같이 서고 지금 margin-top으로 아래쪽이 맞는다. 영어는 셋째 줄 첫 칸이 되어 실패한다
+/../../portal/src/screens/ScreensB6.overflow.stories.tsx.P 3 Filters 1280 Dark Ko | 위와 같다(어둡게)
+/../../portal/src/screens/ScreensB6.overflow.stories.tsx.P 3 Filters 820 Light Ko | 위와 같다(820에서도 한국어는 둘째 줄, Select 옆)
+/../../portal/src/screens/ScreensB6.overflow.stories.tsx.P 3 Filters 820 Dark Ko | 위와 같다(820, 어둡게)
