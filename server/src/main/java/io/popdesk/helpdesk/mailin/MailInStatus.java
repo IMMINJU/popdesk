@@ -49,8 +49,11 @@ class MailInStatus implements MailInState {
     @Override
     public Snapshot snapshot() {
         MailInSettings settings = setup.settings();
-        int retrying = records.countRetrying();
-        int quarantined = records.countQuarantinedSince(clock.instant().minus(QUARANTINE_WINDOW));
+        // Off, the counts are 0 (conventions.md "Receiving email"): nothing is tried again, and a sandbox's copy of
+        // the records is not its own to look after.
+        int retrying = settings.enabled() ? records.countRetrying() : 0;
+        int quarantined = settings.enabled()
+                ? records.countQuarantinedSince(clock.instant().minus(QUARANTINE_WINDOW)) : 0;
         synchronized (this) {
             return new Snapshot(settings.enabled(), settings.offReason(), lastSuccessAt, roundFailures,
                     lastFailureKind, lastFailureAt, retrying, quarantined);
