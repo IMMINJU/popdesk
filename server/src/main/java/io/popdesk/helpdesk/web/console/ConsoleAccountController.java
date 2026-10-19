@@ -1,6 +1,5 @@
 package io.popdesk.helpdesk.web.console;
 
-import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.AccountStatus;
@@ -57,7 +56,7 @@ class ConsoleAccountController {
     static Account account(AccountRow a) {
         return new Account(a.id(), a.email(), a.name(), a.role(), a.status(), a.createdAt().atOffset(ZoneOffset.UTC),
                 a.photoUpdatedAt() == null ? null : a.photoUpdatedAt().atOffset(ZoneOffset.UTC), a.anonymized(),
-                false);
+                a.oidcLinked());
     }
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`.";
@@ -201,7 +200,7 @@ class ConsoleAccountController {
     @DeleteMapping("/api/console/accounts/{accountId}/oidc-link")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void unlinkAccountOidc(@PathVariable long accountId) {
-        throw new NotImplementedException();
+        accounts.unlinkOidc(CurrentAccount.get(), accountId);
     }
 
     @Operation(operationId = "resetAccountPassword", summary = "Reset an account's password",

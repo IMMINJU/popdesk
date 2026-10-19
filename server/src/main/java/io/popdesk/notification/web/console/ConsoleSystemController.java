@@ -1,6 +1,7 @@
 package io.popdesk.notification.web.console;
 
 import io.popdesk.Paged;
+import io.popdesk.notification.OidcSignInState;
 import io.popdesk.notification.ops.CleanupJobs;
 import io.popdesk.notification.outbox.DeliveryStatus;
 import io.popdesk.notification.outbox.OutboxRepository.FailedRow;
@@ -15,7 +16,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,12 +34,15 @@ class ConsoleSystemController {
     private final CleanupJobs cleanupJobs;
     private final Resend resend;
     private final TestMail testMail;
+    private final OidcSignInState oidc;
 
-    ConsoleSystemController(DeliveryStatus status, CleanupJobs cleanupJobs, Resend resend, TestMail testMail) {
+    ConsoleSystemController(DeliveryStatus status, CleanupJobs cleanupJobs, Resend resend, TestMail testMail,
+            OidcSignInState oidc) {
         this.status = status;
         this.cleanupJobs = cleanupJobs;
         this.resend = resend;
         this.testMail = testMail;
+        this.oidc = oidc;
     }
 
     @Operation(operationId = "getSystemStatus", summary = "Outgoing channels, the sandbox, and cleanup jobs",
@@ -59,7 +62,13 @@ class ConsoleSystemController {
         return new SystemStatus(channel(status.mail()), channel(status.webhook()), channel(status.auditForward()),
                 status.sandbox(), status.sandboxMailToSet(), cleanupJobs.list().stream()
                         .map(job -> new CleanupJobStatus(job.name(), utc(job.lastRunAt()), job.deleted())).toList(),
-                new OidcStatus(false, List.of(), null, 0, null));
+                oidc(oidc.snapshot()));
+    }
+
+    private static OidcStatus oidc(OidcSignInState.Snapshot s) {
+        return new OidcStatus(s.enabled(), s.apps().stream().map(OidcApp::valueOf).toList(), utc(s.lastSuccessAt()),
+                s.providerFailures(), s.lastFailureKind() == null ? null
+                        : new OidcFailure(OidcFailureKind.valueOf(s.lastFailureKind().name()), utc(s.lastFailureAt())));
     }
 
     @Operation(operationId = "listFailedDeliveries", summary = "Outbox rows that stopped retrying",
