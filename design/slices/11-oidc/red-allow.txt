@@ -1,0 +1,2 @@
+# 처음부터 통과해도 되는 테스트 | 까닭
+io.popdesk.auth.OidcOffTest.signInOptionsSayOff | C-4 껍데기가 {oidc:false}를 주고, OIDC 설정이 없는 공용 컨텍스트에서는 그 값이 맞다
