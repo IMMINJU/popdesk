@@ -30,9 +30,10 @@ import org.springframework.stereotype.Component;
 /**
  * The IMAP mailbox of receiving email (design.md 0절 14, S12-AC-06, S12-AC-07, S12-AC-43): one connection per round,
  * with the properties of {@link MailInSettings#imapProperties()}. Mail is read with {@code BODY.PEEK}, so its read mark
- * stays as it is; mail a person marked deleted is left alone; handled mail is moved with {@code MOVE}, else with
- * {@code COPY}, {@code \Deleted}, and a {@code UID EXPUNGE} of that mail alone (UIDPLUS). A plain {@code EXPUNGE} is
- * never sent: it would take other mail a person marked deleted.
+ * stays as it is; mail a person marked deleted is left alone; handled mail is moved with {@code UID MOVE} (MOVE and
+ * UIDPLUS), with {@code MOVE} by sequence number (MOVE alone), else with {@code COPY}, {@code \Deleted}, and a
+ * {@code UID EXPUNGE} of that mail alone (UIDPLUS). A plain {@code EXPUNGE} is never sent: it would take other mail a
+ * person marked deleted.
  *
  * <p>What the mail library says of a failure can hold headers and addresses, so a failure is told by its kind
  * ({@link RoundFailure}) and the exception's class name only (S12-AC-34).
@@ -97,6 +98,7 @@ class ImapMailbox {
 
         private final Store store;
         private boolean move;
+        private boolean uidPlus;
         private Folder inbound;
         private Folder processed;
         private Folder quarantine;
@@ -108,7 +110,8 @@ class ImapMailbox {
         private void prepare(MailInSettings settings) {
             try {
                 move = hasCapability(store, "MOVE");
-                if (!move && !hasCapability(store, "UIDPLUS")) {
+                uidPlus = hasCapability(store, "UIDPLUS");
+                if (!move && !uidPlus) {
                     throw new RoundFailure(FailureKind.UNSUPPORTED, null);
                 }
                 inbound = store.getFolder(settings.folder());
@@ -180,7 +183,11 @@ class ImapMailbox {
             }
         }
 
-        /** Moves the mail to the folder of its destination (S12-AC-07). */
+        /**
+         * Moves the mail to the folder of its destination (S12-AC-07): {@code UID MOVE} with MOVE and UIDPLUS,
+         * {@code MOVE} with MOVE alone (Angus sends {@code UID MOVE} only with UIDPLUS), else {@code COPY},
+         * {@code \Deleted}, and {@code UID EXPUNGE}, which {@link #prepare} let through only with UIDPLUS.
+         */
         void move(Mail mail, Destination destination) {
             Folder to = destination == Destination.QUARANTINE ? quarantine : processed;
             try {
@@ -189,8 +196,10 @@ class ImapMailbox {
                     return;
                 }
                 Message[] one = {m};
-                if (move) {
+                if (move && uidPlus) {
                     extension(inbound, "moveUIDMessages", new Class<?>[] {Message[].class, Folder.class}, one, to);
+                } else if (move) {
+                    extension(inbound, "moveMessages", new Class<?>[] {Message[].class, Folder.class}, one, to);
                 } else {
                     inbound.copyMessages(one, to);
                     inbound.setFlags(one, new Flags(Flags.Flag.DELETED), true);
@@ -211,7 +220,7 @@ class ImapMailbox {
         int deleteReceivedBefore(Instant before) {
             int deleted = 0;
             try {
-                if (!hasCapability(store, "UIDPLUS")) {
+                if (!uidPlus) {
                     return 0;
                 }
                 for (Folder folder : List.of(processed, quarantine)) {
@@ -273,8 +282,8 @@ class ImapMailbox {
 
     /**
      * Calls a method of the IMAP provider that the Jakarta Mail API has no name for: {@code hasCapability},
-     * {@code moveUIDMessages} (MOVE), {@code expunge(Message[])} (UID EXPUNGE). The provider (Eclipse Angus) is there
-     * when the app runs, not when it is compiled.
+     * {@code moveUIDMessages} (UID MOVE), {@code moveMessages} (MOVE), {@code expunge(Message[])} (UID EXPUNGE). The
+     * provider (Eclipse Angus) is there when the app runs, not when it is compiled.
      */
     private static Object extension(Object target, String method, Class<?>[] types, Object... args)
             throws MessagingException {
