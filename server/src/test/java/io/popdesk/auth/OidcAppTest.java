@@ -1,7 +1,12 @@
 package io.popdesk.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.popdesk.privacy.PrivacySteps;
+import io.popdesk.support.ApiClient;
+import io.popdesk.support.ApiRequest;
 import io.popdesk.support.ConnectedAppTest;
+import io.popdesk.support.Fixtures.App;
 import io.popdesk.support.Fixtures.Role;
 import io.popdesk.support.Fixtures.Session;
 import io.popdesk.support.OidcProvider;
@@ -61,12 +66,26 @@ public abstract class OidcAppTest extends ConnectedAppTest {
         };
     }
 
-    /** {@code GET /api/console/accounts/{id}} as the admin; expects 200. */
+    /**
+     * The account's row of {@code GET /api/console/accounts} as the admin, newest first, page by page (the console
+     * has no {@code GET} of one account). Fails when no page holds it.
+     */
     protected JsonNode account(Session admin, long accountId) {
-        return admin.client().get(ACCOUNTS + "/" + accountId).expect(200).json();
+        for (int page = 1; page <= 1000; page++) {
+            JsonNode body = admin.client().get(ACCOUNTS).query("page", page).query("size", 100).expect(200).json();
+            for (JsonNode row : body.path("items")) {
+                if (row.path("id").asLong(-1) == accountId) {
+                    return row;
+                }
+            }
+            if (page >= body.path("totalPages").asInt(0)) {
+                break;
+            }
+        }
+        throw new AssertionError("No account " + accountId + " in the account list");
     }
 
-    /** Whether the account has an OIDC link, as {@code oidcLinked} of {@code GET /api/console/accounts/{id}}. */
+    /** Whether the account has an OIDC link, as {@code oidcLinked} of its row in the account list. */
     protected boolean linked(Session admin, long accountId) {
         JsonNode linked = account(admin, accountId).path("oidcLinked");
         if (!linked.isBoolean()) {
@@ -89,6 +108,23 @@ public abstract class OidcAppTest extends ConnectedAppTest {
         List<JsonNode> out = new ArrayList<>(byId.values());
         out.sort(Comparator.comparingLong(e -> e.path("seq").asLong()));
         return out;
+    }
+
+    /** {@code DELETE /api/console/accounts/{id}/oidc-link} in this client, not sent yet. */
+    protected static ApiRequest unlink(ApiClient client, long accountId) {
+        return client.delete(ACCOUNTS + "/" + accountId + "/oidc-link");
+    }
+
+    /**
+     * Links the person's account by an OIDC sign-in with a new sub and their verified email, in a new browser of
+     * their app; expects the session. Returns the sub.
+     */
+    protected String linkByOidc(Session person) {
+        String sub = OidcFlow.newSub();
+        ApiClient browser = person.app() == App.PORTAL ? portal() : console();
+        assertThat(oidc.signedIn(browser, person.app().api(), sub, oidc.claims(person.email())))
+                .as("account of the OIDC sign-in").isEqualTo(person.accountId());
+        return sub;
     }
 
     /** The {@code action} of each entry, in order. */
