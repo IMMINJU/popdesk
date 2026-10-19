@@ -10,6 +10,7 @@ import { useMainBusy } from '../app/busy';
 import { longDate } from '../app/dueDates';
 import { useLoad } from '../app/hooks';
 import { LoadFailed, PageTitle } from '../app/layout';
+import { t, tf } from '../app/locale';
 import { rateLimitedText } from '../app/messages';
 import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, usePageMove, usePageParam } from '../app/paging';
@@ -20,11 +21,10 @@ type MyTask = Schemas['MyTask'];
 type View = 'OPEN' | 'DONE';
 
 const PATH = '/tasks';
-const FAILED_TEXT = '작업을 바꾸지 못했습니다. 다시 해 보세요.';
-const VIEWS: { status: View; name: string; href: string; empty: string }[] = [
-  { status: 'OPEN', name: '할 일', href: PATH, empty: '맡은 작업이 없습니다.' },
-  { status: 'DONE', name: '끝낸 일', href: `${PATH}?status=DONE`, empty: '끝낸 작업이 없습니다.' },
-];
+const VIEWS = [
+  { status: 'OPEN', name: 'myTasks.openView', href: PATH, empty: 'myTasks.emptyOpen' },
+  { status: 'DONE', name: 'myTasks.doneView', href: `${PATH}?status=DONE`, empty: 'myTasks.emptyDone' },
+] as const satisfies readonly { status: View; name: Parameters<typeof t>[0]; href: string; empty: Parameters<typeof t>[0] }[];
 
 /** What "완료" did on a row: on its way, done, or refused with a failure. */
 type Finish = { state: 'pending' } | { state: 'done' } | { state: 'failed'; failure: Failure };
@@ -33,12 +33,12 @@ function issueHref(key: string): string {
   return `/issues/${encodeURIComponent(key)}`;
 }
 
-function dueCell(t: MyTask) {
-  if (t.dueDate === null) return null;
+function dueCell(task: MyTask) {
+  if (task.dueDate === null) return null;
   return (
     <span className="pd-inline pd-due-cell">
-      <time dateTime={t.dueDate}>{longDate(t.dueDate)}</time>
-      {t.overdue && <Badge tone="warning">지남</Badge>}
+      <time dateTime={task.dueDate}>{longDate(task.dueDate)}</time>
+      {task.overdue && <Badge tone="warning">{t('issueTasks.overdue')}</Badge>}
     </span>
   );
 }
@@ -79,7 +79,7 @@ export function C15MyTasks() {
   const columns: DataTableColumn<MyTask>[] = [
     {
       key: 'task',
-      header: '작업',
+      header: t('myTasks.task'),
       width: '14rem',
       cell: (t) => (
         <Link className="pd-wrap-cell" to={`${issueHref(t.issue.key)}#task-${String(t.id)}`}>
@@ -89,7 +89,7 @@ export function C15MyTasks() {
     },
     {
       key: 'issue',
-      header: '문의',
+      header: t('myTasks.issue'),
       width: '14rem',
       cell: (t) => (
         <Link className="pd-wrap-cell" to={issueHref(t.issue.key)}>
@@ -97,22 +97,22 @@ export function C15MyTasks() {
         </Link>
       ),
     },
-    { key: 'company', header: '고객사', cell: (t) => t.companyName },
-    { key: 'due', header: '마감일', cell: dueCell },
+    { key: 'company', header: t('myTasks.company'), cell: (t) => t.companyName },
+    { key: 'due', header: t('myTasks.dueDate'), cell: dueCell },
     status === 'OPEN'
-      ? { key: 'finish', header: '상태', cell: (t) => <FinishCell task={t} finish={finished[t.id]} onFinish={finish} /> }
-      : { key: 'doneAt', header: '끝낸 시각', align: 'end', cell: (t) => (t.doneAt === null ? null : <RelativeTime dateTime={t.doneAt} focusable={false} />) },
+      ? { key: 'finish', header: t('myTasks.status'), cell: (t) => <FinishCell task={t} finish={finished[t.id]} onFinish={finish} /> }
+      : { key: 'doneAt', header: t('myTasks.doneAt'), align: 'end', cell: (t) => (t.doneAt === null ? null : <RelativeTime dateTime={t.doneAt} focusable={false} />) },
   ];
 
   return (
     <div className="pd-screen pd-my-tasks">
       <div className="pd-screen-head">
-        <PageTitle titleRef={heading}>내 작업</PageTitle>
+        <PageTitle titleRef={heading}>{t('myTasks.title')}</PageTitle>
       </div>
-      <nav className="pd-views" aria-label="보기">
+      <nav className="pd-views" aria-label={t('myTasks.views')}>
         {VIEWS.map((v) => (
           <Link key={v.status} to={v.href} aria-current={v.status === status ? 'page' : undefined}>
-            {v.name}
+            {t(v.name)}
           </Link>
         ))}
       </nav>
@@ -130,13 +130,13 @@ export function C15MyTasks() {
         ))}
       {load.status !== 'failed' && (
         <DataTable
-          caption={`내 작업, ${String(data?.totalElements ?? 0)}건`}
+          caption={tf('myTasks.caption', { count: data?.totalElements ?? 0 })}
           columns={columns}
           rows={rows}
           rowKey={(t) => String(t.id)}
           status={firstLoad ? 'loading' : 'ready'}
           skeletonRows={load.slow ? 5 : 0}
-          empty={<EmptyState icon={<InboxIcon size={20} />} title={view?.empty ?? ''} />}
+          empty={<EmptyState icon={<InboxIcon size={20} />} title={t(view.empty)} />}
           density="compact"
         />
       )}
@@ -151,7 +151,7 @@ export function C15MyTasks() {
 /** "완료" of a row on 할 일, and what became of it. */
 function FinishCell(props: { task: MyTask; finish: Finish | undefined; onFinish: (t: MyTask) => Promise<void> }) {
   const { task, finish } = props;
-  if (finish?.state === 'done') return <span>완료했습니다</span>;
+  if (finish?.state === 'done') return <span>{t('myTasks.finished')}</span>;
   const pending = finish?.state === 'pending';
   return (
     <span className="pd-finish-cell">
@@ -161,17 +161,17 @@ function FinishCell(props: { task: MyTask; finish: Finish | undefined; onFinish:
         className="pd-button"
         data-variant="secondary"
         data-size="sm"
-        aria-label={`${task.title} 완료`}
+        aria-label={tf('myTasks.finishOf', { title: task.title })}
         aria-disabled={pending ? true : undefined}
         onClick={() => {
           if (!pending) void props.onFinish(task);
         }}
       >
-        <span className="pd-button-text">완료</span>
+        <span className="pd-button-text">{t('myTasks.finish')}</span>
       </button>
       {finish?.state === 'failed' && (
         <span role="alert" className="pd-field-error">
-          {finish.failure.kind === 'rateLimited' ? rateLimitedText(finish.failure.seconds) : FAILED_TEXT}
+          {finish.failure.kind === 'rateLimited' ? rateLimitedText(finish.failure.seconds) : t('issueTasks.failed')}
         </span>
       )}
     </span>

@@ -3,6 +3,7 @@
 import { commonKo } from './common.ko';
 import { portalKo } from './portal.ko';
 import { consoleAdminKo } from './consoleAdmin.ko';
+import { consoleIssuesKo } from './consoleIssues.ko';
 
 export const ko = {
   'passwordForgot.title': '비밀번호 찾기',
@@ -229,4 +230,5 @@ export const ko = {
   ...commonKo,
   ...portalKo,
   ...consoleAdminKo,
+  ...consoleIssuesKo,
 } as const;

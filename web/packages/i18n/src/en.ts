@@ -2,6 +2,7 @@
 import { commonEn } from './common.en';
 import { portalEn } from './portal.en';
 import { consoleAdminEn } from './consoleAdmin.en';
+import { consoleIssuesEn } from './consoleIssues.en';
 import type { ko } from './ko';
 
 export const en: Record<keyof typeof ko, string> = {
@@ -228,4 +229,5 @@ export const en: Record<keyof typeof ko, string> = {
   ...commonEn,
   ...portalEn,
   ...consoleAdminEn,
+  ...consoleIssuesEn,
 };

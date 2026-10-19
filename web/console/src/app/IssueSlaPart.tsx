@@ -3,8 +3,8 @@
 import type { Schemas } from '../api';
 import { slaWords } from './messages';
 import { SlaBadge } from './SlaBadge';
-import { runs, type GoalName } from './slaGoals';
-import { screenLocale } from './locale';
+import { goalText, runs, type GoalName } from './slaGoals';
+import { screenLocale, t, tf } from './locale';
 
 type SlaGoal = Schemas['SlaGoal'];
 
@@ -21,9 +21,22 @@ function dueText(iso: string): string {
   }).format(at);
 }
 
+/** "… 까지" in Korean, "by …" in English, around the `<time>`. */
+function DueBy(props: { dueAt: string }) {
+  const [before = '', after = ''] = t('sla.dueBy').split('{time}');
+  return (
+    <>
+      {before}
+      <time dateTime={props.dueAt}>{dueText(props.dueAt)}</time>
+      {after}
+    </>
+  );
+}
+
 function GoalLine(props: { name: GoalName; goal: SlaGoal }) {
-  const { name, goal } = props;
-  if (goal.state === null) return <li>{name}: 목표 없음</li>;
+  const { goal } = props;
+  const name = goalText(props.name);
+  if (goal.state === null) return <li>{tf('sla.noGoal', { name })}</li>;
   if (!runs(goal)) {
     // 지킴 or 못 지킴: the badge is the words.
     return (
@@ -34,7 +47,7 @@ function GoalLine(props: { name: GoalName; goal: SlaGoal }) {
   }
   return (
     <li>
-      {name}: {goal.dueAt !== null && <time dateTime={goal.dueAt}>{dueText(goal.dueAt)}</time>}까지
+      {name}: {goal.dueAt !== null && <DueBy dueAt={goal.dueAt} />}
       {goal.remainingMinutes !== null && `, ${slaWords(goal.remainingMinutes)}`} <SlaBadge state={goal.state} />
     </li>
   );

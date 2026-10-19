@@ -10,6 +10,7 @@ import { Disclosure } from './Disclosure';
 import { longDate } from './dueDates';
 import { LoadFailed } from './layout';
 import { linkChangeText } from './linkWords';
+import { screenLocale, t, tf } from './locale';
 import { toward } from './particles';
 import { call } from './result';
 import { useToLogin } from './sessionContext';
@@ -30,43 +31,48 @@ function priorityWord(value: string | null): string {
 
 /** "김고객 (고객) 님": a customer is marked, staff is not. */
 function called(person: { name: string | null; role: Person['role'] | null } | null): string {
-  if (!person || person.name === null) return '다른 사람';
-  return `${person.name}${person.role === 'CUSTOMER' ? ' (고객)' : ''} 님`;
+  if (!person || person.name === null) return t('history.someone');
+  return tf(person.role === 'CUSTOMER' ? 'history.customer' : 'history.person', { name: person.name });
+}
+
+/** The new value as the sentence takes it: Korean puts its particle after it, English says it as it is. */
+function to(word: string): string {
+  return screenLocale() === 'ko' ? toward(word) : word;
 }
 
 /** What one line says, and what it shows under itself. */
 function lineOf(entry: Entry, onBehalf: boolean, fileName: (id: string | null) => string): { text: ReactNode; detail?: ReactNode } {
   // popdesk itself (account 0) has no name.
-  const who = entry.actor.name === null ? '시스템이' : `${called(entry.actor)}이`;
-  if (entry.kind === 'CREATED') return { text: onBehalf ? `${who} 대리 등록했습니다` : `${who} 문의를 올렸습니다` };
+  const who = entry.actor.name === null ? t('inbox.system') : tf('history.subject', { person: called(entry.actor) });
+  if (entry.kind === 'CREATED') return { text: tf(onBehalf ? 'history.createdOnBehalf' : 'history.created', { who }) };
   switch (entry.field) {
     case 'STATUS':
-      return { text: `${who} 상태를 ${statusWord(entry.oldValue)}에서 ${toward(statusWord(entry.newValue))} 바꿨습니다` };
+      return { text: tf('history.status', { who, from: statusWord(entry.oldValue), to: to(statusWord(entry.newValue)) }) };
     case 'PRIORITY':
-      return { text: `${who} 우선순위를 ${priorityWord(entry.oldValue)}에서 ${toward(priorityWord(entry.newValue))} 바꿨습니다` };
+      return { text: tf('history.priority', { who, from: priorityWord(entry.oldValue), to: to(priorityWord(entry.newValue)) }) };
     case 'ASSIGNEE':
       // The contract leaves both values null for this field: the people say what changed.
-      if (entry.newPerson === null) return { text: `${who} 담당자를 비웠습니다` };
-      if (entry.oldPerson === null) return { text: `${who} 담당자를 ${called(entry.newPerson)}으로 정했습니다` };
-      return { text: `${who} 담당자를 ${called(entry.oldPerson)}에서 ${called(entry.newPerson)}으로 바꿨습니다` };
+      if (entry.newPerson === null) return { text: tf('history.assigneeCleared', { who }) };
+      if (entry.oldPerson === null) return { text: tf('history.assigneeSet', { who, to: to(called(entry.newPerson)) }) };
+      return { text: tf('history.assigneeChanged', { who, from: called(entry.oldPerson), to: to(called(entry.newPerson)) }) };
     case 'TITLE':
       return {
-        text: `${who} 제목을 고쳤습니다`,
+        text: tf('history.titleEdited', { who }),
         detail: (
           <p className="pd-history-titles">
-            <span className="pd-sr-only">전 제목</span>
+            <span className="pd-sr-only">{t('history.oldTitle')}</span>
             <span className="pd-muted">{entry.oldValue}</span>
             <span aria-hidden="true">→</span>
-            <span className="pd-sr-only">새 제목</span>
+            <span className="pd-sr-only">{t('history.newTitle')}</span>
             <span>{entry.newValue}</span>
           </p>
         ),
       };
     case 'CONTENT':
       return {
-        text: `${who} 내용을 고쳤습니다`,
+        text: tf('history.contentEdited', { who }),
         detail: (
-          <Disclosure label="전 내용 보기">
+          <Disclosure label={t('history.oldContent')}>
             {/* As written, not as markdown: this is what was replaced. */}
             <pre className="pd-plain-text">{entry.oldValue}</pre>
           </Disclosure>
@@ -75,15 +81,15 @@ function lineOf(entry: Entry, onBehalf: boolean, fileName: (id: string | null) =
     case 'ATTACHMENT':
       // The entry holds the ID alone (S5-AC-43): attached in `newValue`, deleted in `oldValue`.
       return entry.newValue !== null
-        ? { text: `${who} 첨부를 붙임: ${fileName(entry.newValue)}` }
-        : { text: `${who} 첨부를 지움: ${fileName(entry.oldValue)}` };
+        ? { text: tf('history.attached', { who, file: fileName(entry.newValue) }) }
+        : { text: tf('history.attachmentDeleted', { who, file: fileName(entry.oldValue) }) };
     case 'LABEL':
       // The name the label had then (S6A-AC-05): put on in `newValue`, taken off in `oldValue`.
-      return entry.newValue !== null ? { text: `${who} 라벨을 붙임: ${entry.newValue}` } : { text: `${who} 라벨을 뗌: ${entry.oldValue ?? ''}` };
+      return entry.newValue !== null ? { text: tf('history.labelAdded', { who, label: entry.newValue }) } : { text: tf('history.labelRemoved', { who, label: entry.oldValue ?? '' }) };
     case 'DUE_DATE':
-      if (entry.newValue === null) return { text: `${who} 마감일을 지웠습니다` };
-      if (entry.oldValue === null) return { text: `${who} 마감일을 ${toward(longDate(entry.newValue))} 정했습니다` };
-      return { text: `${who} 마감일을 ${longDate(entry.oldValue)}에서 ${toward(longDate(entry.newValue))} 바꿨습니다` };
+      if (entry.newValue === null) return { text: tf('history.dueCleared', { who }) };
+      if (entry.oldValue === null) return { text: tf('history.dueSet', { who, to: to(longDate(entry.newValue)) }) };
+      return { text: tf('history.dueChanged', { who, from: longDate(entry.oldValue), to: to(longDate(entry.newValue)) }) };
     case 'LINK': {
       // Slice 6c (6c-links screens.md 2절): the other issue's key leads to it, its title is under the line.
       const said = linkChangeText(who, entry.oldLink, entry.newLink);
@@ -103,7 +109,7 @@ function lineOf(entry: Entry, onBehalf: boolean, fileName: (id: string | null) =
       return { text: trashHistoryText(who, entry.oldValue, entry.newValue) };
     default:
       // A field of a later release.
-      return { text: `${who} 문의를 바꿨습니다` };
+      return { text: tf('history.changed', { who }) };
   }
 }
 
@@ -154,11 +160,11 @@ export function IssueHistory(props: IssueHistoryProps) {
   }, [open, issueKey, pages, version, retries]);
 
   // A deleted attachment has no name any more, and one that is not listed has none to show.
-  const fileName = (id: string | null) => props.attachments.find((a) => a.id === id)?.fileName ?? '지워진 파일';
+  const fileName = (id: string | null) => props.attachments.find((a) => a.id === id)?.fileName ?? t('history.deletedFile');
 
   return (
-    <Disclosure label="이력" kind="section" onToggle={setOpen}>
-      {answer === null && <p className="pd-muted">불러오는 중…</p>}
+    <Disclosure label={t('history.heading')} kind="section" onToggle={setOpen}>
+      {answer === null && <p className="pd-muted">{t('history.loading')}</p>}
       {answer?.failed && (
         <LoadFailed
           onRetry={() => {
@@ -190,7 +196,7 @@ export function IssueHistory(props: IssueHistoryProps) {
               setPages((n) => n + 1);
             }}
           >
-            더 보기
+            {t('history.more')}
           </Button>
         </div>
       )}

@@ -62,7 +62,7 @@ import { IssueTasks } from '../app/IssueTasks';
 import { useIssueTasks } from '../app/taskList';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
 import { useLiveNavigate } from '../app/navigate';
-import { t, tf } from '../app/locale';
+import { formatNumber, t, texts, tf } from '../app/locale';
 import { MentionPicker } from '../app/MentionPicker';
 import { useMentions } from '../app/mentions';
 import { IssueSlaPart } from '../app/IssueSlaPart';
@@ -77,19 +77,28 @@ type Comment = Schemas['Comment'];
 type Visibility = 'public' | 'internal';
 
 const LIST_SIZE = 100;
-const ISSUE_CLOSED_TEXT = '문의가 종료되어 댓글을 달 수 없습니다.';
-const CLOSE_TEXT = '이 문의를 종료할까요? 고객은 14일 안에 다시 열 수 있습니다.';
-const TRASH_TITLE = '이 문의를 지울까요?';
-const TRASH_TEXT = '휴지통으로 옮깁니다. 30일 안에는 휴지통에서 복구할 수 있고, 그 뒤에는 영구 삭제됩니다. 고객과 상담원에게 더는 보이지 않습니다.';
-const TRASH_FAILED = '문의를 지우지 못했습니다. 다시 해 보세요.';
+const WORDS = texts({
+  issueClosed: 'issueDetail.closedNoComment',
+  closeAsk: 'issueDetail.closeAsk',
+  trashTitle: 'issueDetail.trashTitle',
+  trashText: 'issueDetail.trashText',
+  trashFailed: 'issueDetail.trashFailed',
+});
 /** The band over the comments when an edit could not be saved any more. */
 const EDIT_GONE_TEXT = { closed: 'comment.editClosed', deleted: 'comment.alreadyDeleted', notFound: 'comment.notFound' } as const;
-const CHANNEL_WORDS: Record<Issue['channel'], string> = { PORTAL: '포털', EMAIL: '메일', PHONE: '전화', OTHER: '그 밖' };
+const CHANNEL_WORDS = texts({
+  PORTAL: 'issueDetail.channelPortal',
+  EMAIL: 'issueDetail.channelEmail',
+  PHONE: 'issueDetail.channelPhone',
+  OTHER: 'issueDetail.channelOther',
+}) satisfies Readonly<Record<Issue['channel'], string>>;
 /** The server says so when somebody else changed the status first (S3-AC-79). */
 const ALREADY_CHANGED = ['INVALID_TRANSITION', 'NOT_REOPENABLE', 'ISSUE_CLOSED'];
-const VISIBILITIES = [
-  { value: 'public' as const, label: '공개 답변' },
-  { value: 'internal' as const, label: '내부 메모' },
+const VISIBILITY_WORDS = texts({ public: 'issueDetail.publicReply', internal: 'issueDetail.internalNote' });
+/** Made when drawn, so the labels follow the screen language. */
+const visibilities = () => [
+  { value: 'public' as const, label: VISIBILITY_WORDS.public },
+  { value: 'internal' as const, label: VISIBILITY_WORDS.internal },
 ];
 
 interface Detail {
@@ -116,15 +125,15 @@ interface Upload extends UploadItem {
 function actionName(now: IssueStatus, next: IssueStatus): string {
   switch (next) {
     case 'CONFIRMED':
-      return '확인';
+      return t('issueDetail.actConfirm');
     case 'IN_PROGRESS':
-      return now === 'RESOLVED' ? '다시 처리' : '처리 시작';
+      return t(now === 'RESOLVED' ? 'issueDetail.actRework' : 'issueDetail.actStart');
     case 'RESOLVED':
-      return '해결';
+      return t('issueDetail.actResolve');
     case 'CLOSED':
-      return '종료';
+      return t('issueDetail.actClose');
     case 'RECEIVED':
-      return '접수로 되돌리기';
+      return t('issueDetail.actBackToReceived');
   }
 }
 
@@ -276,7 +285,7 @@ function IssueDetail(props: { issueKey: string }) {
   });
 
   if (load.status === 'failed' && load.failure?.kind === 'notFound') {
-    return <NotFound listHref="/issues" listLabel="문의 목록으로" />;
+    return <NotFound listHref="/issues" listLabel={TEXT.toIssueList} />;
   }
 
   if (!detail) {
@@ -303,7 +312,7 @@ function IssueDetail(props: { issueKey: string }) {
   const issue = answered !== null && answered.version >= detail.issue.version ? answered : detail.issue;
   // Slice 6b: 해결 and 종료 ask about the open tasks; before the list is in, as if there were none.
   const openTasks = tasks.list?.openCount ?? 0;
-  const unfinished = `끝나지 않은 작업이 ${String(openTasks)}개 있습니다.`;
+  const unfinished = tf('issueDetail.unfinishedTasks', { count: openTasks });
   const closed = issue.status === 'CLOSED';
   const isAdmin = me?.role === 'ADMIN';
 
@@ -330,9 +339,9 @@ function IssueDetail(props: { issueKey: string }) {
     if (!live()) return;
     const changedFirst = !result.ok && result.failure.kind === 'rejected' && ALREADY_CHANGED.includes(result.failure.code);
     if (result.ok) {
-      toast(`상태를 바꿨습니다: ${ISSUE_STATUS_WORDS[result.data.status].agent}`);
+      toast(tf('issueDetail.statusChanged', { status: ISSUE_STATUS_WORDS[result.data.status].agent }));
     } else if (changedFirst) {
-      toast('상태가 이미 바뀌었습니다', 'info');
+      toast(t('issueDetail.statusAlreadyChanged'), 'info');
     } else {
       setActionFailure(result.failure);
     }
@@ -351,7 +360,7 @@ function IssueDetail(props: { issueKey: string }) {
     cooldown.clearEnded();
     fields.clear();
     if (draft.trim() === '') {
-      fields.setError('content', '내용을 넣어 주세요.');
+      fields.setError('content', t('comment.contentRequired'));
       return;
     }
     setSending(true);
@@ -372,7 +381,7 @@ function IssueDetail(props: { issueKey: string }) {
       images.saved();
       await load.reload();
       setHistoryVersion((n) => n + 1);
-      toast(internal ? '내부 메모를 남겼습니다' : '답변을 보냈습니다');
+      toast(t(internal ? 'issueDetail.noteAdded' : 'issueDetail.replySent'));
       return;
     }
     const f = result.failure;
@@ -489,7 +498,7 @@ function IssueDetail(props: { issueKey: string }) {
     }
     if (result.ok) {
       closeTrash();
-      toast(`${key} 문의를 휴지통으로 옮겼습니다.`);
+      toast(tf('issueDetail.trashed', { key }));
       void navigate(MY_ISSUES_HREF);
     } else if (result.failure.kind === 'notFound') {
       closeTrash();
@@ -498,7 +507,7 @@ function IssueDetail(props: { issueKey: string }) {
       toLogin();
     } else {
       setTrashPending(false);
-      setTrashError(TRASH_FAILED);
+      setTrashError(WORDS.trashFailed);
     }
   };
 
@@ -550,7 +559,7 @@ function IssueDetail(props: { issueKey: string }) {
       if (result.ok) {
         window.location.assign(attachmentHref(key, item.id));
       } else if (result.failure.kind === 'notFound') {
-        setFileBand('파일을 찾을 수 없습니다');
+        setFileBand(t('issueDetail.fileNotFound'));
       } else if (result.failure.kind === 'unauthenticated') {
         toLogin();
       } else {
@@ -569,7 +578,7 @@ function IssueDetail(props: { issueKey: string }) {
     if (result.ok || result.failure.kind === 'notFound') {
       await load.reload();
       setHistoryVersion((n) => n + 1);
-      if (result.ok) toast('첨부를 지웠습니다');
+      if (result.ok) toast(t('issueDetail.attachmentDeleted'));
       return;
     }
     setFileBand(failureText(result.failure));
@@ -632,7 +641,7 @@ function IssueDetail(props: { issueKey: string }) {
                   setAsking('reopen');
                 }}
               >
-                다시 열기
+                {t('issueDetail.reopen')}
               </Button>
             )}
             {!closed && (
@@ -657,7 +666,7 @@ function IssueDetail(props: { issueKey: string }) {
                   setTrashing(true);
                 }}
               >
-                문의 지우기
+                {t('issueDetail.trash')}
               </Button>
             )}
           </div>
@@ -670,19 +679,19 @@ function IssueDetail(props: { issueKey: string }) {
         )}
         <dl className="pd-meta">
           <div>
-            <dt>상태</dt>
+            <dt>{t('issueDetail.status')}</dt>
             <dd>
               <StatusBadge kind="issue" status={issue.status} audience="agent" />
             </dd>
           </div>
           <div>
-            <dt>우선순위</dt>
+            <dt>{t('issueDetail.priority')}</dt>
             <dd>
               <PriorityLabel priority={issue.priority} />
             </dd>
           </div>
           <div>
-            <dt>담당자</dt>
+            <dt>{t('issueDetail.assignee')}</dt>
             <dd className="pd-inline">
               <AssigneeName person={issue.assignee} unavailable={issue.assigneeUnavailable} />
               <Button
@@ -692,46 +701,46 @@ function IssueDetail(props: { issueKey: string }) {
                   setAssigning((n) => (n ?? 0) + 1);
                 }}
               >
-                바꾸기
+                {t('issueDetail.change')}
               </Button>
             </dd>
           </div>
           <IssueLabelsLine issue={issue} canChange={!closed} isAdmin={isAdmin} onAnswer={onIssueAnswer} onStale={onIssueStale} />
           <IssueDueLine issue={issue} canChange={!closed} onAnswer={onIssueAnswer} onStale={onIssueStale} />
           <div>
-            <dt>고객사</dt>
+            <dt>{t('issueDetail.company')}</dt>
             <dd>{issue.companyName}</dd>
           </div>
           <div>
-            <dt>올린 사람</dt>
+            <dt>{t('issueDetail.reporter')}</dt>
             <dd className="pd-inline">
               <span>{issue.reporter.name}</span>
-              <Link to={issuesHref({ reporter: issue.reporter.accountId })}>이 사람이 올린 문의 보기</Link>
+              <Link to={issuesHref({ reporter: issue.reporter.accountId })}>{t('issueDetail.reporterIssues')}</Link>
             </dd>
           </div>
           {issue.createdBy && (
             <div>
-              <dt>대리 등록</dt>
+              <dt>{t('issueDetail.onBehalf')}</dt>
               <dd>{issue.createdBy.name}</dd>
             </div>
           )}
           <div>
-            <dt>받은 경로</dt>
+            <dt>{t('issueDetail.channel')}</dt>
             <dd>{CHANNEL_WORDS[issue.channel]}</dd>
           </div>
           <div>
-            <dt>올린 시각</dt>
+            <dt>{t('issueDetail.createdAt')}</dt>
             <dd>
               <RelativeTime dateTime={issue.createdAt} />
             </dd>
           </div>
           <div>
-            <dt>첫 응답</dt>
-            <dd>{issue.firstResponseAt === null ? <span className="pd-muted">아직 없음</span> : <RelativeTime dateTime={issue.firstResponseAt} />}</dd>
+            <dt>{t('issueDetail.firstResponse')}</dt>
+            <dd>{issue.firstResponseAt === null ? <span className="pd-muted">{t('issueDetail.noneYet')}</span> : <RelativeTime dateTime={issue.firstResponseAt} />}</dd>
           </div>
           {issue.resolvedAt !== null && (
             <div>
-              <dt>해결 시각</dt>
+              <dt>{t('issueDetail.resolvedAt')}</dt>
               <dd>
                 <RelativeTime dateTime={issue.resolvedAt} />
               </dd>
@@ -739,7 +748,7 @@ function IssueDetail(props: { issueKey: string }) {
           )}
           {issue.closedAt !== null && (
             <div>
-              <dt>종료 시각</dt>
+              <dt>{t('issueDetail.closedAt')}</dt>
               <dd>
                 <RelativeTime dateTime={issue.closedAt} />
               </dd>
@@ -747,10 +756,10 @@ function IssueDetail(props: { issueKey: string }) {
           )}
           {issue.private && (
             <div>
-              <dt className="pd-sr-only">공개 범위</dt>
+              <dt className="pd-sr-only">{t('issueDetail.visibility')}</dt>
               <dd>
                 <Badge tone="neutral" icon={<LockIcon size={12} />}>
-                  비공개
+                  {t('issueDetail.private')}
                 </Badge>
               </dd>
             </div>
@@ -760,7 +769,7 @@ function IssueDetail(props: { issueKey: string }) {
         {issue.assigneeUnavailable && (
           <p className="pd-detail-note">
             <WarningIcon size={14} />
-            <span>이 담당자는 지금 이 문의를 볼 수 없습니다. 담당자를 바꿔 주세요.</span>
+            <span>{t('issueDetail.assigneeUnavailable')}</span>
           </p>
         )}
       </header>
@@ -782,7 +791,7 @@ function IssueDetail(props: { issueKey: string }) {
           }}
         />
       ) : (
-        <article className="pd-detail-body" aria-label="문의 내용">
+        <article className="pd-detail-body" aria-label={t('issueDetail.content')}>
           <MarkdownView source={issue.content} imageSrc={imageSrc} />
         </article>
       )}
@@ -800,12 +809,12 @@ function IssueDetail(props: { issueKey: string }) {
           </Alert>
         )}
         <AttachmentList
-          title="첨부"
+          title={t('issueDetail.attachments')}
           items={attachmentItems}
-          emptyText="첨부 없음"
-          deleteLabel="지우기"
-          deletedLabel="지워진 첨부"
-          internalLabel="내부"
+          emptyText={t('issueDetail.noAttachments')}
+          deleteLabel={t('issueDetail.delete')}
+          deletedLabel={t('issueDetail.deletedAttachment')}
+          internalLabel={t('issueDetail.internalShort')}
           inlineLabel={IMAGE_TEXT.inline}
           onDelete={(id) => {
             setDeleteTarget(detail.attachments.find((a) => a.id === id) ?? null);
@@ -814,7 +823,7 @@ function IssueDetail(props: { issueKey: string }) {
         />
         {!closed && (
           <FileUpload
-            label="첨부 올리기"
+            label={t('issueDetail.upload')}
             items={uploads}
             onSelect={onSelect}
             onRemove={(id) => {
@@ -826,10 +835,10 @@ function IssueDetail(props: { issueKey: string }) {
             }}
             limits={ATTACHMENT_LIMITS}
             usedBytes={publicBytes(detail.attachments)}
-            helpText="파일 하나 10MB까지. 고르면 바로 문의에 올립니다."
-            removeLabel="빼기"
-            retryLabel="다시 올리기"
-            dropHint="또는 여기로 끌어 놓으세요"
+            helpText={t('issueDetail.uploadHelp')}
+            removeLabel={t('issueDetail.uploadRemove')}
+            retryLabel={t('issueDetail.uploadRetry')}
+            dropHint={t('issueDetail.dropHint')}
           />
         )}
       </div>
@@ -846,7 +855,7 @@ function IssueDetail(props: { issueKey: string }) {
 
       <section className="pd-detail-comments" aria-labelledby="comments-title">
         <h2 id="comments-title" className="pd-section-title">
-          댓글 {comments.length}개
+          {tf('issueDetail.commentCount', { count: formatNumber(comments.length) })}
         </h2>
         {editGone && (
           <div className="pd-comment-unsent">
@@ -866,7 +875,7 @@ function IssueDetail(props: { issueKey: string }) {
           </div>
         )}
         {comments.length === 0 ? (
-          <p className="pd-muted">아직 댓글이 없습니다.</p>
+          <p className="pd-muted">{t('issueDetail.noComments')}</p>
         ) : (
           <div className="pd-comment-list">
             {comments.map((c) => {
@@ -885,7 +894,7 @@ function IssueDetail(props: { issueKey: string }) {
                   createdAt={c.createdAt}
                   body={c.content}
                   imageSrc={imageSrc}
-                  internalLabel="내부 메모"
+                  internalLabel={t('issueDetail.internalNote')}
                   deleted={c.deleted}
                   deletedLabel={t('comment.deleted')}
                   deletedAt={c.deletedAt}
@@ -965,22 +974,22 @@ function IssueDetail(props: { issueKey: string }) {
 
       {closed ? (
         <div className="pd-detail-closed">
-          {closedWhileWriting && <SaveFailure failure={sendFailure} known={{ ISSUE_CLOSED: ISSUE_CLOSED_TEXT }} />}
-          <Alert tone="info">종료된 문의입니다. 댓글과 첨부를 더할 수 없습니다.</Alert>
+          {closedWhileWriting && <SaveFailure failure={sendFailure} known={{ ISSUE_CLOSED: WORDS.issueClosed }} />}
+          <Alert tone="info">{t('issueDetail.closedBand')}</Alert>
           {draft.trim() !== '' && (
             <div className="pd-kept-draft">
-              <p className="pd-label">보내지 못한 글</p>
+              <p className="pd-label">{t('comment.unsent')}</p>
               <pre>{draft}</pre>
             </div>
           )}
         </div>
       ) : (
-        <form className="pd-comment-form" aria-label="댓글 쓰기" noValidate onSubmit={onSubmit} data-internal={internal ? 'true' : undefined}>
+        <form className="pd-comment-form" aria-label={t('issueDetail.commentForm')} noValidate onSubmit={onSubmit} data-internal={internal ? 'true' : undefined}>
           <RadioGroup
-            legend="댓글 종류"
+            legend={t('issueDetail.commentKind')}
             legendHidden
             appearance="tabs"
-            options={VISIBILITIES}
+            options={visibilities()}
             value={visibility}
             onChange={(next) => {
               setVisibility(next);
@@ -988,12 +997,12 @@ function IssueDetail(props: { issueKey: string }) {
             }}
             renderAdornment={(o) => (o.value === 'internal' ? <LockIcon size={14} /> : null)}
           />
-          <SaveFailure failure={sendFailure} known={{ ISSUE_CLOSED: ISSUE_CLOSED_TEXT, ...IMAGE_SAVE_TEXT }} />
+          <SaveFailure failure={sendFailure} known={{ ISSUE_CLOSED: WORDS.issueClosed, ...IMAGE_SAVE_TEXT }} />
           <RateLimitBand {...cooldown} />
           <MarkdownEditor
             ref={editorRef}
             id="comment-content"
-            label={internal ? '내부 메모 내용' : '답변 내용'}
+            label={t(internal ? 'issueDetail.noteContent' : 'issueDetail.replyContent')}
             labelHidden
             value={draft}
             onChange={setDraft}
@@ -1001,8 +1010,8 @@ function IssueDetail(props: { issueKey: string }) {
             maxLength={4000}
             showCount
             internal={internal}
-            placeholder={internal ? '상담 쪽만 보는 메모를 남깁니다.' : '고객에게 보낼 답변을 씁니다.'}
-            helpText="Ctrl+Enter(맥은 Cmd+Enter)로 보냅니다."
+            placeholder={t(internal ? 'issueDetail.notePlaceholder' : 'issueDetail.replyPlaceholder')}
+            helpText={t('issueDetail.sendShortcut')}
             {...images.editor}
             onSubmitShortcut={() => {
               void send();
@@ -1018,7 +1027,7 @@ function IssueDetail(props: { issueKey: string }) {
               pendingLabel={TEXT.sending}
               blocked={cooldown.active || images.busy}
             >
-              {internal ? '내부 메모 남기기' : '고객에게 답변 보내기'}
+              {t(internal ? 'issueDetail.addNote' : 'issueDetail.sendReply')}
             </Button>
           </div>
         </form>
@@ -1027,12 +1036,12 @@ function IssueDetail(props: { issueKey: string }) {
       <ConfirmDialog
         open={deleteTarget !== null}
         tone="danger"
-        title="첨부 지우기"
-        message={`첨부 ${deleteTarget?.fileName ?? ''} 파일을 지웁니다. 목록에는 "지워진 첨부"로 남습니다.`}
-        confirmLabel="지우기"
+        title={t('issueDetail.deleteAttachmentTitle')}
+        message={tf('issueDetail.deleteAttachmentAsk', { name: deleteTarget?.fileName ?? '' })}
+        confirmLabel={t('issueDetail.delete')}
         cancelLabel={TEXT.cancel}
         pending={deleting !== null}
-        pendingLabel="지우는 중…"
+        pendingLabel={t('comment.deleting')}
         onConfirm={() => {
           void confirmDelete();
         }}
@@ -1058,12 +1067,12 @@ function IssueDetail(props: { issueKey: string }) {
       <ConfirmDialog
         open={trashing}
         tone="danger"
-        title={TRASH_TITLE}
-        message={TRASH_TEXT}
-        confirmLabel="지우기"
-        cancelLabel="그만두기"
+        title={WORDS.trashTitle}
+        message={WORDS.trashText}
+        confirmLabel={t('issueDetail.delete')}
+        cancelLabel={t('comment.keep')}
         pending={trashPending}
-        pendingLabel="지우는 중…"
+        pendingLabel={t('comment.deleting')}
         {...(trashError === undefined ? {} : { error: trashError })}
         onConfirm={() => {
           void confirmTrash();
@@ -1086,20 +1095,20 @@ function IssueDetail(props: { issueKey: string }) {
       />
       <ConfirmDialog
         open={asking === 'reopen' || asking === 'close'}
-        title={asking === 'reopen' ? '다시 열기' : '문의 종료'}
+        title={t(asking === 'reopen' ? 'issueDetail.reopen' : 'issueDetail.closeTitle')}
         message={
           asking === 'reopen' ? (
-            '이 문의를 다시 열까요? 상태가 접수로 돌아갑니다.'
+            t('issueDetail.reopenAsk')
           ) : openTasks > 0 ? (
             <>
-              <p>{CLOSE_TEXT}</p>
+              <p>{WORDS.closeAsk}</p>
               <p>{unfinished}</p>
             </>
           ) : (
-            CLOSE_TEXT
+            WORDS.closeAsk
           )
         }
-        confirmLabel={asking === 'reopen' ? '다시 열기' : '종료'}
+        confirmLabel={t(asking === 'reopen' ? 'issueDetail.reopen' : 'issueDetail.actClose')}
         cancelLabel={TEXT.cancel}
         pending={acting !== null}
         pendingLabel={TEXT.sending}
@@ -1112,10 +1121,10 @@ function IssueDetail(props: { issueKey: string }) {
       />
       <ConfirmDialog
         open={asking === 'resolve'}
-        title="문의 해결"
-        message={`${unfinished} 그래도 해결로 바꿀까요?`}
-        confirmLabel="해결로 바꾸기"
-        cancelLabel="그만두기"
+        title={t('issueDetail.resolveTitle')}
+        message={tf('issueDetail.resolveAsk', { unfinished })}
+        confirmLabel={t('issueDetail.resolveConfirm')}
+        cancelLabel={t('comment.keep')}
         pending={acting !== null}
         pendingLabel={TEXT.sending}
         onConfirm={() => {
@@ -1134,7 +1143,7 @@ function IssueDetail(props: { issueKey: string }) {
           }}
           onChanged={(person) => {
             setAssigning(null);
-            toast(person ? `담당자를 ${person.name} 님으로 바꿨습니다` : '담당자를 비웠습니다');
+            toast(person ? tf('issueDetail.assigneeChanged', { name: person.name }) : t('issueDetail.assigneeCleared'));
             setHistoryVersion((n) => n + 1);
             void load.reload();
           }}

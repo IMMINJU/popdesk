@@ -5,6 +5,7 @@
 // is not a filter: it does not make a list "filtered", and clearing the filters keeps it.
 // Slice 8a adds the filter `sla` (`warning`, `breached`) and the sort `slaDue`.
 import type { Schemas } from '../api';
+import { texts } from './locale';
 
 export type IssueStatus = Schemas['Issue']['status'];
 
@@ -86,11 +87,31 @@ export function issuesHref(filters: Partial<IssueFilters> = {}, sort: IssueSort 
   return query === '' ? '/issues' : `/issues?${query}`;
 }
 
-/** 보기: filters set in advance. 전체 is the list without a query. */
+const VIEW_NAMES = texts({ mine: 'issueList.viewMine', unassigned: 'issueList.unassigned', all: 'issueList.viewAll' });
+
+/** 보기: filters set in advance. 전체 is the list without a query. `name` is read in the screen language. */
 export const ISSUE_VIEWS = [
-  { name: '내 담당', filters: { ...NO_FILTERS, assignee: 'me', status: OPEN_STATUSES } },
-  { name: '담당 없음', filters: { ...NO_FILTERS, assignee: 'none', status: OPEN_STATUSES } },
-  { name: '전체', filters: NO_FILTERS },
+  {
+    id: 'mine',
+    get name() {
+      return VIEW_NAMES.mine;
+    },
+    filters: { ...NO_FILTERS, assignee: 'me', status: OPEN_STATUSES },
+  },
+  {
+    id: 'unassigned',
+    get name() {
+      return VIEW_NAMES.unassigned;
+    },
+    filters: { ...NO_FILTERS, assignee: 'none', status: OPEN_STATUSES },
+  },
+  {
+    id: 'all',
+    get name() {
+      return VIEW_NAMES.all;
+    },
+    filters: NO_FILTERS,
+  },
 ] as const;
 
 /** Where the console opens and where 문의 in the side menu goes: 내 담당. */
