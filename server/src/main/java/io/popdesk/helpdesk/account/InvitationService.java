@@ -189,6 +189,31 @@ public class InvitationService implements InvitationLinks {
     }
 
     /**
+     * Accepts the invitation of an {@code INVITED} account by an OIDC sign-in that matched it (S11-AC-18,
+     * acceptance.md 5절 4), in the caller's transaction: the provider has shown the person holds the email. The
+     * invitation must be open, not cancelled, and under 7 days old, as for a link. The account becomes
+     * {@code ACTIVE} with {@link PasswordHashes#RESET} in place of a password, never null, so it counts as one that
+     * accepted (reactivating it works, S11-AC-23) and no password signs in until one is set by a reset link
+     * (S11-AC-22). The link stops working since the account is no longer {@code INVITED}. Recorded as
+     * {@code INVITATION_ACCEPTED} with {@code {method: "OIDC"}} by the account.
+     *
+     * @return false, with nothing written, when the account has no open invitation within 7 days
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    boolean activateByOidc(AuditLog.Actor account) {
+        PendingRow pending = accounts.lockInvitation(account.accountId()).orElse(null);
+        Instant now = now();
+        if (pending == null || pending.cancelled() || !now.isBefore(pending.expiresAt())) {
+            return false;
+        }
+        accounts.updateActivated(account.accountId(), PasswordHashes.RESET, now);
+        audit.record(account, AuditAction.INVITATION_ACCEPTED, accountTarget(account.accountId()),
+                Map.of("method", "OIDC"));
+        log.info("Account {} accepted its invitation by an OIDC sign-in.", account.accountId());
+        return true;
+    }
+
+    /**
      * A new link for an account that has not accepted yet (S0-AC-38): a new token, so the previous link
      * stops working, valid for 7 days from now. Only without SMTP (S0-AC-39). An anonymized account is
      * 400 {@code ACCOUNT_ANONYMIZED} before anything else (S10A-AC-13).

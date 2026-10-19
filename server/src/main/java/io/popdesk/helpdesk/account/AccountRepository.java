@@ -27,11 +27,11 @@ public class AccountRepository {
      * One account row. {@code passwordHash} is null until an invitation is accepted;
      * {@code passwordChangedAt} is null for a password that never changed; {@code photoUpdatedAt} is null
      * for an account without a profile photo. {@code anonymized}: the account was anonymized (PII-4), and
-     * nothing brings it back (S10A-AC-13).
+     * nothing brings it back (S10A-AC-13). {@code oidcLinked}: the account has an OIDC link (S11-AC-26).
      */
     public record AccountRow(long id, String email, String name, Role role, AccountStatus status, String passwordHash,
             String locale, int failedSignIns, Instant lockedUntil, Instant passwordChangedAt, Instant createdAt,
-            Instant photoUpdatedAt, boolean anonymized) {}
+            Instant photoUpdatedAt, boolean anonymized, boolean oidcLinked) {}
 
     /**
      * An account that has not accepted its invitation, with the invitation. {@code cancelled}: an admin
@@ -46,7 +46,8 @@ public class AccountRepository {
     private static final String ACCOUNT_COLUMNS = "a.id, a.email, a.name, a.role, a.status, a.password_hash, a.locale, "
             + "a.failed_sign_ins, a.locked_until, a.password_changed_at, a.created_at, "
             + "a.anonymized_at is not null as anonymized, "
-            + "(select p.updated_at from account_photo p where p.account_id = a.id) as photo_updated_at";
+            + "(select p.updated_at from account_photo p where p.account_id = a.id) as photo_updated_at, "
+            + "exists (select 1 from oidc_link l where l.account_id = a.id) as oidc_linked";
 
     private static final String PENDING_COLUMNS = "a.id, a.email, a.name, a.role, i.invited_at, i.expires_at, "
             + "i.cancelled_at";
@@ -329,7 +330,7 @@ public class AccountRepository {
                 rs.getString("password_hash"), rs.getString("locale"), rs.getInt("failed_sign_ins"),
                 instant(rs.getTimestamp("locked_until")), instant(rs.getTimestamp("password_changed_at")),
                 instant(rs.getTimestamp("created_at")), instant(rs.getTimestamp("photo_updated_at")),
-                rs.getBoolean("anonymized"));
+                rs.getBoolean("anonymized"), rs.getBoolean("oidc_linked"));
     }
 
     private static PendingRow pending(ResultSet rs, int row) throws SQLException {

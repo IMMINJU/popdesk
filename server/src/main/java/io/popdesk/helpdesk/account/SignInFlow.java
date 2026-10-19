@@ -3,11 +3,17 @@ package io.popdesk.helpdesk.account;
 import io.popdesk.ApiException;
 import io.popdesk.Forwarded;
 import io.popdesk.HostRoutingFilter;
+import io.popdesk.PublicAddress;
 import io.popdesk.PublicAddress.App;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,20 +25,30 @@ import org.springframework.stereotype.Component;
 @Component
 public class SignInFlow {
 
+    /** The cookie that ties an OIDC sign-in to the browser on http (S11-AC-04). */
+    static final String OIDC_COOKIE = "POPDESK_OIDC";
+
+    /** The same on https: {@code __Host-} keeps it to this host, with {@code Secure} and {@code Path=/}. */
+    static final String OIDC_COOKIE_HTTPS = "__Host-POPDESK_OIDC";
+
     private final SignInService signIn;
     private final InvitationService invitations;
     private final PasswordResetService resets;
     private final OwnAccountService own;
+    private final OidcSignInService oidc;
     private final Sessions sessions;
+    private final PublicAddress address;
     private final Clock clock;
 
     SignInFlow(SignInService signIn, InvitationService invitations, PasswordResetService resets, OwnAccountService own,
-            Sessions sessions, Clock clock) {
+            OidcSignInService oidc, Sessions sessions, PublicAddress address, Clock clock) {
         this.signIn = signIn;
         this.invitations = invitations;
         this.resets = resets;
         this.own = own;
+        this.oidc = oidc;
         this.sessions = sessions;
+        this.address = address;
         this.clock = clock;
     }
 
@@ -74,6 +90,82 @@ public class SignInFlow {
 
     public void signOut(HttpServletRequest request) {
         sessions.end(request);
+    }
+
+    /** Whether the sign-in page of the host's app offers OIDC sign-in (S11-AC-03). */
+    public boolean oidcOffered(HttpServletRequest request) {
+        return oidc.on(app(request));
+    }
+
+    /**
+     * Starts an OIDC sign-in (S11-AC-04): 302 to the provider with the sign-in cookie, or back to the sign-in page
+     * (S11-AC-07, S11-AC-08). 404 when OIDC is off for the host's app (S11-AC-06).
+     */
+    public void oidcStart(String next, HttpServletRequest request, HttpServletResponse response) {
+        App app = app(request);
+        OidcSignInService.Step step = oidc.start(app, Forwarded.of(request).clientIp(), next);
+        if (step.browserValue() != null) {
+            response.addHeader(HttpHeaders.SET_COOKIE,
+                    oidcCookie(step.browserValue(), OidcSignInService.REQUEST_LIFETIME));
+        }
+        redirect(response, step.location());
+    }
+
+    /**
+     * The provider sends the browser back (S11-AC-09 to S11-AC-13): the sign-in cookie goes, and a matched account
+     * signs in in a new session, its sign-in time taken before the checks. 404 when OIDC is off for the host's app.
+     */
+    public void oidcCallback(String code, String state, String error, HttpServletRequest request,
+            HttpServletResponse response) {
+        App app = app(request);
+        Instant began = clock.instant();
+        OidcSignInService.Step step = oidc.callback(app, oidcCookieValue(request), code, state, error);
+        response.addHeader(HttpHeaders.SET_COOKIE, oidcCookie("", Duration.ZERO));
+        if (step.accountId() > 0) {
+            sessions.start(request, response, step.accountId(), app, began);
+        }
+        redirect(response, step.location());
+    }
+
+    private String oidcCookieName() {
+        return address.secure() ? OIDC_COOKIE_HTTPS : OIDC_COOKIE;
+    }
+
+    private String oidcCookie(String value, Duration maxAge) {
+        return ResponseCookie.from(oidcCookieName(), value).httpOnly(true).secure(address.secure()).sameSite("Lax")
+                .path("/").maxAge(maxAge).build().toString();
+    }
+
+    private String oidcCookieValue(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        String name = oidcCookieName();
+        for (Cookie cookie : cookies) {
+            if (name.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A 302 to {@code location} as it is: a path of the app stays relative, so no host from the request goes into
+     * it. Characters outside printable ASCII are percent-encoded as UTF-8.
+     */
+    private static void redirect(HttpServletResponse response, String location) {
+        StringBuilder out = new StringBuilder();
+        for (byte b : location.getBytes(StandardCharsets.UTF_8)) {
+            int c = b & 0xff;
+            if (c > 0x20 && c < 0x7f) {
+                out.append((char) c);
+            } else {
+                out.append('%').append(String.format("%02X", c));
+            }
+        }
+        response.setStatus(HttpServletResponse.SC_FOUND);
+        response.setHeader(HttpHeaders.LOCATION, out.toString());
     }
 
     private static App app(HttpServletRequest request) {

@@ -51,6 +51,7 @@ public class AccountService {
     public record Suspension(AccountRow account, int clearedIssues) {}
 
     private final AccountRepository accounts;
+    private final OidcLinkRepository oidcLinks;
     private final Sessions sessions;
     private final PasswordResetService resets;
     private final OpenAssignments assignments;
@@ -59,11 +60,12 @@ public class AccountService {
     private final Transactions transactions;
     private final Clock clock;
 
-    AccountService(AccountRepository accounts, Sessions sessions, PasswordResetService resets,
-            OpenAssignments assignments, AccountRateLimit rateLimit, AuditLog audit, Transactions transactions,
-            Clock clock) {
+    AccountService(AccountRepository accounts, OidcLinkRepository oidcLinks, Sessions sessions,
+            PasswordResetService resets, OpenAssignments assignments, AccountRateLimit rateLimit, AuditLog audit,
+            Transactions transactions, Clock clock) {
         this.rateLimit = rateLimit;
         this.accounts = accounts;
+        this.oidcLinks = oidcLinks;
         this.sessions = sessions;
         this.resets = resets;
         this.assignments = assignments;
@@ -244,7 +246,9 @@ public class AccountService {
      *
      * <p>Then the name and email become the anonymous ones and the account {@code SUSPENDED}; its password
      * becomes {@link PasswordHashes#RESET}, never null, so it is not taken for an account that never
-     * accepted; the sign-in lock goes, and so do its invitation and reset link. With
+     * accepted; the sign-in lock goes, and so do its invitation, reset link, and OIDC links (S11-AC-29: a person
+     * invited again with the same email does not reach this account by OIDC; no {@code OIDC_UNLINKED} is
+     * recorded). With
      * {@code clearAssignments} its open issues and {@code OPEN} tasks lose it as assignee, as a suspension
      * does (S10A-AC-14). {@code ACCOUNT_ANONYMIZED} is recorded without the old name or email, with
      * {@code clearedIssues} and {@code clearedTasks} as a suspension has them, and every session ends.
@@ -265,6 +269,7 @@ public class AccountService {
         accounts.updateAnonymized(accountId, anonymous, PasswordHashes.RESET, now());
         accounts.deleteInvitation(accountId);
         resets.deleteOf(accountId);
+        oidcLinks.deleteOf(accountId);
         Map<String, Object> changes = null;
         int cleared = 0;
         if (clearAssignments) {
@@ -277,6 +282,23 @@ public class AccountService {
         audit.record(admin.actor(), AuditAction.ACCOUNT_ANONYMIZED, target(accountId), changes);
         sessions.endAll(accountId);
         return new Suspension(accounts.findById(accountId).orElseThrow(), cleared);
+    }
+
+    /**
+     * Removes the account's OIDC links and ends every session of the account, with {@code OIDC_UNLINKED} by the
+     * admin, in one transaction (S11-AC-27, acceptance.md 5절 3). 404 when the account has no link: one nobody has,
+     * account 0, and an anonymized one, whose links went with the anonymization (S11-AC-28). The next OIDC sign-in
+     * links the account again by its verified email.
+     */
+    public void unlinkOidc(CurrentAccount admin, long accountId) {
+        transactions.run(() -> {
+            if (oidcLinks.deleteOf(accountId) == 0) {
+                throw ApiException.notFound();
+            }
+            audit.record(admin.actor(), AuditAction.OIDC_UNLINKED, target(accountId), null);
+            sessions.endAll(accountId);
+        });
+        log.info("The OIDC link of account {} was removed.", accountId);
     }
 
     /**
