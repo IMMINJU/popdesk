@@ -106,7 +106,7 @@ c09202509f347d4b0cd9fb48cd3507119729525def3a5bcc9f4152c188adac70  server/src/tes
 a411db152c3f75913e48116e6f97e72a2bab8cd689e7eb7a1c9f8a8ee9f88bfa  server/src/test/java/io/popdesk/auth/OidcDiscoveryTest.java
 68e201b2da59b3681f80986d216f3bd171c51ebc50dfb8ed6f3918ce0c96f12b  server/src/test/java/io/popdesk/auth/OidcFlow.java
 56d8d48fa85a39a3bab5630ce93cdc8253e3185cf58dc15bdbbfb39ffcec0f74  server/src/test/java/io/popdesk/auth/OidcIdTokenTest.java
-1b53f4009ab3d3c94e9afaf644e737449382650e132628d6b7575a0be367e7fe  server/src/test/java/io/popdesk/auth/OidcMatchTest.java
+45b882175518cd1de76ce1fbf314f4e84735ef14e9a30a3f09cccfa4d2af4a4c  server/src/test/java/io/popdesk/auth/OidcMatchTest.java
 31352ce4bf0b62d9c46bc3dc98858aabbe3d941dcbdd00e7f3930cf50e0d8ac9  server/src/test/java/io/popdesk/auth/OidcNextTest.java
 c91f8b46bae8e018f7cd115e6482b069955669eda23aeeaab3450682bbe0abfa  server/src/test/java/io/popdesk/auth/OidcOffTest.java
 816132144bd2d1245928a35e686c0cbbb6fb0e1e89296486d2424615bb960929  server/src/test/java/io/popdesk/auth/OidcPasswordTest.java

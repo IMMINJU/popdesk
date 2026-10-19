@@ -188,7 +188,7 @@ class OidcMatchTest extends OidcAppTest {
             }
             case CANCELLED_INVITATION -> {
                 Invitation invited = fixtures.invite(admin, Role.AGENT);
-                admin.client().post("/api/console/invitations/" + invited.accountId() + "/cancel").expect(200);
+                admin.client().post("/api/console/invitations/" + invited.accountId() + "/cancel").expect(204);
                 accountId = invited.accountId();
                 email = invited.email();
             }
