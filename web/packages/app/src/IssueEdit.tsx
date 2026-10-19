@@ -142,17 +142,17 @@ export function IssueEdit<I extends EditedIssue>(props: IssueEditProps<I>) {
             </p>
             <dl className="pd-meta">
               <div>
-                <dt>제목</dt>
+                <dt>{t('issueEdit.title')}</dt>
                 <dd>{now.title}</dd>
               </div>
               <div>
-                <dt>우선순위</dt>
+                <dt>{t('issueEdit.priority')}</dt>
                 <dd>
                   <PriorityLabel priority={now.priority} />
                 </dd>
               </div>
               <div>
-                <dt>상태</dt>
+                <dt>{t('issueEdit.status')}</dt>
                 <dd>
                   <StatusBadge kind="issue" status={now.status} audience={props.audience} />
                 </dd>
@@ -167,7 +167,7 @@ export function IssueEdit<I extends EditedIssue>(props: IssueEditProps<I>) {
       <TextField
         ref={titleRef}
         id="edit-title"
-        label="제목"
+        label={t('issueEdit.title')}
         value={title}
         onChange={setTitle}
         maxLength={200}
@@ -175,7 +175,7 @@ export function IssueEdit<I extends EditedIssue>(props: IssueEditProps<I>) {
       />
       <MarkdownEditor
         id="edit-content"
-        label="내용"
+        label={t('issueEdit.content')}
         value={content}
         onChange={setContent}
         minHeight={240}
@@ -185,7 +185,7 @@ export function IssueEdit<I extends EditedIssue>(props: IssueEditProps<I>) {
         {...(fields.errors.content ? { error: fields.errors.content } : {})}
       />
       <div id="edit-priority">
-        <PriorityPicker legend="우선순위" value={priority} onChange={setPriority} {...(fields.errors.priority ? { error: fields.errors.priority } : {})} />
+        <PriorityPicker legend={t('issueEdit.priority')} value={priority} onChange={setPriority} {...(fields.errors.priority ? { error: fields.errors.priority } : {})} />
       </div>
       <div className="pd-form-actions">
         <Button

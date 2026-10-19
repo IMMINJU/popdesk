@@ -40,3 +40,15 @@ export function tf(key: MessageKey, values: Record<string, string | number>): st
 export function formatNumber(value: number): string {
   return value.toLocaleString(screenLocale());
 }
+
+/**
+ * A table whose fields read `t(key)` each time they are read, so a table made once, when the
+ * module loads, still follows the screen language: `texts({ save: 'myInfo.save' }).save`.
+ */
+export function texts<K extends string>(keys: Readonly<Record<K, MessageKey>>): Readonly<Record<K, string>> {
+  const table = {} as Record<K, string>;
+  for (const name of Object.keys(keys) as K[]) {
+    Object.defineProperty(table, name, { enumerable: true, get: () => t(keys[name]) });
+  }
+  return table;
+}

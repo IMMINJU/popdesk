@@ -1,5 +1,7 @@
 // Texts of the slice 1a screens (design/archive/1a-people/screens.md 1절). Both apps
 // share them. Keys are flat, joined with dots (design.md 5-1절).
+import { commonKo } from './common.ko';
+
 export const ko = {
   'passwordForgot.title': '비밀번호 찾기',
   'passwordForgot.lead': '가입한 이메일을 넣으면 비밀번호를 다시 정하는 링크를 보냅니다.',
@@ -29,7 +31,7 @@ export const ko = {
   'myInfo.email': '이메일',
   'myInfo.emailHelp': '이메일은 바꿀 수 없습니다.',
   'myInfo.language': '언어',
-  'myInfo.languageHelp': '메일에 쓰는 언어입니다. 화면은 한국어로 보입니다.',
+  'myInfo.languageHelp': '화면과 메일에 쓰는 언어입니다.',
   'myInfo.languageKo': '한국어',
   'myInfo.languageEn': 'English',
   'myInfo.save': '저장',
@@ -220,4 +222,7 @@ export const ko = {
   'comment.keep': '그만두기',
   'comment.deleting': '지우는 중…',
   'comment.deletedToast': '댓글을 지웠습니다',
+
+  // Slice b5 (b5 acceptance.md 4절 7): one file for each part of the work, e.g. `common.ko.ts` for ①.
+  ...commonKo,
 } as const;

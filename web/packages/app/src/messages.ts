@@ -1,56 +1,67 @@
 // Screen texts chosen by error `code` (UX-5, screens.md 2절) that read the same
 // in both apps. A `code` the screen does not know shows the server `message`.
 // An app adds its own texts on top of `TEXT`.
+import type { MessageKey } from '@popdesk/i18n';
+import { t, texts, tf } from './locale';
 import type { Failure } from './result';
 
 // The words for SLA minutes (8a-sla), exported through this file.
 export { slaLength, slaWords } from './slaWords';
 
-export const TEXT = {
-  displayName: 'popdesk',
-  skipLink: '본문으로 건너뛰기',
-  logout: '로그아웃',
-  menu: '메뉴',
-  sending: '보내는 중…',
-  close: '닫기',
-  cancel: '취소',
-  retryLoad: '다시 불러오기',
-  notFound: '찾을 수 없습니다',
-  notFoundHelp: '없는 주소이거나 볼 수 없는 대상입니다.',
-  noPermission: '권한이 없습니다',
-  sessionEnded: '로그인이 끝났습니다. 다시 로그인하세요.',
-  saveSessionEnded: '로그인이 끝났습니다. 다른 탭에서 다시 로그인한 뒤 다시 보내세요.',
-  openLogin: '새 탭에서 로그인',
-  forbidden: '이 작업을 할 권한이 없습니다.',
-  stale: '화면이 오래됐습니다. 새로고침한 뒤 다시 하세요.',
-  server: '서버에 연결하지 못했습니다. 잠시 뒤 다시 하세요.',
-  tooLarge: '파일이 서버 앞단의 크기 상한에 걸렸습니다',
-  canRetry: '이제 다시 보낼 수 있습니다.',
-  leaveTitle: '쓰던 글이 있습니다',
-  leaveMessage: '이 화면을 떠나면 쓰던 글이 사라집니다.',
-  leave: '떠나기',
-  stay: '머무르기',
-} as const;
+/** The keys of `TEXT`; an app adds its own to these (`texts` in locale.ts). */
+export const TEXT_KEYS = {
+  skipLink: 'app.skipLink',
+  logout: 'app.logout',
+  menu: 'app.menu',
+  sending: 'app.sending',
+  close: 'app.close',
+  cancel: 'app.cancel',
+  retryLoad: 'app.retryLoad',
+  notFound: 'app.notFound',
+  notFoundHelp: 'app.notFoundHelp',
+  noPermission: 'app.noPermission',
+  sessionEnded: 'app.sessionEnded',
+  saveSessionEnded: 'app.saveSessionEnded',
+  openLogin: 'app.openLogin',
+  forbidden: 'app.forbidden',
+  stale: 'app.stale',
+  server: 'app.server',
+  tooLarge: 'app.tooLarge',
+  canRetry: 'app.canRetry',
+  leaveTitle: 'app.leaveTitle',
+  leaveMessage: 'app.leaveMessage',
+  leave: 'app.leave',
+  stay: 'app.stay',
+  toIssueList: 'app.toIssueList',
+} as const satisfies Record<string, MessageKey>;
+
+/** Each field reads the screen language when it is read (B5-AC-03). */
+export const TEXT = withName(texts(TEXT_KEYS));
+
+/** `TEXT` with the product name, which is the same in every language. */
+export function withName<T extends object>(table: T): T & { readonly displayName: 'popdesk' } {
+  return Object.defineProperty(table, 'displayName', { value: 'popdesk', enumerable: true }) as T & { readonly displayName: 'popdesk' };
+}
 
 export function rateLimitedText(seconds: number): string {
-  return `요청이 많습니다. ${String(seconds)}초 뒤 다시 하세요.`;
+  return tf('app.rateLimited', { seconds });
 }
 
 export function fieldSummaryTitle(count: number): string {
-  return `${String(count)}개 칸을 고쳐 주세요`;
+  return tf('app.fieldSummary', { count });
 }
 
 /** Page announcement after paging (screens.md P-3): "2쪽, 45건 가운데 21~40". */
 export function pageAnnouncement(page: number, size: number, total: number, shown: number): string {
   const from = (page - 1) * size + 1;
   const to = from + shown - 1;
-  return `${String(page)}쪽, ${String(total)}건 가운데 ${String(from)}~${String(to)}`;
+  return tf('app.pageAnnouncement', { page, total, from, to });
 }
 
 export interface FieldLimits {
   min?: number;
   max?: number;
-  /** What the field holds, e.g. "이메일" for INVALID_FORMAT. */
+  /** What the field holds, e.g. `t('field.email')` for INVALID_FORMAT. */
   format?: string;
 }
 
@@ -58,23 +69,23 @@ export interface FieldLimits {
 export function fieldText(code: string, limits: FieldLimits = {}): string {
   switch (code) {
     case 'REQUIRED':
-      return '값을 넣어 주세요.';
+      return t('field.required');
     case 'BLANK':
-      return '공백만으로는 안 됩니다.';
+      return t('field.blank');
     case 'TOO_SHORT':
-      return limits.min === undefined ? '너무 짧습니다.' : `${String(limits.min)}자 이상 넣어 주세요.`;
+      return limits.min === undefined ? t('field.tooShort') : tf('field.tooShortMin', { min: limits.min });
     case 'TOO_LONG':
-      return limits.max === undefined ? '너무 깁니다.' : `${limits.max.toLocaleString('en-US')}자까지 쓸 수 있습니다.`;
+      return limits.max === undefined ? t('field.tooLong') : tf('field.tooLongMax', { max: limits.max.toLocaleString('en-US') });
     case 'INVALID_FORMAT':
-      return limits.format === undefined ? '모양이 맞지 않습니다.' : `${limits.format} 모양이 아닙니다.`;
+      return limits.format === undefined ? t('field.invalidFormat') : tf('field.invalidFormatOf', { format: limits.format });
     case 'UNKNOWN_VALUE':
-      return '고를 수 없는 값입니다.';
+      return t('field.unknownValue');
     case 'SAME_AS_EMAIL':
-      return '이메일과 같은 비밀번호는 쓸 수 없습니다.';
+      return t('field.sameAsEmail');
     case 'NOT_ALLOWED':
-      return '이 칸은 비워 두어야 합니다.';
+      return t('field.notAllowed');
     default:
-      return '값을 고쳐 주세요.';
+      return t('field.other');
   }
 }
 

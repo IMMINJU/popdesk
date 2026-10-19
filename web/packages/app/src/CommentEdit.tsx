@@ -74,7 +74,7 @@ export function CommentEdit(props: CommentEditProps) {
       return;
     }
     if (contentChanged && draft.trim() === '') {
-      fields.setError('content', '내용을 넣어 주세요.');
+      fields.setError('content', t('comment.contentRequired'));
       return;
     }
     setSending(true);

@@ -3,6 +3,7 @@
 // is OidcSignIn.tsx. The apps take these through ./hooks and ./bands (the export paths are fixed).
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { texts } from './locale';
 import type { Result } from './result';
 
 /** Where the button moves the page; the server checks `next` (S11-AC-31). */
@@ -14,11 +15,11 @@ export function oidcStartUrl(next: string | null): string {
 }
 
 /** The band each `oidc` value the server sends back to the login screen shows (S11-AC-32). */
-const OIDC_BANDS: Readonly<Record<string, string>> = {
-  failed: '회사 계정으로 로그인하지 못했습니다. 초대받은 이메일인지 확인하거나 관리자에게 문의하세요.',
-  unavailable: '회사 로그인 서비스에 연결하지 못했습니다. 잠시 뒤 다시 시도하거나 비밀번호로 로그인하세요.',
-  busy: '시도가 너무 많습니다. 잠시 뒤 다시 시도하세요.',
-};
+const OIDC_BANDS: Readonly<Record<string, string>> = texts({
+  failed: 'oidc.failed',
+  unavailable: 'oidc.unavailable',
+  busy: 'oidc.busy',
+});
 
 /**
  * Asks `load` (the app's own sign-in-options call) once when the screen opens. False while it asks

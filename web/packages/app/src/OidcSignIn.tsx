@@ -3,6 +3,7 @@
 // offers OIDC (useSignInOptions in oidc.ts).
 import { Button } from '@popdesk/ui';
 import { useEffect, useRef, useState } from 'react';
+import { t } from './locale';
 import { oidcStartUrl } from './oidc';
 
 export interface OidcSignInProps {
@@ -35,11 +36,11 @@ export function OidcSignIn({ next, navigate = assign }: OidcSignInProps) {
 
   return (
     <div className="pd-oidc-sign-in">
-      <p className="pd-oidc-or">또는</p>
+      <p className="pd-oidc-or">{t('oidc.or')}</p>
       <Button
         variant="secondary"
         pending={moving}
-        pendingLabel="이동 중…"
+        pendingLabel={t('oidc.moving')}
         onClick={() => {
           if (gone.current) return;
           gone.current = true;
@@ -47,7 +48,7 @@ export function OidcSignIn({ next, navigate = assign }: OidcSignInProps) {
           navigate(oidcStartUrl(next));
         }}
       >
-        회사 계정으로 로그인
+        {t('oidc.signIn')}
       </Button>
     </div>
   );

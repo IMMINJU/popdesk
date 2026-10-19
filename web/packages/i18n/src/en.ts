@@ -1,4 +1,5 @@
 // English for the keys of `ko.ts`; a missing key fails the type check.
+import { commonEn } from './common.en';
 import type { ko } from './ko';
 
 export const en: Record<keyof typeof ko, string> = {
@@ -30,8 +31,8 @@ export const en: Record<keyof typeof ko, string> = {
   'myInfo.email': 'Email',
   'myInfo.emailHelp': 'The email cannot be changed.',
   'myInfo.language': 'Language',
-  'myInfo.languageHelp': 'The language of your mail. The screens are in Korean.',
-  'myInfo.languageKo': '한국어',
+  'myInfo.languageHelp': 'The language of your screens and mail.',
+  'myInfo.languageKo': 'Korean',
   'myInfo.languageEn': 'English',
   'myInfo.save': 'Save',
   'myInfo.saved': 'Saved.',
@@ -220,4 +221,7 @@ export const en: Record<keyof typeof ko, string> = {
   'comment.keep': 'Keep it',
   'comment.deleting': 'Deleting…',
   'comment.deletedToast': 'Comment deleted',
+
+  // Slice b5 (b5 acceptance.md 4절 7): one file for each part of the work, e.g. `common.ko.ts` for ①.
+  ...commonEn,
 };

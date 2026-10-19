@@ -1,19 +1,20 @@
 import { Pagination } from '@popdesk/ui';
 import { Link } from 'react-router';
 import { pageHref } from './paging';
+import { t, tf } from './locale';
 
 /** Pagination with router links. Hidden when there is one page. */
 export function PageNav(props: { path: string; page: number; pageCount: number; onPageChange: () => void; param?: string }) {
   const param = props.param ?? 'page';
   return (
     <Pagination
-      label="쪽 넘기기"
+      label={t('paging.label')}
       page={props.page}
       pageCount={props.pageCount}
       getHref={(p) => pageHref(props.path, p, param)}
-      pageLabel={(p) => `${String(p)}쪽`}
-      previousLabel="앞 쪽"
-      nextLabel="다음 쪽"
+      pageLabel={(p) => tf('paging.page', { page: p })}
+      previousLabel={t('paging.previous')}
+      nextLabel={t('paging.next')}
       onPageChange={props.onPageChange}
       renderLink={(link) => (
         <Link

@@ -4,17 +4,18 @@
 import type { ImageUploadResult } from '@popdesk/ui';
 import { useState } from 'react';
 import { uploadFailureText } from './attachments';
+import { texts } from './locale';
 import type { Failure, Result } from './result';
 
-export const IMAGE_TEXT = {
-  notImage: 'PNG, JPEG, GIF, WebP 이미지만 본문에 넣을 수 있습니다',
-  tooMany: '저장하지 않은 이미지가 너무 많습니다. 글을 저장한 뒤 다시 올리세요',
-  stale: '본문의 이미지 가운데 올린 지 오래된 것이 있습니다. 이미지를 다시 올린 뒤 저장하세요',
-  inline: '본문 이미지',
-} as const;
+export const IMAGE_TEXT = texts({
+  notImage: 'images.notImage',
+  tooMany: 'images.tooMany',
+  stale: 'images.stale',
+  inline: 'images.inline',
+});
 
 /** For `known` of a save's failure band: the save named an image the server no longer takes (S5-AC-58). */
-export const IMAGE_SAVE_TEXT = { TEMPORARY_IMAGE_INVALID: IMAGE_TEXT.stale } as const;
+export const IMAGE_SAVE_TEXT = texts({ TEMPORARY_IMAGE_INVALID: 'images.stale' });
 
 /** Why an image did not go up, for the line under the editor. What an attachment says too is said in its words. */
 export function imageFailureText(failure: Failure): string {

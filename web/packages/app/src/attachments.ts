@@ -1,6 +1,7 @@
 // Uploading and opening attachments (screens.md P-4·P-5·C-4 첨부, ATT-1~5). The
 // paths and the client are the app's own and come in as arguments.
 import type { FileRejectReason, FileUploadLimits } from '@popdesk/ui';
+import { t, texts } from './locale';
 import { rateLimitedText, TEXT } from './messages';
 import { call, type Failure, type Result } from './result';
 
@@ -17,12 +18,12 @@ export const ATTACHMENT_LIMITS: FileUploadLimits = {
   maxNameLength: 255,
 };
 
-export const REJECT_TEXT: Record<FileRejectReason, string> = {
-  'too-large': '파일 하나는 10MB까지입니다.',
-  'total-too-large': '이 문의의 공개 첨부는 모두 합해 50MB까지입니다.',
-  empty: '빈 파일은 올릴 수 없습니다.',
-  'name-too-long': '파일 이름은 255자까지입니다.',
-};
+export const REJECT_TEXT: Readonly<Record<FileRejectReason, string>> = texts({
+  'too-large': 'attachments.tooLarge',
+  'total-too-large': 'attachments.totalTooLarge',
+  empty: 'attachments.empty',
+  'name-too-long': 'attachments.nameTooLong',
+});
 
 /** Why an upload failed, for its file row. 413 has its own text (UX-11); other failures never use it. */
 export function uploadFailureText(failure: Failure): string {
@@ -33,8 +34,8 @@ export function uploadFailureText(failure: Failure): string {
       FILE_TOO_LARGE: REJECT_TEXT['too-large'],
       FILE_EMPTY: REJECT_TEXT.empty,
       ISSUE_ATTACHMENTS_TOO_LARGE: REJECT_TEXT['total-too-large'],
-      ATTACHMENT_QUOTA_EXCEEDED: '팀의 첨부 용량이 모자랍니다. 관리자에게 알려 주세요.',
-      ISSUE_CLOSED: '종료된 문의에는 첨부를 올릴 수 없습니다.',
+      ATTACHMENT_QUOTA_EXCEEDED: t('attachments.quotaExceeded'),
+      ISSUE_CLOSED: t('attachments.issueClosed'),
     };
     return known[failure.code] ?? failure.message;
   }
