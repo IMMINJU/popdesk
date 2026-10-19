@@ -8,6 +8,9 @@ import { fieldSummaryTitle, fieldText, type FieldLimits } from './messages';
 import type { Failure, FieldProblem, Result } from './result';
 import { useToLogin } from './sessionContext';
 
+// Slice 11: OIDC sign-in on the login screens (oidc.ts); the export paths of this package are fixed.
+export { oidcStartUrl, useOidcBand, useSignInOptions, type OidcBand } from './oidc';
+
 /** A fast answer shows no skeleton (screens.md 2절 처음 불러옴). */
 export const SKELETON_DELAY_MS = 300;
 

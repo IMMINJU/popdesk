@@ -2904,6 +2904,34 @@ a.pd-inbox-row:hover .pd-inbox-text {
   overflow-wrap: anywhere;
 }
 
+/* OIDC sign-in under the login form (slice 11 screens.md C-1·P-1): a thin line with 또는, then the
+   button as wide as the form. */
+.pd-oidc-sign-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pd-oidc-or {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+  color: var(--text-muted);
+}
+
+.pd-oidc-or::before,
+.pd-oidc-or::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+.pd-oidc-sign-in .pd-button {
+  width: 100%;
+}
+
 /* Logo field (slice 9 screens.md 2.2) ------------------------------------ */
 
 .pd-logo-field {

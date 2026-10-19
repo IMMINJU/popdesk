@@ -5,6 +5,9 @@ import { Alert, FormErrorSummary, type FieldError } from '@popdesk/ui';
 import { failureText, rateLimitedText, TEXT } from './messages';
 import type { Failure } from './result';
 
+// Slice 11: the OIDC button under the login form (OidcSignIn.tsx); the export paths of this package are fixed.
+export { OidcSignIn, type OidcSignInProps } from './OidcSignIn';
+
 export interface SaveFailureWords {
   openLogin: string;
   saveSessionEnded: string;
