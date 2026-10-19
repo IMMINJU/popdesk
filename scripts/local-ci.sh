@@ -12,7 +12,7 @@
 # What differs from CI:
 # - The server tests run in five parts, each in its own JVM, because the dev PC cannot hold every class
 #   in one JVM next to Docker. A fault that needs all classes in one JVM does not show here.
-# - gitleaks scans origin/main..HEAD, and the locked-path check takes origin/main as its base.
+# - gitleaks scans origin/main..HEAD (in a worktree too), and the locked-path check takes origin/main as its base.
 # - Maven runs offline (-o).
 #
 # POPDESK_HEAVY, when set, is put in front of the heavy commands with the step's name
@@ -52,6 +52,16 @@ heavy() {  # heavy <step> <command...>
     $POPDESK_HEAVY "$step" "$@"
   else
     "$@"
+  fi
+}
+
+# In a git worktree .git is a file naming a Windows path the gitleaks container cannot read, so
+# the shared git folder is mounted on its own and named by GIT_DIR. Prints nothing in a clone.
+git_dir_mount() {
+  if [ -f "$ROOT/.git" ]; then
+    local common
+    common="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)"
+    echo "-v $(cygpath -m "$common" 2>/dev/null || echo "$common"):/gitdir -e GIT_DIR=/gitdir"
   fi
 }
 
@@ -101,8 +111,9 @@ run_step() {
       python scripts/ci/check-tenant-id.py &&
       python scripts/ci/check-locked-paths.py --base origin/main --role any &&
       MSYS_NO_PATHCONV=1 docker run --rm -v "$(cygpath -m "$ROOT" 2>/dev/null || echo "$ROOT"):/repo" \
+        $(git_dir_mount) \
         ghcr.io/gitleaks/gitleaks:latest git /repo --config /repo/.gitleaks.toml \
-        --log-opts="origin/main..HEAD" --no-banner --redact &&
+        --log-opts="origin/main..$(git -C "$ROOT" rev-parse HEAD)" --no-banner --redact &&
       # The structure checks that start no app (ADR D-57, D-58). The server parts run them again.
       cd "$ROOT/server" &&
       heavy gates ./mvnw -o -B test         -Dtest=PackageCyclesTest,ApiPathPrefixTest,ProductionCodeRulesTest,SwallowedExceptionsTest,TransactionalPlacementTest
