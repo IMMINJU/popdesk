@@ -2,7 +2,7 @@ package io.popdesk.notification;
 
 import java.time.Instant;
 import java.util.Collection;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -13,11 +13,13 @@ import java.util.UUID;
 public interface SentMailLookup {
 
     /**
-     * The issue of the most recently sent of these emails; empty when none of them is recorded.
+     * The issues of those of these emails that are recorded, in one query. Which of them a reply continues (the last
+     * in its headers that the sender may see, S12-AC-15) is the caller's to decide.
      *
      * @param messageIds {@code Message-ID}s without the angle brackets; may be empty
+     * @return each recorded {@code Message-ID} with its issue; empty when none is
      */
-    Optional<UUID> issueOf(Collection<String> messageIds);
+    Map<String, UUID> issuesOf(Collection<String> messageIds);
 
     /**
      * Deletes the records about the issue, in the caller's transaction: it is purged (design.md 0절 12).

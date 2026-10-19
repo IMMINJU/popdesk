@@ -4,8 +4,9 @@ import io.popdesk.notification.SentMailLookup;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -31,13 +32,16 @@ class MailSentRepository implements SentMailLookup {
     }
 
     @Override
-    public Optional<UUID> issueOf(Collection<String> messageIds) {
+    public Map<String, UUID> issuesOf(Collection<String> messageIds) {
+        Map<String, UUID> found = new HashMap<>();
         if (messageIds.isEmpty()) {
-            return Optional.empty();
+            return found;
         }
-        return jdbc.sql("select issue_id from mail_sent where message_id in (:ids) "
-                        + "order by sent_at desc, id desc limit 1")
-                .param("ids", List.copyOf(messageIds)).query(UUID.class).optional();
+        jdbc.sql("select message_id, issue_id from mail_sent where message_id in (:ids)")
+                .param("ids", List.copyOf(messageIds))
+                .query((rs, n) -> Map.entry(rs.getString(1), rs.getObject(2, UUID.class))).list()
+                .forEach(e -> found.put(e.getKey(), e.getValue()));
+        return found;
     }
 
     @Override
