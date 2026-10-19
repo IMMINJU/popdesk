@@ -1,6 +1,7 @@
 // 11 묶음 screens.md "C-10 구성원 목록": OIDC가 묶인 줄의 배지 "OIDC 연결"(정지 계정 포함), 그 줄 메뉴의 "OIDC 연결 풀기",
-// 확인 대화상자(제목, 이름을 넣은 본문, 단추), 보낸 요청(DELETE …/oidc-link, CSRF), 성공·404·그 밖의 실패,
-// 닫은 뒤와 대상이 바뀐 뒤 온 답(S11-AC-33).
+// 확인 대화상자(제목, 이름을 넣은 본문, 단추), 보낸 요청(DELETE …/oidc-link, CSRF), 보내는 중, 성공·404·그 밖의 실패,
+// 닫은 뒤와 대상이 바뀐 뒤 온 답(S11-AC-33). 늦은 답은 배지를 바꾸지 않고 목록만 다시 읽고, 성공은 배지를 지운 뒤 목록도
+// 다시 읽는다(C-7 웹 점검 D2). 그것을 가리려고 다시 읽는 목록의 답을 잡아 둔다(`holdList`).
 import { HttpResponse } from 'msw/http';
 import { describe, expect, test } from 'vitest';
 import {
@@ -11,7 +12,9 @@ import {
   expectNoAxeViolations,
   found,
   gate,
+  isBlocked,
   openDialog,
+  paged,
   renderAt,
   screen,
   sent,
@@ -41,6 +44,29 @@ function seed() {
 }
 
 const listCalls = () => callsTo('GET', ACCOUNTS).length;
+
+/** What the server does when another admin unlinked `who` or the late answer was a 204. */
+function unlinkedOnServer(who: Account) {
+  state.accounts = state.accounts.map((a) => (a.id === who.id ? { ...a, oidcLinked: false } : a));
+}
+
+/** From now on every 계정 목록 read waits until the gate opens, then answers what the server holds then. */
+function holdList() {
+  const hold = gate();
+  route('get', ACCOUNTS, async ({ request }) => {
+    await hold.opened;
+    const role = new URL(request.url).searchParams.get('role');
+    return HttpResponse.json(paged(role ? state.accounts.filter((a) => a.role === role) : state.accounts));
+  });
+  return hold;
+}
+
+/** A late answer to 연결 풀기 of 이상담, and whether the account is still linked on the server after it. */
+const LATE = [
+  ['204', () => new HttpResponse(null, { status: 204 }), false],
+  ['404', () => errors.notFound(), false],
+  ['500', () => errors.internal(), true],
+] as const;
 
 /** The badges drawn in the 이름 cell of the row holding `name`, as their text and tone. */
 function nameBadges(row: HTMLElement): { text: string; tone: string | null }[] {
@@ -146,6 +172,31 @@ describe('C-10 OIDC 연결 풀기 (11 묶음)', () => {
     expect(await sentOne?.body).toBeUndefined();
   });
 
+  test('S11-AC-33 C-10 보내는 동안: "연결 풀기"가 눌리지 않고, 다시 눌러도 DELETE는 하나다', async () => {
+    seed();
+    const release = gate();
+    route('delete', unlinkPath(LEE.id), async () => {
+      await release.opened;
+      unlinkedOnServer(LEE);
+      return new HttpResponse(null, { status: 204 });
+    });
+    const { user } = renderAt('/members');
+    const box = await openUnlink(user, LEE);
+    const go = await goButton(box);
+    await user.click(go);
+    await sent('DELETE', unlinkPath(LEE.id));
+
+    await eventually(() => {
+      expect(isBlocked(go), '보내는 동안 눌리지 않음').toBe(true);
+    });
+    await user.click(go);
+    await settle();
+    expect(callsTo('DELETE', unlinkPath(LEE.id)), 'DELETE 수').toHaveLength(1);
+    release.open();
+    await closed();
+    await said(UNLINKED);
+  });
+
   test('S11-AC-33 C-10 풀기 성공: 대화상자를 닫고, 그 줄의 배지를 지우고, "OIDC 연결을 풀었습니다."를 알린다. 메뉴에서도 빠진다', async () => {
     seed();
     const { user } = renderAt('/members');
@@ -158,6 +209,27 @@ describe('C-10 OIDC 연결 풀기 (11 묶음)', () => {
     await expectLinked(LEE.name, false);
     await expectLinked(KIM.name, true);
     expect(await rowActions(user, await rowOf(LEE.name))).not.toContain(UNLINK);
+  });
+
+  test('S11-AC-33 C-10 풀기 성공 뒤: 배지는 목록을 기다리지 않고 지우고, 그 뒤 목록을 다시 읽는다', async () => {
+    seed();
+    const { user } = renderAt('/members');
+    const box = await openUnlink(user, LEE);
+    await settle();
+    const hold = holdList();
+    const before = listCalls();
+    await user.click(await goButton(box));
+
+    await sent('DELETE', unlinkPath(LEE.id));
+    await closed();
+    await expectLinked(LEE.name, false);
+    await eventually(() => {
+      expect(listCalls(), '목록을 다시 읽음').toBeGreaterThan(before);
+    });
+    hold.open();
+    await settle();
+    await expectLinked(LEE.name, false);
+    await expectLinked(KIM.name, true);
   });
 
   test('S11-AC-33 C-10 풀기 404: 대화상자 안에 "이미 연결이 풀렸습니다."이고 목록을 다시 읽는다', async () => {
@@ -204,56 +276,80 @@ describe('C-10 OIDC 연결 풀기 (11 묶음)', () => {
     await expectLinked(LEE.name, true);
   });
 
-  test.each([
-    ['204', () => new HttpResponse(null, { status: 204 })],
-    ['404', () => errors.notFound()],
-    ['500', () => errors.internal()],
-  ])('S11-AC-33 C-10 닫은 뒤 온 답(%s): 대화상자를 다시 열지 않고 알림도 띠도 없다', async (_, answer) => {
-    seed();
-    const release = gate();
-    route('delete', unlinkPath(LEE.id), async () => {
-      await release.opened;
-      return answer();
-    });
-    const { user } = renderAt('/members');
-    await expectLinked(LEE.name, true);
-    await sendThenCancel(user, LEE);
+  test.each(LATE)(
+    'S11-AC-33 C-10 닫은 뒤 온 답(%s): 대화상자를 다시 열지 않고 알림도 띠도 없다. 배지는 그 답으로 바꾸지 않고, 목록을 다시 읽어 그대로 보인다',
+    async (_, answer, linkedAfter) => {
+      seed();
+      const release = gate();
+      route('delete', unlinkPath(LEE.id), async () => {
+        await release.opened;
+        if (!linkedAfter) unlinkedOnServer(LEE);
+        return answer();
+      });
+      const { user } = renderAt('/members');
+      await expectLinked(LEE.name, true);
+      await sendThenCancel(user, LEE);
+      await settle();
+      const hold = holdList();
+      const before = listCalls();
 
-    const done = answered('DELETE', unlinkPath(LEE.id));
-    release.open();
-    await done;
-    await settle();
-    expect(openDialog(), '늦은 답이 대화상자를 다시 열지 않는다').toBeNull();
-    expectNotSaid(UNLINKED);
-    expect(screen.queryAllByRole('alert').map(text).filter((t) => t !== ''), '띠').toEqual([]);
-  });
+      const done = answered('DELETE', unlinkPath(LEE.id));
+      release.open();
+      await done;
+      await settle();
+      expect(openDialog(), '늦은 답이 대화상자를 다시 열지 않는다').toBeNull();
+      expectNotSaid(UNLINKED);
+      expect(screen.queryAllByRole('alert').map(text).filter((t) => t !== ''), '띠').toEqual([]);
+      await eventually(() => {
+        expect(listCalls(), '목록을 다시 읽음').toBeGreaterThan(before);
+      });
+      await expectLinked(LEE.name, true);
+      hold.open();
+      await expectLinked(LEE.name, linkedAfter);
+    },
+  );
 
-  test.each([
-    ['404', () => errors.notFound()],
-    ['500', () => errors.internal()],
-  ])('S11-AC-33 C-10 앞 사람의 답(%s)이 다른 사람의 대화상자가 열린 동안 온다: 지금 대화상자에 앞 사람의 문장이 없다', async (_, answer) => {
-    seed();
-    const release = gate();
-    route('delete', unlinkPath(LEE.id), async () => {
-      await release.opened;
-      return answer();
-    });
-    const { user } = renderAt('/members');
-    await expectLinked(LEE.name, true);
-    await sendThenCancel(user, LEE);
-    const second = await openUnlink(user, KIM);
-    expect(text(second)).toContain(unlinkBody(KIM.name));
+  test.each(LATE)(
+    'S11-AC-33 C-10 앞 사람의 답(%s)이 다른 사람의 대화상자가 열린 동안 온다: 지금 대화상자가 그대로이고 앞 사람의 문장도 알림도 없다. 목록은 다시 읽는다',
+    async (_, answer, linkedAfter) => {
+      seed();
+      const release = gate();
+      route('delete', unlinkPath(LEE.id), async () => {
+        await release.opened;
+        if (!linkedAfter) unlinkedOnServer(LEE);
+        return answer();
+      });
+      const { user } = renderAt('/members');
+      await expectLinked(LEE.name, true);
+      await sendThenCancel(user, LEE);
+      const second = await openUnlink(user, KIM);
+      expect(text(second)).toContain(unlinkBody(KIM.name));
+      await settle();
+      const hold = holdList();
+      const before = listCalls();
 
-    const done = answered('DELETE', unlinkPath(LEE.id));
-    release.open();
-    await done;
-    await settle();
-    expect(second.isConnected, '같은 대화상자').toBe(true);
-    expect(text(second)).not.toContain(ALREADY_UNLINKED);
-    expect(text(second)).not.toContain(SERVER_FAILED);
-    expect(within(second).queryAllByRole('alert').map(text).filter((t) => t !== ''), '앞 대화상자의 오류').toEqual([]);
-    expect(callsTo('DELETE', unlinkPath(KIM.id)), '두 번째 사람에게는 아직 보내지 않음').toHaveLength(0);
-  });
+      const done = answered('DELETE', unlinkPath(LEE.id));
+      release.open();
+      await done;
+      await settle();
+      expect(second.isConnected, '같은 대화상자').toBe(true);
+      expect(openDialog(), '열린 대화상자').toBe(second);
+      expect(text(second)).toContain(unlinkBody(KIM.name));
+      expect(text(second)).not.toContain(ALREADY_UNLINKED);
+      expect(text(second)).not.toContain(SERVER_FAILED);
+      expect(within(second).queryAllByRole('alert').map(text).filter((t) => t !== ''), '앞 대화상자의 오류').toEqual([]);
+      expectNotSaid(UNLINKED);
+      expect(isBlocked(await goButton(second)), '앞 사람의 보내는 중이 새지 않는다').toBe(false);
+      expect(callsTo('DELETE', unlinkPath(KIM.id)), '두 번째 사람에게는 아직 보내지 않음').toHaveLength(0);
+      await eventually(() => {
+        expect(listCalls(), '목록을 다시 읽음').toBeGreaterThan(before);
+      });
+      await expectLinked(LEE.name, true);
+      hold.open();
+      await expectLinked(LEE.name, linkedAfter);
+      expect(openDialog(), '목록을 다시 읽은 뒤에도 같은 대화상자').toBe(second);
+    },
+  );
 
   test('S11-AC-33 C-10 axe: 배지가 있는 목록과 연결 풀기 대화상자에 접근성 위반이 없다', async () => {
     seed();

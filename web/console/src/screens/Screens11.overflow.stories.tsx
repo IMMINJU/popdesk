@@ -81,6 +81,11 @@ async function loginParts(canvas: HTMLElement): Promise<Found> {
   const main = await waitFor(() => mainOf(canvas), 'C-1의 main');
   const button = await waitFor(() => buttonNamed(main, OIDC_BUTTON), `C-1의 "${OIDC_BUTTON}"`, 8000);
   await waitFor(() => (textOf(main).includes('또는') ? true : null), 'C-1의 "또는"');
+  // 폭 가득(screens.md "OIDC 켜짐"): the button is as wide as the password form above it.
+  const form = await waitFor(() => main.querySelector('form'), 'C-1의 비밀번호 폼');
+  const buttonWidth = button.getBoundingClientRect().width;
+  const formWidth = form.getBoundingClientRect().width;
+  if (Math.abs(buttonWidth - formWidth) > 1) throw new Error(`C-1의 "${OIDC_BUTTON}" 폭 ${String(buttonWidth)}px, 폼 폭 ${String(formWidth)}px`);
   const band = await waitFor(
     () => Array.from(main.querySelectorAll<HTMLElement>('[role="alert"]')).find((el) => textOf(el).includes(UNAVAILABLE)) ?? null,
     'C-1의 오류 띠(unavailable)',

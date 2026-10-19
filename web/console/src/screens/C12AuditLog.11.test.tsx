@@ -1,6 +1,7 @@
 // 11 묶음 screens.md "C-12 감사 로그": 새 종류 셋(OIDC_LINKED "OIDC 연결", OIDC_UNLINKED "OIDC 연결 풀기"는 "계정" 묶음,
 // INVITATION_ACCEPTED "초대 수락"은 "초대" 묶음)과, 로그인 성공·실패 줄의 `method: OIDC`에 붙는 "(회사 계정)"
-// (S11-AC-24의 화면). 새 묶음은 없다(design.md 2절).
+// (S11-AC-24의 화면). 새 묶음은 없다(design.md 2절). "바뀐 값"의 `method`는 "로그인 방법"(값 OIDC는 "회사 계정"),
+// `issuer`는 "발급자"다(C-7 웹 점검 D3).
 import { describe, expect, test } from 'vitest';
 import { expectNoAxeViolations, renderAt, text } from '../__tests__/console';
 import { AGENT_ACTOR, SIGNED_IN, audit, column, entry, entryRows, kindSelect, kindsOf, listedKinds } from '../__tests__/console1b';
@@ -63,5 +64,16 @@ describe('C-12 감사 로그의 OIDC 항목 (11 묶음)', () => {
     expect(password, '비밀번호 로그인 줄').not.toContain(BY_COMPANY_ACCOUNT);
     expect(column('바뀐 값').join(' ')).not.toContain('method');
     expect(column('일').slice(0, 2).every((w) => w.startsWith('로그인')), '일의 이름은 그대로 로그인·로그인 실패').toBe(true);
+  });
+
+  test('S11-AC-24 C-12 바뀐 값: 초대 수락의 method OIDC는 "로그인 방법: 회사 계정", OIDC 연결의 issuer는 "발급자: {주소 그대로}"', async () => {
+    audit.entries = [ACCEPTED, LINKED];
+    renderAt(URL_LOG);
+
+    await entryRows(2);
+    const [accepted = '', linked = ''] = column('바뀐 값');
+    expect(accepted, '초대 수락').toContain('로그인 방법: 회사 계정');
+    expect(linked, 'OIDC 연결').toContain('발급자: https://id.acme.example');
+    for (const raw of ['method', 'issuer', 'OIDC']) expect(`${accepted} ${linked}`, `"${raw}" 그대로`).not.toContain(raw);
   });
 });

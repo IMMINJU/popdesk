@@ -2,7 +2,8 @@
 // 오류 띠 셋(S11-AC-32). 콘솔은 C1Login.11.test.tsx가 같은 것을 본다.
 // 단추는 `location.assign`으로 페이지를 옮긴다. jsdom은 다른 문서로 옮기는 주소를 남기지 않으므로(mock 금지), 여기서는
 // "이동 중…", 눌리지 않음, 요청이 아님(sign-in POST도 fetch도 없음)을 보고, 옮겨 가는 주소와 `next`는 같이 쓰는 조각의
-// 테스트(packages/app/src/OidcSignIn.11.test.tsx)가 본다(10a 내보내기 내려받기와 같은 꼴).
+// 테스트(packages/app/src/OidcSignIn.11.test.tsx)가 본다(10a 내보내기 내려받기와 같은 꼴). 화면이 그 조각을 쓰고 주소의
+// `next`를 거르지 않고 넘기는지(없으면 넘기지 않음)는 단추를 그린 조각의 props로 본다(C-7 웹 점검 D1, portal11.ts `oidcPieceProps`).
 import { HttpResponse } from 'msw/http';
 import { describe, expect, test } from 'vitest';
 import {
@@ -26,7 +27,7 @@ import {
   text,
 } from '../__tests__/portal';
 import { settle } from '../__tests__/portal1a';
-import { MOVING, OIDC_BANDS, OIDC_BUTTON, OPTIONS, OR, START, signInFailed, signInOptions } from '../__tests__/portal11';
+import { MOVING, OIDC_BANDS, OIDC_BUTTON, OPTIONS, OR, START, oidcPieceProps, signInFailed, signInOptions } from '../__tests__/portal11';
 
 type User = ReturnType<typeof renderAt>['user'];
 
@@ -68,7 +69,27 @@ describe('P-1 로그인의 회사 계정 단추 (11 묶음)', () => {
     expect(before(submit, oidc), '로그인 단추 뒤').toBe(true);
     expect(before(forgot, oidc), '"비밀번호를 잊었나요?" 뒤').toBe(true);
     expect(pageText()).toContain(OR);
-    expect(oidc.closest('form') !== null && (oidc as HTMLButtonElement).type === 'submit', '폼을 보내는 단추가 아니다').toBe(false);
+    expect(oidc.getAttribute('data-pd'), '@popdesk/ui Button').toBe('Button');
+    expect(oidc.getAttribute('data-variant'), '보조 단추').toBe('secondary');
+    expect((oidc as HTMLButtonElement).type, '폼을 보내는 단추가 아니다').toBe('button');
+    expect(oidc.hasAttribute('form'), '폼 밖에서 폼을 보내지 않는다').toBe(false);
+  });
+
+  test.each([
+    ['보던 화면', '/login?next=%2Fissues%2FACME-7%3Fstatus%3DRECEIVED', '/issues/ACME-7?status=RECEIVED'],
+    ['거르면 바뀌는 바깥 주소', '/login?next=https%3A%2F%2Fevil.example%2F', 'https://evil.example/'],
+    ['거르면 바뀌는 로그인 화면', '/login?next=%2Flogin', '/login'],
+    ['오류 띠와 함께', '/login?oidc=failed&next=%2Fissues%2FACME-7', '/issues/ACME-7'],
+    ['없음', '/login', null],
+  ])('S11-AC-31 P-1 next(%s): 단추는 같이 쓰는 조각 OidcSignIn이 그리고, 화면은 주소의 next를 거르지 않고 넘긴다. 없으면 넘기지 않는다(/issues가 아님)', async (_, path, next) => {
+    state.signedIn = false;
+    signInOptions(true);
+    renderAt(path);
+    await formShows();
+
+    const props = oidcPieceProps(await button(OIDC_BUTTON));
+    expect(props, '단추를 그린 OidcSignIn').not.toBeNull();
+    expect(props?.next ?? null, '조각에 넘긴 next').toBe(next);
   });
 
   test.each([
@@ -114,6 +135,9 @@ describe('P-1 로그인의 회사 계정 단추 (11 묶음)', () => {
     signInOptions(true);
     const { user } = renderAt('/login?next=%2Fissues%2FACME-7');
     await formShows();
+    const submits: Event[] = [];
+    const onSubmit = (e: Event) => submits.push(e);
+    document.addEventListener('submit', onSubmit, true);
     await user.click(await button(OIDC_BUTTON));
 
     await eventually(() => {
@@ -127,6 +151,8 @@ describe('P-1 로그인의 회사 계정 단추 (11 묶음)', () => {
     expect(callsTo('POST', '/api/public/sign-in'), '비밀번호 로그인').toHaveLength(0);
     expect(callsTo('GET', START), '시작 주소를 fetch로 부르지 않는다').toHaveLength(0);
     expect(window.location.pathname, '화면 안 이동이 아니다').toBe('/login');
+    document.removeEventListener('submit', onSubmit, true);
+    expect(submits, '폼 제출이 아니다(submit 이벤트)').toHaveLength(0);
   });
 });
 
@@ -141,6 +167,7 @@ describe('P-1 로그인의 OIDC 오류 띠 (11 묶음)', () => {
       const band = await alertWith(says);
       const emailField = await email();
       expect(before(band, emailField), '폼 위').toBe(true);
+      expect(band.closest('[data-pd="Alert"]')?.getAttribute('data-tone'), 'Alert tone="error"').toBe('error');
       await eventually(() => {
         expect(document.activeElement, '첫 초점').toBe(emailField);
       });
@@ -175,6 +202,23 @@ describe('P-1 로그인의 OIDC 오류 띠 (11 묶음)', () => {
     await user.click(await button('로그인'));
 
     await alertWith('이메일 또는 비밀번호가 맞지 않습니다.');
+    expect(oidcBands(), 'OIDC 띠').toEqual([]);
+  });
+
+  test.each([
+    ['429', () => errors.rateLimited(30)],
+    ['500', () => errors.internal()],
+    ['네트워크 오류', () => HttpResponse.error()],
+  ])('S11-AC-32 P-1 띠가 있는데 비밀번호 로그인을 시도(%s): 결과와 상관없이 OIDC 띠를 지운다', async (_, answer) => {
+    state.signedIn = false;
+    on('post', '/api/public/sign-in', answer);
+    const { user } = renderAt('/login?oidc=busy');
+    await alertWith(OIDC_BANDS.busy);
+
+    await signInWithPassword(user);
+    await sent('POST', '/api/public/sign-in');
+    await settle();
+
     expect(oidcBands(), 'OIDC 띠').toEqual([]);
   });
 
