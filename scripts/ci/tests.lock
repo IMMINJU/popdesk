@@ -974,6 +974,7 @@ a6d5d4c43be4d400311ce52e5fbf22bd66a9da6e7176573d5804e9782749ad3b  web/packages/a
 b48292272f8537cd82f56d9020063e63fa0e9282d08c53137bb97675c99aea32  web/packages/app/src/csrf.test.ts
 e9d81640b7c19c69682e72f7ece87153bcfa624194808502ed143599520b8509  web/packages/app/src/hooks.test.tsx
 eb312d6302e3e9c8ab6fc58dddbe5b7ca8336e2020dffc794ec186a4b8da3bfb  web/packages/app/src/locale.b5.test.tsx
+d92a0ee064388cafbd088cbf96f81c4434970b23f7187b66105bcffca6102085  web/packages/app/src/locale.c10.test.ts
 27bac5f45243c127f2c00730ee75195a06c81a0345eca0cbb670500b50c2500f  web/packages/app/src/locale.test.ts
 6e2b89b8ee4ecf0e4028235105d23bf916d93fa9c97977d7654e678d55288ca9  web/packages/app/src/navigate.test.tsx
 663392ef8d3c280c5fd601e1abedddbdf5725719167a11e59b654ba343a76dbb  web/packages/app/src/oidc.test.tsx
