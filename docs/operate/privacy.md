@@ -16,7 +16,7 @@ popdesk is not released yet. Values here are the planned contract and may change
 | Membership requests | A copy of the requesting customer's email and name |
 | Email queue and inbox | Which account a queued email or an inbox item is for, and what it is about. The address is read when the email is sent |
 | Audit log | The person who acted (account ID, name, email) and the values that changed, often the name and email of the account it was done to |
-| Received email | A record of each received email: a hash of its sender and `Message-ID` (or of the whole email), what became of it, and, for email turned into an issue, a comment, or a notice, the sender's account and address. A discarded email (unknown sender, automated, failed DMARC) keeps no address. The mailbox keeps the email itself in the processed and quarantine folders |
+| Received email | A record of each received email: a hash of its sender and `Message-ID` (or of the whole email), what became of it, and, for email turned into an issue, a comment, or a notice, or quarantined for going over the rate limit, the sender's account and address; anonymizing the account clears that address. A discarded email (unknown sender, automated, failed DMARC) keeps no address. The mailbox keeps the email itself in the processed and quarantine folders |
 | Company exports | The ZIP files of [company exports](#exporting-a-companys-data), in `POPDESK_EXPORT_DIR`, for 24 hours |
 
 popdesk does not keep IP addresses: sign-in limits are counted in memory only. Its log masks every email address after the first character and holds no password, token, invitation link, or issue content.
