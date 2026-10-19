@@ -23,6 +23,11 @@ export function t(key: MessageKey): string {
   return messages[screenLocale()][key];
 }
 
+/** `t` in a given language, e.g. a toast said just after the language was saved (B5-AC-03). */
+export function tIn(locale: Locale, key: MessageKey): string {
+  return messages[locale][key];
+}
+
 /**
  * `t` with the `{name}` places of the text filled in, e.g. `tf('inbox.count', { count: 3 })`.
  * `{count|issue|issues}` picks the first word when `count` is 1 and the second otherwise

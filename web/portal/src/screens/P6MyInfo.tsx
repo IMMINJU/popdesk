@@ -6,7 +6,7 @@ import { api } from '../api';
 import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
 import { useCooldown, useFieldErrors, useLive } from '../app/hooks';
 import { PageTitle } from '../app/layout';
-import { t, type Locale } from '../app/locale';
+import { t, tIn, type Locale } from '../app/locale';
 import { failureText, TEXT } from '../app/messages';
 import { photoUrl } from '../app/photos';
 import { call, type Failure } from '../app/result';
@@ -44,7 +44,8 @@ function Profile(props: { me: Me }) {
       // The head shows the new name at once.
       setMe(result.data);
       setName(result.data.name);
-      toast(t('myInfo.saved'));
+      // In the language just saved: the screen changes to it with the next draw.
+      toast(tIn(result.data.locale, 'myInfo.saved'));
       return;
     }
     const f = result.failure;
