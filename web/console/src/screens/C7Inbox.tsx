@@ -78,6 +78,8 @@ function sentence(n: Notification): string {
     case 'COMPANY_EXPORT_FAILED':
       return tf('inbox.companyExportFailed', { code: n.companyCode ?? '' });
     case 'ISSUE_RETENTION_ARMED':
+      // No issue to move yet has words of its own: "0건을 옮깁니다" reads as if something moved (B2-AC-06).
+      if ((n.retentionCount ?? 0) === 0) return tf('inbox.retentionArmedNone', { days: (n.retentionDays ?? 0).toLocaleString('ko') });
       return tf('inbox.retentionArmed', { days: (n.retentionDays ?? 0).toLocaleString('ko'), count: (n.retentionCount ?? 0).toLocaleString('ko') });
     default:
       return t('inbox.other');

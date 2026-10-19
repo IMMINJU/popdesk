@@ -170,6 +170,7 @@ export const en: Record<keyof typeof ko, string> = {
   'inbox.companyExportReady': 'The export of company {code} is ready',
   'inbox.companyExportFailed': 'The export of company {code} failed',
   'inbox.retentionArmed': 'Issue cleanup is on. From tomorrow, {count} issues closed more than {days} days ago move to the trash',
+  'inbox.retentionArmedNone': 'Automatic issue cleanup is on. No issue has been closed for over {days} days yet.',
   'inbox.other': 'You have a new notification',
   // The portal's sentences: whoever did it is the support team, never a name (S4-AC-68).
   'inbox.portal.staffComment': 'The support team answered',

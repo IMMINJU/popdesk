@@ -59,6 +59,8 @@ const COMPANY_ERRORS: Record<string, string> = {
   COMPANY_NOT_ACTIVE: '보관된 고객사에는 더할 수 없습니다.',
   NOT_A_CUSTOMER: '상담 쪽 계정은 고객사에 소속시킬 수 없습니다.',
   NOT_FOUND: '고객사나 계정을 찾을 수 없습니다.',
+  // The same words as C-10 (b2 screens.md 1절): another admin anonymized the account after the table was read.
+  ACCOUNT_ANONYMIZED: '이미 익명화한 계정입니다.',
 };
 
 /** Another tab changed the company: the screen is old, so it reads again (screens.md C-9 400). */
@@ -742,7 +744,12 @@ function CompanyDetail(props: { code: string }) {
   const customerColumns: DataTableColumn<Member>[] = [
     { key: 'name', header: '이름', cell: memberCell },
     { key: 'email', header: '이메일', cell: (m) => m.email },
-    { key: 'status', header: '계정 상태', cell: (m) => <StatusBadge kind="account" status={m.status} /> },
+    // An anonymized account is `SUSPENDED` in the API, so `anonymized` is asked first, as C-10 does (B2-AC-04).
+    {
+      key: 'status',
+      header: '계정 상태',
+      cell: (m) => (m.anonymized ? <Badge tone="neutral">익명화됨</Badge> : <StatusBadge kind="account" status={m.status} />),
+    },
     { key: 'manager', header: '담당자', cell: (m) => (m.manager ? <Badge tone="accent">담당자</Badge> : null) },
     {
       key: 'actions',
@@ -750,8 +757,8 @@ function CompanyDetail(props: { code: string }) {
       align: 'end',
       cell: (m) => (
         <span className="pd-row-actions">
-          {/* An archived company takes no new manager; the mark can still be taken away (S2-AC-06). */}
-          {(m.manager || !archived) && (
+          {/* An archived company and an anonymized account take no new manager; the mark can still be taken away (S2-AC-06, B2-AC-04). */}
+          {(m.manager || (!archived && !m.anonymized)) && (
             <Button
               variant="quiet"
               size="sm"

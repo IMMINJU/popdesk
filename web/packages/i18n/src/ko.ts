@@ -170,6 +170,7 @@ export const ko = {
   'inbox.companyExportReady': '고객사 {code} 내보내기가 끝났습니다',
   'inbox.companyExportFailed': '고객사 {code} 내보내기가 실패했습니다',
   'inbox.retentionArmed': '문의 자동 정리가 켜졌습니다. 내일부터 종료된 지 {days}일이 지난 문의 {count}건을 휴지통으로 옮깁니다',
+  'inbox.retentionArmedNone': '문의 자동 정리가 켜졌습니다. 지금은 종료된 지 {days}일이 지난 문의가 없습니다.',
   'inbox.other': '새 알림이 있습니다',
   // The portal's sentences: whoever did it is "지원팀", never a name (S4-AC-68).
   'inbox.portal.staffComment': '지원팀이 답변했습니다',
