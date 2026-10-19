@@ -24,7 +24,7 @@ const INBOX_HREF = '/inbox';
 function menu(me: Me): Omit<NavItem, 'current'>[] {
   if (!me.companies.some((c) => c.manager)) return [];
   return [
-    { href: '/issues', label: '문의' },
+    { href: '/issues', label: t('nav.issues') },
     { href: '/members', label: t('companyPeople.title') },
   ];
 }
@@ -181,20 +181,20 @@ function ScreenState(props: { title: string; description: string; icon: ReactNod
 }
 
 /** 404: does not tell missing from hidden (COM-1). Links back to the list. */
-export function NotFound(props: { listHref: string; listLabel: string }) {
+export function NotFound(props: { listHref: string; listLabel?: string }) {
   return (
     <ScreenState
       title={TEXT.notFound}
       description={TEXT.notFoundHelp}
       icon={<SearchOffIcon size={20} />}
-      action={<Link to={props.listHref}>{props.listLabel}</Link>}
+      action={<Link to={props.listHref}>{props.listLabel ?? TEXT.toIssueList}</Link>}
     />
   );
 }
 
 /** 403 on 우리 회사 사람 (S2-AC-45): the whole screen, nothing of the company on it. */
 export function NoPermission() {
-  return <ScreenState title={TEXT.noPermission} description={TEXT.noPermissionHelp} icon={<LockIcon size={20} />} action={<Link to="/issues">문의 목록으로</Link>} />;
+  return <ScreenState title={TEXT.noPermission} description={TEXT.noPermissionHelp} icon={<LockIcon size={20} />} action={<Link to="/issues">{TEXT.toIssueList}</Link>} />;
 }
 
 /** 5xx or no connection while loading: band with 다시 불러오기. */

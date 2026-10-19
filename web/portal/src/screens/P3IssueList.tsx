@@ -186,7 +186,7 @@ export function P3IssueList() {
   return (
     <div className="pd-screen">
       <div className="pd-screen-head">
-        <PageTitle titleRef={heading}>문의 목록</PageTitle>
+        <PageTitle titleRef={heading}>{t('issueList.title')}</PageTitle>
         {member && (
           <Link className="pd-button" data-variant="primary" data-size="md" to="/issues/new">
             <span className="pd-button-text">문의 올리기</span>

@@ -23,7 +23,7 @@ export function C16PasswordForgot() {
   const emailRef = useRef<HTMLInputElement>(null);
   const notice = useRef<HTMLParagraphElement>(null);
   const fields = useFieldErrors({
-    email: { id: 'forgot-email', limits: { format: '이메일' } },
+    email: { id: 'forgot-email', limits: { format: t('field.email') } },
   });
 
   useDocumentTitle(t('passwordForgot.title'));
@@ -45,7 +45,7 @@ export function C16PasswordForgot() {
     fields.clear();
     const address = email.trim();
     if (!EMAIL_SHAPE.test(address)) {
-      fields.setError('email', fieldText(address === '' ? 'REQUIRED' : 'INVALID_FORMAT', { format: '이메일' }));
+      fields.setError('email', fieldText(address === '' ? 'REQUIRED' : 'INVALID_FORMAT', { format: t('field.email') }));
       return;
     }
     setPending(true);

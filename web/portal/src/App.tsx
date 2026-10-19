@@ -35,7 +35,7 @@ const routes: RouteObject[] = [
       { path: '/me', element: <P6MyInfo /> },
       { path: '/inbox', element: <P7Inbox /> },
       { path: '/members', element: <P8Members /> },
-      { path: '*', element: <NotFound listHref="/issues" listLabel="문의 목록으로" /> },
+      { path: '*', element: <NotFound listHref="/issues" /> },
     ],
   },
 ];

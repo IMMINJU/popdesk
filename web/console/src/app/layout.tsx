@@ -21,19 +21,19 @@ import { UnreadContext, useUnreadCount } from './unread';
 function menu(me: Me, requests: number): Omit<NavItem, 'current'>[] {
   // 문의 opens the 내 담당 view (S3-AC-77).
   const items: Omit<NavItem, 'current'>[] = [
-    { href: MY_ISSUES_HREF, label: '문의' },
-    { href: '/tasks', label: '내 작업' },
-    { href: '/stats', label: '통계' },
+    { href: MY_ISSUES_HREF, label: t('nav.issues') },
+    { href: '/tasks', label: t('nav.tasks') },
+    { href: '/stats', label: t('nav.stats') },
   ];
   if (me.role === 'ADMIN') {
     items.push(
-      { href: '/companies', label: '고객사', count: requests, countLabel: `소속 요청 ${String(requests)}건` },
-      { href: '/members', label: '구성원' },
-      { href: '/trash', label: '휴지통' },
-      { href: '/sla', label: 'SLA 설정' },
+      { href: '/companies', label: t('nav.companies'), count: requests, countLabel: tf('nav.companyRequests', { count: requests }) },
+      { href: '/members', label: t('nav.members') },
+      { href: '/trash', label: t('nav.trash') },
+      { href: '/sla', label: t('nav.sla') },
       { href: '/audit-log', label: t('auditLog.title') },
-      { href: '/system', label: '시스템 상태' },
-      { href: '/branding', label: '브랜딩' },
+      { href: '/system', label: t('nav.system') },
+      { href: '/branding', label: t('nav.branding') },
     );
   }
   return items;
@@ -229,20 +229,20 @@ function ScreenState(props: { title: string; description: string; icon: ReactNod
 }
 
 /** 404: does not tell missing from hidden (COM-1). Links back to the list. */
-export function NotFound(props: { listHref: string; listLabel: string }) {
+export function NotFound(props: { listHref: string; listLabel?: string }) {
   return (
     <ScreenState
       title={TEXT.notFound}
       description={TEXT.notFoundHelp}
       icon={<SearchOffIcon size={20} />}
-      action={<Link to={props.listHref}>{props.listLabel}</Link>}
+      action={<Link to={props.listHref}>{props.listLabel ?? TEXT.toIssueList}</Link>}
     />
   );
 }
 
 /** 403 on an admin screen (S0-AC-30): the whole screen, no admin controls. */
 export function NoPermission() {
-  return <ScreenState title={TEXT.noPermission} description={TEXT.noPermissionHelp} icon={<LockIcon size={20} />} action={<Link to="/issues">문의 목록으로</Link>} />;
+  return <ScreenState title={TEXT.noPermission} description={TEXT.noPermissionHelp} icon={<LockIcon size={20} />} action={<Link to="/issues">{TEXT.toIssueList}</Link>} />;
 }
 
 /** Admin screens: an agent sees 권한이 없습니다 without calling the API. */

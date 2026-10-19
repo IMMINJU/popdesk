@@ -61,7 +61,7 @@ const routes: RouteObject[] = [
       { path: '/audit-log', element: <AdminOnly><C12AuditLog /></AdminOnly> },
       { path: '/system', element: <AdminOnly><C18SystemStatus /></AdminOnly> },
       { path: '/branding', element: <AdminOnly><C14Branding /></AdminOnly> },
-      { path: '*', element: <NotFound listHref="/issues" listLabel="문의 목록으로" /> },
+      { path: '*', element: <NotFound listHref="/issues" /> },
     ],
   },
 ];

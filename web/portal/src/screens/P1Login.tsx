@@ -5,13 +5,12 @@ import { Link, useLocation, useSearchParams } from 'react-router';
 import { api } from '../api';
 import { FieldSummary, OidcSignIn, RateLimitBand, SaveFailure } from '../app/bands';
 import { useCooldown, useDocumentTitle, useFieldErrors, useOidcBand, useSignInOptions } from '../app/hooks';
+import { t } from '../app/locale';
 import { TEXT } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { call, type Failure } from '../app/result';
 import { safeNext, useSession, type LoginState } from '../app/sessionContext';
 import { Brand } from '../app/layout';
-
-const SIGN_IN_FAILED = '이메일 또는 비밀번호가 맞지 않습니다.';
 
 const loadSignInOptions = () => call(api.GET('/api/public/sign-in-options'));
 
@@ -35,11 +34,11 @@ export function P1Login() {
   const passwordRef = useRef<HTMLInputElement>(null);
   const focusPassword = useRef(false);
   const fields = useFieldErrors({
-    email: { id: 'login-email', limits: { format: '이메일' } },
+    email: { id: 'login-email', limits: { format: t('field.email') } },
     password: { id: 'login-password' },
   });
 
-  useDocumentTitle('로그인');
+  useDocumentTitle(t('login.title'));
 
   useLayoutEffect(() => {
     emailRef.current?.focus();
@@ -104,7 +103,7 @@ export function P1Login() {
       <div className="pd-auth-panel">
         <Brand />
         <h1 className="pd-auth-title" tabIndex={-1}>
-          로그인
+          {t('login.title')}
         </h1>
         <form
           className="pd-form"
@@ -115,14 +114,14 @@ export function P1Login() {
         >
           {oidcBand.text !== null && <Alert tone="error">{oidcBand.text}</Alert>}
           {expired && !wrong && <Alert tone="info">{TEXT.sessionEnded}</Alert>}
-          {wrong && <Alert tone="error">{SIGN_IN_FAILED}</Alert>}
+          {wrong && <Alert tone="error">{t('login.failed')}</Alert>}
           <FieldSummary summary={fields.summary} />
           <SaveFailure failure={failure} />
           <RateLimitBand {...cooldown} />
           <TextField
             ref={emailRef}
             id="login-email"
-            label="이메일"
+            label={t('login.email')}
             type="email"
             autoComplete="username"
             autoCapitalize="none"
@@ -134,20 +133,20 @@ export function P1Login() {
           <PasswordField
             ref={passwordRef}
             id="login-password"
-            label="비밀번호"
+            label={t('login.password')}
             autoComplete="current-password"
             value={password}
             onChange={setPassword}
-            showLabel="비밀번호 보이기"
-            hideLabel="비밀번호 숨기기"
+            showLabel={t('login.passwordShow')}
+            hideLabel={t('login.passwordHide')}
             {...(fields.errors.password ? { error: fields.errors.password } : {})}
           />
           <Button type="submit" pending={pending} pendingLabel={TEXT.sending} blocked={cooldown.active}>
-            로그인
+            {t('login.title')}
           </Button>
         </form>
         <p className="pd-auth-links">
-          <Link to="/forgot-password">비밀번호를 잊었나요?</Link>
+          <Link to="/forgot-password">{t('login.forgot')}</Link>
         </p>
         {/* The address's next as it is: the server checks it (11 screens.md, C-7 웹 점검 D1). */}
         {oidc && <OidcSignIn next={params.get('next')} />}

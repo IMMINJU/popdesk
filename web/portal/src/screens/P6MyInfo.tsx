@@ -113,7 +113,7 @@ function Profile(props: { me: Me }) {
                     {c.manager && (
                       <>
                         {' '}
-                        <Badge tone="accent">담당자</Badge>
+                        <Badge tone="accent">{t('myInfo.manager')}</Badge>
                       </>
                     )}
                   </li>

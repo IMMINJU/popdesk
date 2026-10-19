@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 import { api } from '../api';
 import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
 import { useCooldown, useDocumentTitle, useFieldErrors } from '../app/hooks';
+import { t, tf } from '../app/locale';
 import { TEXT } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { call, type Failure } from '../app/result';
@@ -14,8 +15,6 @@ import { useToast } from '../app/toastContext';
 import { useBranding } from '../app/branding';
 import { Brand } from '../app/layout';
 
-const RULES = '10~72자로 정합니다. 공백만으로는 안 되고, 이메일과 같으면 안 됩니다.';
-const INVALID_LINK = '이 초대 링크는 쓸 수 없습니다. 관리자에게 다시 보내 달라고 하세요.';
 
 function tokenFromHash(): string | null {
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
@@ -42,7 +41,7 @@ export function C2InviteAccept() {
     confirm: { id: 'invite-confirm' },
   });
 
-  useDocumentTitle('초대 수락');
+  useDocumentTitle(t('invite.title'));
 
   useLayoutEffect(() => {
     // Keep the token out of the address bar and of later Referer headers (UX-8).
@@ -57,7 +56,7 @@ export function C2InviteAccept() {
     cooldown.clearEnded();
     fields.clear();
     if (password !== confirm) {
-      fields.setError('confirm', '두 칸의 비밀번호가 다릅니다.');
+      fields.setError('confirm', t('passwordReset.mismatch'));
       return;
     }
     setPending(true);
@@ -65,7 +64,7 @@ export function C2InviteAccept() {
     if (result.ok) {
       const me = await call(api.GET('/api/console/me'));
       if (me.ok) setMe(me.data);
-      toast('환영합니다');
+      toast(t('invite.welcome'));
       void navigate('/issues', { replace: true });
       return;
     }
@@ -85,9 +84,9 @@ export function C2InviteAccept() {
           <EmptyState
             headingLevel={1}
             icon={<LockIcon size={20} />}
-            title="초대 링크를 쓸 수 없습니다"
-            description={INVALID_LINK}
-            action={<Link to="/login">로그인 화면으로</Link>}
+            title={t('invite.invalidTitle')}
+            description={t('invite.invalid')}
+            action={<Link to="/login">{t('invite.toLogin')}</Link>}
           />
         </div>
       </main>
@@ -99,9 +98,9 @@ export function C2InviteAccept() {
       <div className="pd-auth-panel">
         <Brand />
         <h1 className="pd-auth-title" tabIndex={-1}>
-          초대 수락
+          {t('invite.title')}
         </h1>
-        <p className="pd-auth-lead">{displayName} 상담 콘솔에 오신 것을 환영합니다. 쓸 비밀번호를 정하면 바로 시작합니다.</p>
+        <p className="pd-auth-lead">{tf('invite.leadConsole', { name: displayName })}</p>
         <form
           className="pd-form"
           noValidate
@@ -115,27 +114,27 @@ export function C2InviteAccept() {
           <PasswordField
             ref={passwordRef}
             id="invite-password"
-            label="비밀번호"
+            label={t('login.password')}
             autoComplete="new-password"
             value={password}
             onChange={setPassword}
-            helpText={RULES}
-            showLabel="비밀번호 보이기"
-            hideLabel="비밀번호 숨기기"
+            helpText={t('passwordReset.rules')}
+            showLabel={t('login.passwordShow')}
+            hideLabel={t('login.passwordHide')}
             {...(fields.errors.password ? { error: fields.errors.password } : {})}
           />
           <PasswordField
             id="invite-confirm"
-            label="비밀번호 확인"
+            label={t('invite.confirm')}
             autoComplete="new-password"
             value={confirm}
             onChange={setConfirm}
-            showLabel="비밀번호 확인 보이기"
-            hideLabel="비밀번호 확인 숨기기"
+            showLabel={t('invite.confirmShow')}
+            hideLabel={t('invite.confirmHide')}
             {...(fields.errors.confirm ? { error: fields.errors.confirm } : {})}
           />
           <Button type="submit" pending={pending} pendingLabel={TEXT.sending} blocked={cooldown.active}>
-            시작하기
+            {t('invite.submit')}
           </Button>
         </form>
       </div>
