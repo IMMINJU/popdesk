@@ -130,6 +130,34 @@ export function textOf(el: Element | null | undefined): string {
   return (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * How many lines the text inside `el` takes: its text boxes, those that overlap from top to bottom
+ * put together (b1 묶음). With `seenOnly`, text inside `.pd-sr-only` is left out: it is not drawn.
+ */
+export function linesOf(el: Element, seenOnly = false): number {
+  const boxes: DOMRect[] = [];
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+    if ((node.textContent ?? '').trim() === '') continue;
+    if (seenOnly && node.parentElement?.closest('.pd-sr-only')) continue;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    for (const box of Array.from(range.getClientRects())) if (box.width > 0 && box.height > 0) boxes.push(box);
+  }
+  boxes.sort((a, b) => a.top - b.top);
+  let lines = 0;
+  let bottom = -Infinity;
+  for (const box of boxes) {
+    if (box.top >= bottom - 1) {
+      lines += 1;
+      bottom = box.bottom;
+    } else {
+      bottom = Math.max(bottom, box.bottom);
+    }
+  }
+  return lines;
+}
+
 /** The `dd` after the `dt` whose text is `term`, inside `root`. */
 export function termValue(root: ParentNode, term: string): HTMLElement | null {
   const dt = Array.from(root.querySelectorAll('dt')).find((t) => textOf(t) === term);

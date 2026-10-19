@@ -2,7 +2,8 @@
 // 각 칸 글이 한 줄인지, 문서가 창 너비보다 넓지 않은지(표가 넓으면 표 틀 .pd-table-wrap 안에서만 민다), 테마와 axe를 본다.
 // 견본: 감사 종류 이름 가운데 가장 긴 것 모두(auditWords.ts에서 센다), "로그인 (회사 계정)", "OIDC 연결 풀기", 긴 이름과 긴 이메일,
 // 거를 수 있는 대상(조용한 단추 "고객사 ACME · 계정 2147483647", "고객사 ACME · 문의 ACME-123456").
-// 한 줄인지는 칸 안 글 조각(텍스트 노드)의 줄 상자(Range.getClientRects)를 위아래로 겹치는 것끼리 묶어 센다. 묶음이 하나면 한 줄이다.
+// 한 줄인지는 칸 안 글 조각(텍스트 노드)의 줄 상자(Range.getClientRects)를 위아래로 겹치는 것끼리 묶어 센다. 묶음이 하나면 한 줄이다
+// (넘침 도움 overflow.ts의 linesOf, b6에서 그리로 옮김).
 // 화면은 가짜 fetch(__tests__/storyFetch.ts, storyFetch10a.ts)의 답으로 그린다.
 //
 // The fake fetch comes first: src/api.ts keeps the fetch it finds when it is first imported.
@@ -15,7 +16,7 @@ import type { Schemas } from '../api';
 import '@popdesk/ui/tokens.css';
 import '@popdesk/ui/styles.css';
 import '../console.css';
-import { at, expectDrawnRight, textOf, waitFor, type Theme, type Width } from '../../../packages/ui/src/__tests__/overflow';
+import { at, expectDrawnRight, linesOf, textOf, waitFor, type Theme, type Width } from '../../../packages/ui/src/__tests__/overflow';
 import { App } from '../App';
 import { KIND_GROUPS } from '../app/auditWords';
 
@@ -123,30 +124,6 @@ async function auditShown(canvas: HTMLElement): Promise<HTMLElement> {
   await waitFor(() => (textOf(main).includes(LONG_EMAIL) ? true : null), 'C-12의 긴 이메일');
   await waitFor(() => Array.from(main.querySelectorAll('td button')).find((b) => textOf(b) === `고객사 ACME · 계정 ${String(INT32_MAX)}`), 'C-12 "대상" 칸의 조용한 단추');
   return main;
-}
-
-/** How many lines the text inside `cell` takes: its text boxes, those that overlap from top to bottom put together. */
-function linesOf(cell: Element): number {
-  const boxes: DOMRect[] = [];
-  const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-    if ((node.textContent ?? '').trim() === '') continue;
-    const range = document.createRange();
-    range.selectNodeContents(node);
-    for (const box of Array.from(range.getClientRects())) if (box.width > 0 && box.height > 0) boxes.push(box);
-  }
-  boxes.sort((a, b) => a.top - b.top);
-  let lines = 0;
-  let bottom = -Infinity;
-  for (const box of boxes) {
-    if (box.top >= bottom - 1) {
-      lines += 1;
-      bottom = box.bottom;
-    } else {
-      bottom = Math.max(bottom, box.bottom);
-    }
-  }
-  return lines;
 }
 
 /** Throws unless every cell of 일 and 대상 holds its text in one line. */
