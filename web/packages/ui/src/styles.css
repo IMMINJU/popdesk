@@ -262,13 +262,15 @@ textarea {
   transform: translateY(1px);
 }
 
-.pd-button:disabled {
+/* `blocked` looks like `disabled`; `:where` keeps both selectors at the same weight as the variant rules. */
+.pd-button:disabled,
+.pd-button[aria-disabled='true']:not(:where([data-pending])) {
   background: var(--sunken);
   color: var(--text-disabled);
   cursor: not-allowed;
 }
 
-.pd-button[aria-disabled='true'] {
+.pd-button[aria-disabled='true'][data-pending] {
   cursor: progress;
   opacity: 0.8;
 }
