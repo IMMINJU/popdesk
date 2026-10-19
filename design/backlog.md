@@ -4,7 +4,7 @@
 
 일을 집으면 이 표에서 지우고, 그 일의 커밋이나 보관본을 적는다. 새로 넘기는 일은 묶음을 닫을 때 여기에 더한다.
 
-차례는 메인 추천이다(메인이 정함, 사용자 확인 전): 가 → 나 → 다 → 라. 마와 바는 조건이 오면 한다.
+차례는 메인 추천이다(메인이 정함, 사용자 확인 전): 가 → 나 → 다 → 라. 가·나·다(다-1~4)는 2026-10-20에 끝났다. 마와 바는 조건이 오면 한다.
 
 ## 가. 작은 화면 고침은 기본 경로 묶음 하나로 한다
 
@@ -16,14 +16,12 @@
 
 ## 다. 테스트와 도구 쪽 일
 
-테스트 쪽 탭이 한다. 잠긴 파일을 고치면 잠금을 다시 건다.
+다-1~다-4는 끝났다(main `63a6d54`~`2c7f0ee`, 2026-10-20). 웹 Stryker가 테스트를 못 읽은 것은 "6b 이후"가 아니라 앱 밖을 상대 경로로 부르는 도움(`console5.ts`, `console6a.ts`, `portal5.ts` 따위)을 거치는 파일이었고, Stryker 전용 vitest 설정으로 고쳤다. 그 일에서 새로 나온 것:
 
 | 번호 | 무엇 | 출처 |
 |---|---|---|
-| 다-1 | 웹 Stryker가 6b 이후 화면 테스트 파일을 읽지 못한다. 까닭을 찾는다 | 8b 10절, 9 8절 |
-| 다-2 | `@popdesk/app`에서 자기 테스트가 없는 파일 열하나(`CommentEdit`, `Disclosure`, `IssueEdit`, `OidcSignIn`, `attachments`, `bodyImages`, `branding`, `brandingContext`, `brandingProvider`, `messages`, `oidc`). 지금은 두 앱의 화면 테스트로만 지나간다 | 4b 8절, 5 8절 |
-| 다-3 | 주석의 옛 경로 `design/slices/<묶음>/`이 39곳 남았다. 콘솔·포털 테스트 도움 파일(잠김), `StorageSteps.java`(잠김), `App.tsx` 둘, `@popdesk/i18n`의 `ko.ts`·`en.ts`, 서버 `e2e/README.md`, `production-code-rules.txt`. `design/archive/<묶음>/`으로 바꾼다 | 6a 8절, 6c 9절 |
-| 다-4 | 10a 변이 테스트에서 테스트 없이 받아들인 서버 줄 68과 웹 줄 38~39(Stryker 끊김 문구) | 10a 4절·8절 |
+| 다-5 | 웹 Stryker가 모듈 맨 위 상수의 변이(정적 변이)를 켜지 못해 "살아남음"을 거짓으로 낸다(`oidc.ts`의 `OIDC_START`를 손으로 비우면 테스트 넷이 실패). 지금까지 웹 Stryker의 상수·문구 생존 수는 믿지 않고 손으로 확인한다. 까닭을 찾는다 | 다 탭 보고 |
+| 다-6 | Stryker `--logLevel debug`가 vitest-runner 안에서 순환 구조 JSON 오류로 죽는다 | 다 탭 보고 |
 
 ## 라. 작은 동작 고침
 
