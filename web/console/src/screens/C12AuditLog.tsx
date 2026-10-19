@@ -396,7 +396,14 @@ export function C12AuditLog() {
           </span>
         ),
     },
-    { key: 'action', header: '일', cell: (e) => entryKindWord(e.action, e.changes) ?? <code className="pd-code">{e.action}</code> },
+    {
+      key: 'action',
+      header: '일',
+      cell: (e) => {
+        const word = entryKindWord(e.action, e.changes);
+        return word === undefined ? <code className="pd-code">{e.action}</code> : <span className="pd-audit-one-line">{word}</span>;
+      },
+    },
     {
       key: 'target',
       header: '대상',
@@ -404,7 +411,7 @@ export function C12AuditLog() {
         const target = targetOf(e.target);
         if (!target) return null;
         // Only a target that names an account or a company can be filtered by.
-        if (target.accountId === undefined && target.code === undefined) return targetWord(target);
+        if (target.accountId === undefined && target.code === undefined) return <span className="pd-audit-one-line">{targetWord(target)}</span>;
         return (
           <Button
             variant="quiet"

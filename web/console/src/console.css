@@ -325,27 +325,18 @@
 
 /* C-12 audit log: wider filters, the two actions with their help, cells of two lines */
 
-/* 시각, 한 사람, 일, and 대상 break between words only (every table cell does, styles.css), and
-   바뀐 값 takes the rest. Too narrow for that, the table scrolls sideways. */
+/* 일 and 대상 keep one line, the 대상 button too (b1 screens.md 1절); 한 사람 breaks between words
+   (every table cell does, styles.css), and 바뀐 값 takes the rest. Too narrow for that, the table
+   scrolls sideways inside its frame. */
 .pd-audit .pd-table .pd-time,
-.pd-audit .pd-table .pd-code {
+.pd-audit .pd-table .pd-code,
+.pd-audit .pd-table .pd-audit-one-line {
   white-space: nowrap;
 }
 
 .pd-audit .pd-table .pd-audit-changes {
   min-width: 14rem;
   overflow-wrap: anywhere;
-}
-
-/* The 대상 button breaks between words too: "고객사 ACME · 계정 12" on one line pushed the table out
-   of its frame at 820px beside the 14rem of 바뀐 값 (slice 10a). Its height follows the lines. */
-.pd-audit .pd-table td .pd-button {
-  height: auto;
-  min-height: var(--button-height-sm);
-  padding-block: var(--space-1);
-  line-height: var(--text-sm-line);
-  text-align: start;
-  white-space: normal;
 }
 
 /* C-11 문의: a long company name does not squeeze the title to a few characters a line; a narrow
