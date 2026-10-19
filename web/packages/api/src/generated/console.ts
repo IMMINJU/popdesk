@@ -526,7 +526,7 @@ export interface paths {
         post?: never;
         /**
          * Make a customer no longer a manager of a company
-         * @description The customer stays a member. Applies from the next request (S2-AC-01). Works for a company of any status, and unmarking again is 200 too.
+         * @description The customer stays a member. Applies from the next request (S2-AC-01). Works for a company of any status and for an anonymized account (a manager before anonymization can be unmarked, B2-AC-03), and unmarking again is 200 too.
          */
         delete: operations["unmarkCompanyManager"];
         options?: never;
@@ -2330,6 +2330,8 @@ export interface components {
         CompanyMember: {
             /** Format: int64 */
             accountId: number;
+            /** @description The account was anonymized (PII-4): `name` and `email` are the anonymous values and `status` is `SUSPENDED` (B2-AC-01). `false` for every other account. */
+            anonymized: boolean;
             email: string;
             /** @description The customer is a manager of this company (MGR-1). Always `false` for an agent. */
             manager: boolean;
@@ -5529,7 +5531,7 @@ export interface operations {
                     "application/json": components["schemas"]["CompanyMember"];
                 };
             };
-            /** @description `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-06). */
+            /** @description `ACCOUNT_ANONYMIZED`: the account is anonymized, and nothing changes (B2-AC-02). `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-06). Checked in this order: the caller's role (403), the company (404), membership (404), anonymized (400), archived company (400). */
             400: {
                 headers: {
                     [name: string]: unknown;
