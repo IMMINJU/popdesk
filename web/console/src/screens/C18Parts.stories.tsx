@@ -25,9 +25,10 @@ function channel(over: Partial<ChannelStatus> = {}): ChannelStatus {
 }
 
 const OFF = channel({ enabled: false, lastSuccessAt: null });
+const OIDC_OFF: SystemStatus['oidc'] = { enabled: false, apps: [], lastSuccessAt: null, providerFailures: 0, lastFailure: null };
 
 function status(over: Partial<SystemStatus> = {}): SystemStatus {
-  return { mail: channel(), webhook: channel(), auditForward: OFF, sandbox: false, sandboxMailToSet: false, cleanupJobs: [], ...over };
+  return { mail: channel(), webhook: channel(), auditForward: OFF, sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: OIDC_OFF, ...over };
 }
 
 function sandboxed(mailToSet: boolean): SystemStatus {
