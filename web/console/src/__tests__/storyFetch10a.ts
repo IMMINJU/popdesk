@@ -86,7 +86,7 @@ globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Respo
   }
   if (get && url.pathname === '/api/console/system/status') {
     return Promise.resolve(
-      json({ mail: channel, webhook: channel, auditForward: { ...channel, enabled: false, lastSuccessAt: null }, sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: { enabled: false, apps: [], lastSuccessAt: null, providerFailures: 0, lastFailure: null } }),
+      json({ mail: channel, webhook: channel, auditForward: { ...channel, enabled: false, lastSuccessAt: null }, sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: { enabled: false, apps: [], lastSuccessAt: null, providerFailures: 0, lastFailure: null }, mailIn: { enabled: false, offReason: 'NOT_SET', lastSuccessAt: null, roundFailures: 0, lastFailure: null, retrying: 0, quarantined90d: 0 } }),
     );
   }
   if (get && /^\/api\/console\/accounts\/\d+\/open-assignments$/.test(url.pathname)) return Promise.resolve(json(current.open));

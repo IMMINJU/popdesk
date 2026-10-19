@@ -180,6 +180,11 @@ export function oidcOff(): SystemStatus['oidc'] {
   return { enabled: false, apps: [], lastSuccessAt: null, providerFailures: 0, lastFailure: null };
 }
 
+/** Receiving email not configured (slice 12 S12-AC-36): what the server gives without the settings. */
+export function mailInOff(): SystemStatus['mailIn'] {
+  return { enabled: false, offReason: 'NOT_SET', lastSuccessAt: null, roundFailures: 0, lastFailure: null, retrying: 0, quarantined90d: 0 };
+}
+
 export function failedDelivery(over: Partial<FailedDelivery> = {}): FailedDelivery {
   return {
     id: 501,
@@ -278,7 +283,7 @@ export const state: {
   invitations: [],
   customers: [],
   agents: [],
-  status: { mail: channel(), webhook: channel(), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: oidcOff() },
+  status: { mail: channel(), webhook: channel(), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: oidcOff(), mailIn: mailInOff() },
   failed: [],
 };
 
@@ -294,7 +299,7 @@ function resetState() {
   state.invitations = [];
   state.customers = [];
   state.agents = [];
-  state.status = { mail: channel(), webhook: channel(), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: oidcOff() };
+  state.status = { mail: channel(), webhook: channel(), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: oidcOff(), mailIn: mailInOff() };
   state.failed = [];
 }
 

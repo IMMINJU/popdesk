@@ -5,7 +5,7 @@
 import type { ConsoleComponents } from '@popdesk/api/console';
 import { http, HttpResponse } from 'msw/http';
 import { beforeEach } from 'vitest';
-import { T0, auditForwardOff, channel, errors, found, oidcOff, screen, server, state, text, within, type ChannelStatus, type FailedDelivery, type SystemStatus } from './console';
+import { T0, auditForwardOff, channel, errors, found, mailInOff, oidcOff, screen, server, state, text, within, type ChannelStatus, type FailedDelivery, type SystemStatus } from './console';
 import { rejected } from './console1a';
 import { cellUnder } from './console2';
 import { noContent } from './console4';
@@ -31,7 +31,7 @@ const OFF: ChannelStatus = channel({ enabled: false, lastSuccessAt: null });
 
 /** The status outside a sandbox: mail and webhook on, the outside copy not set up, no cleanup job. */
 export function status(over: Partial<SystemStatus> = {}): SystemStatus {
-  return { mail: channel(), webhook: channel(), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: oidcOff(), ...over };
+  return { mail: channel(), webhook: channel(), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: oidcOff(), mailIn: mailInOff(), ...over };
 }
 
 /**

@@ -52,6 +52,7 @@ globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Respo
         sandboxMailToSet: false,
         cleanupJobs: [{ name: 'session-cleanup', lastRunAt: T0, deleted: 5 }],
         oidc: current.status,
+        mailIn: { enabled: false, offReason: 'NOT_SET', lastSuccessAt: null, roundFailures: 0, lastFailure: null, retrying: 0, quarantined90d: 0 },
       }),
     );
   }
