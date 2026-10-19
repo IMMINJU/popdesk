@@ -80,7 +80,7 @@ async function statusParts(canvas: HTMLElement): Promise<Found> {
     8000,
   );
   const part = heading.closest('section') ?? heading.parentElement ?? heading;
-  await waitFor(() => (textOf(part).includes('마지막 실패: 메일 서버에 연결하지 못함') ? true : null), '구역의 마지막 실패');
+  await waitFor(() => (textOf(part).includes('마지막 실패: 메일 서버가 메일 옮기기를 지원하지 않음') ? true : null), '구역의 마지막 실패');
   await waitFor(() => (textOf(part).includes(`격리한 메일(90일): ${INT32_MAX.toLocaleString('ko')}통`) ? true : null), '구역의 격리한 메일');
   await waitFor(() => (textOf(part).includes(`다시 시도할 메일: ${INT32_MAX.toLocaleString('ko')}통`) ? true : null), '구역의 다시 시도할 메일');
   await waitFor(() => (part.querySelectorAll('time').length >= 2 ? true : null), '구역의 시각 둘');
