@@ -145,12 +145,18 @@ class MailSender implements Sender {
                     issueLink + "#task-" + row.taskId()));
             case SLA_RESPONSE_BREACHED -> Optional.of(MailText.slaBreached(locale, issue, true, issueLink));
             case SLA_RESOLUTION_BREACHED -> Optional.of(MailText.slaBreached(locale, issue, false, issueLink));
+            case MAIL_IN_NOTICE_NO_ISSUE -> Optional.of(MailText.mailInNoIssue(locale,
+                    mailIn.replyTo().orElse(null), address.origin(App.PORTAL) + "/issues/new"));
+            case MAIL_IN_NOTICE_CLOSED -> Optional.of(MailText.mailInNotAdded(locale, issue, true, issueLink));
+            case MAIL_IN_NOTICE_NOT_ALLOWED -> Optional.of(MailText.mailInNotAdded(locale, issue, false, issueLink));
         };
         if (message.isEmpty()) {
             return Attempt.dropped();
         }
-        Headers headers = issue != null && recipient.app() == App.PORTAL
-                ? mailIn.replyTo().map(Headers::replyTo).orElse(Headers.GENERATED) : Headers.GENERATED;
+        // A notice answers an email popdesk received: no Reply-To, and no record to match a reply (S12-AC-29).
+        Headers headers = kind.mailInNotice() ? Headers.REPLIED
+                : issue != null && recipient.app() == App.PORTAL
+                        ? mailIn.replyTo().map(Headers::replyTo).orElse(Headers.GENERATED) : Headers.GENERATED;
         Attempt attempt = smtp.send(row.recipientAccountId(), recipient.email(), message.get().from(desk), headers);
         return headers.replyTo() == null ? attempt : attempt.recordedAbout(row.issueId());
     }

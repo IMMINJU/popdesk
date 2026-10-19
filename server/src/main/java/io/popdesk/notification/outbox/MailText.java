@@ -235,6 +235,54 @@ final class MailText {
     }
 
     /**
+     * Notice A (S12-AC-29, screens.md): the email the customer sent did not become an issue. One text whatever the
+     * reason: no issue's key or title, no company code (TM-36). No key in the subject either.
+     *
+     * @param inboundAddress {@code MAIL_INBOUND_ADDRESS}, whose local part and domain make the example; null for a
+     *     generic one
+     * @param link the portal's page to file an issue
+     */
+    static Message mailInNoIssue(String locale, String inboundAddress, String link) {
+        boolean korean = korean(locale);
+        String local = "support";
+        String domain = "…";
+        if (inboundAddress != null && inboundAddress.lastIndexOf('@') > 0) {
+            local = oneLine(inboundAddress.substring(0, inboundAddress.lastIndexOf('@')));
+            domain = oneLine(inboundAddress.substring(inboundAddress.lastIndexOf('@') + 1));
+        }
+        if (korean) {
+            return new Message("메일로 문의를 만들지 못했습니다",
+                    "보내 주신 메일로 문의를 만들지 못했습니다. 여러 고객사에 속해 있다면 받는 주소에 고객사 코드를 붙여 "
+                            + "보내 주세요(예: " + local + "+코드@" + domain + "). 포털에서 바로 문의를 올릴 수도 있습니다: "
+                            + link + "\n");
+        }
+        return new Message("Your email did not become an issue",
+                "Your email could not be turned into an issue. If you belong to more than one company, add your "
+                        + "company code to the address (for example " + local + "+CODE@" + domain + "). You can also "
+                        + "file an issue in the portal: " + link + "\n");
+    }
+
+    /**
+     * Notice B (S12-AC-18, screens.md): the reply was not added to the issue, which the customer sees: it is closed,
+     * or only its reporter may reply. The key without brackets in the subject (S12-AC-29), the title, and the link.
+     */
+    static Message mailInNotAdded(String locale, Issue issue, boolean closed, String link) {
+        String title = oneLine(issue.title());
+        if (korean(locale)) {
+            return new Message("문의 " + issue.key() + "에 댓글을 달지 못했습니다", closed
+                    ? "문의 " + issue.key() + " \"" + title + "\"은 종료되어 메일 답장을 받지 않습니다. 이어서 말씀하실 내용은 "
+                            + "포털에서 다시 열거나 새 문의로 올려 주세요: " + link + "\n"
+                    :"문의 " + issue.key() + " \"" + title + "\"에는 문의를 올린 분만 답장할 수 있습니다. 포털에서 문의를 "
+                            + "보거나 새 문의를 올려 주세요: " + link + "\n");
+        }
+        return new Message("Your reply was not added to issue " + issue.key(), closed
+                ? "Issue " + issue.key() + " \"" + title + "\" is closed and takes no email replies. To go on, reopen it "
+                        + "in the portal or file a new issue: " + link + "\n"
+                : "Only the person who filed issue " + issue.key() + " \"" + title + "\" can reply to it by email. "
+                        + "See the issue or file a new one in the portal: " + link + "\n");
+    }
+
+    /**
      * The form the emails of slice 4 about an issue share: {@code [key] headline: title}, then the
      * sentence, the key and the title, what to do, and the link. Nothing the issue or a comment says.
      */

@@ -49,5 +49,22 @@ public enum MailKind {
     SLA_RESPONSE_BREACHED,
 
     /** The resolution goal of an issue passed its due time, to staff (S8B-AC-02, S8B-AC-16). */
-    SLA_RESOLUTION_BREACHED
+    SLA_RESOLUTION_BREACHED,
+
+    /**
+     * Notice A: a received email did not become an issue (S12-AC-17, S12-AC-21, S12-AC-29), to its sender. About no
+     * issue, and it names none, nor a company.
+     */
+    MAIL_IN_NOTICE_NO_ISSUE,
+
+    /** Notice B: a reply was not added to the closed issue it is about (S12-AC-18), to its sender. */
+    MAIL_IN_NOTICE_CLOSED,
+
+    /** Notice B: a reply was not added to an issue only its reporter may reply to (S12-AC-18), to its sender. */
+    MAIL_IN_NOTICE_NOT_ALLOWED;
+
+    /** Whether the email answers one popdesk received: {@code Auto-Submitted: auto-replied}, no {@code Reply-To}. */
+    public boolean mailInNotice() {
+        return this == MAIL_IN_NOTICE_NO_ISSUE || this == MAIL_IN_NOTICE_CLOSED || this == MAIL_IN_NOTICE_NOT_ALLOWED;
+    }
 }
