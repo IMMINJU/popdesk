@@ -114,6 +114,8 @@ public class CompanyExportService implements InitializingBean, SmartLifecycle {
     private final Path folder;
     private final AtomicBoolean running = new AtomicBoolean();
     private volatile ExecutorService executor;
+    /** The company codes of the exports {@link #afterPropertiesSet} interrupted, until {@link #start} tells of them. */
+    private volatile List<String> interrupted = List.of();
 
     CompanyExportService(CompanyExportRepository repository, CompanyExportWriter writer, AuditLog audit,
             AdminInbox inbox, Transactions transactions, InstanceLock lock, Clock clock, Environment environment) {
@@ -291,12 +293,14 @@ public class CompanyExportService implements InitializingBean, SmartLifecycle {
      * Ends the exports of the last run, once, when the app starts (S10B-AC-06, acceptance.md 5절 15): every export
      * still {@code RUNNING} becomes {@code FAILED} with {@code INTERRUPTED}; of the export files in the export folder
      * ({@link #EXPORT_FILE}) only the ZIP of each {@code DONE} export stays; and a {@code DONE} export whose ZIP is gone becomes {@code EXPIRED}. A
-     * folder that is not there yet is made by the first export.
+     * folder that is not there yet is made by the first export. The admins are told of each interrupted export in
+     * {@link #start}, once the first admin is made (B2-AC-05).
      */
     @Override
     public void afterPropertiesSet() {
         Instant now = now();
-        int interrupted = transactions.run(() -> repository.updateInterrupted(now));
+        List<String> ended = transactions.run(() -> repository.updateInterrupted(now));
+        interrupted = ended;
         Set<UUID> done = new HashSet<>(repository.listDone());
         int deleted = 0;
         if (Files.isDirectory(folder)) {
@@ -322,9 +326,9 @@ public class CompanyExportService implements InitializingBean, SmartLifecycle {
                 gone++;
             }
         }
-        if (interrupted + deleted + gone > 0) {
+        if (ended.size() + deleted + gone > 0) {
             log.info("Company exports of the last run: {} interrupted, {} files deleted, {} without a file expired.",
-                    interrupted, deleted, gone);
+                    ended.size(), deleted, gone);
         }
     }
 
@@ -438,8 +442,23 @@ public class CompanyExportService implements InitializingBean, SmartLifecycle {
 
     // The export thread
 
+    /**
+     * Tells every active admin of each export the start interrupted, with {@code COMPANY_EXPORT_FAILED} (B2-AC-05),
+     * then starts the export thread. This runs after the first admin is made ({@code FirstAdminSetup}), which the
+     * end of the last run comes before.
+     */
     @Override
     public void start() {
+        List<String> codes = interrupted;
+        interrupted = List.of();
+        if (!codes.isEmpty()) {
+            try {
+                transactions.run(() -> codes.forEach(inbox::companyExportFailed));
+            } catch (RuntimeException e) {
+                log.error("The admins could not be told of {} company exports the start interrupted ({}).",
+                        codes.size(), e.getClass().getSimpleName());
+            }
+        }
         executor = Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().name("popdesk-company-export")
                 .factory());
     }

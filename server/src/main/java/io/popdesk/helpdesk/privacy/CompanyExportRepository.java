@@ -104,11 +104,14 @@ class CompanyExportRepository {
                 .params(failure, Timestamp.from(now), id).update() == 1;
     }
 
-    /** Every {@code RUNNING} export becomes {@code FAILED} with {@code INTERRUPTED}; gives how many. */
-    int updateInterrupted(Instant now) {
-        return jdbc.sql("update company_export set state = 'FAILED', failure = 'INTERRUPTED', finished_at = ? "
-                        + "where state = 'RUNNING'")
-                .param(Timestamp.from(now)).update();
+    /**
+     * Every {@code RUNNING} export becomes {@code FAILED} with {@code INTERRUPTED}; gives the company code of each
+     * export it changed, none when no export was {@code RUNNING}.
+     */
+    List<String> updateInterrupted(Instant now) {
+        return jdbc.sql("update company_export e set state = 'FAILED', failure = 'INTERRUPTED', finished_at = ? "
+                        + "from company c where c.id = e.company_id and e.state = 'RUNNING' returning c.code")
+                .param(Timestamp.from(now)).query(String.class).list();
     }
 
     /** The {@code DONE} exports. */
