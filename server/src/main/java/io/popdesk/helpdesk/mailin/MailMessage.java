@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
@@ -45,6 +46,12 @@ final class MailMessage {
 
     /** The most {@code Message-ID}s of {@code In-Reply-To} and {@code References} looked up (S12-AC-15). */
     static final int MAX_REFERENCES = 50;
+
+    /**
+     * The most bytes of a body part read as text (design.md 0절 16 ③): the body is cut at 10,000 characters anyway, and
+     * a whole large HTML part could fill the heap.
+     */
+    static final int MAX_BODY_BYTES = 1024 * 1024;
 
     /** The longest issue title (ISSUE-2). */
     static final int TITLE_MAX = 200;
@@ -289,9 +296,9 @@ final class MailMessage {
 
     /**
      * The body as text (S12-AC-22): the first {@code text/plain} part that has no file name and is no attachment,
-     * outside attached messages; else the first such {@code text/html} part as text ({@link HtmlText}). Its charset is
-     * read; an unknown or broken one is read as UTF-8 with the replacement character. NFC, and without NUL, which
-     * cannot be stored. Empty when there is none.
+     * outside attached messages; else the first such {@code text/html} part as text ({@link HtmlText}). Only the
+     * first {@value #MAX_BODY_BYTES} bytes of the part are read. Its charset is read; an unknown or broken one is read
+     * as UTF-8 with the replacement character. NFC, and without NUL, which cannot be stored. Empty when there is none.
      */
     String body() {
         Part[] found = new Part[2];
@@ -369,11 +376,16 @@ final class MailMessage {
         }
     }
 
-    /** The text of a part in its charset; an unknown or broken charset is UTF-8 with replacement characters. */
+    /**
+     * The text of the first {@value #MAX_BODY_BYTES} bytes of a part in its charset; an unknown or broken charset is
+     * UTF-8 with replacement characters. A character the cut splits is dropped.
+     */
     private static String text(Part part) {
         byte[] bytes;
+        boolean cut;
         try (InputStream in = part.getInputStream()) {
-            bytes = in.readAllBytes();
+            bytes = in.readNBytes(MAX_BODY_BYTES);
+            cut = in.read() != -1;
         } catch (IOException | MessagingException e) {
             throw new IllegalStateException("A part of a received email could not be read ("
                     + e.getClass().getSimpleName() + ")");
@@ -390,11 +402,13 @@ final class MailMessage {
         }
         CharsetDecoder decoder = charset.newDecoder().onMalformedInput(CodingErrorAction.REPLACE)
                 .onUnmappableCharacter(CodingErrorAction.REPLACE);
-        try {
-            return decoder.decode(ByteBuffer.wrap(bytes)).toString();
-        } catch (java.nio.charset.CharacterCodingException e) {
-            return new String(bytes, StandardCharsets.UTF_8);
+        // Not the end of the input when cut: the bytes of a split character stay undecoded instead of a replacement.
+        CharBuffer out = CharBuffer.allocate((int) Math.ceil(bytes.length * (double) decoder.maxCharsPerByte()) + 16);
+        decoder.decode(ByteBuffer.wrap(bytes), out, !cut);
+        if (!cut) {
+            decoder.flush(out);
         }
+        return out.flip().toString();
     }
 
     private static String clean(String text) {
