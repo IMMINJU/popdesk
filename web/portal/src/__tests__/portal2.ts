@@ -1,4 +1,4 @@
-// More test support for slice 2 (design/slices/2-manager/screens.md). `portal.ts` and
+// More test support for slice 2 (design/archive/2-manager/screens.md). `portal.ts` and
 // `portal1a.ts` stay as they are; this file adds the company member endpoints to the
 // fake server, in the shape of docs/integrate/openapi-portal.json, and the helpers the
 // P-8 screen tests share.

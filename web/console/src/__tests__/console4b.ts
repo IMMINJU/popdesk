@@ -1,4 +1,4 @@
-// More test support for slice 4b (design/slices/4b-delivery/screens.md). The earlier
+// More test support for slice 4b (design/archive/4b-delivery/screens.md). The earlier
 // support files stay as they are; this file adds the two new endpoints of C-18 (다시
 // 보내기, 시험 메일) to the fake server, in the shape of docs/integrate/openapi-console.json,
 // and the helpers the 4b screen tests share.

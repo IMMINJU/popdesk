@@ -1,4 +1,4 @@
-// More test support for slice 7b (design/slices/7b-stats/screens.md): the statistics screen C-5
+// More test support for slice 7b (design/archive/7b-stats/screens.md): the statistics screen C-5
 // and the cleanup alert of C-7. The earlier support files stay as they are; this file adds the
 // statistics endpoint to the fake server, in the shape of docs/integrate/openapi-console.json, and
 // the helpers the slice 7b screen tests share.

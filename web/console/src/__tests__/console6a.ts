@@ -1,4 +1,4 @@
-// More test support for slice 6a (design/slices/6a-labels/screens.md): labels and due dates.
+// More test support for slice 6a (design/archive/6a-labels/screens.md): labels and due dates.
 // The earlier support files stay as they are; this file adds the label and due date endpoints
 // to the fake server, in the shape of docs/integrate/openapi-console.json, and the helpers the
 // slice 6a screen tests share.

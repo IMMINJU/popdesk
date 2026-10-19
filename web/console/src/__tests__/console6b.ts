@@ -1,4 +1,4 @@
-// More test support for slice 6b (design/slices/6b-tasks/screens.md): tasks under an issue, their
+// More test support for slice 6b (design/archive/6b-tasks/screens.md): tasks under an issue, their
 // notes, and 내 작업 (C-15). The earlier support files stay as they are; this file adds the task
 // endpoints to the fake server, in the shape of docs/integrate/openapi-console.json, and the
 // helpers the slice 6b screen tests share.

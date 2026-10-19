@@ -1,4 +1,4 @@
-// More test support for slice 11 (design/slices/11-oidc/screens.md). The earlier support files stay as
+// More test support for slice 11 (design/archive/11-oidc/screens.md). The earlier support files stay as
 // they are; this file adds the slice 11 endpoints to the fake server, in the shape of
 // docs/integrate/openapi-console.json, and the words and helpers the 11 screen tests share.
 // The portal has its own copy of the sign-in part (portal/src/__tests__/portal11.ts).

@@ -1,4 +1,4 @@
-// More test support for slice 6c (design/slices/6c-links/screens.md): links between issues. The
+// More test support for slice 6c (design/archive/6c-links/screens.md): links between issues. The
 // earlier support files stay as they are; this file adds the link endpoints to the fake server, in
 // the shape of docs/integrate/openapi-console.json, and the helpers the slice 6c screen tests share.
 //

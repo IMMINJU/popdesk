@@ -1,4 +1,4 @@
-// More test support for slice 1b (design/slices/1b-audit/screens.md). `console.ts` and
+// More test support for slice 1b (design/archive/1b-audit/screens.md). `console.ts` and
 // `console1a.ts` stay as they are; this file adds the audit log endpoints to the fake
 // server, in the shape of docs/integrate/openapi-console.json, and the helpers the
 // C-12 screen tests share.

@@ -1,4 +1,4 @@
-// More test support for slice 3 (design/slices/3-issues/screens.md). The earlier
+// More test support for slice 3 (design/archive/3-issues/screens.md). The earlier
 // support files stay as they are; this file adds the issue endpoints of slice 3 to
 // the fake server, in the shape of docs/integrate/openapi-console.json, and the
 // helpers the slice 3 screen tests share.

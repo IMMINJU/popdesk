@@ -1,4 +1,4 @@
-// More test support for slice 11 (design/slices/11-oidc/screens.md "C-1·P-1 로그인"). `portal.ts`
+// More test support for slice 11 (design/archive/11-oidc/screens.md "C-1·P-1 로그인"). `portal.ts`
 // stays as it is; this file holds the words of the P-1 OIDC button and bands and answers the sign-in
 // options, in the shape of docs/integrate/openapi-portal.json. The console has its own copy
 // (console/src/__tests__/console11.ts); the two apps do not import each other's test code.

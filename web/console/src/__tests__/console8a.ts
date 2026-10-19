@@ -1,4 +1,4 @@
-// More test support for slice 8a (design/slices/8a-sla/screens.md): the SLA policy screen C-13, the
+// More test support for slice 8a (design/archive/8a-sla/screens.md): the SLA policy screen C-13, the
 // SLA column, filter and sort of C-3, the SLA part of C-4 and the audit words of C-12. The earlier
 // support files stay as they are; this file adds the policy endpoints to the fake server, in the
 // shape of docs/integrate/openapi-console.json, and the helpers the slice 8a screen tests share.

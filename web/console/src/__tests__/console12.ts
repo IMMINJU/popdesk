@@ -1,4 +1,4 @@
-// More test support for slice 12 (design/slices/12-mailin/screens.md). The earlier support files stay as
+// More test support for slice 12 (design/archive/12-mailin/screens.md). The earlier support files stay as
 // they are; slice 12 adds no endpoint, so this file holds the `mailIn` part of the system status, in the
 // shape of docs/integrate/openapi-console.json, and the words the 12 screen tests share.
 import type { ConsoleComponents } from '@popdesk/api/console';

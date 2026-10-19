@@ -1,4 +1,4 @@
-// More test support for slice 4 (design/slices/4-talk/screens.md). The earlier
+// More test support for slice 4 (design/archive/4-talk/screens.md). The earlier
 // support files stay as they are; this file adds the comment and inbox endpoints of
 // slice 4 to the fake server, in the shape of docs/integrate/openapi-console.json,
 // and the helpers the slice 4 screen tests share.

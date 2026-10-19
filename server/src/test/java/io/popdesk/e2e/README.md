@@ -1,7 +1,7 @@
 # Empty-install E2E
 
 These tests run a popdesk installation from the release Compose file, the way an operator does,
-and drive the first slice's flow over HTTP (`design/slices/0-first/acceptance.md` section 1,
+and drive the first slice's flow over HTTP (`design/archive/0-first/acceptance.md` section 1,
 S0-AC-94). They use no browser; the web tests cover the screens. Both classes are tagged `deploy`,
 so the server job leaves them out and the image job runs them.
 

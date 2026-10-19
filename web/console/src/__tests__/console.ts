@@ -1,4 +1,4 @@
-// Test support for the console screen tests (design/slices/0-first/screens.md 2·4절).
+// Test support for the console screen tests (design/archive/0-first/screens.md 2·4절).
 //
 // - The API is answered at the network level by MSW, in the shape of
 //   docs/integrate/openapi-console.json. Bodies are typed with the generated types.

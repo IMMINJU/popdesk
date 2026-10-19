@@ -1,4 +1,4 @@
-// More test support for slice 8b (design/slices/8b-sla-alerts/screens.md): the SLA items of C-7 and
+// More test support for slice 8b (design/archive/8b-sla-alerts/screens.md): the SLA items of C-7 and
 // the SLA period and columns of C-5. The earlier support files stay as they are; this file adds the
 // `days` of the statistics endpoint to the fake server, in the shape of
 // docs/integrate/openapi-console.json, and the helpers the slice 8b screen tests share.

@@ -61,7 +61,7 @@ import tools.jackson.databind.json.JsonMapper;
  * of each storage, people and attachment requests on an app started with {@link Boot}, the attachment
  * row of a file, a look into the folder and the bucket, and the S3 stand-in.
  *
- * <p>The names come from {@code design/slices/5b-storage/design.md} section 8: the marker
+ * <p>The names come from {@code design/archive/5b-storage/design.md} section 8: the marker
  * {@value #MARKER}, a file at {@code {folder}/{first two characters of the ID}/{ID}}, an object at
  * {@code popdesk/{ID}}, and the row's location {@code {bucket}/popdesk}.
  *

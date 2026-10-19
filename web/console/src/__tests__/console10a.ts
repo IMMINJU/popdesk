@@ -1,4 +1,4 @@
-// More test support for slice 10a (design/slices/10a-privacy/screens.md): the C-10 row menu with
+// More test support for slice 10a (design/archive/10a-privacy/screens.md): the C-10 row menu with
 // 정보 내보내기 and 익명화, the anonymize dialog and the anonymous row. The earlier support files
 // stay as they are; this file adds the account export (`HEAD`, `GET`) and anonymize endpoints to
 // the fake server, in the shape of docs/integrate/openapi-console.json, and the account list with

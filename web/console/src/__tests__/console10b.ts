@@ -1,4 +1,4 @@
-// More test support for slice 10b (design/slices/10b-privacy/screens.md): the 내보내기 구역 of C-9 and
+// More test support for slice 10b (design/archive/10b-privacy/screens.md): the 내보내기 구역 of C-9 and
 // its dialog, the three inbox items of C-7, the "자동 정리" of C-11 and the audit words of C-12. The
 // earlier support files stay as they are; this file adds the company export endpoints (list, create,
 // `HEAD` and `GET` of the file) to the fake server, in the shape of docs/integrate/openapi-console.json,

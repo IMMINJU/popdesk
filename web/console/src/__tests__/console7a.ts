@@ -1,4 +1,4 @@
-// More test support for slice 7a (design/slices/7a-trash/screens.md): the trash. The earlier support
+// More test support for slice 7a (design/archive/7a-trash/screens.md): the trash. The earlier support
 // files stay as they are; this file adds deleting an issue and the trash endpoints to the fake
 // server, in the shape of docs/integrate/openapi-console.json, and the helpers the slice 7a screen
 // tests share.

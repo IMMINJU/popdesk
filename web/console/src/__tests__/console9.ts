@@ -1,4 +1,4 @@
-// More test support for slice 9 (design/slices/9-branding/screens.md): the branding of the whole
+// More test support for slice 9 (design/archive/9-branding/screens.md): the branding of the whole
 // app (the public branding, the head, the screens before log in, the tab title), the branding
 // screen C-14 and the audit words of C-12. The earlier support files stay as they are; this file
 // adds the branding endpoints to the fake server, in the shape of docs/integrate/openapi-console.json,

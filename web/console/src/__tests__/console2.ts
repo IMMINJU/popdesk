@@ -1,4 +1,4 @@
-// More test support for slice 2 (design/slices/2-manager/screens.md). The earlier
+// More test support for slice 2 (design/archive/2-manager/screens.md). The earlier
 // support files stay as they are; this file adds the manager mark and the membership
 // requests to the fake server, in the shape of docs/integrate/openapi-console.json,
 // and the helpers the slice 2 screen tests share.

@@ -1,4 +1,4 @@
-// More test support for slice 1a (design/slices/1a-people/screens.md). `console.ts`
+// More test support for slice 1a (design/archive/1a-people/screens.md). `console.ts`
 // stays as it is; this file adds the 1a endpoints to the fake server, in the shape
 // of docs/integrate/openapi-console.json, and the helpers the 1a screen tests share.
 import type { ConsoleComponents } from '@popdesk/api/console';
