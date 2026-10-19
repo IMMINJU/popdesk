@@ -1556,7 +1556,7 @@ export interface paths {
         };
         /**
          * Outgoing channels, the sandbox, and cleanup jobs
-         * @description For mail, webhook, and the outside copy of the audit log (`auditForward`): configured or not, last success, queued and failed rows (S0-AC-81, S1B-AC-33). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10). In a sandbox the webhook and the outside copy are not `enabled`, and neither is mail without a sandbox address (S4B-AC-08). Each cleanup job comes with its last run (S4B-AC-30). `oidc` is OIDC sign-in, counted in memory since the app started (S11-AC-30). No SMTP password, webhook URL, or address or token of the outside copy, and no OIDC issuer, client ID, or secret (S4B-AC-31).
+         * @description For mail, webhook, and the outside copy of the audit log (`auditForward`): configured or not, last success, queued and failed rows (S0-AC-81, S1B-AC-33). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10). In a sandbox the webhook and the outside copy are not `enabled`, and neither is mail without a sandbox address (S4B-AC-08). Each cleanup job comes with its last run (S4B-AC-30). `oidc` is OIDC sign-in, counted in memory since the app started (S11-AC-30). `mailIn` is receiving email over IMAP: rounds counted in memory, retried and quarantined emails from the records (S12-AC-36). No SMTP password, webhook URL, or address or token of the outside copy, no OIDC issuer, client ID, or secret, and no IMAP host, user, password, or folder (S4B-AC-31).
          */
         get: operations["getSystemStatus"];
         put?: never;
@@ -2744,6 +2744,43 @@ export interface components {
             status: "RECEIVED" | "CONFIRMED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
             title: string;
         };
+        MailInFailure: {
+            /** Format: date-time */
+            at: string;
+            /** @enum {string} */
+            kind: "CONNECT" | "AUTH" | "FOLDER" | "UNSUPPORTED";
+        };
+        MailInStatus: {
+            /** @description `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD`, and `MAIL_INBOUND_ADDRESS` are all set, outside a sandbox. */
+            enabled: boolean;
+            /** @description The last of them; null without one. */
+            lastFailure: components["schemas"]["MailInFailure"] | null;
+            /**
+             * Format: date-time
+             * @description The end of the last round that read the inbox folder through; null before the first since the app started.
+             */
+            lastSuccessAt: string | null;
+            /**
+             * @description Why it is off: `NOT_SET` without the settings, `SANDBOX` in a sandbox even with them (S12-AC-03). Null when on.
+             * @enum {string|null}
+             */
+            offReason: "NOT_SET" | "SANDBOX" | null;
+            /**
+             * Format: int32
+             * @description Emails quarantined in the last 90 days, over the attempt limit or the rate limit (`QUARANTINED` and `RATE_LIMITED`).
+             */
+            quarantined90d: number;
+            /**
+             * Format: int32
+             * @description Emails left in the inbox folder to try again: a record with no outcome and at least one attempt.
+             */
+            retrying: number;
+            /**
+             * Format: int32
+             * @description Rounds that failed since the app started (S12-AC-10).
+             */
+            roundFailures: number;
+        };
         Me: {
             /** @description The companies an agent is assigned to, in code order; `[]` for an admin, who sees every company. */
             companies: components["schemas"]["CompanyRef"][];
@@ -2823,10 +2860,10 @@ export interface components {
             createdAt: string;
             /** Format: int64 */
             id: number;
-            /** @description The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, `CLEANUP_STALLED`, `MEMBERSHIP_REQUESTED` (S4-AC-40), `SLA_RECALCULATED` (S8B-AC-15), `COMPANY_EXPORT_READY`, `COMPANY_EXPORT_FAILED`, and `ISSUE_RETENTION_ARMED` (S10B-AC-27). */
+            /** @description The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, `CLEANUP_STALLED`, `MAIL_IN_STALLED`, `MAIL_IN_QUARANTINED` (S12-AC-37), `MEMBERSHIP_REQUESTED` (S4-AC-40), `SLA_RECALCULATED` (S8B-AC-15), `COMPANY_EXPORT_READY`, `COMPANY_EXPORT_FAILED`, and `ISSUE_RETENTION_ARMED` (S10B-AC-27). */
             issue: components["schemas"]["NotificationIssue"] | null;
             /** @enum {string} */
-            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MAIL_STALLED" | "WEBHOOK_STALLED" | "AUDIT_FORWARD_STALLED" | "CLEANUP_STALLED" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED" | "TASK_ASSIGNED" | "LINKED_ISSUE_RESOLVED" | "LINKED_ISSUE_CLOSED" | "SLA_RESPONSE_WARNING" | "SLA_RESPONSE_BREACHED" | "SLA_RESOLUTION_WARNING" | "SLA_RESOLUTION_BREACHED" | "SLA_RECALCULATED" | "COMPANY_EXPORT_READY" | "COMPANY_EXPORT_FAILED" | "ISSUE_RETENTION_ARMED";
+            kind: "DELIVERY_FAILED" | "ATTACHMENT_QUOTA_WARNING" | "MAIL_STALLED" | "WEBHOOK_STALLED" | "AUDIT_FORWARD_STALLED" | "CLEANUP_STALLED" | "MAIL_IN_STALLED" | "MAIL_IN_QUARANTINED" | "MEMBERSHIP_REQUESTED" | "STAFF_COMMENT" | "CUSTOMER_COMMENT" | "ISSUE_RESOLVED" | "ISSUE_CLOSED" | "ISSUE_REOPENED" | "ISSUE_FILED_ON_BEHALF" | "MENTIONED" | "ASSIGNED" | "TASK_ASSIGNED" | "LINKED_ISSUE_RESOLVED" | "LINKED_ISSUE_CLOSED" | "SLA_RESPONSE_WARNING" | "SLA_RESPONSE_BREACHED" | "SLA_RESOLUTION_WARNING" | "SLA_RESOLUTION_BREACHED" | "SLA_RECALCULATED" | "COMPANY_EXPORT_READY" | "COMPANY_EXPORT_FAILED" | "ISSUE_RETENTION_ARMED";
             /** @description For `LINKED_ISSUE_RESOLVED` and `LINKED_ISSUE_CLOSED`: the linked issue that was resolved or closed, with its key and title as they are now; `issue` is the caller's own issue it is linked to (S6C-AC-31). Such an item is listed only while the caller can see both issues (S6C-AC-33). Null for the other kinds (S6C-AC-34). */
             linkedIssue: components["schemas"]["NotificationIssue"] | null;
             /**
@@ -3379,6 +3416,8 @@ export interface components {
             /** @description Every cleanup job, in name order (S4B-AC-30). */
             cleanupJobs: components["schemas"]["CleanupJobStatus"][];
             mail: components["schemas"]["ChannelStatus"];
+            /** @description Receiving email over IMAP (S12-AC-36). */
+            mailIn: components["schemas"]["MailInStatus"];
             /** @description OIDC sign-in, counted since the app started (S11-AC-30). */
             oidc: components["schemas"]["OidcStatus"];
             /** @description `POPDESK_SANDBOX=true`: the webhook and the outside copy of the audit log are off, and email goes to one address only or is off (S4B-AC-08). */

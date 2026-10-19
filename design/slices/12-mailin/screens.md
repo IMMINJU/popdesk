@@ -49,6 +49,6 @@
 ### 본문에 붙는 줄
 
 - 잘림: "(메일이 길어 앞부분만 옮겼습니다.)" / "(The email was too long; only its beginning was kept.)"
-- 빠진 첨부: "빠진 첨부: {이름} ({까닭})" / "Attachment left out: {name} ({reason})". 까닭: "10MB 넘음" / "over 10 MB", "개수 넘음" / "too many files", "문의의 첨부 합계 넘음" / "over the issue's total", "저장 한도 넘음" / "over the storage quota", "이름이 김" / "name too long".
+- 빠진 첨부: "빠진 첨부: {이름} ({까닭})" / "Attachment left out: {name} ({reason})". 까닭: "빈 파일" / "empty file", "10MB 넘음" / "over 10 MB", "개수 넘음" / "too many files", "문의의 첨부 합계 넘음" / "over the issue's total", "저장 한도 넘음" / "over the storage quota", "이름이 김" / "name too long".
 - 제목 없음 "(제목 없음)" / "(no subject)", 내용 없음 "(내용 없음)" / "(no content)".
 - 문구는 받는 계정(보낸 고객)의 언어로 쓴다.

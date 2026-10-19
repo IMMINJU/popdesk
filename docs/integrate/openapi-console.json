@@ -1707,6 +1707,63 @@
         "required" : [ "companyCode", "companyName", "key", "status", "title" ],
         "type" : "object"
       },
+      "MailInFailure" : {
+        "properties" : {
+          "at" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [ "CONNECT", "AUTH", "FOLDER", "UNSUPPORTED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "at", "kind" ],
+        "type" : "object"
+      },
+      "MailInStatus" : {
+        "properties" : {
+          "enabled" : {
+            "description" : "`IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD`, and `MAIL_INBOUND_ADDRESS` are all set, outside a sandbox.",
+            "type" : "boolean"
+          },
+          "lastFailure" : {
+            "description" : "The last of them; null without one.",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/MailInFailure"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "lastSuccessAt" : {
+            "description" : "The end of the last round that read the inbox folder through; null before the first since the app started.",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "offReason" : {
+            "description" : "Why it is off: `NOT_SET` without the settings, `SANDBOX` in a sandbox even with them (S12-AC-03). Null when on.",
+            "enum" : [ "NOT_SET", "SANDBOX", null ],
+            "type" : [ "string", "null" ]
+          },
+          "quarantined90d" : {
+            "description" : "Emails quarantined in the last 90 days, over the attempt limit or the rate limit (`QUARANTINED` and `RATE_LIMITED`).",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "retrying" : {
+            "description" : "Emails left in the inbox folder to try again: a record with no outcome and at least one attempt.",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "roundFailures" : {
+            "description" : "Rounds that failed since the app started (S12-AC-10).",
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "enabled", "lastFailure", "lastSuccessAt", "offReason", "quarantined90d", "retrying", "roundFailures" ],
+        "type" : "object"
+      },
       "Me" : {
         "properties" : {
           "companies" : {
@@ -1866,7 +1923,7 @@
             "type" : "integer"
           },
           "issue" : {
-            "description" : "The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, `CLEANUP_STALLED`, `MEMBERSHIP_REQUESTED` (S4-AC-40), `SLA_RECALCULATED` (S8B-AC-15), `COMPANY_EXPORT_READY`, `COMPANY_EXPORT_FAILED`, and `ISSUE_RETENTION_ARMED` (S10B-AC-27).",
+            "description" : "The issue the item is about, as it is now; null for `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, `CLEANUP_STALLED`, `MAIL_IN_STALLED`, `MAIL_IN_QUARANTINED` (S12-AC-37), `MEMBERSHIP_REQUESTED` (S4-AC-40), `SLA_RECALCULATED` (S8B-AC-15), `COMPANY_EXPORT_READY`, `COMPANY_EXPORT_FAILED`, and `ISSUE_RETENTION_ARMED` (S10B-AC-27).",
             "oneOf" : [ {
               "$ref" : "#/components/schemas/NotificationIssue"
             }, {
@@ -1874,7 +1931,7 @@
             } ]
           },
           "kind" : {
-            "enum" : [ "DELIVERY_FAILED", "ATTACHMENT_QUOTA_WARNING", "MAIL_STALLED", "WEBHOOK_STALLED", "AUDIT_FORWARD_STALLED", "CLEANUP_STALLED", "MEMBERSHIP_REQUESTED", "STAFF_COMMENT", "CUSTOMER_COMMENT", "ISSUE_RESOLVED", "ISSUE_CLOSED", "ISSUE_REOPENED", "ISSUE_FILED_ON_BEHALF", "MENTIONED", "ASSIGNED", "TASK_ASSIGNED", "LINKED_ISSUE_RESOLVED", "LINKED_ISSUE_CLOSED", "SLA_RESPONSE_WARNING", "SLA_RESPONSE_BREACHED", "SLA_RESOLUTION_WARNING", "SLA_RESOLUTION_BREACHED", "SLA_RECALCULATED", "COMPANY_EXPORT_READY", "COMPANY_EXPORT_FAILED", "ISSUE_RETENTION_ARMED" ],
+            "enum" : [ "DELIVERY_FAILED", "ATTACHMENT_QUOTA_WARNING", "MAIL_STALLED", "WEBHOOK_STALLED", "AUDIT_FORWARD_STALLED", "CLEANUP_STALLED", "MAIL_IN_STALLED", "MAIL_IN_QUARANTINED", "MEMBERSHIP_REQUESTED", "STAFF_COMMENT", "CUSTOMER_COMMENT", "ISSUE_RESOLVED", "ISSUE_CLOSED", "ISSUE_REOPENED", "ISSUE_FILED_ON_BEHALF", "MENTIONED", "ASSIGNED", "TASK_ASSIGNED", "LINKED_ISSUE_RESOLVED", "LINKED_ISSUE_CLOSED", "SLA_RESPONSE_WARNING", "SLA_RESPONSE_BREACHED", "SLA_RESOLUTION_WARNING", "SLA_RESOLUTION_BREACHED", "SLA_RECALCULATED", "COMPANY_EXPORT_READY", "COMPANY_EXPORT_FAILED", "ISSUE_RETENTION_ARMED" ],
             "type" : "string"
           },
           "linkedIssue" : {
@@ -2906,6 +2963,10 @@
           "mail" : {
             "$ref" : "#/components/schemas/ChannelStatus"
           },
+          "mailIn" : {
+            "$ref" : "#/components/schemas/MailInStatus",
+            "description" : "Receiving email over IMAP (S12-AC-36)."
+          },
           "oidc" : {
             "$ref" : "#/components/schemas/OidcStatus",
             "description" : "OIDC sign-in, counted since the app started (S11-AC-30)."
@@ -2922,7 +2983,7 @@
             "$ref" : "#/components/schemas/ChannelStatus"
           }
         },
-        "required" : [ "auditForward", "cleanupJobs", "mail", "oidc", "sandbox", "sandboxMailToSet", "webhook" ],
+        "required" : [ "auditForward", "cleanupJobs", "mail", "mailIn", "oidc", "sandbox", "sandboxMailToSet", "webhook" ],
         "type" : "object"
       },
       "Task" : {
@@ -10996,7 +11057,7 @@
     },
     "/api/console/system/status" : {
       "get" : {
-        "description" : "For mail, webhook, and the outside copy of the audit log (`auditForward`): configured or not, last success, queued and failed rows (S0-AC-81, S1B-AC-33). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10). In a sandbox the webhook and the outside copy are not `enabled`, and neither is mail without a sandbox address (S4B-AC-08). Each cleanup job comes with its last run (S4B-AC-30). `oidc` is OIDC sign-in, counted in memory since the app started (S11-AC-30). No SMTP password, webhook URL, or address or token of the outside copy, and no OIDC issuer, client ID, or secret (S4B-AC-31).",
+        "description" : "For mail, webhook, and the outside copy of the audit log (`auditForward`): configured or not, last success, queued and failed rows (S0-AC-81, S1B-AC-33). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10). In a sandbox the webhook and the outside copy are not `enabled`, and neither is mail without a sandbox address (S4B-AC-08). Each cleanup job comes with its last run (S4B-AC-30). `oidc` is OIDC sign-in, counted in memory since the app started (S11-AC-30). `mailIn` is receiving email over IMAP: rounds counted in memory, retried and quarantined emails from the records (S12-AC-36). No SMTP password, webhook URL, or address or token of the outside copy, no OIDC issuer, client ID, or secret, and no IMAP host, user, password, or folder (S4B-AC-31).",
         "operationId" : "getSystemStatus",
         "responses" : {
           "200" : {

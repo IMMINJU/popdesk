@@ -43,7 +43,7 @@
 | ID | 기준 |
 |---|---|
 | S12-AC-04 | The system shall 보내는 모든 메일에 `Message-ID: <난수@도메인>`(난수는 32바이트를 소문자 16진으로, 도메인은 `MAIL_INBOUND_ADDRESS`의 도메인이고 없으면 보내는 주소의 도메인)과 `Auto-Submitted: auto-generated`를 단다. 안내 메일(2.9)은 `Auto-Submitted: auto-replied`다. (MAIL-7, MAILIN-2, 5절 5) |
-| S12-AC-05 | Where 메일 받기가 켜진 설치에서 문의 키가 제목에 든 메일을 고객에게 보내면, the system shall `Reply-To: MAIL_INBOUND_ADDRESS`를 달고 보낸 메일 기록(`Message-ID`, 문의)을 남긴다. 상담 쪽에 가는 메일, 키가 없는 메일(초대, 비밀번호 재설정, 시험 메일), 안내 메일에는 달지 않고 남기지 않는다. 기록은 SMTP 서버가 받은 뒤에 남긴다. (MAIL-1, MAIL-7) |
+| S12-AC-05 | Where 메일 받기가 켜진 설치에서 문의 키가 제목에 든 메일을 고객에게 보내면, the system shall `Reply-To: MAIL_INBOUND_ADDRESS`를 달고 보낸 메일 기록(`Message-ID`, 문의)을 남긴다. 상담 쪽에 가는 메일, 키가 없는 메일(초대, 비밀번호 재설정, 시험 메일), 안내 메일에는 달지 않고 남기지 않는다. 기록은 SMTP 서버가 받은 뒤 따로 남긴다. 기록을 남기지 못해도 메일을 다시 보내지 않는다(그 메일의 답장은 제목 키로만 이어진다). (MAIL-1, MAIL-7) |
 
 ### 2.3 회차와 메일함
 
@@ -96,7 +96,7 @@
 | ID | 기준 |
 |---|---|
 | S12-AC-25 | When 메일에 파일 이름이 있는 부분(`attachment`든 `inline`이든, 본문의 그림 포함)이 있으면, the system shall 그것을 문의나 댓글의 첨부로 올린다. 포털과 같은 규칙(파일 하나 10MB, 한 번에 20개, 문의의 공개 첨부 합계 50MB, 이름 255자, 설치 전체 한도, ATT-2·3)을 따른다. 이름이 없는 부분은 첨부로 보지 않는다. 이름은 RFC 2231과 인코딩된 단어를 푼 뒤 경로 앞부분(마지막 `/`, `\`까지)을 떼고, 제어 문자(C0, C1, U+2028·2029)와 양방향 제어 문자(U+202A~202E, U+2066~2069)를 빼고, NFC로 맞춘다. 남는 것이 없으면 `attachment-{순번}`이다. 첨부의 크기는 전송 인코딩을 푼 뒤의 크기다. (MAILIN-5, ATT-10, 5절 17) |
-| S12-AC-26 | If 첨부가 그 규칙에 맞지 않으면, then the system shall 그 파일만 빼고 본문 끝에 "빠진 첨부: {이름} ({까닭})" 줄을 그 계정 언어로 파일마다 붙인다(까닭: 10MB 넘음, 개수 넘음, 문의의 합계 넘음, 저장 한도 넘음, 이름이 김. 이름은 255자에서 자른다). 그 줄도 한도(S12-AC-24) 안에 든다. (MAILIN-5) |
+| S12-AC-26 | If 첨부가 그 규칙에 맞지 않으면, then the system shall 그 파일만 빼고 본문 끝에 "빠진 첨부: {이름} ({까닭})" 줄을 그 계정 언어로 파일마다 붙인다(까닭: 빈 파일, 10MB 넘음, 개수 넘음, 문의의 합계 넘음, 저장 한도 넘음, 이름이 김. 이름은 255자에서 자른다). 그 줄도 한도(S12-AC-24) 안에 든다. (MAILIN-5) |
 | S12-AC-27 | If 첨부를 저장소에 쓰지 못하면(저장소 오류), then the system shall S12-AC-09의 오류로 다룬다(문의·댓글을 만들지 않고 다음 회차에 다시). (MAILIN-6, ATT-10) |
 
 ### 2.9 요청 수 제한과 안내 메일
@@ -123,7 +123,7 @@
 |---|---|
 | S12-AC-35 | The system shall 지표 `popdesk.mailin.messages`(태그 `outcome`, 결과마다), `popdesk.mailin.unauthenticated`, `popdesk.mailin.round.failures`(태그 `kind`)를 낸다. (MAILIN-1·8·9, OPS) |
 | S12-AC-36 | When 관리자가 `GET /api/console/system/status`를 부르면, the system shall `mailIn`에 켜짐 여부, 꺼진 까닭(`NOT_SET`, `SANDBOX` 또는 `null`), 마지막으로 성공한 회차의 시각, 앱이 뜬 뒤 실패한 회차 수, 마지막 실패(종류 `CONNECT`·`AUTH`·`FOLDER`·`UNSUPPORTED`와 시각, 또는 `null`), 받는 폴더에 남아 다시 시도할 메일 수(결과 없이 시도 수가 1 이상인 기록), 90일 안에 격리한 메일 수(`QUARANTINED`와 `RATE_LIMITED`)를 준다. 회차 시각과 실패는 메모리에서 세며 앱이 다시 뜨면 비어 있다. (OPS-3, 5절 13) |
-| S12-AC-37 | When 회차가 한 시간 넘게 성공하지 못하면(실패가 시작된 때부터 앱 시계로), the system shall 관리자 전부의 알림함에 `MAIL_IN_STALLED`를 남긴다. When 메일을 격리하면, the system shall `MAIL_IN_QUARANTINED`를 남긴다. `MAIL_IN_STALLED`는 회차가 성공하면, `MAIL_IN_QUARANTINED`는 24시간 동안 격리가 없으면 풀린다. 둘 다 OPS-1의 규칙(같은 종류는 풀리기 전까지 하루에 한 건)을 따르고, 알림은 시스템 상태 화면으로 이끈다. (OPS-1, 5절 14) |
+| S12-AC-37 | When 회차가 한 시간 넘게 성공하지 못하면(실패가 시작된 때부터 앱 시계로), the system shall 관리자 전부의 알림함에 `MAIL_IN_STALLED`를 남긴다. When 메일을 격리하면, the system shall `MAIL_IN_QUARANTINED`를 남긴다. `MAIL_IN_STALLED`는 회차가 성공해야만 풀린다(실패만 이어지거나 앱이 다시 떠도 풀리지 않는다). `MAIL_IN_QUARANTINED`는 24시간 동안 격리가 없으면 풀린다. 둘 다 OPS-1의 규칙(같은 종류는 풀리기 전까지 하루에 한 건)을 따르고, 알림은 시스템 상태 화면으로 이끈다. (OPS-1, 5절 14) |
 
 ### 2.12 화면
 
