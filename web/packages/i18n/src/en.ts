@@ -155,6 +155,9 @@ export const en: Record<keyof typeof ko, string> = {
   'inbox.webhookStalled': 'Webhooks have been failing to send for over an hour',
   'inbox.auditForwardStalled': 'The outside copy of the audit log has been failing to send for over an hour',
   'inbox.cleanupStalled': 'A cleanup job has not run for over a day',
+  // Slice 12: receiving email (12 screens.md "C-7 알림함").
+  'inbox.mailInStalled': 'Receiving email has been failing for over an hour',
+  'inbox.mailInQuarantined': 'Some received emails were quarantined',
   'inbox.slaResponseWarning': 'First response will be overdue soon',
   'inbox.slaResponseBreached': 'First response is overdue',
   'inbox.slaResolutionWarning': 'Resolution will be overdue soon',

@@ -154,6 +154,9 @@ export const ko = {
   'inbox.webhookStalled': '웹훅 보내기가 한 시간 넘게 실패하고 있습니다',
   'inbox.auditForwardStalled': '감사 바깥 사본 보내기가 한 시간 넘게 실패하고 있습니다',
   'inbox.cleanupStalled': '정리 작업이 하루 넘게 돌지 않았습니다',
+  // Slice 12: receiving email (12 screens.md "C-7 알림함").
+  'inbox.mailInStalled': '메일 받기가 한 시간 넘게 실패하고 있습니다',
+  'inbox.mailInQuarantined': '격리한 받은 메일이 있습니다',
   // Slice 8b: time ran out, nobody did it, so no "{who}" (8b screens.md 1절).
   'inbox.slaResponseWarning': '첫 응답 기한을 곧 넘깁니다',
   'inbox.slaResponseBreached': '첫 응답 기한을 넘겼습니다',

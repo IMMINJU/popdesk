@@ -59,6 +59,10 @@ function sentence(n: Notification): string {
       return t('inbox.auditForwardStalled');
     case 'CLEANUP_STALLED':
       return t('inbox.cleanupStalled');
+    case 'MAIL_IN_STALLED':
+      return t('inbox.mailInStalled');
+    case 'MAIL_IN_QUARANTINED':
+      return t('inbox.mailInQuarantined');
     case 'SLA_RESPONSE_WARNING':
       return t('inbox.slaResponseWarning');
     case 'SLA_RESPONSE_BREACHED':
@@ -112,6 +116,9 @@ function hrefOf(n: Notification): string | undefined {
     case 'WEBHOOK_STALLED':
     case 'AUDIT_FORWARD_STALLED':
     case 'CLEANUP_STALLED':
+    // Slice 12: receiving email (12 screens.md "C-7 알림함").
+    case 'MAIL_IN_STALLED':
+    case 'MAIL_IN_QUARANTINED':
       return '/system';
     // Slice 8b: the issues by due time, the soonest first (8b screens.md 1절).
     case 'SLA_RECALCULATED':
