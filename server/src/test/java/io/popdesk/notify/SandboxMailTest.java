@@ -52,9 +52,10 @@ import tools.jackson.databind.JsonNode;
  * was for, it says so in its subject and first line, and a mail that is no longer to be sent is not
  * sent there either.
  *
- * <p>The kinds of mail are the thirteen names in {@link #KINDS}. A test here reads the list of kinds from
- * the app's source as text ({@link #KIND_SOURCE}) and fails when the two differ, so a new kind of mail
- * cannot be added without a scenario here. It also reads the kind of each queued row in the
+ * <p>The kinds of mail are the thirteen names in {@link #KINDS} and the mail-in notices in
+ * {@link #NOT_IN_A_SANDBOX}, which a sandbox cannot queue since it turns receiving email off (S12-AC-03). A
+ * test here reads the list of kinds from the app's source as text ({@link #KIND_SOURCE}) and fails when it
+ * differs from the two together, so a new kind of mail cannot be added without a scenario here. It also reads the kind of each queued row in the
  * {@code outbox} table while the mail server refuses mail, to see that each scenario queues the kind
  * it is named for.
  */
@@ -64,6 +65,10 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
     static final Set<String> KINDS = Set.of("INVITATION", "PASSWORD_RESET", "STAFF_COMMENT", "ISSUE_FILED_ON_BEHALF",
             "ISSUE_RESOLVED", "ISSUE_CLOSED", "ISSUE_REOPENED", "MENTIONED", "ASSIGNED", "MEMBERSHIP_REQUESTED",
             "TASK_ASSIGNED", "SLA_RESPONSE_BREACHED", "SLA_RESOLUTION_BREACHED");
+
+    /** The kinds a sandbox never queues: the notices of receiving email, which a sandbox turns off (S12-AC-03). */
+    static final Set<String> NOT_IN_A_SANDBOX = Set.of("MAIL_IN_NOTICE_NO_ISSUE", "MAIL_IN_NOTICE_CLOSED",
+            "MAIL_IN_NOTICE_NOT_ALLOWED");
 
     /** Where the app lists its kinds of mail, from the module's folder. */
     static final Path KIND_SOURCE = Path.of("src", "main", "java", "io", "popdesk", "notification", "MailKind.java");
@@ -88,6 +93,13 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
         if (slaOn) {
             SlaSteps.turnOff(admin());
         }
+    }
+
+    /** {@link #KINDS} and {@link #NOT_IN_A_SANDBOX}, sorted. */
+    private static Set<String> allKinds() {
+        Set<String> out = new TreeSet<>(KINDS);
+        out.addAll(NOT_IN_A_SANDBOX);
+        return out;
     }
 
     /** The constants of the enum in {@link #KIND_SOURCE}, read as text. */
@@ -207,7 +219,7 @@ class SandboxMailTest extends Delivery.SandboxWithAddress {
         assertThat(expected.stream().map(Queued::kind).toList()).as("the kinds this test queues")
                 .containsExactlyInAnyOrderElementsOf(KINDS);
         assertThat(kindsInSource()).as("the kinds of mail in %s: a new kind needs a scenario in this test",
-                KIND_SOURCE).isEqualTo(new TreeSet<>(KINDS));
+                KIND_SOURCE).isEqualTo(allKinds());
 
         Wait.untilAsserted("every one of the " + expected.size() + " mails tried at the sandbox address",
                 () -> assertThat(heldAtSandboxAddress()).hasSizeGreaterThanOrEqualTo(expected.size()));
