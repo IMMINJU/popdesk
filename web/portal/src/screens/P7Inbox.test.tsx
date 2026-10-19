@@ -149,7 +149,10 @@ describe('P-7 알림함', () => {
     await atPath('/issues/ACME-7');
     expect(window.location.hash).toBe(hash);
     await settle();
-    expect(callsTo('GET', UNREAD).length, '누른 그때 수를 다시 받지 않는다').toBe(counted);
+    // b1 묶음 B1-AC-04: 읽음이 성공하면 머리의 수를 한 번 다시 묻는다(그 앞에 적던 "다시 받지 않는다"를 바꿈).
+    await eventually(() => {
+      expect(callsTo('GET', UNREAD).length, '읽음이 성공한 뒤 수를 한 번 다시 받는다').toBe(counted + 1);
+    });
   });
 
   test('S4-AC-66 S4-AC-69 P-7 읽음 실패: 읽음의 답을 기다리지 않고 옮긴다. 떠난 뒤에 온 5xx는 아무것도 띄우지 않는다', async () => {
