@@ -403,7 +403,7 @@ export const consoleAdminEn: Record<keyof typeof consoleAdminKo, string> = {
   'clearAssignments.clearBoth': 'Unassign these issues and tasks',
   'clearAssignments.clearIssues': 'Unassign these issues',
   'clearAssignments.help':
-    "If you do not unassign them, the person stays the assignee but cannot see the issues. Find them with 'Assignee cannot see' in the issue list.",
+    "If you do not unassign them, the person stays the assignee but cannot see the issues. Find them with 'Assignee cannot see it' in the issue list.",
 
   // The audit log (C-12): kind groups and kinds, as auditWords.ts names them.
   'audit.group.SIGN_IN': 'Sign-ins',
