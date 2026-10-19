@@ -61,6 +61,11 @@ services:
       AUDIT_FORWARD_TOKEN_FILE:
       POPDESK_SANDBOX:
       POPDESK_SANDBOX_MAIL_TO:
+      OIDC_ISSUER:
+      OIDC_CLIENT_ID:
+      OIDC_CLIENT_SECRET:
+      OIDC_CLIENT_SECRET_FILE:
+      OIDC_APPS:
       # JVM options of the operator's own, for example a larger heap (-Xmx768m).
       JDK_JAVA_OPTIONS:
     volumes:

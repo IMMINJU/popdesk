@@ -47,7 +47,7 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 
 | Module | Package | Owns |
 |---|---|---|
-| `helpdesk` | `io.popdesk.helpdesk` | Accounts, invitations, sign-in, customer companies, issues, comments, attachments, labels, audit log, statistics, account export and anonymization and company export (`helpdesk.privacy`), the trash and automatic issue cleanup (`helpdesk.trash`) |
+| `helpdesk` | `io.popdesk.helpdesk` | Accounts, invitations, sign-in (password and OIDC, `helpdesk.account`), customer companies, issues, comments, attachments, labels, audit log, statistics, account export and anonymization and company export (`helpdesk.privacy`), the trash and automatic issue cleanup (`helpdesk.trash`) |
 | `notification` | `io.popdesk.notification` | Outbox, outgoing email, webhooks, incoming email |
 
 ### Tables

@@ -32,8 +32,8 @@ popdesk is not released yet. Values here are the planned contract and may change
 | `IMAP_PROCESSED_FOLDER` | Folder that processed email is moved to. popdesk reads every message in `IMAP_FOLDER`, so use a mailbox that only popdesk reads | `popdesk-processed` |
 | `IMAP_QUARANTINE_FOLDER` | Folder for email that failed 5 times or went over the rate limit | `popdesk-quarantine` |
 | `MAIL_INBOUND_ADDRESS` | Address customers send issues to; used as `Reply-To` on notification emails | None |
-| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Sign-in with an OIDC provider | None. Without them, OIDC sign-in is off |
-| `OIDC_APPS` | Which apps show the OIDC sign-in button: `console`, `portal`, or `both` | `console` |
+| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Sign-in with an OIDC provider ([OIDC sign-in](#oidc-sign-in)). Set all three or none; some of them stop the start | None. Without them, OIDC sign-in is off |
+| `OIDC_APPS` | Which apps offer OIDC sign-in: `console`, `portal`, or `both`. Any other value stops the start | `console` |
 | `POPDESK_TRUSTED_PROXIES` | Addresses (IPs or CIDR ranges, comma-separated) whose `X-Forwarded-*` headers popdesk trusts | Loopback and private ranges (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `::1`, `fc00::/7`) |
 | `POPDESK_INSTANCE_LOCK_WAIT` | How long a starting instance waits for the single-instance database lock before it stops with a message (ISO-8601 duration). Raise it if a restarted container starts before the old one has let go | `PT30S` |
 | `POPDESK_SANDBOX` | `true` for a copy of a real installation ([A sandbox](#a-sandbox)): the webhook and the audit copy are off, and email goes to `POPDESK_SANDBOX_MAIL_TO` only, or nowhere without it. Only the value `true` counts, in any case and with spaces around it; `1`, `yes`, and an empty value are not a sandbox. Incoming email is not turned off | `false` |
@@ -301,6 +301,27 @@ An admin exports one company's data as a ZIP ([privacy.md](privacy.md#exporting-
 - **Restarts.** When the app starts, an export that was running becomes `FAILED` (`INTERRUPTED`), every export file in the folder (`{export ID}.zip` or `.zip.part`) that is not the ZIP of a `DONE` export is deleted, and a `DONE` export whose ZIP is gone (a new container) becomes `EXPIRED`. Put nothing else in that folder.
 - `company-export-expiry` runs every 10 minutes and deletes the ZIP of each export that became `DONE` 24 hours ago or longer; the export stays in the list as `EXPIRED`. The count is the number of exports expired. It shows in the system status and in the cleanup metrics like the other jobs.
 - Downloading a ZIP does not take one of the 16 download places of attachments.
+
+## OIDC sign-in
+
+Staff, customers, or both sign in with your company's OIDC provider (Google, Keycloak, Okta, Auth0, and the like). Password sign-in and password reset stay on: when the provider is down or the client secret expires, people still get in with a password. There is no setting that turns password sign-in off.
+
+**At the provider**, register popdesk as a confidential web client that uses the authorization code flow with PKCE, signs ID tokens with RS256 or ES256, and authenticates at the token endpoint with `client_secret_basic`. Register one redirect address for each app that has OIDC on:
+
+- `{POPDESK_PUBLIC_SCHEME}://{POPDESK_CONSOLE_HOST}[:{POPDESK_PUBLIC_PORT}]/api/public/oidc/callback`
+- `{POPDESK_PUBLIC_SCHEME}://{POPDESK_PORTAL_HOST}[:{POPDESK_PUBLIC_PORT}]/api/public/oidc/callback`
+
+The port is left out when it is the scheme's default (443 for https, 80 for http), as in invitation links.
+
+**In popdesk**, set `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` (or `OIDC_CLIENT_SECRET_FILE`), and `OIDC_APPS` (`console` when left out).
+
+- `OIDC_ISSUER` is the provider's issuer exactly as its discovery document and its ID tokens write it, with a last `/` only if the provider writes one. popdesk reads the discovery document from the issuer without its last `/` followed by `/.well-known/openid-configuration`, and compares the document's `issuer` and each token's `iss` with `OIDC_ISSUER` as written: one `/` more or less than the provider writes refuses every sign-in (`/login?oidc=unavailable`). It must be an absolute `http` or `https` address without a query or a fragment, or the app does not start.
+- popdesk does not reach for the provider while it starts, so a provider that is down does not keep it from starting. The first sign-in reads the discovery document and keeps it for an hour; a document that cannot be read is tried again 30 seconds later at the earliest. Each request to the provider has 3 seconds to connect and 10 to answer.
+- An `http` issuer gets a warning at startup: the code and the tokens travel without encryption. With an `https` issuer, every endpoint of the discovery document must be `https` too.
+- **The email.** The first OIDC sign-in of an account matches it by the email of the ID token, so the provider must put `email` and `email_verified` (`true`) into the ID token itself; popdesk does not ask the `userinfo` endpoint. Providers that do with the `email` scope: Google, Keycloak, Okta, Auth0. Microsoft Entra ID does not give `email_verified`, so with it no account can be linked; it is not supported yet. The email must be ASCII. popdesk trusts the provider to say who holds an email: a provider admin who can give anyone any verified email can sign in as any account that is not linked yet.
+- After the first sign-in the account is linked to the provider's `iss` and `sub`, and only those count, whatever email later tokens carry. When the provider makes the person again with a new `sub`, an admin removes the link in the member list (C-10), and the next sign-in links by email again. OIDC makes no account: people are invited as before. An invited account whose invitation is less than 7 days old becomes active at its first OIDC sign-in, without a password; the person can set one with "Forgot password".
+- **The clock.** ID tokens are checked against the host's clock with 60 seconds of leeway. Keep the host's clock set by NTP; a clock further off refuses every sign-in, and the system status counts it as an `ID_TOKEN` failure.
+- The system status (C-18) shows whether OIDC is on, for which apps, the last OIDC sign-in, and the provider's failures since the app started.
 
 ## SLA due times
 

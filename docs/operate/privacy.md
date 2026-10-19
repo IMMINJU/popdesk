@@ -11,6 +11,7 @@ popdesk is not released yet. Values here are the planned contract and may change
 | Accounts | Email, name, language, role, status, the password hash, failed sign-ins and a sign-in lock, when the account was made |
 | Profile photos | One PNG per account that has one, made by popdesk from the uploaded file (table `account_photo`) |
 | Sessions, invitations, password resets | The session of each sign-in, and the tokens of open invitations and password resets |
+| OIDC links | For an account that signed in with the OIDC provider, the provider's issuer and the person's `sub` there, an ID the provider gives (table `oidc_link`). An OIDC sign-in under way keeps its random values for 10 minutes, as hashes, with no person (table `oidc_request`) |
 | Issues, comments, attachments | What customers and staff write and upload: titles, content, files, and who did it. popdesk cannot choose what people put into them |
 | Membership requests | A copy of the requesting customer's email and name |
 | Email queue and inbox | Which account a queued email or an inbox item is for, and what it is about. The address is read when the email is sent |
@@ -84,7 +85,7 @@ Off by default. With `POPDESK_ISSUE_RETENTION` set, popdesk moves to the trash, 
 ## What an anonymization changes
 
 - The name becomes `Deleted user` or `삭제된 사용자`, in the installation's language at that moment (`POPDESK_LOCALE`), and the email `deleted-{id}@invalid`. The account becomes `SUSPENDED` and is marked as anonymized in the member list.
-- Removed in the same step: every session (the person is signed out at once), the profile photo, the password, a sign-in lock, open invitation and password reset tokens, emails queued to the person, and the person's inbox items.
+- Removed in the same step: every session (the person is signed out at once), the profile photo, the password, a sign-in lock, open invitation and password reset tokens, the OIDC link (so a person invited again with the same email does not reach the old account by OIDC), emails queued to the person, and the person's inbox items.
 - The copies of the name and email in the person's membership requests and audit entries get the anonymous values. The audit log's hash chain is computed again from the first changed entry and the change is recorded ([audit-log.md](audit-log.md#after-an-anonymization)).
 - Optionally, the person is taken off as assignee of every open issue and task, as for a suspension.
 - Nothing brings the account back: lifting the suspension, renaming it, changing its role, resetting its password, sending its invitation again, adding it to a company, and approving its membership request are refused.
