@@ -3,7 +3,9 @@ package io.popdesk.mailin;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.popdesk.privacy.PrivacySteps;
+import io.popdesk.support.FailedWrite;
 import io.popdesk.support.Fixtures.Session;
+import io.popdesk.support.MailInServer.Folder;
 import io.popdesk.support.ReceivedMail;
 import io.popdesk.support.Unique;
 import io.popdesk.trash.TrashSteps;
@@ -46,6 +48,28 @@ class ReceivedRecordTest extends MailInAppTest {
         assertThat(commentRecord.get("outcome")).as("outcome").isEqualTo("COMMENT");
         assertThat(((Number) commentRecord.get("comment_id")).longValue()).as("comment_id")
                 .isEqualTo(commentWith(key, answer).path("id").asLong());
+    }
+
+    @Test
+    @DisplayName("S12-AC-30 the record's outcome is written with the issue: when only the write of the outcome ISSUE fails, the round leaves no issue and the mail in the incoming folder; a round after the failure is lifted makes exactly one issue")
+    void outcomeAndIssueTogether() {
+        Session sender = customer(company().code());
+        Inbound mail = mailFrom(sender).text("Together " + Unique.number());
+        assertThat(db.tables()).as("tables").contains("mail_received");
+        try (FailedWrite failing = FailedWrite.statement(db, "mail_received", "insert or update", "ISSUE")) {
+            send(mail);
+            rounds.next();
+            assertThat(issuesOf(sender)).as("issues of the sender while the outcome cannot be written").isEmpty();
+            assertThat(foldersOf(mail)).as("folders while the outcome cannot be written")
+                    .containsExactly(Folder.INBOUND);
+        }
+
+        rounds.next();
+
+        assertThat(issuesOf(sender)).as("issues of the sender after the failure is lifted").hasSize(1);
+        assertThat(foldersOf(mail)).as("folders after the failure is lifted").containsExactly(Folder.PROCESSED);
+        assertThat(received(sender.email(), mail.messageId())).as("record of the mail").isNotNull()
+                .containsEntry("outcome", "ISSUE");
     }
 
     @Test

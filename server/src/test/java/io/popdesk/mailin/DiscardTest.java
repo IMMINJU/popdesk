@@ -157,8 +157,8 @@ class DiscardTest extends MailInAppTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"dmarc=none", "no header"})
-    @DisplayName("S12-AC-12 a mail with dmarc=none or with no DMARC result is taken and counts in popdesk.mailin.unauthenticated")
+    @ValueSource(strings = {"dmarc=none", "no header", "dmarc=pass"})
+    @DisplayName("S12-AC-12 a mail with dmarc=none or with no DMARC result is taken and adds one to popdesk.mailin.unauthenticated; a mail with dmarc=pass is taken and adds none")
     void unauthenticatedIsCounted(String result) {
         MailInMetrics metrics = new MailInMetrics(environment);
         double before = metrics.sum("popdesk_mailin_unauthenticated", "");
@@ -172,9 +172,10 @@ class DiscardTest extends MailInAppTest {
         rounds.next();
 
         assertThat(issuesOf(sender)).as("issues of the sender").hasSize(1);
-        Wait.untilAsserted("popdesk_mailin_unauthenticated went up", () ->
+        double added = result.equals("dmarc=pass") ? 0 : 1;
+        Wait.untilAsserted("popdesk_mailin_unauthenticated up by " + added, () ->
                 assertThat(metrics.sum("popdesk_mailin_unauthenticated", "")).as("popdesk_mailin_unauthenticated")
-                        .isGreaterThan(before));
+                        .isEqualTo(before + added));
     }
 
     @ParameterizedTest(name = "{0}")

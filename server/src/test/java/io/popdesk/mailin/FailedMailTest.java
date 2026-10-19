@@ -30,8 +30,8 @@ class FailedMailTest extends MailInAppTest {
             send(mail);
             rounds.next();
             assertThat(foldersOf(mail)).as("folders after the first failed try").containsExactly(Folder.INBOUND);
-            assertThat(rounds.mailIn().path("retrying").asInt(-1)).as("mailIn.retrying after the first try")
-                    .isGreaterThanOrEqualTo(1);
+            int retrying = rounds.mailIn().path("retrying").asInt(-1);
+            assertThat(retrying).as("mailIn.retrying after the first try").isGreaterThanOrEqualTo(1);
 
             rounds.next(4);
             assertThat(foldersOf(mail)).as("folders after five failed tries").containsExactly(Folder.INBOUND);
@@ -39,6 +39,8 @@ class FailedMailTest extends MailInAppTest {
             rounds.next();
 
             assertThat(foldersOf(mail)).as("folders after the sixth round").containsExactly(Folder.QUARANTINE);
+            assertThat(rounds.mailIn().path("retrying").asInt(-1)).as("mailIn.retrying after the quarantine")
+                    .isLessThan(retrying);
         }
         assertThat(issuesOf(sender)).as("issues of the sender").isEmpty();
         assertThat(rounds.mailIn().path("quarantined90d").asInt(-1)).as("mailIn.quarantined90d")
@@ -55,12 +57,16 @@ class FailedMailTest extends MailInAppTest {
         byte[] file = new byte[30 * 1024 * 1024 + 1];
         Arrays.fill(file, (byte) 'x');
         Inbound mail = mailFrom(sender).text("Large " + Unique.number()).attach("large.txt", "text/plain", file);
-        send(mail);
+        try {
+            send(mail);
 
-        rounds.next();
+            rounds.next();
 
-        assertThat(foldersOf(mail)).as("folders of the large mail").containsExactly(Folder.QUARANTINE);
-        assertThat(issuesOf(sender)).as("issues of the sender").isEmpty();
+            assertThat(foldersOf(mail)).as("folders of the large mail").containsExactly(Folder.QUARANTINE);
+            assertThat(issuesOf(sender)).as("issues of the sender").isEmpty();
+        } finally {
+            mailIn().remove(mail.messageId());
+        }
     }
 
     @Test

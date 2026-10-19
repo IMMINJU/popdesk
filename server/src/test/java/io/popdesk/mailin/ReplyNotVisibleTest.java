@@ -60,11 +60,17 @@ class ReplyNotVisibleTest extends MailInAppTest {
         assertThat(hasComment(other.issue().key(), content)).as("a comment on the other company's issue").isFalse();
     }
 
-    /** One case of a key the sender cannot see: who sends, and the key in the subject. */
-    private record Case(String what, Session sender, String key) {}
+    /** One case of a key the sender cannot see: who sends, the key in the subject, and that issue's title (or null). */
+    private record Case(String what, Session sender, String key, String title) {}
+
+    private static String titleOf(Issue issue) {
+        String title = issue.json().path("title").asString("");
+        assertThat(title).as("title of " + issue.key()).isNotBlank();
+        return title;
+    }
 
     @Test
-    @DisplayName("S12-AC-17 a subject key of another company, of a colleague's private issue, of an issue in the trash, or of no issue gives no issue and no comment, and the same notice A")
+    @DisplayName("S12-AC-17 a subject key of another company, of a colleague's private issue, of an issue in the trash, or of no issue gives no issue and no comment, and the same notice A, without that issue's key or title")
     void keysTheSenderCannotSee() {
         Foreign other = foreign();
         Company own = company();
@@ -74,10 +80,10 @@ class ReplyNotVisibleTest extends MailInAppTest {
         Issue trashed = fixtures.fileIssue(trashing, own.code());
         TrashSteps.delete(admin, trashed.key());
         List<Case> cases = List.of(
-                new Case("another company's issue", customer(own.code()), other.issue().key()),
-                new Case("a colleague's private issue", customer(own.code()), privateOne.key()),
-                new Case("an issue in the trash", trashing, trashed.key()),
-                new Case("no issue", customer(own.code()), own.code() + "-999999"));
+                new Case("another company's issue", customer(own.code()), other.issue().key(), titleOf(other.issue())),
+                new Case("a colleague's private issue", customer(own.code()), privateOne.key(), titleOf(privateOne)),
+                new Case("an issue in the trash", trashing, trashed.key(), titleOf(trashed)),
+                new Case("no issue", customer(own.code()), own.code() + "-999999", null));
         String content = "Body " + Unique.number();
 
         List<Inbound> sent = new ArrayList<>();
@@ -95,6 +101,10 @@ class ReplyNotVisibleTest extends MailInAppTest {
             notices.add(withoutRecipient(notice, c.sender()));
             assertThat(notice.text()).as("notice A of " + c.what()).doesNotContain(c.key())
                     .doesNotContain(other.company().code()).doesNotContain(own.code());
+            if (c.title() != null) {
+                assertThat(notice.subject() + "\n" + notice.text())
+                        .as("notice A of " + c.what() + ", the issue's title").doesNotContain(c.title());
+            }
             assertThat(issuesOf(c.sender())).as("issues of the sender, " + c.what()).isEmpty();
             assertThat(foldersOf(sent.get(i))).as("folders of the mail, " + c.what()).containsExactly(Folder.PROCESSED);
         }
@@ -106,7 +116,7 @@ class ReplyNotVisibleTest extends MailInAppTest {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"NOT_ALLOWED", "CLOSED"})
-    @DisplayName("S12-AC-18 a reply to an issue the sender sees but cannot comment on (a colleague's public issue, a closed issue) gives no comment and notice B with that issue's key and link")
+    @DisplayName("S12-AC-18 a reply to an issue the sender sees but cannot comment on (a colleague's public issue, a closed issue) gives no comment and notice B with that issue's key and link, Auto-Submitted: auto-replied, no Reply-To, and no sent-mail record")
     void visibleButNoComment(String reason) {
         Company own = company();
         Session sender = korean(customer(own.code()));
@@ -127,7 +137,12 @@ class ReplyNotVisibleTest extends MailInAppTest {
                 .contains("문의 " + issue.key())
                 .contains(reason.equals("CLOSED") ? "종료되어 메일 답장을 받지 않습니다" : "문의를 올린 분만 답장할 수 있습니다")
                 .contains("http://" + PORTAL_HOST + "/issues/" + issue.key());
+        assertThat(notice.header("Auto-Submitted")).as("Auto-Submitted of notice B").containsExactly("auto-replied");
+        assertThat(notice.header("Reply-To")).as("Reply-To of notice B").isEmpty();
         assertThat(hasComment(issue.key(), content)).as("a comment on " + issue.key()).isFalse();
+        // Mail goes out one after another: once a later mail is out, a record of notice B would be written too.
+        awaitALaterMail();
+        assertThat(sentRecords(messageIdOf(notice))).as("sent-mail records of notice B").isZero();
         assertThat(mailTo(sender, NOTICE_A_SUBJECT_KO)).as("notice A to the sender").isEmpty();
     }
 }

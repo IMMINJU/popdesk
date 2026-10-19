@@ -71,18 +71,19 @@ class MailInStatusTest extends MailInAppTest {
     }
 
     @Test
-    @DisplayName("S12-AC-35 a mail that becomes an issue counts in popdesk.mailin.messages with outcome ISSUE")
+    @DisplayName("S12-AC-35 a mail that becomes an issue adds one to popdesk.mailin.messages with outcome ISSUE")
     void messagesMetric() {
         MailInMetrics metrics = new MailInMetrics(environment);
         Session sender = customer(company().code());
+        double before = metrics.sum("popdesk_mailin_messages", "outcome=\"ISSUE\"");
         send(mailFrom(sender).text("Counted " + Unique.number()));
 
         rounds.next();
 
         assertThat(issuesOf(sender)).as("issues of the sender").hasSize(1);
-        Wait.untilAsserted("popdesk_mailin_messages with outcome ISSUE", () ->
+        Wait.untilAsserted("popdesk_mailin_messages with outcome ISSUE one up", () ->
                 assertThat(metrics.sum("popdesk_mailin_messages", "outcome=\"ISSUE\"")).as("ISSUE messages")
-                        .isGreaterThanOrEqualTo(1));
+                        .isEqualTo(before + 1));
     }
 
     private static Set<String> fieldNames(JsonNode node) {

@@ -27,7 +27,7 @@ class MailInAlertTest extends MailInAppTest {
     static final String QUARANTINED = "MAIL_IN_QUARANTINED";
 
     @Test
-    @DisplayName("S12-AC-37 rounds failing for over an hour give every admin a MAIL_IN_STALLED item without an issue, none before the hour; a good round resolves it, so failing for another hour gives a second item")
+    @DisplayName("S12-AC-37 rounds failing for over an hour give every admin a MAIL_IN_STALLED item without an issue, none before the hour; one more failed round gives no second item; a good round resolves it, so failing for another hour gives a second item")
     void stalledAfterAnHourUntilAGoodRound() {
         rounds.next();
         Session watcher = fixtures.accept(invite(Role.ADMIN));
@@ -47,6 +47,10 @@ class MailInAlertTest extends MailInAppTest {
             Session at61 = fixtures.signInAgain(watcher);
             JsonNode item = awaitItems(at61, STALLED, 1, "an hour after the first failed round").getFirst();
             assertThat(TalkFlow.isNull(item, "issue")).as("issue is null in %s", item).isTrue();
+
+            rounds.nextFailing();
+            Wait.holds("still one " + STALLED + " item after one more failed round", Duration.ofSeconds(3),
+                    () -> items(at61, STALLED).size() == 1);
         } finally {
             mailIn().restore();
         }
@@ -66,7 +70,7 @@ class MailInAlertTest extends MailInAppTest {
     }
 
     @Test
-    @DisplayName("S12-AC-37 a quarantined mail gives every admin a MAIL_IN_QUARANTINED item without an issue; a second one the same day gives no new item")
+    @DisplayName("S12-AC-37 a quarantined mail gives every admin a MAIL_IN_QUARANTINED item without an issue; a second one the same day gives no new item; 24 hours without one resolve it, so it repeats no more and the next quarantined mail gives a new item")
     void quarantinedOnceADay() {
         // A day without quarantine resolves an alert an earlier test raised.
         passTime(Duration.ofHours(25));
@@ -88,6 +92,26 @@ class MailInAlertTest extends MailInAppTest {
         awaitALaterMail();
         Wait.holds("still one " + QUARANTINED + " item after the second quarantined mail", Duration.ofSeconds(3),
                 () -> items(watcher, QUARANTINED).size() == 1);
+
+        // A day without quarantine resolves the alert. The daily repeat (OPS-1) may come before that in the same
+        // minute, so one more item is allowed here; a resolved alert repeats no more a day later.
+        passTime(Duration.ofHours(25));
+        rounds.next();
+        Session dayLater = fixtures.signInAgain(watcher);
+        int settled = items(dayLater, QUARANTINED).size();
+        assertThat(settled).as("items a day later: the first, and at most one repeat").isBetween(1, 2);
+        passTime(Duration.ofHours(25));
+        rounds.next();
+        Session twoDaysLater = fixtures.signInAgain(watcher);
+        Wait.holds("no new " + QUARANTINED + " item a day after the alert was resolved", Duration.ofSeconds(3),
+                () -> items(twoDaysLater, QUARANTINED).size() == settled);
+
+        Inbound third = tooComplex(sender);
+        send(third);
+        rounds.next();
+
+        assertThat(foldersOf(third)).as("folders of the mail two days later").containsExactly(Folder.QUARANTINE);
+        awaitItems(twoDaysLater, QUARANTINED, settled + 1, "after a quarantined mail once the alert was resolved");
     }
 
     /** A mail with 201 MIME parts, which is quarantined (S12-AC-09). */

@@ -15,6 +15,7 @@ import io.popdesk.support.MailInServer.Folder;
 import io.popdesk.support.MailServer;
 import io.popdesk.support.ReceivedMail;
 import io.popdesk.support.Unique;
+import io.popdesk.support.Wait;
 import jakarta.mail.Flags;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -174,11 +175,30 @@ public abstract class MailInAppTest extends ConnectedAppTest {
 
     /**
      * An answer in public by {@code staff} on the issue ({@code STAFF_COMMENT}), and the notification mail it sends to
-     * the reporter {@code customer}; waits for that mail.
+     * the reporter {@code customer}; waits for that mail and then for the sent-mail record of its {@code Message-ID},
+     * which the app writes after SMTP took the mail. A reply to it is put in only after both.
      */
     protected ReceivedMail staffAnswer(Session staff, Session customer, String key) {
         fixtures.comment(staff, key, "Answer " + Unique.number());
-        return awaitIssueMail(customer.email(), key);
+        ReceivedMail notification = awaitIssueMail(customer.email(), key);
+        String messageId = messageIdOf(notification);
+        assertThat(db.tables()).as("tables").contains("mail_sent");
+        Wait.untilAsserted("the sent-mail record of " + messageId, () ->
+                assertThat(sentRecords(messageId)).as("sent-mail records of " + messageId).isEqualTo(1));
+        return notification;
+    }
+
+    /**
+     * Rows of {@code mail_sent} with this {@code Message-ID}, compared without its angle brackets (design.md 0절 15:
+     * the app stores it without them).
+     */
+    protected long sentRecords(String messageId) {
+        return db.count("select count(*) from mail_sent where message_id = ?", bare(messageId));
+    }
+
+    /** A {@code Message-ID} without its angle brackets and the spaces around them. */
+    protected static String bare(String messageId) {
+        return messageId.strip().replaceAll("^<", "").replaceAll(">$", "").strip();
     }
 
     /** The one {@code Message-ID} of a sent mail, as written. */
@@ -262,7 +282,7 @@ public abstract class MailInAppTest extends ConnectedAppTest {
 
     /** Every received-mail record with the key of {@link #received}. */
     protected List<Map<String, Object>> receivedRows(String fromAddress, String messageId) {
-        String id = messageId.strip().replaceAll("^<", "").replaceAll(">$", "").strip();
+        String id = bare(messageId);
         byte[] key = sha256((fromAddress.toLowerCase(Locale.ROOT) + "\n" + id).getBytes(StandardCharsets.UTF_8));
         String hex = HexFormat.of().formatHex(key);
         return db.rows("select * from mail_received where message_key in (?, ?, ?, ?)", hex,

@@ -8,6 +8,7 @@ import io.popdesk.support.ReceivedMail;
 import io.popdesk.support.Unique;
 import io.popdesk.support.Wait;
 import java.time.Duration;
+import java.util.Locale;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -15,11 +16,13 @@ import org.junit.jupiter.api.Test;
 class NoticeMailTest extends MailInAppTest {
 
     @Test
-    @DisplayName("S12-AC-29 a notice goes to the account's registered address (not Reply-To, Return-Path, Sender), with Auto-Submitted: auto-replied, no Reply-To, no bracketed key")
+    @DisplayName("S12-AC-29 a notice goes to the account's registered address as registered (not From in other case, Reply-To, Return-Path, Sender), with Auto-Submitted: auto-replied, no Reply-To, no bracketed key")
     void noticeToRegisteredAddress() {
         Session sender = customer(company().code(), company().code());
         String elsewhere = Unique.email("elsewhere");
-        Inbound mail = mailFrom(sender).text("Body " + Unique.number())
+        String fromUpper = sender.email().toUpperCase(Locale.ROOT);
+        assertThat(fromUpper).as("From in upper case").isNotEqualTo(sender.email());
+        Inbound mail = Inbound.mail().from(fromUpper).text("Body " + Unique.number())
                 .header("Reply-To", elsewhere)
                 .header("Return-Path", "<" + Unique.email("bounce") + ">")
                 .header("Sender", Unique.email("sender"));
@@ -54,6 +57,7 @@ class NoticeMailTest extends MailInAppTest {
         assertThat(issuesOf(sender)).as("issues of the sender").isEmpty();
 
         clock.advance(Duration.ofMinutes(15));
+        rounds.next();
         send(mailFrom(sender).text("Third " + Unique.number()));
         rounds.next();
 

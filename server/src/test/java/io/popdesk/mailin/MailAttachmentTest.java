@@ -38,7 +38,12 @@ class MailAttachmentTest extends MailInAppTest {
     private JsonNode fileByMail(Function<Inbound, Inbound> mail) {
         Company company = company();
         Session sender = customer(company.code());
-        send(mail.apply(mailFrom(sender).text("Body " + Unique.number())));
+        return filed(sender, mail.apply(mailFrom(sender).text("Body " + Unique.number())));
+    }
+
+    /** Puts the sender's mail in, waits a round, and gives the console detail of the one issue it made. */
+    private JsonNode filed(Session sender, Inbound mail) {
+        send(mail);
         rounds.next();
         return onlyIssueOf(sender);
     }
@@ -110,8 +115,16 @@ class MailAttachmentTest extends MailInAppTest {
     @Test
     @DisplayName("S12-AC-26 a file over 10 MB is left out, the other one is kept, and the content ends with the line naming it")
     void fileOverTenMegabytes() {
-        JsonNode issue = fileByMail(m -> m.attach("big.bin", "application/octet-stream", bytes(10 * 1024 * 1024 + 1))
-                .attach("small.txt", "text/plain", text("Small " + Unique.number())));
+        Session sender = customer(company().code());
+        Inbound mail = mailFrom(sender).text("Body " + Unique.number())
+                .attach("big.bin", "application/octet-stream", bytes(10 * 1024 * 1024 + 1))
+                .attach("small.txt", "text/plain", text("Small " + Unique.number()));
+        JsonNode issue;
+        try {
+            issue = filed(sender, mail);
+        } finally {
+            mailIn().remove(mail.messageId());
+        }
 
         assertThat(names(attachments(issue.path("key").asString()))).as("files").containsExactly("small.txt");
         String content = issue.path("content").asString("");

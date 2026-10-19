@@ -2,6 +2,8 @@ package io.popdesk.support;
 
 import com.icegreen.greenmail.configuration.GreenMailConfiguration;
 import com.icegreen.greenmail.imap.ImapHostManager;
+import com.icegreen.greenmail.imap.commands.IdRange;
+import com.icegreen.greenmail.store.FolderException;
 import com.icegreen.greenmail.store.MailFolder;
 import com.icegreen.greenmail.store.StoredMessage;
 import com.icegreen.greenmail.user.GreenMailUser;
@@ -26,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -79,9 +82,69 @@ public final class MailInServer {
         }
     }
 
-    /** One mail in a folder: its UID there, the header values a test looks for, its flags, and its raw bytes. */
-    public record Stored(long uid, String messageId, String subject, boolean seen, boolean deleted, Instant receivedAt,
-            byte[] raw) {}
+    /**
+     * One mail in a folder: its UID there, the header values a test looks for, its flags, and its raw bytes. The
+     * header values and flags are read when the folder is listed; the raw bytes only when {@link #raw()} is called,
+     * so listing a folder with large mail in it stays cheap.
+     */
+    public static final class Stored {
+
+        private final StoredMessage message;
+        private final String messageId;
+        private final String subject;
+        private final boolean seen;
+        private final boolean deleted;
+        private final Instant receivedAt;
+
+        private Stored(StoredMessage message) {
+            this.message = message;
+            try {
+                MimeMessage mime = message.getMimeMessage();
+                this.messageId = mime.getHeader("Message-ID", null);
+                this.subject = mime.getSubject();
+            } catch (MessagingException e) {
+                throw new AssertionError("Could not read a mail in the test mailbox", e);
+            }
+            this.seen = message.isSet(Flags.Flag.SEEN);
+            this.deleted = message.isSet(Flags.Flag.DELETED);
+            this.receivedAt = message.getReceivedDate().toInstant();
+        }
+
+        public long uid() {
+            return message.getUid();
+        }
+
+        public String messageId() {
+            return messageId;
+        }
+
+        public String subject() {
+            return subject;
+        }
+
+        public boolean seen() {
+            return seen;
+        }
+
+        public boolean deleted() {
+            return deleted;
+        }
+
+        public Instant receivedAt() {
+            return receivedAt;
+        }
+
+        /** The raw bytes of the mail, written out on each call. */
+        public byte[] raw() {
+            try {
+                ByteArrayOutputStream raw = new ByteArrayOutputStream();
+                message.getMimeMessage().writeTo(raw);
+                return raw.toByteArray();
+            } catch (MessagingException | IOException e) {
+                throw new AssertionError("Could not read a mail in the test mailbox", e);
+            }
+        }
+    }
 
     private static MailInServer shared;
 
@@ -89,6 +152,9 @@ public final class MailInServer {
     private final GreenMail imap;
     private final GreenMailUser user;
     private final Gate gate;
+
+    /** Sent mail already read, by the stored message (GreenMail hands out the same object each time). */
+    private final Map<MimeMessage, ReceivedMail> read = new ConcurrentHashMap<>();
 
     private MailInServer() {
         smtp = new GreenMail(new ServerSetup(0, HOST, ServerSetup.PROTOCOL_SMTP))
@@ -123,9 +189,10 @@ public final class MailInServer {
 
     // Outgoing mail
 
-    /** Every mail the app sent so far, oldest first. */
+    /** Every mail the app sent so far, oldest first. Each mail is read once; later calls reuse what was read. */
     public List<ReceivedMail> sent() {
-        return Arrays.stream(smtp.getReceivedMessages()).map(MailInServer::read).toList();
+        return Arrays.stream(smtp.getReceivedMessages()).map(m -> read.computeIfAbsent(m, MailInServer::read))
+                .toList();
     }
 
     /** Mail the app sent to {@code address} (ignoring case), oldest first. */
@@ -162,9 +229,30 @@ public final class MailInServer {
         }
         List<Stored> out = new ArrayList<>();
         for (StoredMessage m : f.getMessages()) {
-            out.add(stored(m));
+            out.add(new Stored(m));
         }
         return out;
+    }
+
+    /**
+     * Removes the mail with this {@code Message-ID} from every folder (flag {@code \Deleted}, then expunge that UID).
+     * A test that put in a large mail removes it at its end, so the mailbox of the JVM does not keep it.
+     */
+    public void remove(String messageId) {
+        for (Folder folder : Folder.values()) {
+            MailFolder f = folder(folder);
+            if (f == null) {
+                continue;
+            }
+            for (Stored m : withMessageId(folder, messageId)) {
+                try {
+                    f.setFlags(new Flags(Flags.Flag.DELETED), true, m.uid(), null, false);
+                } catch (FolderException e) {
+                    throw new IllegalStateException("Could not flag a mail in " + folder.folderName(), e);
+                }
+                f.expunge(new IdRange[] {new IdRange(m.uid())});
+            }
+        }
     }
 
     /** The mail in a folder whose {@code Message-ID} is {@code messageId} (as written, with the angle brackets). */
@@ -249,19 +337,6 @@ public final class MailInServer {
             return new MimeMessage(Session.getInstance(new Properties()), new ByteArrayInputStream(raw));
         } catch (MessagingException e) {
             throw new AssertionError("Could not read the raw mail", e);
-        }
-    }
-
-    private static Stored stored(StoredMessage m) {
-        try {
-            MimeMessage mime = m.getMimeMessage();
-            ByteArrayOutputStream raw = new ByteArrayOutputStream();
-            mime.writeTo(raw);
-            return new Stored(m.getUid(), mime.getHeader("Message-ID", null), mime.getSubject(),
-                    m.isSet(Flags.Flag.SEEN), m.isSet(Flags.Flag.DELETED), m.getReceivedDate().toInstant(),
-                    raw.toByteArray());
-        } catch (MessagingException | IOException e) {
-            throw new AssertionError("Could not read a mail in the test mailbox", e);
         }
     }
 
