@@ -26,7 +26,7 @@ import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { useCooldown, useFieldErrors, useLive, useLoad } from '../app/hooks';
 import { LoadFailed, NoPermission, NotFound, PageTitle } from '../app/layout';
-import { t } from '../app/locale';
+import { t, texts, tf } from '../app/locale';
 import { rateLimitedText, TEXT } from '../app/messages';
 import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, pageHref, usePageMove, usePageParam } from '../app/paging';
@@ -39,13 +39,11 @@ type Member = Schemas['Member'];
 
 const PATH = '/members';
 
-const MEMBER_ERRORS: Record<string, string> = {
-  TOO_MANY_PENDING: '수락을 기다리는 초대가 너무 많습니다. 기다리는 초대를 정리한 뒤 다시 해 주세요',
-  COMPANY_NOT_ACTIVE: '보관된 고객사에는 초대할 수 없습니다',
-  OWN_ACCOUNT: '자기 자신은 뺄 수 없습니다.',
-};
-
-const ALREADY_GONE = '이미 목록에 없는 사람입니다';
+const MEMBER_ERRORS: Readonly<Record<string, string>> = texts({
+  TOO_MANY_PENDING: 'portalMembers.tooManyPending',
+  COMPANY_NOT_ACTIVE: 'portalMembers.companyArchived',
+  OWN_ACCOUNT: 'portalMembers.ownAccount',
+});
 
 /** The whole screen in place of the list: not a manager (403), or not the caller's company (404). */
 type Gone = 'forbidden' | 'notFound';
@@ -78,7 +76,7 @@ function InviteDialog(props: { company: Company; onClose: () => void; onInvited:
   const [askDiscard, setAskDiscard] = useState(false);
   const cooldown = useCooldown();
   const fields = useFieldErrors({
-    email: { id: 'invite-email', limits: { max: 100, format: '이메일' } },
+    email: { id: 'invite-email', limits: { max: 100, format: t('field.email') } },
     name: { id: 'invite-name', limits: { max: 50 } },
   });
 
@@ -109,13 +107,13 @@ function InviteDialog(props: { company: Company; onClose: () => void; onInvited:
     setPending(false);
     if (result.ok) {
       // The same words for a new email and for one that has an account already (S2-AC-46).
-      toast('요청을 처리했습니다');
+      toast(t('portalMembers.invited'));
       props.onClose();
       return;
     }
     const f = result.failure;
     if (f.kind === 'invalid') fields.applyFields(f.fields, f.message);
-    else if (f.kind === 'rejected' && f.code === 'ALREADY_LISTED') fields.setError('email', '이미 목록에 있는 이메일입니다');
+    else if (f.kind === 'rejected' && f.code === 'ALREADY_LISTED') fields.setError('email', t('portalMembers.alreadyListed'));
     else if (f.kind === 'rateLimited') cooldown.start(f.seconds);
     else setFailure(f);
   };
@@ -124,7 +122,7 @@ function InviteDialog(props: { company: Company; onClose: () => void; onInvited:
     <>
       <Dialog
         open
-        title={`${props.company.name}에 초대`}
+        title={tf('portalMembers.inviteTitle', { name: props.company.name })}
         closeLabel={TEXT.close}
         pending={pending}
         onClose={requestClose}
@@ -134,7 +132,7 @@ function InviteDialog(props: { company: Company; onClose: () => void; onInvited:
               {TEXT.cancel}
             </Button>
             <Button type="submit" form={INVITE_FORM_ID} pending={pending} pendingLabel={TEXT.sending} blocked={cooldown.active}>
-              초대
+              {t('portalMembers.invite')}
             </Button>
           </>
         }
@@ -152,7 +150,7 @@ function InviteDialog(props: { company: Company; onClose: () => void; onInvited:
           <RateLimitBand {...cooldown} />
           <TextField
             id="invite-email"
-            label="이메일"
+            label={t('portalMembers.email')}
             type="email"
             autoComplete="off"
             autoCapitalize="none"
@@ -164,7 +162,7 @@ function InviteDialog(props: { company: Company; onClose: () => void; onInvited:
           />
           <TextField
             id="invite-name"
-            label="이름"
+            label={t('portalMembers.name')}
             autoComplete="off"
             value={name}
             onChange={setName}
@@ -172,15 +170,15 @@ function InviteDialog(props: { company: Company; onClose: () => void; onInvited:
             {...(fields.errors.name ? { error: fields.errors.name } : {})}
           />
           {/* Both outcomes are told ahead, and never which one happened (S2-AC-15). */}
-          <p className="pd-muted pd-invite-note">초대 메일이 가거나, 이미 계정이 있는 분이면 지원팀이 확인한 뒤 추가됩니다.</p>
+          <p className="pd-muted pd-invite-note">{t('portalMembers.inviteNote')}</p>
         </form>
       </Dialog>
       <ConfirmDialog
         open={askDiscard}
-        title="쓰던 내용을 버릴까요?"
-        message="닫으면 이 대화상자에 쓴 값이 사라집니다."
-        confirmLabel="버리고 닫기"
-        cancelLabel="계속 쓰기"
+        title={t('portalMembers.discardTitle')}
+        message={t('portalMembers.discardMessage')}
+        confirmLabel={t('portalMembers.discard')}
+        cancelLabel={t('portalMembers.keepWriting')}
         tone="danger"
         onConfirm={props.onClose}
         onCancel={() => {
@@ -215,9 +213,9 @@ function RemoveDialog(props: { company: Company; member: Member; onClose: () => 
     else if (isDenied(result.failure)) props.onDenied();
     if (!live()) return;
     setPending(false);
-    if (result.ok) toast(invited ? '초대를 취소했습니다' : '소속에서 뺐습니다');
-    else if (gone) toast(ALREADY_GONE, 'info');
-    else if (nowManager) toast('담당자는 뺄 수 없습니다', 'info');
+    if (result.ok) toast(t(invited ? 'portalMembers.inviteCancelled' : 'portalMembers.removed'));
+    else if (gone) toast(t('portalMembers.alreadyGone'), 'info');
+    else if (nowManager) toast(t('portalMembers.managerStays'), 'info');
     else {
       setFailure(result.failure);
       return;
@@ -229,18 +227,18 @@ function RemoveDialog(props: { company: Company; member: Member; onClose: () => 
     <ConfirmDialog
       open
       tone="danger"
-      title={invited ? '초대 취소' : '소속에서 빼기'}
+      title={t(invited ? 'portalMembers.cancelInvite' : 'portalMembers.remove')}
       message={
         <>
           <p>
             {invited
-              ? `${member.name} 님의 초대를 취소할까요?`
-              : `${member.name} 님을 ${company.name}에서 뺄까요? 이 사람은 자기가 올린 문의만 계속 볼 수 있습니다.`}
+              ? tf('portalMembers.askCancelInvite', { name: member.name })
+              : tf('portalMembers.askRemove', { name: member.name, company: company.name })}
           </p>
           <ActionFailure failure={failure} />
         </>
       }
-      confirmLabel={invited ? '초대 취소' : '빼기'}
+      confirmLabel={t(invited ? 'portalMembers.cancelInvite' : 'portalMembers.removeConfirm')}
       cancelLabel={TEXT.cancel}
       pending={pending}
       pendingLabel={TEXT.sending}
@@ -305,12 +303,12 @@ function CompanyMembers(props: CompanyMembersProps) {
     const result = await call(api.POST('/api/portal/companies/{code}/members/{id}/resend', { params: { path: { code, id: m.id } } }));
     sending.current = false;
     if (!live()) return;
-    if (result.ok) toast('초대를 다시 보냈습니다');
+    if (result.ok) toast(t('portalMembers.resent'));
     else if (isDenied(result.failure)) onGone('forbidden');
     // One text whatever the reason: the reason would tell about the account (S2-AC-31).
-    else if (result.failure.kind === 'rejected' && result.failure.code === 'INVITATION_NOT_RESENDABLE') toast('이 초대는 다시 보낼 수 없습니다. 지원팀에 문의하세요', 'info');
+    else if (result.failure.kind === 'rejected' && result.failure.code === 'INVITATION_NOT_RESENDABLE') toast(t('portalMembers.notResendable'), 'info');
     else if (result.failure.kind === 'notFound') {
-      toast(ALREADY_GONE, 'info');
+      toast(t('portalMembers.alreadyGone'), 'info');
       void load.reload();
     } else setRowFailure(result.failure);
   };
@@ -321,15 +319,15 @@ function CompanyMembers(props: CompanyMembersProps) {
       setRowFailure(null);
       setRemoving(m);
     };
-    if (m.status !== 'INVITED') return [{ label: '소속에서 빼기', tone: 'danger', onSelect: remove }];
+    if (m.status !== 'INVITED') return [{ label: t('portalMembers.remove'), tone: 'danger', onSelect: remove }];
     return [
       {
-        label: '초대 다시 보내기',
+        label: t('portalMembers.resend'),
         onSelect: () => {
           void resend(m);
         },
       },
-      { label: '초대 취소', tone: 'danger', onSelect: remove },
+      { label: t('portalMembers.cancelInvite'), tone: 'danger', onSelect: remove },
     ];
   };
 
@@ -337,23 +335,23 @@ function CompanyMembers(props: CompanyMembersProps) {
   const columns: DataTableColumn<Member>[] = [
     {
       key: 'name',
-      header: '이름',
+      header: t('portalMembers.name'),
       cell: (m) => (
         <>
           {m.name}
-          {m.email === me?.email && <span className="pd-muted"> (나)</span>}
+          {m.email === me?.email && <span className="pd-muted"> {t('portalMembers.me')}</span>}
         </>
       ),
     },
-    { key: 'email', header: '이메일', cell: (m) => m.email },
-    { key: 'status', header: '상태', cell: (m) => <StatusBadge kind="account" status={m.status} /> },
-    { key: 'manager', header: '담당자', cell: (m) => (m.manager ? <Badge tone="accent">담당자</Badge> : null) },
+    { key: 'email', header: t('portalMembers.email'), cell: (m) => m.email },
+    { key: 'status', header: t('portalMembers.status'), cell: (m) => <StatusBadge kind="account" status={m.status} /> },
+    { key: 'manager', header: t('portalMembers.manager'), cell: (m) => (m.manager ? <Badge tone="accent">{t('portalMembers.manager')}</Badge> : null) },
     {
       key: 'actions',
-      header: <span className="pd-sr-only">동작</span>,
+      header: <span className="pd-sr-only">{t('portalMembers.actions')}</span>,
       align: 'end',
       // My own row and another manager's row have nothing to do (S2-AC-47).
-      cell: (m) => (m.manager || m.email === me?.email ? null : <RowMenu label={`${m.name} 동작`} items={actionsOf(m)} />),
+      cell: (m) => (m.manager || m.email === me?.email ? null : <RowMenu label={tf('portalMembers.rowActions', { name: m.name })} items={actionsOf(m)} />),
     },
   ];
 
@@ -366,21 +364,21 @@ function CompanyMembers(props: CompanyMembersProps) {
     <>
       {company.status === 'SUSPENDED' && (
         <Alert tone="warning" live="status">
-          이 고객사는 멈춰 있습니다
+          {t('portalMembers.suspended')}
         </Alert>
       )}
-      {company.status === 'ARCHIVED' && <Alert tone="info">이 고객사는 보관되어 초대할 수 없습니다</Alert>}
+      {company.status === 'ARCHIVED' && <Alert tone="info">{t('portalMembers.archived')}</Alert>}
       {failedLoad && <LoadFailed onRetry={reload} />}
       <ActionFailure failure={rowFailure} />
       {(load.status !== 'failed' || data) && (
         <DataTable
-          caption={`${company.name} 사람, ${String(data?.totalElements ?? 0)}명`}
+          caption={tf('portalMembers.caption', { name: company.name, count: data?.totalElements ?? 0 })}
           columns={columns}
           rows={data?.items ?? []}
           rowKey={(m) => m.id}
           status={firstLoad ? 'loading' : 'ready'}
           skeletonRows={load.slow ? 5 : 0}
-          empty={<EmptyState title="이 쪽에는 항목이 없습니다" {...(outOfRange ? { action: <Link to={pageHref(PATH, 1)}>1쪽으로</Link> } : {})} />}
+          empty={<EmptyState title={t('portalMembers.emptyPage')} {...(outOfRange ? { action: <Link to={pageHref(PATH, 1)}>{t('inbox.toFirstPage')}</Link> } : {})} />}
         />
       )}
       {data && <PageNav path={PATH} page={data.page} pageCount={data.totalPages} onPageChange={move.onPageChange} />}
@@ -447,7 +445,7 @@ function ManagedCompanies() {
   if (!me) return null;
   if (code === undefined) return <NoPermission />;
   if (gone?.code === code) {
-    return gone.state === 'forbidden' ? <NoPermission /> : <NotFound listHref="/issues" listLabel="문의 목록으로" />;
+    return gone.state === 'forbidden' ? <NoPermission /> : <NotFound listHref="/issues" />;
   }
 
   // A company from the address that the session does not know is still asked for: the server decides.
@@ -472,14 +470,14 @@ function ManagedCompanies() {
       </div>
       {company.manager && (managed.length > 1 || company.status !== 'ARCHIVED') && (
         <div className="pd-members-bar">
-          {managed.length > 1 && <Select label="고객사" options={managed.map((c) => ({ value: c.code, label: c.name }))} value={code} onChange={choose} />}
+          {managed.length > 1 && <Select label={t('portalIssues.company')} options={managed.map((c) => ({ value: c.code, label: c.name }))} value={code} onChange={choose} />}
           {company.status !== 'ARCHIVED' && (
             <Button
               onClick={() => {
                 setInviting(true);
               }}
             >
-              초대
+              {t('portalMembers.invite')}
             </Button>
           )}
         </div>

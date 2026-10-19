@@ -29,7 +29,7 @@ import { useMainBusy } from '../app/busy';
 import { useCooldown, useLoad } from '../app/hooks';
 import { filterKey, ISSUE_STATUSES, issuesHref, readIssueFilters, writeIssueFilters, type IssueFilters } from '../app/issueFilters';
 import { LoadFailed, PageTitle } from '../app/layout';
-import { t } from '../app/locale';
+import { t, tf } from '../app/locale';
 import { personLabel, rateLimitedText, TEXT } from '../app/messages';
 import { useNarrow } from '../app/narrow';
 import { PageNav } from '../app/PageNav';
@@ -45,7 +45,10 @@ interface ListData {
   member: boolean;
 }
 
-const STATUS_OPTIONS = ISSUE_STATUSES.map((value) => ({ value, label: ISSUE_STATUS_WORDS[value].customer }));
+/** Made on each draw: the words follow the screen language. */
+function statusOptions(): SelectOption[] {
+  return ISSUE_STATUSES.map((value) => ({ value, label: ISSUE_STATUS_WORDS[value].customer }));
+}
 
 function IssueRow(props: { issue: IssueSummary; meId: number | undefined }) {
   const { issue } = props;
@@ -168,11 +171,11 @@ export function P3IssueList() {
       </ul>
     ) : null;
   } else if (outOfRange) {
-    list = <EmptyState title="이 쪽에는 문의가 없습니다" action={<Link to={issuesHref(filters)}>1쪽으로</Link>} />;
+    list = <EmptyState title={t('portalIssues.emptyPage')} action={<Link to={issuesHref(filters)}>{t('inbox.toFirstPage')}</Link>} />;
   } else if (data && data.items.length === 0 && filtered) {
     list = <EmptyState icon={<SearchOffIcon size={20} />} title={t('issueSearch.none')} action={<Link to="/issues">{t('issueSearch.clear')}</Link>} />;
   } else if (data && data.items.length === 0) {
-    list = <EmptyState icon={<InboxIcon size={20} />} title="아직 올린 문의가 없습니다." />;
+    list = <EmptyState icon={<InboxIcon size={20} />} title={t('portalIssues.empty')} />;
   } else if (data) {
     list = (
       <ul className="pd-issue-rows" aria-labelledby="issue-list-title">
@@ -189,7 +192,7 @@ export function P3IssueList() {
         <PageTitle titleRef={heading}>{t('issueList.title')}</PageTitle>
         {member && (
           <Link className="pd-button" data-variant="primary" data-size="md" to="/issues/new">
-            <span className="pd-button-text">문의 올리기</span>
+            <span className="pd-button-text">{t('portalIssues.new')}</span>
           </Link>
         )}
       </div>
@@ -225,7 +228,7 @@ export function P3IssueList() {
           <div id={moreId} className="pd-filters-more">
             <CheckboxGroup
               legend={t('portalIssues.status')}
-              options={STATUS_OPTIONS}
+              options={statusOptions()}
               value={filters.status}
               onChange={(status) => {
                 change({ ...filters, status: ISSUE_STATUSES.filter((s) => status.includes(s)) });
@@ -272,7 +275,7 @@ export function P3IssueList() {
       )}
       {load.data && !member && <Alert tone="info">{TEXT.noMembership}</Alert>}
       <h2 id="issue-list-title" className="pd-sr-only">
-        {`문의 ${String(data?.totalElements ?? 0)}건`}
+        {tf('portalIssues.count', { count: data?.totalElements ?? 0 })}
       </h2>
       {list}
       {data && <PageNav path="/issues" page={data.page} pageCount={data.totalPages} onPageChange={move.onPageChange} />}

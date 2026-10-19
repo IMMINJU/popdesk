@@ -1,6 +1,7 @@
 // Texts of the slice 1a screens (design/archive/1a-people/screens.md 1절). Both apps
 // share them. Keys are flat, joined with dots (design.md 5-1절).
 import { commonKo } from './common.ko';
+import { portalKo } from './portal.ko';
 
 export const ko = {
   'passwordForgot.title': '비밀번호 찾기',
@@ -225,4 +226,5 @@ export const ko = {
 
   // Slice b5 (b5 acceptance.md 4절 7): one file for each part of the work, e.g. `common.ko.ts` for ①.
   ...commonKo,
+  ...portalKo,
 } as const;

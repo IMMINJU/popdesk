@@ -49,7 +49,7 @@ import { CommentEdit, type EditGone } from '../app/CommentEdit';
 import { useCooldown, useFieldErrors, useLeaveGuard, useLive, useLoad } from '../app/hooks';
 import { IssueEdit } from '../app/IssueEdit';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
-import { t } from '../app/locale';
+import { t, tf } from '../app/locale';
 import { failureText, personLabel, rateLimitedText, TEXT } from '../app/messages';
 import { photoUrl } from '../app/photos';
 import { call, type Failure, type Result } from '../app/result';
@@ -60,7 +60,6 @@ type Issue = Schemas['Issue'];
 type Comment = Schemas['Comment'];
 
 const LIST_SIZE = 100;
-const ISSUE_CLOSED_TEXT = '문의가 종료되어 댓글을 달 수 없습니다.';
 /** The band over the comments when an edit could not be saved any more. */
 const EDIT_GONE_TEXT = { closed: 'comment.editClosed', deleted: 'comment.alreadyDeleted', notFound: 'comment.notFound' } as const;
 /** The server says so when the status changed before the request came (S3-AC-82). */
@@ -89,7 +88,7 @@ interface Upload extends UploadItem {
 function UploadFailures(props: { failures: readonly UploadFailure[] }) {
   if (props.failures.length === 0) return null;
   return (
-    <Alert tone="warning" title={`첨부 ${String(props.failures.length)}개를 올리지 못했습니다.`}>
+    <Alert tone="warning" title={tf('portalIssue.uploadFailed', { count: props.failures.length })}>
       <ul className="pd-failed-files">
         {props.failures.map((f, i) => (
           <li key={i}>
@@ -97,7 +96,7 @@ function UploadFailures(props: { failures: readonly UploadFailure[] }) {
           </li>
         ))}
       </ul>
-      <p>아래 첨부에서 다시 올릴 수 있습니다.</p>
+      <p>{t('portalIssue.uploadAgain')}</p>
     </Alert>
   );
 }
@@ -241,7 +240,7 @@ function IssueDetail(props: { issueKey: string }) {
   });
 
   if (load.status === 'failed' && load.failure?.kind === 'notFound') {
-    return <NotFound listHref="/issues" listLabel="문의 목록으로" />;
+    return <NotFound listHref="/issues" />;
   }
 
   if (!detail) {
@@ -310,7 +309,7 @@ function IssueDetail(props: { issueKey: string }) {
     cooldown.clearEnded();
     fields.clear();
     if (draft.trim() === '') {
-      fields.setError('content', '내용을 넣어 주세요.');
+      fields.setError('content', t('comment.contentRequired'));
       return;
     }
     setSending(true);
@@ -326,7 +325,7 @@ function IssueDetail(props: { issueKey: string }) {
       setDraft('');
       images.saved();
       await load.reload();
-      toast('댓글을 남겼습니다');
+      toast(t('portalIssue.commented'));
       return;
     }
     const f = result.failure;
@@ -456,7 +455,7 @@ function IssueDetail(props: { issueKey: string }) {
       if (result.ok) {
         window.location.assign(attachmentHref(key, item.id));
       } else if (result.failure.kind === 'notFound') {
-        setFileBand('파일을 찾을 수 없습니다');
+        setFileBand(t('portalFiles.notFound'));
       } else if (result.failure.kind === 'unauthenticated') {
         toLogin();
       } else {
@@ -474,7 +473,7 @@ function IssueDetail(props: { issueKey: string }) {
     setDeleteTarget(null);
     if (result.ok || result.failure.kind === 'notFound') {
       await load.reload();
-      if (result.ok) toast('첨부를 지웠습니다');
+      if (result.ok) toast(t('portalFiles.deletedToast'));
       return;
     }
     setFileBand(failureText(result.failure));
@@ -508,35 +507,35 @@ function IssueDetail(props: { issueKey: string }) {
   if (closed) {
     footer = (
       <div className="pd-detail-closed">
-        {closedWhileWriting && <SaveFailure failure={sendFailure} known={{ ISSUE_CLOSED: ISSUE_CLOSED_TEXT }} />}
-        <Alert tone="info">종료된 문의입니다. 댓글과 첨부를 더할 수 없습니다.</Alert>
+        {closedWhileWriting && <SaveFailure failure={sendFailure} known={{ ISSUE_CLOSED: t('portalIssue.commentClosed') }} />}
+        <Alert tone="info">{t('portalIssue.closedNote')}</Alert>
         {draft.trim() !== '' && (
           <div className="pd-kept-draft">
-            <p className="pd-label">보내지 못한 글</p>
+            <p className="pd-label">{t('comment.unsent')}</p>
             <pre>{draft}</pre>
           </div>
         )}
       </div>
     );
   } else if (mine && !detail.member) {
-    footer = <Alert tone="info">이 고객사에서 빠져 댓글을 달 수 없습니다.</Alert>;
+    footer = <Alert tone="info">{t('portalIssue.leftCompany')}</Alert>;
   } else if (canWrite) {
     footer = (
-      <form className="pd-comment-form" aria-label="댓글 쓰기" noValidate onSubmit={onSubmit}>
-        <SaveFailure failure={sendFailure} known={{ ISSUE_CLOSED: ISSUE_CLOSED_TEXT, ...IMAGE_SAVE_TEXT }} />
+      <form className="pd-comment-form" aria-label={t('portalIssue.commentForm')} noValidate onSubmit={onSubmit}>
+        <SaveFailure failure={sendFailure} known={{ ISSUE_CLOSED: t('portalIssue.commentClosed'), ...IMAGE_SAVE_TEXT }} />
         <RateLimitBand {...cooldown} />
         <MarkdownEditor
           ref={editorRef}
           id="comment-content"
-          label="댓글"
+          label={t('portalIssue.comment')}
           labelHidden
           value={draft}
           onChange={setDraft}
           minHeight={112}
           maxLength={4000}
           showCount
-          placeholder="지원팀에 전할 내용을 씁니다."
-          helpText="Ctrl+Enter(맥은 Cmd+Enter)로 보냅니다."
+          placeholder={t('portalIssue.commentPlaceholder')}
+          helpText={t('portalIssue.commentHelp')}
           {...images.editor}
           onSubmitShortcut={() => {
             void send();
@@ -545,7 +544,7 @@ function IssueDetail(props: { issueKey: string }) {
         />
         <div className="pd-form-actions">
           <Button type="submit" pending={sending} pendingLabel={TEXT.sending} blocked={cooldown.active || images.busy}>
-            보내기
+            {t('portalIssue.send')}
           </Button>
         </div>
       </form>
@@ -642,27 +641,27 @@ function IssueDetail(props: { issueKey: string }) {
         )}
         <dl className="pd-meta">
           <div>
-            <dt>상태</dt>
+            <dt>{t('portalIssues.status')}</dt>
             <dd>
               <StatusBadge kind="issue" status={issue.status} audience="customer" />
             </dd>
           </div>
           <div>
-            <dt>우선순위</dt>
+            <dt>{t('issueEdit.priority')}</dt>
             <dd>
               <PriorityLabel priority={issue.priority} />
             </dd>
           </div>
           <div>
-            <dt>고객사</dt>
+            <dt>{t('portalIssues.company')}</dt>
             <dd>{issue.companyName}</dd>
           </div>
           <div>
-            <dt>올린 사람</dt>
+            <dt>{t('portalIssue.reporter')}</dt>
             <dd>{issue.filedBySupport ? `${personLabel(issue.reporter, meId)} ${t('portalIssues.filedBySupport')}` : personLabel(issue.reporter, meId)}</dd>
           </div>
           <div>
-            <dt>올린 시각</dt>
+            <dt>{t('portalIssue.createdAt')}</dt>
             <dd>
               <RelativeTime dateTime={issue.createdAt} />
             </dd>
@@ -685,7 +684,7 @@ function IssueDetail(props: { issueKey: string }) {
           )}
           {issue.private && (
             <div>
-              <dt className="pd-sr-only">공개 범위</dt>
+              <dt className="pd-sr-only">{t('portalIssue.visibility')}</dt>
               <dd>
                 <Badge tone="neutral" icon={<LockIcon size={12} />}>
                   {TEXT.private}
@@ -712,7 +711,7 @@ function IssueDetail(props: { issueKey: string }) {
           }}
         />
       ) : (
-        <article className="pd-detail-body" aria-label="문의 내용">
+        <article className="pd-detail-body" aria-label={t('portalIssue.content')}>
           <MarkdownView source={issue.content} imageSrc={imageSrc} />
         </article>
       )}
@@ -730,11 +729,11 @@ function IssueDetail(props: { issueKey: string }) {
           </Alert>
         )}
         <AttachmentList
-          title="첨부"
+          title={t('portalFiles.title')}
           items={attachmentItems}
-          emptyText="첨부 없음"
-          deleteLabel="지우기"
-          deletedLabel="지워진 첨부"
+          emptyText={t('portalFiles.none')}
+          deleteLabel={t('portalFiles.delete')}
+          deletedLabel={t('portalFiles.deleted')}
           inlineLabel={IMAGE_TEXT.inline}
           onDelete={(id) => {
             setDeleteTarget(detail.attachments.find((a) => a.id === id) ?? null);
@@ -743,7 +742,7 @@ function IssueDetail(props: { issueKey: string }) {
         />
         {canWrite && !closed && (
           <FileUpload
-            label="첨부 올리기"
+            label={t('portalFiles.upload')}
             items={uploads}
             onSelect={onSelect}
             onRemove={(id) => {
@@ -755,17 +754,17 @@ function IssueDetail(props: { issueKey: string }) {
             }}
             limits={ATTACHMENT_LIMITS}
             usedBytes={publicBytes(detail.attachments)}
-            helpText="파일 하나 10MB까지. 고르면 바로 문의에 올립니다."
-            removeLabel="빼기"
-            retryLabel="다시 올리기"
-            dropHint="또는 여기로 끌어 놓으세요"
+            helpText={t('portalFiles.uploadHelp')}
+            removeLabel={t('portalFiles.remove')}
+            retryLabel={t('portalFiles.retry')}
+            dropHint={t('portalFiles.drop')}
           />
         )}
       </div>
 
       <section className="pd-detail-comments" aria-labelledby="comments-title">
         <h2 id="comments-title" className="pd-section-title">
-          댓글 {comments.length}개
+          {tf('portalIssue.comments', { count: comments.length })}
         </h2>
         {editGone && (
           <div className="pd-comment-unsent">
@@ -785,7 +784,7 @@ function IssueDetail(props: { issueKey: string }) {
           </div>
         )}
         {comments.length === 0 ? (
-          <p className="pd-muted">아직 댓글이 없습니다.</p>
+          <p className="pd-muted">{t('portalIssue.noComments')}</p>
         ) : (
           <div className="pd-comment-list">
             {comments.map((c) => {
@@ -887,12 +886,12 @@ function IssueDetail(props: { issueKey: string }) {
       <ConfirmDialog
         open={deleteTarget !== null}
         tone="danger"
-        title="첨부 지우기"
-        message={`첨부 ${deleteTarget?.fileName ?? ''} 파일을 지웁니다. 목록에는 "지워진 첨부"로 남습니다.`}
-        confirmLabel="지우기"
+        title={t('portalFiles.deleteTitle')}
+        message={tf('portalFiles.askDelete', { name: deleteTarget?.fileName ?? '' })}
+        confirmLabel={t('portalFiles.delete')}
         cancelLabel={TEXT.cancel}
         pending={deleting !== null}
-        pendingLabel="지우는 중…"
+        pendingLabel={t('portalFiles.deleting')}
         onConfirm={() => {
           void confirmDelete();
         }}

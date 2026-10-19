@@ -36,7 +36,7 @@ import { FieldSummary, RateLimitBand, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { useCooldown, useFieldErrors, useLeaveGuard, useLoad } from '../app/hooks';
 import { LoadFailed, PageTitle } from '../app/layout';
-import { t } from '../app/locale';
+import { t, tf } from '../app/locale';
 import { TEXT } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { call, isAppError, type Failure, type Result } from '../app/result';
@@ -44,11 +44,7 @@ import { useToast } from '../app/toastContext';
 
 type Company = Schemas['Company'];
 
-const NOT_ACTIVE_TEXT = '이 고객사에는 지금 문의를 올릴 수 없습니다.';
-const NO_NEW_ISSUES_TEXT = '새 문의를 받지 않습니다';
 const MAX_FILES = 20;
-const TOO_MANY_FILES_TEXT = `한 번에 ${String(MAX_FILES)}개까지 붙일 수 있습니다`;
-const NOT_MEMBER_TEXT = '이 고객사에 문의를 올릴 수 없습니다.';
 const COMPANY_ID = 'issue-company';
 
 /** A new `Idempotency-Key` (S3-AC-84). `getRandomValues`, since `randomUUID` needs HTTPS. */
@@ -167,8 +163,11 @@ export function P4IssueCreate() {
       const tried = uploads.filter((u) => u.state === 'selected').length;
       const failures = await sendFiles(key);
       // One notice for the issue and, with files, how many went up (screens.md P-4).
-      const done = `문의를 올렸습니다(${key})`;
-      toast(tried === 0 ? done : `${done}. 첨부 ${String(tried)}개 가운데 ${String(tried - failures.length)}개 올림`);
+      toast(
+        tried === 0
+          ? tf('portalIssueCreate.created', { key })
+          : tf('portalIssueCreate.createdWithFiles', { key, tried, sent: tried - failures.length }),
+      );
       setCreated({ key, failures });
       return;
     }
@@ -179,13 +178,13 @@ export function P4IssueCreate() {
     } else if (f.kind === 'rateLimited') {
       cooldown.start(f.seconds);
     } else if (f.kind === 'rejected' && f.code === 'COMPANY_NOT_ACTIVE') {
-      setBand(NOT_ACTIVE_TEXT);
+      setBand(t('portalIssueCreate.notActive'));
       focusCompany.current = true;
     } else if (f.kind === 'tooLarge' && seen.appError) {
-      setBand(TOO_MANY_FILES_TEXT);
+      setBand(tf('portalIssueCreate.tooManyFiles', { max: MAX_FILES }));
     } else if (f.kind === 'notFound') {
       // Left the company in the meantime: ask for the list again.
-      setBand(NOT_MEMBER_TEXT);
+      setBand(t('portalIssueCreate.notMember'));
       void load.reload().then((reloaded) => {
         if (reloaded?.ok && !reloaded.data.some((c) => c.code === companyCode)) setCompanyCode('');
       });
@@ -226,9 +225,9 @@ export function P4IssueCreate() {
     body = (
       <EmptyState
         icon={<InboxIcon size={20} />}
-        title={`소속된 고객사가 ${NO_NEW_ISSUES_TEXT}`}
-        description="멈췄거나 보관된 고객사입니다. 이미 올린 문의는 그대로 볼 수 있습니다."
-        action={<Link to="/issues">문의 목록으로</Link>}
+        title={t('portalIssueCreate.noOpenCompany')}
+        description={t('portalIssueCreate.noOpenCompanyHelp')}
+        action={<Link to="/issues">{TEXT.toIssueList}</Link>}
       />
     );
   } else {
@@ -236,7 +235,7 @@ export function P4IssueCreate() {
     if (!companies) {
       companyField = (
         <div className="pd-field">
-          <span className="pd-label">고객사</span>
+          <span className="pd-label">{t('portalIssues.company')}</span>
           {load.slow && (
             <span aria-hidden="true">
               <Skeleton shape="block" height="var(--field-height)" />
@@ -248,7 +247,7 @@ export function P4IssueCreate() {
       // One membership: chosen and not a choice, so Tab goes straight to the title.
       companyField = (
         <div className="pd-field">
-          <span className="pd-label">고객사</span>
+          <span className="pd-label">{t('portalIssues.company')}</span>
           <p className="pd-static-value">{only.name}</p>
         </div>
       );
@@ -257,14 +256,14 @@ export function P4IssueCreate() {
         <Select
           ref={companyRef}
           id={COMPANY_ID}
-          label="고객사"
-          placeholder="고객사를 고르세요"
+          label={t('portalIssues.company')}
+          placeholder={t('issueOnBehalf.companyPlaceholder')}
           options={companies.map((c) =>
-            c.status === 'ACTIVE' ? { value: c.code, label: c.name } : { value: c.code, label: `${c.name} (${NO_NEW_ISSUES_TEXT})`, disabled: true },
+            c.status === 'ACTIVE' ? { value: c.code, label: c.name } : { value: c.code, label: tf('portalIssueCreate.closedCompany', { name: c.name }), disabled: true },
           )}
           value={chosen}
           onChange={setCompanyCode}
-          {...(open.length < companies.length ? { helpText: `멈췄거나 보관된 고객사는 ${NO_NEW_ISSUES_TEXT}.` } : {})}
+          {...(open.length < companies.length ? { helpText: t('portalIssueCreate.closedCompaniesHelp') } : {})}
           {...(fields.errors.companyCode ? { error: fields.errors.companyCode } : {})}
         />
       );
@@ -284,7 +283,7 @@ export function P4IssueCreate() {
         {companyField}
         <TextField
           id="issue-title"
-          label="제목"
+          label={t('issueEdit.title')}
           value={title}
           onChange={setTitle}
           maxLength={200}
@@ -292,28 +291,28 @@ export function P4IssueCreate() {
         />
         <MarkdownEditor
           id="issue-content"
-          label="내용"
+          label={t('issueEdit.content')}
           value={content}
           onChange={setContent}
           minHeight={420}
           maxLength={10000}
           showCount
-          placeholder="무엇이 어떻게 안 되는지, 언제부터인지 적어 주세요."
+          placeholder={t('portalIssueCreate.contentPlaceholder')}
           {...images.editor}
           {...(fields.errors.content ? { error: fields.errors.content } : {})}
         />
         <div id="issue-priority">
           <PriorityPicker
-            legend="우선순위"
+            legend={t('issueEdit.priority')}
             value={priority}
             onChange={setPriority}
             {...(fields.errors.priority ? { error: fields.errors.priority } : {})}
           />
         </div>
-        <Checkbox label="비공개" description="같은 회사 동료에게 보이지 않습니다" checked={isPrivate} onChange={setPrivate} />
-        {tooManyFiles && <Alert tone="warning">{TOO_MANY_FILES_TEXT}</Alert>}
+        <Checkbox label={TEXT.private} description={t('portalIssueCreate.privateHelp')} checked={isPrivate} onChange={setPrivate} />
+        {tooManyFiles && <Alert tone="warning">{tf('portalIssueCreate.tooManyFiles', { max: MAX_FILES })}</Alert>}
         <FileUpload
-          label="첨부"
+          label={t('portalFiles.title')}
           items={uploads}
           onSelect={onSelect}
           onRemove={(id) => {
@@ -321,13 +320,13 @@ export function P4IssueCreate() {
             setUploads((current) => current.filter((u) => u.id !== id));
           }}
           limits={ATTACHMENT_LIMITS}
-          helpText={`파일 하나 10MB, 모두 합해 50MB, ${String(MAX_FILES)}개까지. 문의를 올린 뒤 하나씩 올립니다.`}
-          removeLabel="빼기"
-          dropHint="또는 여기로 끌어 놓으세요"
+          helpText={tf('portalIssueCreate.filesHelp', { max: MAX_FILES })}
+          removeLabel={t('portalFiles.remove')}
+          dropHint={t('portalFiles.drop')}
         />
         <div className="pd-form-actions pd-create-actions">
           <Button type="submit" pending={pending} pendingLabel={TEXT.sending} blocked={cooldown.active || images.busy}>
-            올리기
+            {t('portalIssueCreate.submit')}
           </Button>
           <Button
             variant="secondary"
@@ -345,7 +344,7 @@ export function P4IssueCreate() {
   return (
     <div className="pd-screen pd-create">
       <div className="pd-screen-head">
-        <PageTitle>문의 등록</PageTitle>
+        <PageTitle>{t('portalIssueCreate.title')}</PageTitle>
       </div>
       {body}
       <ConfirmDialog
