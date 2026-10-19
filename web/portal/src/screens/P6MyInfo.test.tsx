@@ -101,32 +101,35 @@ describe('P-6 내 정보', () => {
     expect(text(screen.getByRole('banner'))).not.toContain(ME.name);
   });
 
-  test('S1A-AC-16 P-6 프로필 언어: 언어는 메일에만 쓰인다. en으로 저장하면 locale을 보내고 저장 토스트를 보이며, 화면 문구와 html lang은 한국어 그대로다', async () => {
+  // b5 묶음(B5-AC-01·03)에서 고쳤다: 1a 때는 "언어를 바꿔도 화면은 한국어"였고, 이제 계정 언어가 화면 언어다.
+  test('B5-AC-03 S1A-AC-16 P-6 프로필 언어: 도움말은 화면과 메일의 언어를 말한다. en으로 저장하면 locale을 보내고, 새로고침 없이 화면 제목과 html lang이 영어로 바뀐다', async () => {
     const { user } = renderAt('/me');
-    expect(text(await profile())).toContain('메일에 쓰는 언어입니다. 화면은 한국어로 보입니다.');
+    const help = text(await profile());
+    expect(help).not.toContain('화면은 한국어로 보입니다');
+    expect(help).toMatch(/화면.*메일|메일.*화면/);
     await user.selectOptions(await language(), 'en');
     await user.click(await save());
 
     const [patch] = await sent('PATCH', '/api/portal/me');
     expect(await patch?.body).toMatchObject({ locale: 'en' });
     await eventually(() => {
-      expect(toasts().some((t) => matchText(t, /저장/)), '저장 토스트').toBe(true);
+      expect(document.documentElement.lang).toBe('en');
     });
     await settle();
-    expect(document.documentElement.lang).toBe('ko');
-    expect(text(await heading1())).toBe('내 정보');
-    expect(await language()).toHaveValue('en');
+    expect(text(await heading1())).not.toMatch(/[가-힣]/);
+    expect(document.querySelector('select')).toHaveValue('en');
   });
 
-  test('S1A-AC-16 P-6 프로필 언어: 언어가 en인 계정으로 열어도 화면 문구와 html lang은 한국어이고, 언어 칸에는 en이 골라져 있다', async () => {
+  test('B5-AC-01 S1A-AC-16 P-6 프로필 언어: 언어가 en인 계정으로 열면 화면 제목과 html lang이 영어이고, 언어 칸에는 en이 골라져 있다', async () => {
     signInWith({ locale: 'en' });
     renderAt('/me');
 
-    expect(await language()).toHaveValue('en');
+    await eventually(() => {
+      expect(document.querySelector('select')).toHaveValue('en');
+    });
     await settle();
-    expect(document.documentElement.lang).toBe('ko');
-    expect(text(await heading1())).toBe('내 정보');
-    await save();
+    expect(document.documentElement.lang).toBe('en');
+    expect(text(await heading1())).not.toMatch(/[가-힣]/);
   });
 
   test('S1A-AC-60 P-6 사진 없음: 머리글자와 "사진 올리기", 받는 형식과 크기 안내. 사진을 청하지 않는다', async () => {

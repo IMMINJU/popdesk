@@ -1,8 +1,15 @@
-// 화면은 지금 한국어뿐이다(S1A-AC-16). 문구는 @popdesk/i18n의 한국어 표에서 온다.
+// 문구는 @popdesk/i18n의 표에서 온다. 화면 언어가 한국어일 때 한국어 표 그대로다(B5-AC-06).
+// b5 묶음부터 화면 언어는 로그인 전이면 브라우저 언어다(B5-AC-02). jsdom의 브라우저 언어는 en-US라,
+// 이 파일은 브라우저 언어를 ko로 두고 본다. 영어와 언어 바꾸기는 locale.b5.test.tsx가 본다.
 // 본문을 읽지 않고 시그니처와 주석으로 썼다.
 import { ko, type MessageKey } from '@popdesk/i18n';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { t, tf } from './locale';
+
+beforeEach(() => {
+  Object.defineProperty(window.navigator, 'languages', { value: ['ko'], configurable: true });
+  Object.defineProperty(window.navigator, 'language', { value: 'ko', configurable: true });
+});
 
 const KEYS = Object.keys(ko) as MessageKey[];
 
@@ -15,7 +22,7 @@ describe('t', () => {
     expect(t(key)).toBe(want);
   });
 
-  it('S1A-AC-16 t: 모든 키가 한국어 표의 글 그대로다', () => {
+  it('S1A-AC-16 B5-AC-06 t: 화면 언어가 한국어면 모든 키가 한국어 표의 글 그대로다', () => {
     expect(KEYS.length).toBeGreaterThan(100);
     expect(KEYS.filter((key) => t(key) !== ko[key])).toEqual([]);
   });
