@@ -1,4 +1,4 @@
-// Test support for slice b5 (design/slices/b5-english): opening the console in English.
+// Test support for slice b5 (design/archive/b5-english): opening the console in English.
 // `console.ts` stays as it is and its tests stay in Korean (acceptance.md 4절 5). This file adds
 // English fixtures, so the Hangul check never trips on data, and the check itself.
 //

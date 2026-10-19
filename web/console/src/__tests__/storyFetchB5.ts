@@ -1,4 +1,4 @@
-// The English answers for the slice b5 screen stories (design/slices/b5-english): an admin whose
+// The English answers for the slice b5 screen stories (design/archive/b5-english): an admin whose
 // language is English (`Me.locale: 'en'`, B5-AC-01) and long English data, since English runs longer
 // than Korean. storyFetch.ts answers the rest of the console API; this file wraps the `fetch` in place
 // and answers the comments and attachments of C-4, the customers and agents of C-9, the C-12 audit

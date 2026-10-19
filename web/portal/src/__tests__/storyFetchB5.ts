@@ -1,4 +1,4 @@
-// A fake server for the portal screen stories of slice b5 (design/slices/b5-english). The stories run
+// A fake server for the portal screen stories of slice b5 (design/archive/b5-english). The stories run
 // in a real browser where MSW's node server does not work, so this replaces `fetch` and answers the
 // portal API with English samples: a customer whose language is English (`Me.locale: 'en'`,
 // B5-AC-01) and long English data, since English runs longer than Korean.
