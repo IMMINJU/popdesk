@@ -89,7 +89,10 @@ export function P7Inbox() {
   // Not waited for, and a failure says nothing: the move does not hang on it (S4-AC-66).
   const markRead = (item: InboxListItem) => {
     if (!item.unread) return;
-    void call(api.POST('/api/portal/notifications/{id}/read', { params: { path: { id: Number(item.id) } } }));
+    void call(api.POST('/api/portal/notifications/{id}/read', { params: { path: { id: Number(item.id) } } })).then((result) => {
+      // The head lives in the frame, so it takes the new count even once this screen has gone (B1-AC-04).
+      if (result.ok) unread.refresh();
+    });
   };
 
   return (

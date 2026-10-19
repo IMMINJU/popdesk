@@ -7,7 +7,7 @@ export const UNREAD_PERIOD_MS = 60_000;
 export interface Unread {
   /** The last count the server gave; 0 until the first answer. */
   count: number;
-  /** Asks again now. The inbox calls it after 모두 읽음, not after reading one item. */
+  /** Asks again now. The inbox calls it after 모두 읽음 and after reading one item succeeds. */
   refresh: () => void;
 }
 
