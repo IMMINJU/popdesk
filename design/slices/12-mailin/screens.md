@@ -45,6 +45,9 @@
 - 제목: "문의 {키}에 댓글을 달지 못했습니다" / "Your reply was not added to issue {key}". 키에 대괄호를 두르지 않는다(S12-AC-29).
 - 본문, `CLOSED`: "문의 {키} "{제목}"은 종료되어 메일 답장을 받지 않습니다. 이어서 말씀하실 내용은 포털에서 다시 열거나 새 문의로 올려 주세요: {문의 주소}"
 - 본문, `NOT_ALLOWED`: "문의 {키} "{제목}"에는 문의를 올린 분만 답장할 수 있습니다. 포털에서 문의를 보거나 새 문의를 올려 주세요: {문의 주소}"
+- 영어 본문, `CLOSED`: "Issue {key} "{title}" is closed and takes no email replies. To go on, reopen it in the portal or file a new issue: {link}"
+- 영어 본문, `NOT_ALLOWED`: "Only the person who filed issue {key} "{title}" can reply to it by email. See the issue or file a new one in the portal: {link}"
+- 영어 안내 A 본문: "Your email could not be turned into an issue. If you belong to more than one company, add your company code to the address (for example support+CODE@…). You can also file an issue in the portal: {link}"
 
 ### 본문에 붙는 줄
 
