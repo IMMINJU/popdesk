@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -43,7 +44,8 @@ final class MailInSettings {
     /** One address: something on each side of one {@code @}, and nothing that could start a second address. */
     private static final Pattern ADDRESS = Pattern.compile("[^\\s@,;:<>()\"\\\\]+@[^\\s@,;:<>()\"\\\\]+");
 
-    private static final Pattern WHOLE_NUMBER = Pattern.compile("[0-9]{1,5}");
+    /** Digits only; the leading zeros are not counted in the five. */
+    private static final Pattern WHOLE_NUMBER = Pattern.compile("0*([0-9]{1,5})");
 
     private final List<String> problems;
     private final OffReason offReason;
@@ -110,7 +112,8 @@ final class MailInSettings {
         int port = IMPLICIT_TLS_PORT;
         String portValue = value(setting, PORT);
         if (portValue != null) {
-            port = WHOLE_NUMBER.matcher(portValue).matches() ? Integer.parseInt(portValue) : 0;
+            Matcher digits = WHOLE_NUMBER.matcher(portValue);
+            port = digits.matches() ? Integer.parseInt(digits.group(1)) : 0;
             if (port < 1 || port > 65535) {
                 problems.add(PORT + " must be a whole number from 1 to 65535.");
             }

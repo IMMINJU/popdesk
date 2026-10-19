@@ -35,11 +35,13 @@ final class BodyFit {
         if (TextInput.length(whole) <= limit) {
             return whole;
         }
+        boolean linesFit = true;
         while (!added.isEmpty() && TextInput.length(join("", true, closingLine, added)) > limit) {
             added.removeLast();
+            linesFit = false;
         }
         int room = limit - TextInput.length(join("", true, closingLine, added)) - 2;
-        String kept = room <= 0 ? "" : cut(text, room).stripTrailing();
+        String kept = !linesFit || room <= 0 ? "" : cut(text, room).stripTrailing();
         return join(kept, true, closingLine, added);
     }
 
