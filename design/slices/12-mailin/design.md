@@ -76,7 +76,7 @@ CREATE INDEX mail_sent_issue_id_idx ON mail_sent (issue_id);
 
 | 자리 | 바뀜 |
 |---|---|
-| `GET /api/console/system/status`(있음) | `mailIn: {enabled, offReason: NOT_SET\|SANDBOX\|null, lastSuccessAt, roundFailures, lastFailure: {kind: CONNECT\|AUTH\|FOLDER, at} \| null, retrying, quarantined90d}` |
+| `GET /api/console/system/status`(있음) | `mailIn: {enabled, offReason: NOT_SET\|SANDBOX\|null, lastSuccessAt, roundFailures, lastFailure: {kind: CONNECT|AUTH|FOLDER|UNSUPPORTED, at}\|AUTH\|FOLDER, at} \| null, retrying, quarantined90d}` |
 | 알림 종류(콘솔 알림함, 있음) | `MAIL_IN_STALLED`, `MAIL_IN_QUARANTINED` |
 | 정리 작업 목록(시스템 상태 `cleanupJobs`, 있음) | `mail-record-cleanup` |
 | 보내는 메일(계약 파일 밖, `configuration.md`) | `Message-ID`, `Auto-Submitted`, `Reply-To` |
