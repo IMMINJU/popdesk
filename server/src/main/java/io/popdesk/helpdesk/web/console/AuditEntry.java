@@ -27,12 +27,17 @@ public record AuditEntry(
                 + "`{\"type\": \"ACCOUNT\", \"accountId\": …}`; the chain computed again after an anonymization "
                 + "(`AUDIT_RECHAINED`) is `{\"type\": \"AUDIT_LOG\"}` (S10A-AC-06, S10A-AC-16, S10A-AC-18). A "
                 + "company export asked for or downloaded (`COMPANY_EXPORTED`, `COMPANY_EXPORT_DOWNLOADED`) is "
-                + "`{\"type\": \"COMPANY\", \"code\": …}` (S10B-AC-09).",
+                + "`{\"type\": \"COMPANY\", \"code\": …}` (S10B-AC-09). An OIDC link made, removed, or an invitation "
+                + "accepted by an OIDC sign-in (`OIDC_LINKED`, `OIDC_UNLINKED`, `INVITATION_ACCEPTED`) is "
+                + "`{\"type\": \"ACCOUNT\", \"accountId\": …}` (S11-AC-24, S11-AC-27).",
                 nullable = true)
                 Map<String, Object> target,
         @Schema(description = "What changed, as stored. A changed value is `{\"from\": ..., \"to\": ...}` under "
                 + "its field name; a value set for the first time is the value itself. Null when the action "
-                + "changes no value.", nullable = true) Map<String, Object> changes,
+                + "changes no value. A sign-in by OIDC (`SIGN_IN_SUCCEEDED`, `SIGN_IN_FAILED`) and an invitation "
+                + "accepted by it (`INVITATION_ACCEPTED`) have `{\"method\": \"OIDC\"}`; a password sign-in "
+                + "has none. `OIDC_LINKED` has `issuer`, the provider's `iss`; never the `sub` (S11-AC-24).",
+                nullable = true) Map<String, Object> changes,
         @Schema(description = "When the action was done, with microseconds.") OffsetDateTime occurredAt,
         @Schema(description = "SHA-256 of `prevHash` and the entry's canonical JSON: 64 lowercase hex characters.",
                 pattern = "^[0-9a-f]{64}$") String hash,

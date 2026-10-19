@@ -12,7 +12,7 @@ The API is split by app (ADR D-43):
 |---|---|---|
 | `/api/portal/**` | The customer portal | Portal host only |
 | `/api/console/**` | The agent console (agents and admins) | Console host only |
-| `/api/public/**` | Before sign-in: branding, accepting an invitation, sign-in | Both hosts |
+| `/api/public/**` | Before sign-in: branding, accepting an invitation, sign-in (password and OIDC) | Both hosts |
 
 A request for a path that its host does not serve gets 404. Customer and staff endpoints use separate request and response types; customer types have no internal fields or filters (D-41).
 
@@ -27,6 +27,27 @@ CI fails when the committed files differ from the code. The TypeScript clients i
 
 - Sign-in creates a server session held in an `HttpOnly` cookie. Cookies are host-only, so a portal session does not work on the console host and the reverse (D-9).
 - Requests that change data must send the CSRF token: the server sets it in a readable cookie and the client returns it in a request header. Before sign-in, `GET /api/public/csrf` sets the cookie. The cookie is `XSRF-TOKEN` (readable by scripts) and the header is `X-XSRF-TOKEN`; the client sends the cookie value as it is.
+
+## OIDC sign-in (AUTH-6)
+
+OIDC sign-in is on for an app when `OIDC_ISSUER`, `OIDC_CLIENT_ID`, and `OIDC_CLIENT_SECRET` are set and `OIDC_APPS` names the app ([configuration.md](../operate/configuration.md)). Password sign-in stays on either way (D-65).
+
+- `GET /api/public/sign-in-options` answers `SignInOptions`, `{"oidc": true}` or `{"oidc": false}` for the app of the host the request came to, without a session. It holds nothing else: no provider address, no client ID. `no-store`. The sign-in pages read it to decide whether to show the OIDC button.
+- `GET /api/public/oidc/start` and `GET /api/public/oidc/callback` are pages the browser opens, not calls that read JSON. They take no CSRF token and answer 302 with a `Location`, except 404 `NOT_FOUND` on a host whose app does not have OIDC sign-in on. The button moves the page with `location.assign` to `/api/public/oidc/start`, with `next` when the sign-in page has one; it is not a form submit, because the CSP's `form-action 'self'` blocks the 302 to the provider.
+- `next` is the page to go to after signing in. It is kept only when it starts with `/`, does not start with `//` or `/\`, holds no control characters, and is at most 512 characters; any other value is taken as `/`.
+- The start answers 302 to the provider's authorization endpoint (authorization code with PKCE `S256`, `state`, `nonce`, `scope=openid email profile`) and sets a cookie that ties the sign-in to the browser: `__Host-POPDESK_OIDC` with `Secure` on https, `POPDESK_OIDC` on http, both `HttpOnly`, `SameSite=Lax`, path `/`, host-only, 10 minutes. The `redirect_uri` is the app's public address followed by `/api/public/oidc/callback`.
+- The callback answers 302 to the page in `next` (or `/`) with a new session, as a password sign-in does. When the provider sent `error` (for example, the person cancelled), it answers 302 to `/login` without a query. Otherwise it goes back to the sign-in page with one `oidc` query value:
+
+| `Location` | When |
+|---|---|
+| `/login?oidc=failed` | The sign-in cannot go on: no cookie, a `state` that does not match it, a sign-in request over 10 minutes old or of the other app, an ID token that fails its checks, a token endpoint that answers 4xx, or no account to match. One value whatever the reason |
+| `/login?oidc=unavailable` | The provider's discovery document could not be read or does not match, or its token endpoint could not be reached or answered 5xx or 429 |
+| `/login?oidc=busy` | Over 20 starts from one IP address in 60 seconds, or over 10,000 sign-in requests started in the last 10 minutes in the installation |
+
+- The sign-in pages show a message for each of the three values and nothing for any other value.
+- An account is matched by the provider's `iss` and `sub` once it is linked. The first time, it is matched by the ID token's `email` when `email_verified` is the JSON value `true` and the email is ASCII; that links it. No account is created. An `INVITED` account matched within its invitation's 7 days becomes `ACTIVE`, without a password.
+- `Account` and `SuspendedAccount` have `oidcLinked`: the account is linked. `DELETE /api/console/accounts/{accountId}/oidc-link` removes the link and ends every session of the account, admins only: 204, 401 without a session, 403 `FORBIDDEN` for an agent or `CSRF_TOKEN_INVALID`, 404 `NOT_FOUND` for an unknown account or one without a link. The portal host answers 404, as for any console path. The next OIDC sign-in links the account again by its email. Anonymizing an account removes its link too.
+- `getSystemStatus` has `oidc` (`OidcStatus`): `enabled`, `apps` (`CONSOLE` before `PORTAL`, empty when off), `lastSuccessAt` (the last OIDC sign-in that started a session, or `null`), `providerFailures` (discovery, token exchange, and ID token failures), and `lastFailure` (`{"kind": "DISCOVERY" | "TOKEN" | "ID_TOKEN", "at": …}` or `null`). They are counted in the app's memory since it started and are empty after a restart. Failures on the account's side (no account, suspended, the other app) are not counted. It holds no issuer, client ID, or secret.
 
 ## Invitation links
 
@@ -386,6 +407,7 @@ Limits are per account over a 60-second window:
 | Customer manager sends an invitation, or sends one again | 20 (both count together) |
 | Admin sends a test email | 5 |
 | Sign-in attempts | 20 per IP address |
+| OIDC sign-in starts | 20 per IP address, counted apart from sign-in attempts. Over the limit, `/login?oidc=busy` instead of 429 ([OIDC sign-in](#oidc-sign-in-auth-6)) |
 | Password reset requests | 20 per IP address; at most one reset email per account every 15 minutes |
 
 - Over the limit, the response is 429 with a `Retry-After` header and the error body.
@@ -436,6 +458,7 @@ Every audit entry has a place in one chain and a hash over its values and the en
 - A new or removed logo (`BRANDING_LOGO_CHANGED`) has the target `{"type": "BRANDING", "theme": "LIGHT"}` or `"DARK"`, and in `changes` `logo` as `{"from": …, "to": …}`: the first 16 characters of the SHA-256 of the stored PNG before and after, or `null` without a logo. The file name and the file are never in it. Uploading the same logo again, and removing a logo that is not there, leave no entry.
 - An account export (`ACCOUNT_EXPORTED`) has the target `{"type": "ACCOUNT", "accountId": n}` and no `changes`. An anonymization (`ACCOUNT_ANONYMIZED`) has the same target; its `changes` are `null`, or, when assignments were cleared, `clearedIssues` and `clearedTasks` as a suspension writes them. Neither holds the account's old name or email.
 - A company export asked for (`COMPANY_EXPORTED`) has the target `{"type": "COMPANY", "code": "…"}` and in `changes` `includeInternal` and `includePrivate` (`true` or `false`). Downloading its ZIP (`COMPANY_EXPORT_DOWNLOADED`, `GET` only) has the same target and in `changes` `exportId`, the export's ID as text. Neither holds a customer's name or email.
+- OIDC sign-in ([OIDC sign-in](#oidc-sign-in-auth-6)): `SIGN_IN_SUCCEEDED` and `SIGN_IN_FAILED` have `{"method": "OIDC"}` in `changes`; a password sign-in has `null`, as before. Linking an account (`OIDC_LINKED`), removing its link (`OIDC_UNLINKED`), and an `INVITED` account made `ACTIVE` by an OIDC sign-in (`INVITATION_ACCEPTED`) have the target `{"type": "ACCOUNT", "accountId": n}`. `OIDC_LINKED` has in `changes` `issuer`, the provider's `iss` as text; `INVITATION_ACCEPTED` has `{"method": "OIDC"}`; `OIDC_UNLINKED` has none. A first OIDC sign-in records `OIDC_LINKED`, then `INVITATION_ACCEPTED` when it made the account `ACTIVE`, then `SIGN_IN_SUCCEEDED`. No entry holds the `sub`, a token, or a code. Accepting an invitation with a password records no entry. An anonymization removes the link without an `OIDC_UNLINKED`.
 - An anonymization computes the chain again ([below](#anonymization-and-the-chain)) and records it as `AUDIT_RECHAINED`, the entry right before its `ACCOUNT_ANONYMIZED`: the target `{"type": "AUDIT_LOG"}`, and in `changes` `fromSeq` and `toSeq`, the first and the last entry computed again, and `headHash` as `{"from": …, "to": …}`, the `hash` of entry `toSeq` before and after. So its `seq` is `toSeq + 1`, and its `prevHash` is `headHash.to`.
 - A person in an entry is the actor `{"accountId", "name", "email"}`, or the target's `accountId` with that account's name and email at the top of `changes` as `name` and `email` (text, or `{"from", "to"}`). A new kind of entry that puts another person into `changes` puts them there as `{"accountId": n, "name": "…", "email": "…"}`, never as a name or an email alone, so that an anonymization can find them by account ID.
 - A name once used for `action`, or for a key of an entry, is never renamed: it is part of the hash.
@@ -488,7 +511,7 @@ Two admin endpoints under `/api/console/accounts/{accountId}`. Agents get 403, a
 `POST /api/console/accounts/{accountId}/anonymize` cannot be undone. It answers 200 with the same body as `suspendAccount` (`SuspendedAccount`), `anonymized` `true`; `clearAssignments=true` clears assignments as a suspension does.
 
 - The name becomes the anonymous name in the installation's language when it runs (`POPDESK_LOCALE`): `Deleted user` for `en`, `삭제된 사용자` for `ko`. It is stored as text and does not change with the language later. The email becomes `deleted-{id}@invalid`, the status `SUSPENDED`. An `INVITED` account is anonymized too.
-- In the same transaction it ends the account's sessions and removes its profile photo, password, sign-in lock, invitation and password reset tokens, the queued emails to it, and its inbox items; it puts the anonymous values into its membership requests and its audit entries ([above](#anonymization-and-the-chain)), and records `AUDIT_RECHAINED` and then `ACCOUNT_ANONYMIZED`. A failure anywhere leaves everything as it was.
+- In the same transaction it ends the account's sessions and removes its profile photo, password, sign-in lock, OIDC link, invitation and password reset tokens, the queued emails to it, and its inbox items; it puts the anonymous values into its membership requests and its audit entries ([above](#anonymization-and-the-chain)), and records `AUDIT_RECHAINED` and then `ACCOUNT_ANONYMIZED`. A failure anywhere leaves everything as it was.
 - What the account wrote stays and shows the anonymous name wherever its name is shown.
 - Before it computes an entry again, it checks the entry as the integrity check does, from the account's first entry to the end of the chain, and the end against the last entry. A break there is 409 `AUDIT_CHAIN_BROKEN` and nothing changes, so the new hashes never cover a change made outside popdesk. A break before the account's first entry does not stop it.
 - One anonymization runs at a time (409 `ANONYMIZATION_RUNNING`). Own account is 400 `OWN_ACCOUNT`, the last `ACTIVE` admin 400 `LAST_ADMIN`, an anonymized account 400 `ACCOUNT_ANONYMIZED`.

@@ -1,5 +1,6 @@
 package io.popdesk.helpdesk.web.console;
 
+import io.popdesk.NotImplementedException;
 import io.popdesk.Paged;
 import io.popdesk.PatchText;
 import io.popdesk.helpdesk.AccountStatus;
@@ -21,8 +22,10 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
@@ -52,7 +56,8 @@ class ConsoleAccountController {
 
     static Account account(AccountRow a) {
         return new Account(a.id(), a.email(), a.name(), a.role(), a.status(), a.createdAt().atOffset(ZoneOffset.UTC),
-                a.photoUpdatedAt() == null ? null : a.photoUpdatedAt().atOffset(ZoneOffset.UTC), a.anonymized());
+                a.photoUpdatedAt() == null ? null : a.photoUpdatedAt().atOffset(ZoneOffset.UTC), a.anonymized(),
+                false);
     }
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`.";
@@ -145,7 +150,8 @@ class ConsoleAccountController {
     private static SuspendedAccount suspended(AccountService.Suspension suspension) {
         Account a = account(suspension.account());
         return new SuspendedAccount(a.id(), a.email(), a.name(), a.role(), a.status(), a.createdAt(),
-                a.photoUpdatedAt(), a.anonymized(), new ClearedAssignments(suspension.clearedIssues()));
+                a.photoUpdatedAt(), a.anonymized(), a.oidcLinked(),
+                new ClearedAssignments(suspension.clearedIssues()));
     }
 
     private static HttpHeaders exportHeaders(long accountId) {
@@ -182,6 +188,20 @@ class ConsoleAccountController {
     @PostMapping("/api/console/accounts/{accountId}/reactivate")
     Account reactivateAccount(@PathVariable long accountId) {
         return account(accounts.reactivate(CurrentAccount.get(), accountId));
+    }
+
+    @Operation(operationId = "unlinkAccountOidc", summary = "Unlink an account from its OIDC provider account",
+            description = "Removes the account's OIDC link and ends every session of the account, in one "
+                    + "transaction (S11-AC-27). The next OIDC sign-in links it again by its verified email, as the "
+                    + "first one did. Recorded as `OIDC_UNLINKED`. An anonymized account has no link.")
+    @ApiResponse(responseCode = "204", description = "Unlinked.")
+    @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
+    @ApiResponse(responseCode = "403", description = ADMIN_ONLY)
+    @ApiResponse(responseCode = "404", description = NOT_FOUND + " Also an account without an OIDC link (S11-AC-28).")
+    @DeleteMapping("/api/console/accounts/{accountId}/oidc-link")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void unlinkAccountOidc(@PathVariable long accountId) {
+        throw new NotImplementedException();
     }
 
     @Operation(operationId = "resetAccountPassword", summary = "Reset an account's password",

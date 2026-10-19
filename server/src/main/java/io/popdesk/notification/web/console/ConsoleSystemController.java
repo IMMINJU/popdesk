@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -47,8 +48,9 @@ class ConsoleSystemController {
                     + "The console also reads `mail.enabled` to decide whether to offer invitation links (C-10). "
                     + "In a sandbox the webhook and the outside copy are not `enabled`, and neither is mail "
                     + "without a sandbox address (S4B-AC-08). Each cleanup job comes with its last run "
-                    + "(S4B-AC-30). No SMTP password, webhook URL, or address or token of the outside copy "
-                    + "(S4B-AC-31).")
+                    + "(S4B-AC-30). `oidc` is OIDC sign-in, counted in memory since the app started (S11-AC-30). No "
+                    + "SMTP password, webhook URL, or address or token of the outside copy, and no OIDC issuer, "
+                    + "client ID, or secret (S4B-AC-31).")
     @ApiResponse(responseCode = "200", description = "The status.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: admins only.")
@@ -56,7 +58,8 @@ class ConsoleSystemController {
     SystemStatus getSystemStatus() {
         return new SystemStatus(channel(status.mail()), channel(status.webhook()), channel(status.auditForward()),
                 status.sandbox(), status.sandboxMailToSet(), cleanupJobs.list().stream()
-                        .map(job -> new CleanupJobStatus(job.name(), utc(job.lastRunAt()), job.deleted())).toList());
+                        .map(job -> new CleanupJobStatus(job.name(), utc(job.lastRunAt()), job.deleted())).toList(),
+                new OidcStatus(false, List.of(), null, 0, null));
     }
 
     @Operation(operationId = "listFailedDeliveries", summary = "Outbox rows that stopped retrying",
