@@ -119,6 +119,11 @@ class OidcMatchTest extends OidcAppTest {
             case KELVIN_SIGN_FOR_K -> claims.put("email", "K" + agent.email().substring(1));
         }
         assertThat(agent.email()).as("an agent email that starts with k").startsWith("k");
+        if (claim == Unlinkable.KELVIN_SIGN_FOR_K) {
+            assertThat(db.count("select count(*) where lower(?) = lower(?)", claims.get("email"), agent.email()))
+                    .as("the database's lower() folds the Kelvin sign to k, so an app that skips the ASCII check "
+                            + "would match this email").isEqualTo(1);
+        }
         String sub = OidcFlow.newSub();
         ApiClient browser = console();
 

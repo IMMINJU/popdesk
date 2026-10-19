@@ -116,6 +116,7 @@ class OidcStartTest extends OidcAppTest {
 
         OidcFlow.assertBackAtLogin(limited, busy, "busy");
         assertThat(busy.setCookie(OidcFlow.COOKIE)).as("sign-in cookie of %s", busy).isNull();
+        assertThat(busy.header("Cache-Control")).as("Cache-Control of %s", busy).contains("no-store");
         oidc.started(fromAnotherIp);
     }
 

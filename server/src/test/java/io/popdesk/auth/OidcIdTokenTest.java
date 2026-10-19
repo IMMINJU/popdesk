@@ -21,8 +21,8 @@ import org.junit.jupiter.params.provider.MethodSource;
  * ({@link OidcProvider#logIn}), so a token can come from another issuer, for another client, with another
  * {@code azp}, with several audiences and no {@code azp}, with another or no {@code nonce}, expired, or issued in the
  * future. The signature cannot be broken this way: the provider signs every token of {@code /default} with its own
- * RS256 key (an unknown key, {@code none}, and HS256 are left to the unit tests of the claim checks, design.md 3절).
- * Times within 60 seconds of the app's clock pass.
+ * RS256 key (an unknown key, {@code none}, HS256, ES256, and an unknown {@code kid} are in
+ * {@link OidcCraftedTokenTest}, with tokens the test writes). Times within 60 seconds of the app's clock pass.
  */
 class OidcIdTokenTest extends OidcAppTest {
 

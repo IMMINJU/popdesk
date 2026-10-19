@@ -19,10 +19,13 @@ import org.junit.jupiter.params.provider.EnumSource;
 /**
  * The callback of an OIDC sign-in: a new session for the matched account (S11-AC-09), the checks of the cookie and
  * the {@code state} before the token endpoint is called (S11-AC-11), the person cancelling at the provider
- * (S11-AC-12), and a code the token endpoint does not take (S11-AC-13). A sign-in request is used once.
+ * (S11-AC-12), and a code the provider never gave (S11-AC-13). A sign-in request is used once.
  *
  * <p>Whether the app called the token endpoint is seen at the provider: a code nobody exchanged is still there
- * ({@code OidcProvider#codeUnused}).
+ * ({@code OidcProvider#codeUnused}). The test provider answers a code it never gave with 200 and a token without a
+ * nonce, so that case fails at the ID token, not at the token endpoint; the token endpoint answering 4xx, 5xx, or 429
+ * is in {@link OidcCraftedCallbackTest}, and the second use of a sign-in request with a right token in
+ * {@link OidcCraftedCallbackTest#usedSignInRequestIsGone}.
  */
 class OidcCallbackTest extends OidcAppTest {
 
@@ -55,6 +58,7 @@ class OidcCallbackTest extends OidcAppTest {
         ApiResponse back = oidc.callback(browser, atProvider);
 
         OidcFlow.assertRedirect(browser, back, "/");
+        assertThat(back.header("Cache-Control")).as("Cache-Control of %s", back).contains("no-store");
         assertThat(back.setCookie(sessionCookie)).as("%s cookie set by %s", sessionCookie, back).isNotNull();
         assertThat(browser.cookie(sessionCookie)).as("session ID after the sign-in").isPresent().get()
                 .isNotEqualTo(planted);
@@ -65,6 +69,7 @@ class OidcCallbackTest extends OidcAppTest {
         again.setCookie(OidcFlow.COOKIE, cookie);
         ApiResponse reused = oidc.callback(again, atProvider);
         OidcFlow.assertBackAtLogin(again, reused, "failed");
+        assertThat(reused.header("Cache-Control")).as("Cache-Control of %s", reused).contains("no-store");
         OidcFlow.assertNoSession(again, "/api/console");
     }
 

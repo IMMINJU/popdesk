@@ -586,5 +586,5 @@ final class BoundaryList {
             none("GET", "/api/public/oidc/callback",
                     "named by the criterion as sign-in: the provider's redirect back; no customer data"),
             tested("DELETE", "/api/console/accounts/{accountId}/oidc-link",
-                    "boundary.AdminOnlyContractTest#agentGets403OnEveryOperationTheContractMarksAdminsOnly"));
+                    "auth.OidcUnlinkAccessTest#agentIsForbidden"));
 }

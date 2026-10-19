@@ -45,14 +45,30 @@ public final class OidcFlow {
             "redirect_uri", "scope", "state", "nonce", "code_challenge", "code_challenge_method");
 
     private final OidcProvider provider;
+    private final String issuer;
     private final TestClock clock;
 
     public OidcFlow(OidcProvider provider, TestClock clock) {
         this.provider = provider;
+        this.issuer = provider.issuer();
+        this.clock = clock;
+    }
+
+    /**
+     * The steps against a provider that is not the test container, at {@code issuer} (for example
+     * {@link io.popdesk.support.CraftedOidcProvider}): the start and the callback work, the login at the provider
+     * ({@link #logIn}, {@link #signIn}) does not.
+     */
+    public OidcFlow(String issuer, TestClock clock) {
+        this.provider = null;
+        this.issuer = issuer;
         this.clock = clock;
     }
 
     public OidcProvider provider() {
+        if (provider == null) {
+            throw new IllegalStateException("These steps are against " + issuer + ", not the test container");
+        }
         return provider;
     }
 
@@ -119,7 +135,7 @@ public final class OidcFlow {
         start.expectStatus(302);
         String location = start.header("Location");
         assertThat(location).as("Location of %s", start).isNotNull()
-                .startsWith(provider.issuer() + "/");
+                .startsWith(issuer + "/");
         assertThat(start.setCookie(COOKIE)).as("%s cookie set by %s: %s", COOKIE, start, start.headers("Set-Cookie"))
                 .isNotNull();
         URI uri = URI.create(location);
@@ -128,7 +144,7 @@ public final class OidcFlow {
 
     /** Logs in at the provider as {@code sub} with {@code claims}; returns the redirect back to the app. */
     public Redirect logIn(Started started, String sub, Map<String, Object> claims) {
-        return provider.logIn(started.location().toString(), sub, claims);
+        return provider().logIn(started.location().toString(), sub, claims);
     }
 
     /** {@code GET /api/public/oidc/callback?code=...&state=...} in this browser, whatever the answer. */

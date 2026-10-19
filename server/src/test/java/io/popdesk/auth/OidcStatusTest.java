@@ -25,7 +25,7 @@ import tools.jackson.databind.JsonNode;
 /**
  * The {@code oidc} part of the system status with OIDC on for both apps (S11-AC-30): on, both apps, the time of the
  * last sign-in that started a session, and the provider-side failures. Other tests of this context sign in and fail
- * too, so a test reads the status right before and right after its own sign-in and sees only that it moved. Tests
+ * too, so a test reads the status right before and right after its own sign-in and sees how far it moved. Tests
  * of one JVM run one after another, so nothing else signs in between the two reads.
  */
 class OidcStatusTest extends OidcAppTest {
@@ -134,7 +134,7 @@ class OidcStatusTest extends OidcAppTest {
         OidcFlow.assertNoSession(browser, CONSOLE);
         JsonNode status = oidcStatus(admin);
         assertThat(status.path("providerFailures").asLong(-1)).as("providerFailures of %s", status)
-                .isGreaterThan(before);
+                .isEqualTo(before + 1);
         JsonNode last = status.path("lastFailure");
         assertThat(OidcFlow.fieldNames(last)).as("fields of lastFailure %s", last).isEqualTo(Set.of("kind", "at"));
         assertThat(last.path("kind").asString("")).as("kind of %s", last).isEqualTo(failure.name());
