@@ -3,6 +3,7 @@
 import { RadioGroup, TextField, type Option } from '@popdesk/ui';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api, type Schemas } from '../api';
+import { t } from './locale';
 import { call, type Failure } from './result';
 
 type Account = Schemas['Account'];
@@ -79,9 +80,9 @@ export function AccountFinder(props: AccountFinderProps) {
 
   return (
     <>
-      <TextField label="이름·이메일로 찾기" type="search" value={query} onChange={setQuery} maxLength={100} spellCheck={false} />
+      <TextField label={t('accountFinder.search')} type="search" value={query} onChange={setQuery} maxLength={100} spellCheck={false} />
       {results === null ? (
-        <p className="pd-muted">{q === '' ? props.idleText : '찾는 중…'}</p>
+        <p className="pd-muted">{q === '' ? props.idleText : t('accountFinder.searching')}</p>
       ) : (
         results.length === 0 && <p className="pd-muted">{props.emptyText}</p>
       )}

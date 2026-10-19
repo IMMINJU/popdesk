@@ -13,6 +13,7 @@ import { LoadFailed, NoPermission, PageTitle } from '../app/layout';
 import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, usePageMove, usePageParam } from '../app/paging';
 import { call, type Failure, type Result } from '../app/result';
+import { t, texts } from '../app/locale';
 import { useToast } from '../app/toastContext';
 import { ChannelTable, CleanupJobs, FailedTable, MailInPart, OidcPart, SandboxBand, TestMail, type TestMailState } from './C18Parts';
 
@@ -29,8 +30,8 @@ interface Refusal {
   known: Record<string, string>;
 }
 
-const RESEND_KNOWN = { CHANNEL_DISABLED: '채널이 꺼져 있어 보낼 수 없습니다.' };
-const TEST_MAIL_KNOWN = { CHANNEL_DISABLED: '메일 보내기가 꺼져 있습니다.' };
+const RESEND_KNOWN = texts({ CHANNEL_DISABLED: 'system.resendDisabled' });
+const TEST_MAIL_KNOWN = texts({ CHANNEL_DISABLED: 'system.mailDisabled' });
 
 export function C18SystemStatus() {
   const page = usePageParam();
@@ -79,7 +80,7 @@ export function C18SystemStatus() {
     });
     if (result.ok) {
       await load.reload();
-      if (live()) toast('다시 보냈습니다. 결과는 잠시 뒤 이 화면에 반영됩니다.');
+      if (live()) toast(t('system.resent'));
       return;
     }
     // Sent already, or cleaned up: the list just reads again.
@@ -111,7 +112,7 @@ export function C18SystemStatus() {
   return (
     <div className="pd-screen">
       <div className="pd-screen-head">
-        <PageTitle titleRef={heading}>시스템 상태</PageTitle>
+        <PageTitle titleRef={heading}>{t('system.title')}</PageTitle>
       </div>
       <SaveFailure failure={refusal?.failure ?? null} {...(refusal ? { known: refusal.known } : {})} />
       <RateLimitBand {...cooldown} />
@@ -125,7 +126,7 @@ export function C18SystemStatus() {
       {data?.status.sandbox && <SandboxBand mailToSet={data.status.sandboxMailToSet} />}
       <section className="pd-section" aria-labelledby="channels-title">
         <h2 id="channels-title" className="pd-section-title">
-          보내기 채널
+          {t('system.channels')}
         </h2>
         {(load.status !== 'failed' || data) && <ChannelTable status={data?.status} loading={firstLoad} skeletonRows={load.slow ? 3 : 0} />}
       </section>
@@ -145,7 +146,7 @@ export function C18SystemStatus() {
       {data && failed && (
         <section className="pd-section" aria-labelledby="failed-title">
           <h2 id="failed-title" ref={failedHeading} className="pd-section-title" tabIndex={-1}>
-            보내지 못한 항목
+            {t('system.failedTitle')}
           </h2>
           <FailedTable
             rows={failed.items}
@@ -157,9 +158,9 @@ export function C18SystemStatus() {
             }}
             empty={
               page > 1 && failed.items.length === 0 ? (
-                <EmptyState title="이 쪽에는 항목이 없습니다" headingLevel={3} action={<Link to="/system">1쪽으로</Link>} />
+                <EmptyState title={t('system.failedPageEmpty')} headingLevel={3} action={<Link to="/system">{t('system.toFirstPage')}</Link>} />
               ) : (
-                <EmptyState title="보내지 못한 항목이 없습니다." headingLevel={3} />
+                <EmptyState title={t('system.failedEmpty')} headingLevel={3} />
               )
             }
           />

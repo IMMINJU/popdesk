@@ -7,6 +7,7 @@ import { FieldSummary, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { useFieldErrors, useLive, useLoad, type FieldSpec } from '../app/hooks';
 import { LoadFailed, PageTitle } from '../app/layout';
+import { screenLocale, t, texts, tf } from '../app/locale';
 import { slaLength, TEXT } from '../app/messages';
 import { subject } from '../app/particles';
 import { call, type Failure, type FieldProblem } from '../app/result';
@@ -18,32 +19,32 @@ type Weekday = Schemas['SlaHours']['weekday'];
 
 const PRIORITIES: readonly Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
 const WEEKDAYS: readonly Weekday[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-const DAY_WORDS: Readonly<Record<Weekday, string>> = {
-  MONDAY: '월요일',
-  TUESDAY: '화요일',
-  WEDNESDAY: '수요일',
-  THURSDAY: '목요일',
-  FRIDAY: '금요일',
-  SATURDAY: '토요일',
-  SUNDAY: '일요일',
-};
+const DAY_WORDS: Readonly<Record<Weekday, string>> = texts({
+  MONDAY: 'slaPolicy.monday',
+  TUESDAY: 'slaPolicy.tuesday',
+  WEDNESDAY: 'slaPolicy.wednesday',
+  THURSDAY: 'slaPolicy.thursday',
+  FRIDAY: 'slaPolicy.friday',
+  SATURDAY: 'slaPolicy.saturday',
+  SUNDAY: 'slaPolicy.sunday',
+});
 
 const MAX_HOLIDAYS = 500;
 const MIDNIGHT = '24:00';
 /** The hours a workday starts with when it is first turned on. */
 const DEFAULT_OPENS = '09:00';
 const DEFAULT_CLOSES = '18:00';
-const NOTICE = '목표를 하나라도 정하면 그때부터 올라오는 문의에 기한이 붙습니다. 이미 있는 문의에는 붙지 않습니다.';
-const ALL_DAY = '업무일을 하나도 고르지 않으면 하루 24시간으로 셉니다.';
-const HOLIDAY_LIMIT = '쉬는 날은 500개까지입니다.';
-const NOTHING_CHANGED = '바뀐 것이 없습니다.';
-const SAVED = 'SLA 정책을 저장했습니다. 열린 문의의 기한을 다시 계산합니다.';
-const OUT_OF_RANGE = '1분에서 525,600분 사이로 정합니다.';
-const TOO_SHORT = '해결 목표는 첫 응답 목표보다 짧을 수 없습니다.';
-const END_BEFORE_START = '끝 시각은 시작 시각보다 늦어야 합니다.';
-const DAY_TAKEN = '이미 있는 날짜입니다.';
-const CONFLICT = '다른 관리자가 먼저 바꿨습니다. 다시 읽은 뒤 고쳐 주세요.';
-const READ_FAILED = 'SLA 정책을 읽지 못했습니다. 다시 해 보세요.';
+// Read in the screen language each time a field is read.
+const TEXT_SLA = texts({
+  notice: 'slaPolicy.notice',
+  allDay: 'slaPolicy.allDay',
+  holidayLimit: 'slaPolicy.holidayLimit',
+  nothingChanged: 'slaPolicy.nothingChanged',
+  saved: 'slaPolicy.saved',
+  dayTaken: 'slaPolicy.dayTaken',
+  conflict: 'slaPolicy.conflict',
+  readFailed: 'slaPolicy.readFailed',
+});
 /** The screen's own code for a resolution goal shorter than the first response goal (the server says OUT_OF_RANGE). */
 const SHORTER = 'SHORTER_THAN_FIRST_RESPONSE';
 
@@ -120,14 +121,14 @@ const closesField = (i: number) => `hours[${String(i)}].closes`;
 function fieldSpecs(): Record<string, FieldSpec> {
   const specs: Record<string, FieldSpec> = {};
   PRIORITIES.forEach((p, i) => {
-    specs[firstField(i)] = { id: `sla-${p}-first`, text: { OUT_OF_RANGE } };
-    specs[resolutionField(i)] = { id: `sla-${p}-resolution`, text: { OUT_OF_RANGE, [SHORTER]: TOO_SHORT } };
+    specs[firstField(i)] = { id: `sla-${p}-first`, text: texts({ OUT_OF_RANGE: 'slaPolicy.outOfRange' }) };
+    specs[resolutionField(i)] = { id: `sla-${p}-resolution`, text: texts({ OUT_OF_RANGE: 'slaPolicy.outOfRange', [SHORTER]: 'slaPolicy.tooShort' }) };
   });
   WEEKDAYS.forEach((d, i) => {
     specs[opensField(i)] = { id: `sla-${d}-opens` };
-    specs[closesField(i)] = { id: `sla-${d}-closes`, text: { OUT_OF_RANGE: END_BEFORE_START } };
+    specs[closesField(i)] = { id: `sla-${d}-closes`, text: texts({ OUT_OF_RANGE: 'slaPolicy.endBeforeStart' }) };
   });
-  specs.holidays = { id: 'sla-holiday', text: { UNKNOWN_VALUE: DAY_TAKEN, TOO_MANY: HOLIDAY_LIMIT } };
+  specs.holidays = { id: 'sla-holiday', text: texts({ UNKNOWN_VALUE: 'slaPolicy.dayTaken', TOO_MANY: 'slaPolicy.holidayLimit' }) };
   return specs;
 }
 
@@ -168,14 +169,19 @@ function StatusLine(props: { policy: SlaPolicy }) {
     <div className="pd-sla-status">
       {on ? (
         <p>
-          SLA가 켜져 있습니다. 버전 {policy.version}, <RelativeTime dateTime={policy.changedAt} />{' '}
-          {policy.changedBy === null ? '시간대가 바뀌어 시스템이 바꿈' : `${subject(policy.changedBy.name)} 바꿈`}
+          {tf('slaPolicy.on', { version: policy.version })} <RelativeTime dateTime={policy.changedAt} />{' '}
+          {policy.changedBy === null
+            ? t('slaPolicy.changedBySystem')
+            : // The Korean sentence picks its particle; the English one takes the name as it is.
+              tf('slaPolicy.changedBy', { name: screenLocale() === 'ko' ? subject(policy.changedBy.name) : policy.changedBy.name })}
         </p>
       ) : (
-        <p>SLA가 꺼져 있습니다.</p>
+        <p>{t('slaPolicy.off')}</p>
       )}
       <p className="pd-muted">
-        시간대: {policy.timeZone}(설정 파일의 <code className="pd-code">POPDESK_TIMEZONE</code>)
+        {tf('slaPolicy.timeZoneBefore', { timeZone: policy.timeZone })}
+        <code className="pd-code">POPDESK_TIMEZONE</code>
+        {t('slaPolicy.timeZoneAfter')}
       </p>
     </div>
   );
@@ -219,7 +225,7 @@ export function C13SlaPolicy() {
   const addHoliday = () => {
     if (draft === null || holiday === '' || draft.holidays.length >= MAX_HOLIDAYS) return;
     if (draft.holidays.includes(holiday)) {
-      setHolidayError(DAY_TAKEN);
+      setHolidayError(TEXT_SLA.dayTaken);
       return;
     }
     edit((d) => ({ ...d, holidays: [...d.holidays, holiday].sort() }));
@@ -241,7 +247,7 @@ export function C13SlaPolicy() {
     setFailure(null);
     if (sameBody(body, bodyOf(draftOf(policy), policy.version))) {
       fields.clear();
-      setNotice(NOTHING_CHANGED);
+      setNotice(TEXT_SLA.nothingChanged);
       return;
     }
     setNotice(null);
@@ -254,7 +260,7 @@ export function C13SlaPolicy() {
       fields.clear();
       setPolicy(result.data);
       setDraft(draftOf(result.data));
-      setNotice(SAVED);
+      setNotice(TEXT_SLA.saved);
     } else if (result.failure.kind === 'invalid') {
       fields.applyFields(problemsFor(result.failure.fields, body), result.failure.message);
     } else if (result.failure.kind === 'rejected' && result.failure.code === 'VERSION_CONFLICT') {
@@ -267,16 +273,16 @@ export function C13SlaPolicy() {
 
   const columns: DataTableColumn<Priority>[] = draft
     ? [
-        { key: 'priority', header: '우선순위', cell: (p) => <PriorityLabel priority={p} /> },
+        { key: 'priority', header: t('slaPolicy.priority'), cell: (p) => <PriorityLabel priority={p} /> },
         {
           key: 'first',
-          header: '첫 응답(분)',
+          header: t('slaPolicy.first'),
           cell: (p) => {
             const i = PRIORITIES.indexOf(p);
             return (
               <TextField
                 id={`sla-${p}-first`}
-                label={`${PRIORITY_WORDS[p]} 첫 응답(분)`}
+                label={tf('slaPolicy.firstOf', { priority: PRIORITY_WORDS[p] })}
                 type="number"
                 min={1}
                 max={525600}
@@ -292,13 +298,13 @@ export function C13SlaPolicy() {
         },
         {
           key: 'resolution',
-          header: '해결(분)',
+          header: t('slaPolicy.resolution'),
           cell: (p) => {
             const i = PRIORITIES.indexOf(p);
             return (
               <TextField
                 id={`sla-${p}-resolution`}
-                label={`${PRIORITY_WORDS[p]} 해결(분)`}
+                label={tf('slaPolicy.resolutionOf', { priority: PRIORITY_WORDS[p] })}
                 type="number"
                 min={1}
                 max={525600}
@@ -319,9 +325,9 @@ export function C13SlaPolicy() {
 
   return (
     <div className="pd-screen pd-sla">
-      <PageTitle>SLA 설정</PageTitle>
-      <p className="pd-muted">{NOTICE}</p>
-      {load.status === 'failed' && <LoadFailed text={READ_FAILED} onRetry={reload} />}
+      <PageTitle>{t('slaPolicy.title')}</PageTitle>
+      <p className="pd-muted">{TEXT_SLA.notice}</p>
+      {load.status === 'failed' && <LoadFailed text={TEXT_SLA.readFailed} onRetry={reload} />}
       {policy && draft && (
         <>
           <StatusLine policy={policy} />
@@ -331,27 +337,27 @@ export function C13SlaPolicy() {
               tone="error"
               action={
                 <Button variant="secondary" size="sm" onClick={reload}>
-                  다시 불러오기
+                  {TEXT.retryLoad}
                 </Button>
               }
             >
-              {CONFLICT}
+              {TEXT_SLA.conflict}
             </Alert>
           )}
           <SaveFailure failure={failure} />
 
           <section className="pd-section" aria-labelledby="sla-goals-title">
             <h2 id="sla-goals-title" className="pd-section-title">
-              목표
+              {t('slaPolicy.goals')}
             </h2>
             <div className="pd-sla-goals">
-              <DataTable caption="목표" columns={columns} rows={PRIORITIES} rowKey={(p) => p} density="compact" />
+              <DataTable caption={t('slaPolicy.goals')} columns={columns} rows={PRIORITIES} rowKey={(p) => p} density="compact" />
             </div>
           </section>
 
           <section className="pd-section" aria-labelledby="sla-hours-title">
             <h2 id="sla-hours-title" className="pd-section-title">
-              업무 시간
+              {t('slaPolicy.hours')}
             </h2>
             <div className="pd-sla-days">
               {WEEKDAYS.map((d, i) => {
@@ -359,7 +365,7 @@ export function C13SlaPolicy() {
                 return (
                   <div key={d} className="pd-sla-day">
                     <Checkbox
-                      label={`${DAY_WORDS[d]} 업무일`}
+                      label={tf('slaPolicy.workday', { day: DAY_WORDS[d] })}
                       checked={day.work}
                       onChange={(work) => {
                         editDay(d, { work });
@@ -369,7 +375,7 @@ export function C13SlaPolicy() {
                       <div className="pd-sla-times">
                         <TextField
                           id={`sla-${d}-opens`}
-                          label={`${DAY_WORDS[d]} 시작`}
+                          label={tf('slaPolicy.opens', { day: DAY_WORDS[d] })}
                           type="time"
                           value={day.opens}
                           {...errorProp(fields.errors[opensField(i)])}
@@ -380,7 +386,7 @@ export function C13SlaPolicy() {
                         {!day.midnight && (
                           <TextField
                             id={`sla-${d}-closes`}
-                            label={`${DAY_WORDS[d]} 끝`}
+                            label={tf('slaPolicy.closes', { day: DAY_WORDS[d] })}
                             type="time"
                             value={day.closes}
                             {...errorProp(fields.errors[closesField(i)])}
@@ -390,7 +396,7 @@ export function C13SlaPolicy() {
                           />
                         )}
                         <Checkbox
-                          label={`${DAY_WORDS[d]} 자정까지`}
+                          label={tf('slaPolicy.midnight', { day: DAY_WORDS[d] })}
                           checked={day.midnight}
                           onChange={(midnight) => {
                             // A day read as 24:00 has no end time of its own: turning 자정까지 off starts at 18:00, as a new workday does.
@@ -403,17 +409,17 @@ export function C13SlaPolicy() {
                 );
               })}
             </div>
-            <p className="pd-muted">{ALL_DAY}</p>
+            <p className="pd-muted">{TEXT_SLA.allDay}</p>
           </section>
 
           <section className="pd-section" aria-labelledby="sla-holidays-title">
             <h2 id="sla-holidays-title" className="pd-section-title">
-              쉬는 날
+              {t('slaPolicy.holidays')}
             </h2>
             <div className="pd-sla-holiday-add">
               <TextField
                 id="sla-holiday"
-                label="날짜"
+                label={t('slaPolicy.date')}
                 type="date"
                 value={holiday}
                 {...errorProp(holidayError ?? fields.errors.holidays)}
@@ -423,10 +429,10 @@ export function C13SlaPolicy() {
                 }}
               />
               <Button variant="secondary" disabled={full} onClick={addHoliday}>
-                더하기
+                {t('slaPolicy.add')}
               </Button>
             </div>
-            {full && <p className="pd-muted">{HOLIDAY_LIMIT}</p>}
+            {full && <p className="pd-muted">{TEXT_SLA.holidayLimit}</p>}
             {draft.holidays.length > 0 && (
               <ul className="pd-sla-holidays">
                 {draft.holidays.map((h) => (
@@ -439,7 +445,7 @@ export function C13SlaPolicy() {
                         edit((x) => ({ ...x, holidays: x.holidays.filter((y) => y !== h) }));
                       }}
                     >
-                      <span className="pd-sr-only">{h}</span> 빼기
+                      <span className="pd-sr-only">{h}</span> {t('slaPolicy.remove')}
                     </Button>
                   </li>
                 ))}
@@ -447,7 +453,7 @@ export function C13SlaPolicy() {
             )}
           </section>
 
-          {notice !== null && <Alert tone={notice === SAVED ? 'success' : 'info'}>{notice}</Alert>}
+          {notice !== null && <Alert tone={notice === TEXT_SLA.saved ? 'success' : 'info'}>{notice}</Alert>}
           <div className="pd-form-actions">
             <Button
               pending={saving}
@@ -456,7 +462,7 @@ export function C13SlaPolicy() {
                 void save();
               }}
             >
-              저장
+              {t('slaPolicy.save')}
             </Button>
           </div>
         </>

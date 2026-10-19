@@ -10,6 +10,7 @@ import { useBranding } from '../app/branding';
 import { useMainBusy } from '../app/busy';
 import { useFieldErrors, useLive, useLoad, type FieldSpec } from '../app/hooks';
 import { LoadFailed, PageTitle } from '../app/layout';
+import { t, texts, tf } from '../app/locale';
 import { failureText, TEXT } from '../app/messages';
 import { call, type Failure } from '../app/result';
 
@@ -19,23 +20,24 @@ type AccentColors = Schemas['AccentColors'];
 type Theme = 'light' | 'dark';
 
 const THEMES: readonly Theme[] = ['light', 'dark'];
-const THEME_NAMES: Readonly<Record<Theme, string>> = { light: '밝은 테마', dark: '어두운 테마' };
-const LOGO_LABELS: Readonly<Record<Theme, string>> = { light: '밝은 테마 로고', dark: '어두운 테마 로고' };
-
-const NAME_HELP = '로그인 화면, 화면 머리, 탭 제목, 메일의 보내는 이름에 쓰입니다. 1~50자.';
-const LOGO_HELP = 'PNG, JPEG, WebP, 512KB까지. 가로 512px, 세로 128px 안으로 줄여 저장합니다. 하나만 올리면 두 테마에 같이 씁니다.';
-const LOW_CONTRAST = '대비가 모자랍니다(4.5:1 이상이어야 합니다)';
-const BAD_FORMAT = '#과 16진수 여섯 자리로 쓰세요. 예: #047857';
-const PREVIEW_FAILED = '미리 보기를 읽지 못했습니다.';
-const DEFAULT_COLOR = '기본 색';
-const NOTHING_CHANGED = '바뀐 것이 없습니다.';
-const SAVED = '브랜딩을 저장했습니다.';
-const READ_FAILED = '브랜딩을 읽지 못했습니다. 다시 해 보세요.';
-const CONFLICT = '다른 관리자가 먼저 바꿨습니다. 다시 읽은 뒤 고쳐 주세요.';
-const NAME_REQUIRED = '표시 이름을 쓰세요.';
-const LOGO_TOO_BIG = '로고가 512KB를 넘습니다. 더 작은 파일을 올리세요.';
-const LOGO_UNSUPPORTED = 'PNG, JPEG, WebP 이미지만 올릴 수 있습니다. 파일이 깨지지 않았는지도 확인하세요.';
-const LOGO_TOO_MANY_PIXELS = '이미지의 가로×세로가 너무 큽니다. 더 작게 줄인 이미지를 올리세요.';
+// Read each time they are used, so they follow the screen language.
+const THEME_NAMES = texts<Theme>({ light: 'branding.lightTheme', dark: 'branding.darkTheme' });
+const LOGO_LABELS = texts<Theme>({ light: 'branding.lightLogo', dark: 'branding.darkLogo' });
+const WORDS = texts({
+  nameHelp: 'branding.nameHelp',
+  logoHelp: 'branding.logoHelp',
+  lowContrast: 'branding.lowContrast',
+  badFormat: 'branding.badFormat',
+  previewFailed: 'branding.previewFailed',
+  defaultColor: 'branding.defaultColor',
+  nothingChanged: 'branding.nothingChanged',
+  saved: 'branding.saved',
+  readFailed: 'branding.readFailed',
+  conflict: 'branding.conflict',
+  logoTooBig: 'branding.logoTooBig',
+  logoUnsupported: 'branding.logoUnsupported',
+  logoTooManyPixels: 'branding.logoTooManyPixels',
+});
 const LOGO_TYPES = 'image/png,image/jpeg,image/webp';
 /** The color input's value while the text field holds no right color yet: the default emerald. */
 const DEFAULT_PICK = '#047857';
@@ -49,9 +51,9 @@ type FieldName = 'displayName' | 'accent';
 const SPECS: Record<FieldName, FieldSpec> = {
   displayName: {
     id: 'branding-name',
-    text: { REQUIRED: NAME_REQUIRED, BLANK: NAME_REQUIRED, TOO_LONG: '50자까지 쓸 수 있습니다.', INVALID_FORMAT: '표시 이름에 쓸 수 없는 글자가 있습니다.' },
+    text: texts({ REQUIRED: 'branding.nameRequired', BLANK: 'branding.nameRequired', TOO_LONG: 'branding.nameTooLong', INVALID_FORMAT: 'branding.nameBadChars' }),
   },
-  accent: { id: 'branding-accent', text: { INVALID_FORMAT: BAD_FORMAT, LOW_CONTRAST } },
+  accent: { id: 'branding-accent', text: texts({ INVALID_FORMAT: 'branding.badFormat', LOW_CONTRAST: 'branding.lowContrast' }) },
 };
 
 interface Draft {
@@ -87,8 +89,8 @@ function isRefused(preview: Preview, accent: string): boolean {
 }
 
 function logoFailureText(failure: Failure): string {
-  if (failure.kind === 'tooLarge') return LOGO_TOO_BIG;
-  return failureText(failure, { UNSUPPORTED_IMAGE: LOGO_UNSUPPORTED, IMAGE_TOO_LARGE: LOGO_TOO_MANY_PIXELS });
+  if (failure.kind === 'tooLarge') return WORDS.logoTooBig;
+  return failureText(failure, { UNSUPPORTED_IMAGE: WORDS.logoUnsupported, IMAGE_TOO_LARGE: WORDS.logoTooManyPixels });
 }
 
 // Optional props are left out, not given as undefined (exactOptionalPropertyTypes).
@@ -104,7 +106,7 @@ function Pane(props: { theme: Theme; preview: Preview }) {
       <div className="pd-brand-pane" data-pane-theme={theme}>
         <p className="pd-brand-pane-title">{name}</p>
         <Samples />
-        <p className="pd-brand-pane-line">{DEFAULT_COLOR}</p>
+        <p className="pd-brand-pane-line">{WORDS.defaultColor}</p>
       </div>
     );
   }
@@ -129,7 +131,7 @@ function Pane(props: { theme: Theme; preview: Preview }) {
         </div>
       )}
       <p className="pd-brand-pane-line">
-        강조색 {colors.accent} · 가장 낮은 대비 {contrast.toFixed(2)}:1
+        {tf('branding.paneLine', { accent: colors.accent, contrast: contrast.toFixed(2) })}
       </p>
     </div>
   );
@@ -138,9 +140,9 @@ function Pane(props: { theme: Theme; preview: Preview }) {
 function Samples() {
   return (
     <div className="pd-brand-samples" aria-hidden="true">
-      <span className="pd-brand-sample-button">주 버튼</span>
-      <span className="pd-brand-sample-link">링크</span>
-      <span className="pd-brand-sample-row">고른 줄</span>
+      <span className="pd-brand-sample-button">{t('branding.sampleButton')}</span>
+      <span className="pd-brand-sample-link">{t('branding.sampleLink')}</span>
+      <span className="pd-brand-sample-row">{t('branding.sampleRow')}</span>
     </div>
   );
 }
@@ -257,17 +259,17 @@ export function C14Branding() {
     const accent = draft.useDefault ? null : draft.accent.toUpperCase();
     if (accent !== null && !HEX.test(accent)) {
       setNotice(null);
-      fields.setError('accent', BAD_FORMAT);
+      fields.setError('accent', WORDS.badFormat);
       return;
     }
     if (accent !== null && isRefused(preview, accent)) {
       setNotice(null);
-      fields.setError('accent', LOW_CONTRAST);
+      fields.setError('accent', WORDS.lowContrast);
       return;
     }
     if (displayName === branding.displayName && accent === branding.accent) {
       fields.clear();
-      setNotice(NOTHING_CHANGED);
+      setNotice(WORDS.nothingChanged);
       return;
     }
     setNotice(null);
@@ -283,7 +285,7 @@ export function C14Branding() {
       setBranding((b) => ({ ...result.data, logos: b?.logos ?? result.data.logos }));
       setDraft(draftOf(result.data));
       setPreview(previewOf(result.data));
-      setNotice(SAVED);
+      setNotice(WORDS.saved);
     } else if (result.failure.kind === 'invalid') {
       fields.applyFields(result.failure.fields, result.failure.message);
     } else if (result.failure.kind === 'rejected' && result.failure.code === 'VERSION_CONFLICT') {
@@ -328,12 +330,12 @@ export function C14Branding() {
   const formatBad = accentNow !== null && accentNow !== '' && !HEX.test(accentNow);
   const refused = accentNow !== null && isRefused(preview, accentNow);
   const accentError = draft?.useDefault ? undefined : fields.errors.accent;
-  const accentHelp = accentError !== undefined ? undefined : formatBad ? BAD_FORMAT : refused ? LOW_CONTRAST : undefined;
+  const accentHelp = accentError !== undefined ? undefined : formatBad ? WORDS.badFormat : refused ? WORDS.lowContrast : undefined;
 
   return (
     <div className="pd-screen pd-branding">
-      <PageTitle>브랜딩</PageTitle>
-      {load.status === 'failed' && <LoadFailed text={READ_FAILED} onRetry={reload} />}
+      <PageTitle>{t('branding.title')}</PageTitle>
+      {load.status === 'failed' && <LoadFailed text={WORDS.readFailed} onRetry={reload} />}
       {branding && draft && (
         <>
           <FieldSummary summary={fields.summary} />
@@ -342,25 +344,25 @@ export function C14Branding() {
               tone="error"
               action={
                 <Button variant="secondary" size="sm" onClick={reload}>
-                  다시 불러오기
+                  {TEXT.retryLoad}
                 </Button>
               }
             >
-              {CONFLICT}
+              {WORDS.conflict}
             </Alert>
           )}
           <SaveFailure failure={failure} />
 
           <section className="pd-section" aria-labelledby="branding-name-title">
             <h2 id="branding-name-title" className="pd-section-title">
-              표시 이름
+              {t('branding.displayName')}
             </h2>
             <div className="pd-branding-name">
               <TextField
                 id="branding-name"
-                label="표시 이름"
+                label={t('branding.displayName')}
                 value={draft.name}
-                helpText={NAME_HELP}
+                helpText={WORDS.nameHelp}
                 {...errorProp(fields.errors.displayName)}
                 onChange={editName}
               />
@@ -369,12 +371,12 @@ export function C14Branding() {
 
           <section className="pd-section" aria-labelledby="branding-accent-title">
             <h2 id="branding-accent-title" className="pd-section-title">
-              강조색
+              {t('branding.accent')}
             </h2>
             <div className="pd-branding-accent">
               <TextField
                 id="branding-accent"
-                label="강조색"
+                label={t('branding.accent')}
                 value={draft.accent}
                 placeholder="#047857"
                 autoComplete="off"
@@ -387,7 +389,7 @@ export function C14Branding() {
               <input
                 className="pd-color-input"
                 type="color"
-                aria-label="강조색 고르기"
+                aria-label={t('branding.pickAccent')}
                 value={picked.toLowerCase()}
                 disabled={draft.useDefault}
                 onChange={(e) => {
@@ -395,9 +397,9 @@ export function C14Branding() {
                 }}
               />
             </div>
-            <Checkbox label="기본 색 쓰기" checked={draft.useDefault} onChange={toggleDefault} />
+            <Checkbox label={t('branding.useDefault')} checked={draft.useDefault} onChange={toggleDefault} />
             {preview.kind === 'failed' ? (
-              <p className="pd-muted">{PREVIEW_FAILED}</p>
+              <p className="pd-muted">{WORDS.previewFailed}</p>
             ) : (
               <div className="pd-brand-panes">
                 {THEMES.map((theme) => (
@@ -409,9 +411,9 @@ export function C14Branding() {
 
           <section className="pd-section" aria-labelledby="branding-logo-title">
             <h2 id="branding-logo-title" className="pd-section-title">
-              로고
+              {t('branding.logo')}
             </h2>
-            <p className="pd-muted">{LOGO_HELP}</p>
+            <p className="pd-muted">{WORDS.logoHelp}</p>
             <div className="pd-branding-logos">
               {THEMES.map((theme) => {
                 const other: Theme = theme === 'light' ? 'dark' : 'light';
@@ -434,16 +436,16 @@ export function C14Branding() {
                     onRemove={() => {
                       void remove(theme);
                     }}
-                    uploadLabel="올리기"
-                    changeLabel="바꾸기"
-                    removeLabel="지우기"
+                    uploadLabel={t('branding.upload')}
+                    changeLabel={t('branding.change')}
+                    removeLabel={t('branding.remove')}
                   />
                 );
               })}
             </div>
           </section>
 
-          {notice !== null && <Alert tone={notice === SAVED ? 'success' : 'info'}>{notice}</Alert>}
+          {notice !== null && <Alert tone={notice === WORDS.saved ? 'success' : 'info'}>{notice}</Alert>}
           <div className="pd-form-actions">
             <Button
               pending={saving}
@@ -452,7 +454,7 @@ export function C14Branding() {
                 void save();
               }}
             >
-              저장
+              {t('branding.save')}
             </Button>
           </div>
         </>

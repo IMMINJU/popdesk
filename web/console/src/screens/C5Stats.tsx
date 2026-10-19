@@ -12,16 +12,14 @@ import { LoadFailed, PageTitle } from '../app/layout';
 import { slaLength } from '../app/messages';
 import { call } from '../app/result';
 import { useSession } from '../app/sessionContext';
-import { screenLocale } from '../app/locale';
+import { formatNumber, t, tf } from '../app/locale';
 
 type CompanyStat = Schemas['CompanyStat'];
 type SlaGoalStat = Schemas['SlaGoalStat'];
 
-const READ_FAILED = '통계를 읽지 못했습니다. 다시 해 보세요.';
-
 /** A count, with a link to the issues it counts unless it is 0. 전체 filters by the company alone. */
 function count(s: CompanyStat, n: number, status: IssueStatus[]) {
-  const shown = n.toLocaleString(screenLocale());
+  const shown = formatNumber(n);
   if (n === 0) return shown;
   return <Link to={issuesHref({ companyCode: s.companyCode, status })}>{shown}</Link>;
 }
@@ -29,49 +27,47 @@ function count(s: CompanyStat, n: number, status: IssueStatus[]) {
 /** A goal's cell: the median over the share kept, rounded down (249/250 is 99%). */
 function goalCell(g: SlaGoalStat) {
   const counted = g.met + g.missed;
-  if (counted === 0) return '없음';
+  if (counted === 0) return t('stats.none');
   const share = Math.floor((g.met * 100) / counted);
   return (
     <span className="pd-two-lines pd-stats-sla">
-      <span>{g.medianMinutes === null ? '중앙값 없음' : `중앙값 ${slaLength(g.medianMinutes)}`}</span>
-      <span>{`지킴 ${String(share)}% (${g.met.toLocaleString(screenLocale())}/${counted.toLocaleString(screenLocale())})`}</span>
+      <span>{g.medianMinutes === null ? t('stats.noMedian') : tf('stats.median', { length: slaLength(g.medianMinutes) })}</span>
+      <span>{tf('stats.kept', { share, met: formatNumber(g.met), counted: formatNumber(counted) })}</span>
     </span>
   );
 }
 
-const PERIODS = [
-  { value: '7', label: '최근 7일' },
-  { value: '30', label: '최근 30일' },
-  { value: '90', label: '최근 90일' },
-] as const;
+const PERIOD_DAYS = ['7', '30', '90'] as const;
+const periods = () => PERIOD_DAYS.map((value) => ({ value, label: tf('stats.lastDays', { days: value }) }));
 const DEFAULT_DAYS = '30';
 
-const columns: DataTableColumn<CompanyStat>[] = [
+// Built while drawing, so the headers follow the screen language.
+const columns = (): DataTableColumn<CompanyStat>[] => [
   {
     key: 'company',
-    header: '고객사',
+    header: t('stats.company'),
     cell: (s) => (
       <span className="pd-two-lines pd-stats-company">
         <span className="pd-key">{s.companyCode}</span>
         <span className="pd-inline">
           <Link to={issuesHref({ companyCode: s.companyCode })}>{s.companyName}</Link>
-          {s.companyStatus === 'ARCHIVED' && <Badge tone="neutral">보관</Badge>}
+          {s.companyStatus === 'ARCHIVED' && <Badge tone="neutral">{t('stats.archived')}</Badge>}
         </span>
       </span>
     ),
   },
-  { key: 'total', header: '전체', cell: (s) => count(s, s.total, []), align: 'end' },
-  { key: 'open', header: '열림', cell: (s) => count(s, s.open, ['RECEIVED', 'CONFIRMED']), align: 'end' },
+  { key: 'total', header: t('stats.total'), cell: (s) => count(s, s.total, []), align: 'end' },
+  { key: 'open', header: t('stats.open'), cell: (s) => count(s, s.open, ['RECEIVED', 'CONFIRMED']), align: 'end' },
   { key: 'inProgress', header: ISSUE_STATUS_WORDS.IN_PROGRESS.agent, cell: (s) => count(s, s.inProgress, ['IN_PROGRESS']), align: 'end' },
   { key: 'resolved', header: ISSUE_STATUS_WORDS.RESOLVED.agent, cell: (s) => count(s, s.resolved, ['RESOLVED']), align: 'end' },
   { key: 'closed', header: ISSUE_STATUS_WORDS.CLOSED.agent, cell: (s) => count(s, s.closed, ['CLOSED']), align: 'end' },
 ];
 
 // Eight columns scroll sideways on a narrow window with the company held in place.
-const slaColumns: DataTableColumn<CompanyStat>[] = [
-  ...columns.map((c) => (c.key === 'company' ? { ...c, sticky: true } : c)),
-  { key: 'firstResponse', header: '첫 응답 SLA', cell: (s) => (s.sla === null ? '없음' : goalCell(s.sla.firstResponse)) },
-  { key: 'resolution', header: '해결 SLA', cell: (s) => (s.sla === null ? '없음' : goalCell(s.sla.resolution)) },
+const slaColumns = (): DataTableColumn<CompanyStat>[] => [
+  ...columns().map((c) => (c.key === 'company' ? { ...c, sticky: true } : c)),
+  { key: 'firstResponse', header: t('stats.firstResponse'), cell: (s) => (s.sla === null ? t('stats.none') : goalCell(s.sla.firstResponse)) },
+  { key: 'resolution', header: t('stats.resolution'), cell: (s) => (s.sla === null ? t('stats.none') : goalCell(s.sla.resolution)) },
 ];
 
 export function C5Stats() {
@@ -79,7 +75,7 @@ export function C5Stats() {
   // The period lives in the address alone, 30 when it holds none or one the list does not take.
   const [searchParams, setParams] = useSearchParams();
   const asked = searchParams.get('days');
-  const days = PERIODS.find((p) => p.value === asked)?.value ?? DEFAULT_DAYS;
+  const days = PERIOD_DAYS.find((p) => p === asked) ?? DEFAULT_DAYS;
   // The answer keeps the period it was read for: an older one on screen means reading again.
   const load = useLoad(async () => {
     const result = await call(api.GET('/api/console/stats', { params: { query: { days: Number(days) } } }));
@@ -106,10 +102,10 @@ export function C5Stats() {
 
   return (
     <div className="pd-screen pd-stats">
-      <PageTitle>통계</PageTitle>
+      <PageTitle>{t('stats.title')}</PageTitle>
       {load.status === 'failed' && (
         <LoadFailed
-          text={READ_FAILED}
+          text={t('stats.readFailed')}
           onRetry={() => {
             void load.reload();
           }}
@@ -121,8 +117,8 @@ export function C5Stats() {
           {slaOn && (
             <div className="pd-filters">
               <Select
-                label="SLA 기간"
-                options={PERIODS}
+                label={t('stats.period')}
+                options={periods()}
                 value={days}
                 onChange={(next) => {
                   choose(next);
@@ -132,17 +128,17 @@ export function C5Stats() {
           )}
           <div aria-busy={rereading ? 'true' : undefined}>
             <DataTable
-              caption={`고객사별 문의 수, ${String(items.length)}곳`}
-              columns={slaOn ? slaColumns : columns}
+              caption={tf('stats.caption', { count: items.length })}
+              columns={slaOn ? slaColumns() : columns()}
               rows={items}
               rowKey={(s) => s.companyCode}
               status={firstLoad ? 'loading' : 'ready'}
               skeletonRows={load.slow ? 5 : 0}
-              empty={<EmptyState title={me?.role === 'ADMIN' ? '아직 고객사가 없습니다.' : '배정된 고객사가 없습니다.'} />}
+              empty={<EmptyState title={me?.role === 'ADMIN' ? t('stats.noCompanies') : t('stats.noAssigned')} />}
             />
           </div>
-          <p className="pd-muted">휴지통의 문의는 세지 않습니다.</p>
-          {slaOn && <p className="pd-muted">SLA 칸은 고른 기간에 멈춘 목표만 셉니다. 시간은 업무 시간입니다.</p>}
+          <p className="pd-muted">{t('stats.trashNotCounted')}</p>
+          {slaOn && <p className="pd-muted">{t('stats.slaNote')}</p>}
         </>
       )}
     </div>

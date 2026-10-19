@@ -7,6 +7,7 @@ import { api, type Schemas } from '../api';
 import { useMainBusy } from '../app/busy';
 import { useLive, useLoad } from '../app/hooks';
 import { LoadFailed, PageTitle } from '../app/layout';
+import { texts, tf } from '../app/locale';
 import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, usePageMove, usePageParam } from '../app/paging';
 import { call, failureOf } from '../app/result';
@@ -16,11 +17,28 @@ import { purgeInText } from '../app/trashWords';
 type TrashedIssue = Schemas['TrashedIssue'];
 
 const PATH = '/trash';
-const CHANGE_FAILED = '휴지통을 바꾸지 못했습니다. 다시 해 보세요.';
-const PURGE_TITLE = '이 문의를 영구 삭제할까요?';
-const PURGE_TEXT = '내용, 댓글, 첨부, 작업, 연결이 지워지고 되돌릴 수 없습니다.';
-/** The "지운 사람" of an issue the retention cleanup moved (10b screens.md C-11): the API gives no person. */
-const BY_CLEANUP = '자동 정리';
+// `byCleanup` is the "지운 사람" of an issue the retention cleanup moved (10b screens.md C-11): the API gives no person.
+const WORDS = texts({
+  changeFailed: 'trash.changeFailed',
+  purgeTitle: 'trash.purgeTitle',
+  purgeText: 'trash.purgeText',
+  byCleanup: 'trash.byCleanup',
+  restored: 'trash.restored',
+  restore: 'trash.restore',
+  purge: 'trash.purge',
+  issue: 'trash.issue',
+  company: 'trash.company',
+  status: 'trash.status',
+  deletedAt: 'trash.deletedAt',
+  deletedBy: 'trash.deletedBy',
+  actions: 'trash.actions',
+  title: 'trash.title',
+  help: 'trash.help',
+  noneOnPage: 'trash.noneOnPage',
+  empty: 'trash.empty',
+  keep: 'trash.keep',
+  purging: 'trash.purging',
+});
 
 /** What happened to a row on this page since it was read. */
 type Mark = { restoring: true } | { restored: true } | { error: string };
@@ -68,8 +86,8 @@ export function C11Trash() {
     else if (failure?.kind === 'unauthenticated') toLogin();
     else if (failure?.kind === 'rejected' && failure.code === 'RESTORE_LINK_CONFLICT') {
       const others = answer?.error?.issueKeys ?? [];
-      mark(on, t.key, { error: `연결 규칙에 걸려 복구하지 못했습니다: ${others.join(', ')}` });
-    } else mark(on, t.key, { error: CHANGE_FAILED });
+      mark(on, t.key, { error: tf('trash.linkConflict', { keys: others.join(', ') }) });
+    } else mark(on, t.key, { error: WORDS.changeFailed });
   };
 
   // 영구 삭제: asked first; an answer for a question already closed is dropped unless it succeeded.
@@ -101,7 +119,7 @@ export function C11Trash() {
       readAgain();
     } else {
       setPurgePending(false);
-      setPurgeError(CHANGE_FAILED);
+      setPurgeError(WORDS.changeFailed);
     }
   };
 
@@ -110,7 +128,7 @@ export function C11Trash() {
     if (m && 'restored' in m) {
       return (
         <span className="pd-inline">
-          복구했습니다. <Link to={`/issues/${encodeURIComponent(t.key)}`}>{t.key} 열기</Link>
+          {WORDS.restored} <Link to={`/issues/${encodeURIComponent(t.key)}`}>{tf('trash.open', { key: t.key })}</Link>
         </span>
       );
     }
@@ -125,7 +143,7 @@ export function C11Trash() {
               void restore(t);
             }}
           >
-            <span className="pd-sr-only">{t.key}</span> 복구
+            <span className="pd-sr-only">{t.key}</span> {WORDS.restore}
           </Button>
           <Button
             variant="quiet"
@@ -136,7 +154,7 @@ export function C11Trash() {
               setPurging(t);
             }}
           >
-            <span className="pd-sr-only">{t.key}</span> 영구 삭제
+            <span className="pd-sr-only">{t.key}</span> {WORDS.purge}
           </Button>
         </span>
         {m && 'error' in m && <Alert tone="error">{m.error}</Alert>}
@@ -147,7 +165,7 @@ export function C11Trash() {
   const columns: DataTableColumn<TrashedIssue>[] = [
     {
       key: 'issue',
-      header: '문의',
+      header: WORDS.issue,
       cell: (t) => (
         <span className="pd-two-lines pd-trash-issue">
           <span className="pd-key">{t.key}</span>
@@ -155,18 +173,18 @@ export function C11Trash() {
         </span>
       ),
     },
-    { key: 'company', header: '고객사', cell: (t) => t.companyName },
-    { key: 'status', header: '상태', cell: (t) => <StatusBadge kind="issue" status={t.status} audience="agent" /> },
-    { key: 'deletedAt', header: '지운 시각', cell: (t) => <RelativeTime dateTime={t.deletedAt} /> },
-    { key: 'deletedBy', header: '지운 사람', cell: (t) => (t.deletedBy === null ? <span className="pd-muted">{BY_CLEANUP}</span> : t.deletedBy.name) },
-    { key: 'purgeAt', header: '영구 삭제', cell: (t) => purgeInText(t.purgeAt, now) },
-    { key: 'actions', header: <span className="pd-sr-only">동작</span>, cell: actions },
+    { key: 'company', header: WORDS.company, cell: (t) => t.companyName },
+    { key: 'status', header: WORDS.status, cell: (t) => <StatusBadge kind="issue" status={t.status} audience="agent" /> },
+    { key: 'deletedAt', header: WORDS.deletedAt, cell: (t) => <RelativeTime dateTime={t.deletedAt} /> },
+    { key: 'deletedBy', header: WORDS.deletedBy, cell: (t) => (t.deletedBy === null ? <span className="pd-muted">{WORDS.byCleanup}</span> : t.deletedBy.name) },
+    { key: 'purgeAt', header: WORDS.purge, cell: (t) => purgeInText(t.purgeAt, now) },
+    { key: 'actions', header: <span className="pd-sr-only">{WORDS.actions}</span>, cell: actions },
   ];
 
   return (
     <div className="pd-screen pd-trash">
-      <PageTitle titleRef={heading}>휴지통</PageTitle>
-      <p className="pd-muted">지운 문의는 30일 뒤 영구 삭제됩니다.</p>
+      <PageTitle titleRef={heading}>{WORDS.title}</PageTitle>
+      <p className="pd-muted">{WORDS.help}</p>
       {load.status === 'failed' && (
         <LoadFailed
           onRetry={() => {
@@ -176,14 +194,14 @@ export function C11Trash() {
       )}
       {(load.status !== 'failed' || data) && (
         <DataTable
-          caption={`휴지통, ${String(data?.totalElements ?? 0)}건`}
+          caption={tf('trash.caption', { count: data?.totalElements ?? 0 })}
           columns={columns}
           rows={data?.items ?? []}
           rowKey={(t) => t.key}
           status={firstLoad ? 'loading' : 'ready'}
           skeletonRows={load.slow ? 8 : 0}
           density="compact"
-          empty={<EmptyState title={outOfRange ? '이 쪽에는 지운 문의가 없습니다.' : '휴지통이 비었습니다.'} />}
+          empty={<EmptyState title={outOfRange ? WORDS.noneOnPage : WORDS.empty} />}
         />
       )}
       {/* A page past the end (its rows were restored or purged) keeps the way back to the pages before it. */}
@@ -194,12 +212,12 @@ export function C11Trash() {
       <ConfirmDialog
         open={purging !== null}
         tone="danger"
-        title={PURGE_TITLE}
-        message={PURGE_TEXT}
-        confirmLabel="영구 삭제"
-        cancelLabel="그만두기"
+        title={WORDS.purgeTitle}
+        message={WORDS.purgeText}
+        confirmLabel={WORDS.purge}
+        cancelLabel={WORDS.keep}
         pending={purgePending}
-        pendingLabel="지우는 중…"
+        pendingLabel={WORDS.purging}
         {...(purgeError === undefined ? {} : { error: purgeError })}
         onConfirm={() => {
           void purge();

@@ -5,7 +5,7 @@ import { Alert, Badge, Button, DataTable, RelativeTime, type DataTableColumn } f
 import type { ReactNode } from 'react';
 import type { Schemas } from '../api';
 import { TEXT } from '../app/messages';
-import { screenLocale } from '../app/locale';
+import { formatNumber, t, texts, tf } from '../app/locale';
 
 type SystemStatus = Schemas['SystemStatus'];
 type ChannelStatus = Schemas['ChannelStatus'];
@@ -23,18 +23,14 @@ const SANDBOX_DOC = `${DOCS}#a-sandbox`;
 /** Where an operator reads which environment variables turn receiving email on. */
 const MAIL_IN_DOC = `${DOCS}#receiving-email`;
 
-const FORWARD = '감사 바깥 사본';
-const CHANNEL_WORDS: Record<FailedDelivery['channel'], string> = { MAIL: '메일', WEBHOOK: '웹훅', AUDIT_FORWARD: FORWARD };
+const CHANNEL_WORDS: Readonly<Record<FailedDelivery['channel'], string>> = texts({ MAIL: 'system.mail', WEBHOOK: 'system.webhook', AUDIT_FORWARD: 'system.forward' });
 const CHANNEL_KEYS = { MAIL: 'mail', WEBHOOK: 'webhook', AUDIT_FORWARD: 'auditForward' } as const;
-const NEVER = '아직 없음';
 
 /** The band under the title while the installation is a sandbox. */
 export function SandboxBand(props: { mailToSet: boolean }) {
   return (
     <Alert tone="info">
-      {props.mailToSet
-        ? '샌드박스로 떠 있습니다. 메일은 설정한 한 주소로만 가고, 웹훅과 감사 바깥 사본은 보내지 않습니다.'
-        : '샌드박스로 떠 있습니다. 메일, 웹훅, 감사 바깥 사본을 보내지 않습니다.'}
+      {props.mailToSet ? t('system.sandboxMailTo') : t('system.sandboxNoMail')}
     </Alert>
   );
 }
@@ -50,30 +46,30 @@ interface ChannelRow {
   bySandbox: boolean;
 }
 
-const channelColumns: DataTableColumn<ChannelRow>[] = [
-  { key: 'name', header: '채널', cell: (c) => <span className="pd-strong">{c.name}</span> },
+const channelColumns = (): DataTableColumn<ChannelRow>[] => [
+  { key: 'name', header: t('system.channel'), cell: (c) => <span className="pd-strong">{c.name}</span> },
   {
     key: 'enabled',
-    header: '상태',
+    header: t('system.state'),
     cell: (c) =>
       c.status.enabled ? (
-        <span className="pd-on">켜짐</span>
+        <span className="pd-on">{t('system.on')}</span>
       ) : (
         <span className="pd-inline">
-          <Badge tone="neutral">{c.bySandbox ? '꺼짐(샌드박스)' : c.off}</Badge>
+          <Badge tone="neutral">{c.bySandbox ? t('system.offSandbox') : c.off}</Badge>
           <a href={c.bySandbox ? SANDBOX_DOC : CONFIG_DOC} target="_blank" rel="noopener noreferrer">
-            {c.bySandbox ? '샌드박스 안내' : c.hint}
+            {c.bySandbox ? t('system.sandboxGuide') : c.hint}
           </a>
         </span>
       ),
   },
   {
     key: 'last',
-    header: '마지막 성공',
-    cell: (c) => (c.status.lastSuccessAt ? <RelativeTime dateTime={c.status.lastSuccessAt} focusable={false} /> : <span className="pd-muted">없음</span>),
+    header: t('system.lastSuccess'),
+    cell: (c) => (c.status.lastSuccessAt ? <RelativeTime dateTime={c.status.lastSuccessAt} focusable={false} /> : <span className="pd-muted">{t('system.none')}</span>),
   },
-  { key: 'queued', header: '보낼 차례', cell: (c) => c.status.queued.toLocaleString(screenLocale()), align: 'end' },
-  { key: 'failed', header: '실패 수', cell: (c) => c.status.failed.toLocaleString(screenLocale()), align: 'end' },
+  { key: 'queued', header: t('system.queued'), cell: (c) => formatNumber(c.status.queued), align: 'end' },
+  { key: 'failed', header: t('system.failedCount'), cell: (c) => formatNumber(c.status.failed), align: 'end' },
 ];
 
 /** The three channels. Without `status` (the first load) only the column heads, or the skeleton rows. */
@@ -82,15 +78,15 @@ export function ChannelTable(props: { status: SystemStatus | undefined; loading?
   // A sandbox turns the webhook and the outside copy off always, and mail when it has no address to send to.
   const rows: ChannelRow[] = s
     ? [
-        { key: 'mail', name: '메일 보내기', off: '설정 없음', hint: '메일 서버 설정 방법', status: s.mail, bySandbox: s.sandbox && !s.sandboxMailToSet },
-        { key: 'webhook', name: '웹훅', off: '설정 없음', hint: '웹훅 설정 방법', status: s.webhook, bySandbox: s.sandbox },
-        { key: 'auditForward', name: FORWARD, off: '꺼짐', hint: `${FORWARD} 설정 방법`, status: s.auditForward, bySandbox: s.sandbox },
+        { key: 'mail', name: t('system.mailOut'), off: t('system.notSet'), hint: t('system.mailHint'), status: s.mail, bySandbox: s.sandbox && !s.sandboxMailToSet },
+        { key: 'webhook', name: t('system.webhook'), off: t('system.notSet'), hint: t('system.webhookHint'), status: s.webhook, bySandbox: s.sandbox },
+        { key: 'auditForward', name: t('system.forward'), off: t('system.off'), hint: t('system.forwardHint'), status: s.auditForward, bySandbox: s.sandbox },
       ]
     : [];
   return (
     <DataTable
-      caption="보내기 채널"
-      columns={channelColumns}
+      caption={t('system.channels')}
+      columns={channelColumns()}
       rows={rows}
       rowKey={(c) => c.key}
       status={props.loading ? 'loading' : 'ready'}
@@ -100,12 +96,12 @@ export function ChannelTable(props: { status: SystemStatus | undefined; loading?
   );
 }
 
-const OIDC_APPS_WORDS: Record<OidcStatus['apps'][number], string> = { CONSOLE: '콘솔', PORTAL: '포털' };
-const OIDC_FAILURE_WORDS: Record<NonNullable<OidcStatus['lastFailure']>['kind'], string> = {
-  DISCOVERY: '제공자 정보를 받지 못함',
-  TOKEN: '토큰을 받지 못함',
-  ID_TOKEN: 'ID 토큰이 맞지 않음',
-};
+const OIDC_APPS_WORDS: Readonly<Record<OidcStatus['apps'][number], string>> = texts({ CONSOLE: 'system.console', PORTAL: 'system.portal' });
+const OIDC_FAILURE_WORDS: Readonly<Record<NonNullable<OidcStatus['lastFailure']>['kind'], string>> = texts({
+  DISCOVERY: 'system.oidcDiscovery',
+  TOKEN: 'system.oidcToken',
+  ID_TOKEN: 'system.oidcIdToken',
+});
 
 /** OIDC sign-in, right after the channels: off, or the apps it is on for and what the app counted since it started. */
 export function OidcPart(props: { oidc: OidcStatus }) {
@@ -113,39 +109,40 @@ export function OidcPart(props: { oidc: OidcStatus }) {
   return (
     <section className="pd-section" aria-labelledby="oidc-title">
       <h2 id="oidc-title" className="pd-section-title">
-        OIDC 로그인
+        {t('system.oidcTitle')}
       </h2>
       {oidc.enabled ? (
         <>
           <ul className="pd-oidc-status">
-            <li>켜짐: {oidc.apps.map((app) => OIDC_APPS_WORDS[app]).join('과 ')}</li>
+            <li>{tf('system.oidcOnFor', { apps: oidc.apps.map((app) => OIDC_APPS_WORDS[app]).join(t('system.appsJoin')) })}</li>
             <li>
-              마지막 성공: {oidc.lastSuccessAt === null ? <span className="pd-muted">앱이 뜬 뒤 없음</span> : <RelativeTime dateTime={oidc.lastSuccessAt} />}
+              {t('system.lastSuccess')}:{' '}
+              {oidc.lastSuccessAt === null ? <span className="pd-muted">{t('system.oidcNoSuccess')}</span> : <RelativeTime dateTime={oidc.lastSuccessAt} />}
             </li>
-            <li>제공자 실패: {oidc.providerFailures.toLocaleString(screenLocale())}건</li>
+            <li>{tf('system.providerFailures', { count: formatNumber(oidc.providerFailures) })}</li>
             {oidc.lastFailure !== null && (
               <li>
-                마지막 실패: {OIDC_FAILURE_WORDS[oidc.lastFailure.kind]}, <RelativeTime dateTime={oidc.lastFailure.at} />
+                {t('system.lastFailure')}: {OIDC_FAILURE_WORDS[oidc.lastFailure.kind]}, <RelativeTime dateTime={oidc.lastFailure.at} />
               </li>
             )}
           </ul>
-          <p className="pd-muted pd-section-note">수는 앱이 다시 시작하면 0부터 셉니다.</p>
+          <p className="pd-muted pd-section-note">{t('system.countsReset')}</p>
         </>
       ) : (
         <p>
-          <Badge tone="neutral">꺼짐</Badge>
+          <Badge tone="neutral">{t('system.off')}</Badge>
         </p>
       )}
     </section>
   );
 }
 
-const MAIL_IN_FAILURE_WORDS: Record<NonNullable<MailInStatus['lastFailure']>['kind'], string> = {
-  CONNECT: '메일 서버에 연결하지 못함',
-  AUTH: '로그인이 거절됨',
-  FOLDER: '받는 폴더가 없음',
-  UNSUPPORTED: '메일 서버가 메일 옮기기를 지원하지 않음',
-};
+const MAIL_IN_FAILURE_WORDS: Readonly<Record<NonNullable<MailInStatus['lastFailure']>['kind'], string>> = texts({
+  CONNECT: 'system.mailInConnect',
+  AUTH: 'system.mailInAuth',
+  FOLDER: 'system.mailInFolder',
+  UNSUPPORTED: 'system.mailInUnsupported',
+});
 
 /**
  * Receiving email, right after OIDC: off and why, or the last round, the failed rounds and the emails left to try
@@ -156,44 +153,47 @@ export function MailInPart(props: { mailIn: MailInStatus }) {
   return (
     <section className="pd-section" aria-labelledby="mail-in-title">
       <h2 id="mail-in-title" className="pd-section-title">
-        메일 받기
+        {t('system.mailInTitle')}
       </h2>
       {mailIn.enabled ? (
         <>
           <ul className="pd-oidc-status">
             <li>
-              <span className="pd-on">켜짐</span>
+              <span className="pd-on">{t('system.on')}</span>
             </li>
             <li>
-              마지막 성공: {mailIn.lastSuccessAt === null ? <span className="pd-muted">{NEVER}</span> : <RelativeTime dateTime={mailIn.lastSuccessAt} />}
+              {t('system.lastSuccess')}:{' '}
+              {mailIn.lastSuccessAt === null ? <span className="pd-muted">{t('system.never')}</span> : <RelativeTime dateTime={mailIn.lastSuccessAt} />}
             </li>
-            <li>실패한 회차: {mailIn.roundFailures.toLocaleString(screenLocale())}회</li>
+            <li>{tf('system.roundFailures', { count: formatNumber(mailIn.roundFailures) })}</li>
             {mailIn.lastFailure !== null && (
               <li>
-                마지막 실패: {MAIL_IN_FAILURE_WORDS[mailIn.lastFailure.kind]}, <RelativeTime dateTime={mailIn.lastFailure.at} />
+                {t('system.lastFailure')}: {MAIL_IN_FAILURE_WORDS[mailIn.lastFailure.kind]}, <RelativeTime dateTime={mailIn.lastFailure.at} />
               </li>
             )}
-            {mailIn.retrying > 0 && <li>다시 시도할 메일: {mailIn.retrying.toLocaleString(screenLocale())}통</li>}
+            {mailIn.retrying > 0 && <li>{tf('system.retrying', { count: formatNumber(mailIn.retrying) })}</li>}
             {mailIn.quarantined90d > 0 && (
               <li>
-                격리한 메일(90일): {mailIn.quarantined90d.toLocaleString(screenLocale())}통
+                {tf('system.quarantined', { count: formatNumber(mailIn.quarantined90d) })}
                 <span className="pd-muted pd-status-note">
-                  메일함의 격리 폴더(설정 <code className="pd-code">IMAP_QUARANTINE_FOLDER</code>)에서 확인하세요.
+                  {t('system.quarantineBefore')}
+                  <code className="pd-code">IMAP_QUARANTINE_FOLDER</code>
+                  {t('system.quarantineAfter')}
                 </span>
               </li>
             )}
           </ul>
-          <p className="pd-muted pd-section-note">회차와 실패 수는 앱이 다시 시작하면 0부터 셉니다.</p>
+          <p className="pd-muted pd-section-note">{t('system.mailInCountsReset')}</p>
         </>
       ) : mailIn.offReason === 'SANDBOX' ? (
         <p>
-          <Badge tone="neutral">꺼짐(샌드박스)</Badge>
+          <Badge tone="neutral">{t('system.offSandbox')}</Badge>
         </p>
       ) : (
         <p className="pd-inline">
-          <Badge tone="neutral">설정 없음</Badge>
+          <Badge tone="neutral">{t('system.notSet')}</Badge>
           <a href={MAIL_IN_DOC} target="_blank" rel="noopener noreferrer">
-            메일 받기 설정 방법
+            {t('system.mailInHint')}
           </a>
         </p>
       )}
@@ -215,10 +215,10 @@ export interface FailedTableProps {
 /** The `failed` rows, each with 다시 보내기 in its last cell. */
 export function FailedTable(props: FailedTableProps) {
   const columns: DataTableColumn<FailedDelivery>[] = [
-    { key: 'channel', header: '채널', cell: (f) => <span id={`failed-${String(f.id)}-channel`}>{CHANNEL_WORDS[f.channel]}</span> },
+    { key: 'channel', header: t('system.channel'), cell: (f) => <span id={`failed-${String(f.id)}-channel`}>{CHANNEL_WORDS[f.channel]}</span> },
     {
       key: 'created',
-      header: '만든 시각',
+      header: t('system.created'),
       cell: (f) => (
         <span id={`failed-${String(f.id)}-created`}>
           <RelativeTime dateTime={f.createdAt} focusable={false} />
@@ -227,12 +227,12 @@ export function FailedTable(props: FailedTableProps) {
     },
     {
       key: 'error',
-      header: '마지막 오류 종류',
+      header: t('system.lastError'),
       cell: (f) =>
         f.lastErrorKind === 'RATE_LIMITED' ? (
           <span className="pd-two-lines pd-kind-note">
             <code className="pd-code">{f.lastErrorKind}</code>
-            <span className="pd-muted">한 주소에 한 시간 50통을 넘겼습니다.</span>
+            <span className="pd-muted">{t('system.rateLimited')}</span>
           </span>
         ) : (
           <code className="pd-code">{f.lastErrorKind}</code>
@@ -240,19 +240,19 @@ export function FailedTable(props: FailedTableProps) {
     },
     {
       key: 'recipient',
-      header: '받는 계정 ID',
-      cell: (f) => (f.recipientAccountId === null ? <span className="pd-muted">없음</span> : String(f.recipientAccountId)),
+      header: t('system.recipient'),
+      cell: (f) => (f.recipientAccountId === null ? <span className="pd-muted">{t('system.none')}</span> : String(f.recipientAccountId)),
       align: 'end',
     },
     {
       key: 'auditEntry',
-      header: '감사 항목 ID',
-      cell: (f) => (f.auditEntryId === null ? <span className="pd-muted">없음</span> : String(f.auditEntryId)),
+      header: t('system.auditEntry'),
+      cell: (f) => (f.auditEntryId === null ? <span className="pd-muted">{t('system.none')}</span> : String(f.auditEntryId)),
       align: 'end',
     },
     {
       key: 'action',
-      header: '동작',
+      header: t('system.action'),
       cell: (f) =>
         props.status[CHANNEL_KEYS[f.channel]].enabled ? (
           <Button
@@ -265,16 +265,16 @@ export function FailedTable(props: FailedTableProps) {
               props.onResend(f);
             }}
           >
-            다시 보내기
+            {t('system.resend')}
           </Button>
         ) : (
-          <span className="pd-muted">채널이 꺼져 있습니다</span>
+          <span className="pd-muted">{t('system.channelOff')}</span>
         ),
     },
   ];
   return (
     <DataTable
-      caption={`보내지 못한 항목, ${String(props.total)}건`}
+      caption={tf('system.failedCaption', { count: props.total })}
       columns={columns}
       rows={props.rows}
       rowKey={(f) => String(f.id)}
@@ -304,33 +304,33 @@ export function TestMail(props: TestMailProps) {
   return (
     <section className="pd-section" aria-labelledby="test-mail-title">
       <h2 id="test-mail-title" className="pd-section-title">
-        시험 메일
+        {t('system.testMail')}
       </h2>
       {props.enabled ? (
         <>
-          <p className="pd-section-note">{props.sandbox ? '샌드박스 주소로 메일 한 통을 보냅니다.' : '지금 로그인한 계정의 주소로 메일 한 통을 보냅니다.'}</p>
+          <p className="pd-section-note">{props.sandbox ? t('system.testToSandbox') : t('system.testToMe')}</p>
           <div className="pd-inline">
             <Button variant="secondary" pending={state.step === 'sending'} pendingLabel={TEXT.sending} blocked={props.blocked === true} onClick={props.onSend}>
-              시험 메일 보내기
+              {t('system.sendTest')}
             </Button>
-            {state.step === 'sending' && <span className="pd-muted pd-section-note">메일 서버에 따라 30초까지 걸릴 수 있습니다.</span>}
+            {state.step === 'sending' && <span className="pd-muted pd-section-note">{t('system.testWait')}</span>}
           </div>
         </>
       ) : (
-        <p className="pd-muted pd-section-note">메일 보내기가 꺼져 있습니다.</p>
+        <p className="pd-muted pd-section-note">{t('system.mailDisabled')}</p>
       )}
       {result !== null &&
         (result.ok ? (
-          <Alert tone="success">보냈습니다. 메일함을 확인하세요.</Alert>
+          <Alert tone="success">{t('system.testSent')}</Alert>
         ) : (
           <Alert tone="error">
-            보내지 못했습니다. {result.errorKind !== null && <code className="pd-code">{result.errorKind}</code>}
+            {t('system.testFailed')} {result.errorKind !== null && <code className="pd-code">{result.errorKind}</code>}
           </Alert>
         ))}
       {/* As the server gave it: text only, not trimmed (screens.md 6절 12). */}
       {result !== null && result.serverReply !== null && (
         <div className="pd-server-reply">
-          <p className="pd-muted">메일 서버가 한 답</p>
+          <p className="pd-muted">{t('system.serverReply')}</p>
           <pre tabIndex={0}>{result.serverReply}</pre>
         </div>
       )}
@@ -338,14 +338,14 @@ export function TestMail(props: TestMailProps) {
   );
 }
 
-const jobColumns: DataTableColumn<CleanupJobStatus>[] = [
-  { key: 'name', header: '작업', cell: (j) => <code className="pd-code">{j.name}</code> },
+const jobColumns = (): DataTableColumn<CleanupJobStatus>[] => [
+  { key: 'name', header: t('system.job'), cell: (j) => <code className="pd-code">{j.name}</code> },
   {
     key: 'lastRun',
-    header: '마지막으로 돈 시각',
-    cell: (j) => (j.lastRunAt === null ? <span className="pd-muted">{NEVER}</span> : <RelativeTime dateTime={j.lastRunAt} focusable={false} />),
+    header: t('system.lastRun'),
+    cell: (j) => (j.lastRunAt === null ? <span className="pd-muted">{t('system.never')}</span> : <RelativeTime dateTime={j.lastRunAt} focusable={false} />),
   },
-  { key: 'deleted', header: '지운 수', cell: (j) => (j.deleted === null ? <span className="pd-muted">{NEVER}</span> : j.deleted.toLocaleString(screenLocale())), align: 'end' },
+  { key: 'deleted', header: t('system.deleted'), cell: (j) => (j.deleted === null ? <span className="pd-muted">{t('system.never')}</span> : formatNumber(j.deleted)), align: 'end' },
 ];
 
 /** The cleanup jobs by name. Nothing when there is none. */
@@ -355,9 +355,9 @@ export function CleanupJobs(props: { jobs: readonly CleanupJobStatus[] }) {
   return (
     <section className="pd-section" aria-labelledby="cleanup-title">
       <h2 id="cleanup-title" className="pd-section-title">
-        정리 작업
+        {t('system.cleanupJobs')}
       </h2>
-      <DataTable caption="정리 작업" columns={jobColumns} rows={jobs} rowKey={(j) => j.name} density="compact" />
+      <DataTable caption={t('system.cleanupJobs')} columns={jobColumns()} rows={jobs} rowKey={(j) => j.name} density="compact" />
     </section>
   );
 }

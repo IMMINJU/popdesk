@@ -1,9 +1,11 @@
-// Korean words for the audit log (1b screens.md C-12): the kinds of action and
+// Words for the audit log (1b screens.md C-12): the kinds of action and
 // their groups, what an action was done to, and the changed values. A name the
-// screen does not know shows as the server gave it.
+// screen does not know shows as the server gave it. The words are in the screen
+// language (b5): every table reads its text when it is read.
+import type { MessageKey } from '@popdesk/i18n';
 import { ACCOUNT_STATUS_WORDS, PRIORITY_WORDS, PROJECT_STATUS_WORDS } from '@popdesk/ui';
 import { slaLength } from './messages';
-import { screenLocale } from './locale';
+import { screenLocale, t, texts, tf } from './locale';
 
 export interface KindGroup {
   /** The value of the group's choice in the 종류 filter. No kind has this name. */
@@ -12,94 +14,100 @@ export interface KindGroup {
   kinds: Readonly<Record<string, string>>;
 }
 
+type GroupKey = 'SIGN_IN' | 'ACCOUNT' | 'INVITATION' | 'COMPANY' | 'MEMBERSHIP' | 'OPERATION' | 'EXPORT' | 'SETTINGS' | 'DELIVERY';
+
+function group(key: GroupKey, kinds: Readonly<Record<string, MessageKey>>): KindGroup {
+  return {
+    key,
+    get name() {
+      return t(`audit.group.${key}`);
+    },
+    kinds: texts(kinds),
+  };
+}
+
 export const KIND_GROUPS: readonly KindGroup[] = [
-  { key: 'SIGN_IN', name: '로그인 기록', kinds: { SIGN_IN_SUCCEEDED: '로그인', SIGN_IN_FAILED: '로그인 실패', ACCOUNT_LOCKED: '로그인 잠김' } },
-  {
-    key: 'ACCOUNT',
-    name: '계정',
-    kinds: {
-      FIRST_ADMIN_CREATED: '첫 관리자 만들기',
-      ACCOUNT_NAME_CHANGED: '이름 고치기',
-      ACCOUNT_ROLE_CHANGED: '역할 바꾸기',
-      ACCOUNT_SUSPENDED: '계정 정지',
-      ACCOUNT_REACTIVATED: '정지 풀기',
-      ACCOUNT_PASSWORD_RESET: '비밀번호 초기화',
-      PASSWORD_CHANGED: '비밀번호 바꾸기',
-      PASSWORD_RESET_COMPLETED: '비밀번호 재설정',
+  group('SIGN_IN', { SIGN_IN_SUCCEEDED: 'audit.kind.SIGN_IN_SUCCEEDED', SIGN_IN_FAILED: 'audit.kind.SIGN_IN_FAILED', ACCOUNT_LOCKED: 'audit.kind.ACCOUNT_LOCKED' }),
+  group(
+    'ACCOUNT',
+    {
+      FIRST_ADMIN_CREATED: 'audit.kind.FIRST_ADMIN_CREATED',
+      ACCOUNT_NAME_CHANGED: 'audit.kind.ACCOUNT_NAME_CHANGED',
+      ACCOUNT_ROLE_CHANGED: 'audit.kind.ACCOUNT_ROLE_CHANGED',
+      ACCOUNT_SUSPENDED: 'audit.kind.ACCOUNT_SUSPENDED',
+      ACCOUNT_REACTIVATED: 'audit.kind.ACCOUNT_REACTIVATED',
+      ACCOUNT_PASSWORD_RESET: 'audit.kind.ACCOUNT_PASSWORD_RESET',
+      PASSWORD_CHANGED: 'audit.kind.PASSWORD_CHANGED',
+      PASSWORD_RESET_COMPLETED: 'audit.kind.PASSWORD_RESET_COMPLETED',
       // Slice 10a (10a design.md 0절 12): 익명화 and the audit chain it computes again.
-      ACCOUNT_ANONYMIZED: '익명화',
-      AUDIT_RECHAINED: '감사 사슬 다시 계산',
+      ACCOUNT_ANONYMIZED: 'audit.kind.ACCOUNT_ANONYMIZED',
+      AUDIT_RECHAINED: 'audit.kind.AUDIT_RECHAINED',
       // Slice 11: an account linked to its OIDC provider account, and the link removed.
-      OIDC_LINKED: 'OIDC 연결',
-      OIDC_UNLINKED: 'OIDC 연결 풀기',
+      OIDC_LINKED: 'audit.kind.OIDC_LINKED',
+      OIDC_UNLINKED: 'audit.kind.OIDC_UNLINKED',
     },
-  },
-  {
-    key: 'INVITATION',
-    name: '초대',
-    kinds: {
-      INVITATION_CREATED: '초대',
-      INVITATION_RESENT: '초대 다시 보내기',
-      INVITATION_CANCELLED: '초대 취소',
-      INVITATION_LINK_CREATED: '초대 링크 복사',
+  ),
+  group(
+    'INVITATION',
+    {
+      INVITATION_CREATED: 'audit.kind.INVITATION_CREATED',
+      INVITATION_RESENT: 'audit.kind.INVITATION_RESENT',
+      INVITATION_CANCELLED: 'audit.kind.INVITATION_CANCELLED',
+      INVITATION_LINK_CREATED: 'audit.kind.INVITATION_LINK_CREATED',
       // Slice 11: written when an OIDC sign-in turns on an account not accepted yet.
-      INVITATION_ACCEPTED: '초대 수락',
+      INVITATION_ACCEPTED: 'audit.kind.INVITATION_ACCEPTED',
     },
-  },
-  {
-    key: 'COMPANY',
-    name: '고객사',
+  ),
+  group(
+    'COMPANY',
     // Slice 6b: a company's labels are in this group (6b-tasks screens.md 4절); slice 7a its issues in the trash;
     // slice 10b its export, so the group 내보내기 stays the two of slice 10a (10b design.md 2절).
-    kinds: {
-      COMPANY_CREATED: '고객사 만들기',
-      COMPANY_UPDATED: '고객사 고치기',
-      COMPANY_STATUS_CHANGED: '고객사 상태 바꾸기',
-      LABEL_CREATED: '라벨 만들기',
-      LABEL_UPDATED: '라벨 고치기',
-      LABEL_DELETED: '라벨 지우기',
-      ISSUE_DELETED: '문의 지우기',
-      ISSUE_RESTORED: '문의 복구',
-      ISSUE_PURGED: '문의 영구 삭제',
-      COMPANY_EXPORTED: '고객사 내보내기',
-      COMPANY_EXPORT_DOWNLOADED: '고객사 내보내기 받기',
+    {
+      COMPANY_CREATED: 'audit.kind.COMPANY_CREATED',
+      COMPANY_UPDATED: 'audit.kind.COMPANY_UPDATED',
+      COMPANY_STATUS_CHANGED: 'audit.kind.COMPANY_STATUS_CHANGED',
+      LABEL_CREATED: 'audit.kind.LABEL_CREATED',
+      LABEL_UPDATED: 'audit.kind.LABEL_UPDATED',
+      LABEL_DELETED: 'audit.kind.LABEL_DELETED',
+      ISSUE_DELETED: 'audit.kind.ISSUE_DELETED',
+      ISSUE_RESTORED: 'audit.kind.ISSUE_RESTORED',
+      ISSUE_PURGED: 'audit.kind.ISSUE_PURGED',
+      COMPANY_EXPORTED: 'audit.kind.COMPANY_EXPORTED',
+      COMPANY_EXPORT_DOWNLOADED: 'audit.kind.COMPANY_EXPORT_DOWNLOADED',
     },
-  },
-  {
-    key: 'MEMBERSHIP',
-    name: '소속·배정',
-    kinds: {
-      CUSTOMER_ADDED: '소속 더하기',
-      CUSTOMER_REMOVED: '소속 빼기',
-      AGENT_ASSIGNED: '배정 더하기',
-      AGENT_UNASSIGNED: '배정 빼기',
-      MANAGER_MARKED: '담당자 지정',
-      MANAGER_UNMARKED: '담당자 해제',
-      MEMBERSHIP_REQUESTED: '소속 요청',
-      MEMBERSHIP_REQUEST_WITHDRAWN: '소속 요청 거둠',
-      MEMBERSHIP_REQUEST_APPROVED: '소속 요청 승인',
-      MEMBERSHIP_REQUEST_REJECTED: '소속 요청 거절',
+  ),
+  group(
+    'MEMBERSHIP',
+    {
+      CUSTOMER_ADDED: 'audit.kind.CUSTOMER_ADDED',
+      CUSTOMER_REMOVED: 'audit.kind.CUSTOMER_REMOVED',
+      AGENT_ASSIGNED: 'audit.kind.AGENT_ASSIGNED',
+      AGENT_UNASSIGNED: 'audit.kind.AGENT_UNASSIGNED',
+      MANAGER_MARKED: 'audit.kind.MANAGER_MARKED',
+      MANAGER_UNMARKED: 'audit.kind.MANAGER_UNMARKED',
+      MEMBERSHIP_REQUESTED: 'audit.kind.MEMBERSHIP_REQUESTED',
+      MEMBERSHIP_REQUEST_WITHDRAWN: 'audit.kind.MEMBERSHIP_REQUEST_WITHDRAWN',
+      MEMBERSHIP_REQUEST_APPROVED: 'audit.kind.MEMBERSHIP_REQUEST_APPROVED',
+      MEMBERSHIP_REQUEST_REJECTED: 'audit.kind.MEMBERSHIP_REQUEST_REJECTED',
     },
-  },
-  { key: 'OPERATION', name: '운영 명령', kinds: { ADMIN_PASSWORD_RESET: '관리자 비밀번호 복구', BACKUP_CREATED: '백업', DATABASE_RESTORED: '복원' } },
-  { key: 'EXPORT', name: '내보내기', kinds: { AUDIT_EXPORTED: '감사 로그 내보내기', ACCOUNT_EXPORTED: '계정 정보 내보내기' } },
+  ),
+  group('OPERATION', { ADMIN_PASSWORD_RESET: 'audit.kind.ADMIN_PASSWORD_RESET', BACKUP_CREATED: 'audit.kind.BACKUP_CREATED', DATABASE_RESTORED: 'audit.kind.DATABASE_RESTORED' }),
+  group('EXPORT', { AUDIT_EXPORTED: 'audit.kind.AUDIT_EXPORTED', ACCOUNT_EXPORTED: 'audit.kind.ACCOUNT_EXPORTED' }),
   // Slice 8a: settings of the whole installation, before 보내기 (8a-sla screens.md 4절).
-  {
-    key: 'SETTINGS',
-    name: '설정',
-    kinds: { SLA_POLICY_CHANGED: 'SLA 정책 바꾸기', BRANDING_CHANGED: '브랜딩 바꾸기', BRANDING_LOGO_CHANGED: '로고 바꾸기' },
-  },
-  { key: 'DELIVERY', name: '보내기', kinds: { DELIVERY_RESENT: '다시 보내기', TEST_MAIL_SENT: '시험 메일' } },
+  group(
+    'SETTINGS',
+    { SLA_POLICY_CHANGED: 'audit.kind.SLA_POLICY_CHANGED', BRANDING_CHANGED: 'audit.kind.BRANDING_CHANGED', BRANDING_LOGO_CHANGED: 'audit.kind.BRANDING_LOGO_CHANGED' },
+  ),
+  group('DELIVERY', { DELIVERY_RESENT: 'audit.kind.DELIVERY_RESENT', TEST_MAIL_SENT: 'audit.kind.TEST_MAIL_SENT' }),
 ];
 
 /** The 종류 choice "로그인 기록 빼고": every kind outside the first group. */
 export const NOT_SIGN_IN = 'NOT_SIGN_IN';
 
-const KIND_WORDS: Readonly<Record<string, string>> = Object.assign({}, ...KIND_GROUPS.map((g) => g.kinds)) as Record<string, string>;
-
 /** The word for a kind of action; undefined for a name the screen does not know. */
 export function kindWord(action: string): string | undefined {
-  return Object.hasOwn(KIND_WORDS, action) ? KIND_WORDS[action] : undefined;
+  const owner = KIND_GROUPS.find((g) => Object.hasOwn(g.kinds, action));
+  return owner?.kinds[action];
 }
 
 /** The sign-ins whose changes may say how the person signed in (slice 11). */
@@ -109,7 +117,7 @@ const SIGN_IN_KINDS: ReadonlySet<string> = new Set(['SIGN_IN_SUCCEEDED', 'SIGN_I
 export function entryKindWord(action: string, changes: Readonly<Record<string, unknown>> | null): string | undefined {
   const kind = kindWord(action);
   if (kind === undefined || !SIGN_IN_KINDS.has(action) || changes?.method !== 'OIDC') return kind;
-  return `${kind} (${METHOD_WORDS.OIDC})`;
+  return `${kind} (${t('audit.method.OIDC')})`;
 }
 
 /**
@@ -155,66 +163,78 @@ export function targetOf(stored: Readonly<Record<string, unknown>> | null): Targ
 
 /** "계정 12", "고객사 ACME", "고객사 ACME · 계정 12", "고객사 ACME · 라벨 61", "고객사 ACME · 문의 ACME-7", "데이터베이스", "감사 로그", "SLA 정책 버전 4", "브랜딩 (밝은 테마)". */
 export function targetWord(target: Target): string {
-  if (target.type === 'SLA_POLICY' && target.version !== undefined) return `SLA 정책 버전 ${String(target.version)}`;
-  if (target.type === 'BRANDING') return target.theme === undefined ? '브랜딩' : `브랜딩 (${word(LOGO_THEME_WORDS, target.theme)})`;
-  const account = target.accountId === undefined ? null : `계정 ${String(target.accountId)}`;
-  const company = target.code === undefined ? null : `고객사 ${target.code}`;
-  const label = target.labelId === undefined ? null : `라벨 ${String(target.labelId)}`;
-  const issue = target.issueKey === undefined ? null : `문의 ${target.issueKey}`;
+  if (target.type === 'SLA_POLICY' && target.version !== undefined) return tf('audit.target.slaPolicy', { version: target.version });
+  if (target.type === 'BRANDING') {
+    return target.theme === undefined ? t('audit.target.branding') : tf('audit.target.brandingTheme', { theme: word(LOGO_THEME_WORDS, target.theme) });
+  }
+  const account = target.accountId === undefined ? null : accountWord(target.accountId);
+  const company = target.code === undefined ? null : tf('audit.target.company', { code: target.code });
+  const label = target.labelId === undefined ? null : tf('audit.target.label', { id: target.labelId });
+  const issue = target.issueKey === undefined ? null : tf('audit.target.issue', { key: target.issueKey });
   if (company !== null || account !== null || label !== null || issue !== null) {
     return [company, account, label, issue].filter((part) => part !== null).join(' · ');
   }
-  if (target.type === 'DATABASE') return '데이터베이스';
-  if (target.type === 'AUDIT_LOG') return '감사 로그';
+  if (target.type === 'DATABASE') return t('audit.target.database');
+  if (target.type === 'AUDIT_LOG') return t('audit.target.auditLog');
   return target.type;
 }
 
-// Field names as the screens that change them call them (C-8, C-9, C-10, 초대).
-const FIELD_WORDS: Readonly<Record<string, string>> = {
-  name: '이름',
-  email: '이메일',
-  role: '역할',
-  status: '상태',
-  code: '코드',
-  legalName: '회사명',
-  companyCodes: '고객사',
-  member: '소속',
-  manager: '담당자',
-  assigned: '배정',
-  clearedIssues: '비운 담당',
-  clearedTasks: '비운 작업',
-  color: '색',
-  file: '파일',
-  format: '형식',
-  count: '건수',
-  filter: '조건',
-  expiresAt: '만료',
-  lockedUntil: '잠금 풀림',
-  channel: '채널',
-  kind: '종류',
-  ok: '보냄',
-  errorKind: '오류 종류',
-  targets: '목표',
-  hours: '업무 시간',
-  holidays: '쉬는 날',
-  displayName: '표시 이름',
-  accent: '강조색',
-  logo: '로고',
-  // Slice 10a: the part of the chain 익명화 computed again (AUDIT_RECHAINED).
-  fromSeq: '시작 번호',
-  toSeq: '끝 번호',
-  headHash: '마지막 hash',
-  // Slice 10b: what a company export took in, and which export was downloaded.
-  includeInternal: '내부 넣기',
-  includePrivate: '비공개 넣기',
-  exportId: '작업',
-  // Slice 11: how a person signed in or accepted an invitation, and the provider an account was linked to.
-  method: '로그인 방법',
-  issuer: '발급자',
-};
+/** "계정 12": an account by its ID. */
+export function accountWord(accountId: number): string {
+  return tf('audit.target.account', { id: accountId });
+}
 
-const METHOD_WORDS = { OIDC: '회사 계정' } as const;
-const LOGO_THEME_WORDS: Readonly<Record<string, string>> = { LIGHT: '밝은 테마', DARK: '어두운 테마' };
+/** "시스템": popdesk itself as the one who did it. */
+export function systemWord(): string {
+  return t('audit.system');
+}
+
+// Field names as the screens that change them call them (C-8, C-9, C-10, 초대).
+const FIELD_WORDS: Readonly<Record<string, string>> = texts({
+  name: 'audit.field.name',
+  email: 'audit.field.email',
+  role: 'audit.field.role',
+  status: 'audit.field.status',
+  code: 'audit.field.code',
+  legalName: 'audit.field.legalName',
+  companyCodes: 'audit.field.companyCodes',
+  member: 'audit.field.member',
+  manager: 'audit.field.manager',
+  assigned: 'audit.field.assigned',
+  clearedIssues: 'audit.field.clearedIssues',
+  clearedTasks: 'audit.field.clearedTasks',
+  color: 'audit.field.color',
+  file: 'audit.field.file',
+  format: 'audit.field.format',
+  count: 'audit.field.count',
+  filter: 'audit.field.filter',
+  expiresAt: 'audit.field.expiresAt',
+  lockedUntil: 'audit.field.lockedUntil',
+  channel: 'audit.field.channel',
+  kind: 'audit.field.kind',
+  ok: 'audit.field.ok',
+  errorKind: 'audit.field.errorKind',
+  targets: 'audit.field.targets',
+  hours: 'audit.field.hours',
+  holidays: 'audit.field.holidays',
+  displayName: 'audit.field.displayName',
+  accent: 'audit.field.accent',
+  logo: 'audit.field.logo',
+  // Slice 10a: the part of the chain 익명화 computed again (AUDIT_RECHAINED).
+  fromSeq: 'audit.field.fromSeq',
+  toSeq: 'audit.field.toSeq',
+  headHash: 'audit.field.headHash',
+  // Slice 10b: what a company export took in, and which export was downloaded.
+  includeInternal: 'audit.field.includeInternal',
+  includePrivate: 'audit.field.includePrivate',
+  exportId: 'audit.field.exportId',
+  // Slice 11: how a person signed in or accepted an invitation, and the provider an account was linked to.
+  method: 'audit.field.method',
+  issuer: 'audit.field.issuer',
+});
+
+const METHOD_WORDS: Readonly<Record<string, string>> = texts({ OIDC: 'audit.method.OIDC' });
+const LOGO_THEME_WORDS: Readonly<Record<string, string>> = texts({ LIGHT: 'audit.theme.LIGHT', DARK: 'audit.theme.DARK' });
 
 /**
  * Fields read in a fixed order whatever order the server wrote them in: the part of the chain
@@ -234,11 +254,12 @@ function orderedFields(entries: [string, unknown][]): [string, unknown][] {
 
 /** Fields that hold a time. */
 const TIME_FIELDS: ReadonlySet<string> = new Set(['expiresAt', 'lockedUntil']);
-const NONE = '없음';
+/** The word for no value. */
+const none = () => t('audit.none');
 
-const ROLE_WORDS: Readonly<Record<string, string>> = { CUSTOMER: '고객', AGENT: '상담원', ADMIN: '관리자' };
+const ROLE_WORDS: Readonly<Record<string, string>> = texts({ CUSTOMER: 'audit.role.CUSTOMER', AGENT: 'audit.role.AGENT', ADMIN: 'audit.role.ADMIN' });
 // The channel of a row sent again, as C-18 names it.
-const CHANNEL_WORDS: Readonly<Record<string, string>> = { MAIL: '메일', WEBHOOK: '웹훅', AUDIT_FORWARD: '감사 바깥 사본' };
+const CHANNEL_WORDS: Readonly<Record<string, string>> = texts({ MAIL: 'audit.channel.MAIL', WEBHOOK: 'audit.channel.WEBHOOK', AUDIT_FORWARD: 'audit.channel.AUDIT_FORWARD' });
 
 function word(words: Readonly<Record<string, string>>, name: string): string {
   return Object.hasOwn(words, name) ? (words[name] ?? name) : name;
@@ -263,7 +284,7 @@ function sameKinds(a: readonly string[], b: readonly string[]): boolean {
 /** The kinds an export was narrowed to, as the 종류 filter names them: a choice of the filter when they are one, else each kind. */
 function kindsWord(kinds: readonly string[]): string {
   if (kinds.length > 1) {
-    if (sameKinds(kinds, kindsOfChoice(NOT_SIGN_IN))) return '로그인 기록 빼고';
+    if (sameKinds(kinds, kindsOfChoice(NOT_SIGN_IN))) return t('audit.notSignIn');
     const group = KIND_GROUPS.find((g) => sameKinds(kinds, Object.keys(g.kinds)));
     if (group) return group.name;
   }
@@ -271,8 +292,8 @@ function kindsWord(kinds: readonly string[]): string {
 }
 
 function actorWord(value: unknown): string {
-  if (value === 0) return '시스템';
-  return typeof value === 'number' ? `계정 ${String(value)}` : valueWord('', '', value);
+  if (value === 0) return systemWord();
+  return typeof value === 'number' ? accountWord(value) : valueWord('', '', value);
 }
 
 /**
@@ -290,14 +311,14 @@ function filterWord(filter: Readonly<Record<string, unknown>>): string {
   let targetShown = false;
   for (const [key, value] of Object.entries(filter)) {
     if (key === 'action' && Array.isArray(value) && value.every((kind) => typeof kind === 'string')) {
-      parts.push(`종류: ${kindsWord(value)}`);
+      parts.push(tf('audit.filter.kind', { kinds: kindsWord(value) }));
     } else if (key === 'actorAccountId') {
-      parts.push(`한 사람: ${actorWord(value)}`);
+      parts.push(tf('audit.filter.actor', { actor: actorWord(value) }));
     } else if (target && (key === 'targetType' || key === 'targetAccountId' || key === 'targetCode')) {
-      if (!targetShown) parts.push(`대상: ${targetWord(target)}`);
+      if (!targetShown) parts.push(tf('audit.filter.target', { target: targetWord(target) }));
       targetShown = true;
     } else if (key === 'from' || key === 'to') {
-      parts.push(`${key === 'from' ? '부터' : '까지'}: ${timeWord(value) ?? valueWord('', '', value)}`);
+      parts.push(tf(key === 'from' ? 'audit.filter.from' : 'audit.filter.to', { at: timeWord(value) ?? valueWord('', '', value) }));
     } else {
       parts.push(`${key}: ${valueWord('', '', value)}`);
     }
@@ -306,17 +327,17 @@ function filterWord(filter: Readonly<Record<string, unknown>>): string {
 }
 
 function valueWord(action: string, field: string, value: unknown): string {
-  if (value === null || value === undefined) return NONE;
-  if (typeof value === 'boolean') return value ? '예' : '아니오';
-  if (Array.isArray(value)) return value.length === 0 ? NONE : value.map((item) => valueWord(action, '', item)).join(', ');
+  if (value === null || value === undefined) return none();
+  if (typeof value === 'boolean') return t(value ? 'audit.yes' : 'audit.no');
+  if (Array.isArray(value)) return value.length === 0 ? none() : value.map((item) => valueWord(action, '', item)).join(', ');
   if (isRecord(value)) {
-    if (Object.keys(value).length === 0) return NONE;
+    if (Object.keys(value).length === 0) return none();
     return field === 'filter' ? filterWord(value) : JSON.stringify(value);
   }
   const text = typeof value === 'string' ? value : JSON.stringify(value);
   if (TIME_FIELDS.has(field)) return timeWord(value) ?? text;
   // The open issues a 배정 빼기 or 계정 정지 cleared the assignee of (S3-AC-72), and the open tasks (slice 6b).
-  if ((field === 'clearedIssues' || field === 'clearedTasks') && typeof value === 'number') return `${text}건`;
+  if ((field === 'clearedIssues' || field === 'clearedTasks') && typeof value === 'number') return tf(`audit.${field}`, { count: text });
   if (field === 'role') return word(ROLE_WORDS, text);
   if (field === 'channel') return word(CHANNEL_WORDS, text);
   if (field === 'method') return word(METHOD_WORDS, text);
@@ -331,15 +352,15 @@ function isFromTo(value: unknown): value is { from: unknown; to: unknown } {
 
 // The parts of an SLA policy change (8a-sla screens.md 4절): each part is a list, and only what
 // differs between before and after is written.
-const WEEKDAY_WORDS: Readonly<Record<string, string>> = {
-  MONDAY: '월요일',
-  TUESDAY: '화요일',
-  WEDNESDAY: '수요일',
-  THURSDAY: '목요일',
-  FRIDAY: '금요일',
-  SATURDAY: '토요일',
-  SUNDAY: '일요일',
-};
+const WEEKDAY_WORDS: Readonly<Record<string, string>> = texts({
+  MONDAY: 'audit.weekday.MONDAY',
+  TUESDAY: 'audit.weekday.TUESDAY',
+  WEDNESDAY: 'audit.weekday.WEDNESDAY',
+  THURSDAY: 'audit.weekday.THURSDAY',
+  FRIDAY: 'audit.weekday.FRIDAY',
+  SATURDAY: 'audit.weekday.SATURDAY',
+  SUNDAY: 'audit.weekday.SUNDAY',
+});
 const SHOWN_DAYS = 10;
 
 function records(value: unknown): Record<string, unknown>[] | null {
@@ -347,7 +368,7 @@ function records(value: unknown): Record<string, unknown>[] | null {
 }
 
 function goalWord(minutes: unknown): string {
-  return typeof minutes === 'number' ? slaLength(minutes) : NONE;
+  return typeof minutes === 'number' ? slaLength(minutes) : none();
 }
 
 /** "보통 첫 응답 4시간 → 2시간, 해결 12시간 → 10시간 · 높음 첫 응답 1시간 → 없음": changed goals only. */
@@ -357,8 +378,8 @@ function targetsWord(from: Record<string, unknown>[], to: Record<string, unknown
     const before = from.find((t) => t.priority === after.priority);
     const goals: string[] = [];
     for (const [key, name] of [
-      ['firstResponseMinutes', '첫 응답'],
-      ['resolutionMinutes', '해결'],
+      ['firstResponseMinutes', t('audit.firstResponse')],
+      ['resolutionMinutes', t('audit.resolution')],
     ] as const) {
       const was = before?.[key] ?? null;
       const is = after[key] ?? null;
@@ -366,11 +387,11 @@ function targetsWord(from: Record<string, unknown>[], to: Record<string, unknown
     }
     if (goals.length > 0) parts.push(`${word(PRIORITY_WORDS, String(after.priority))} ${goals.join(', ')}`);
   }
-  return parts.length === 0 ? NONE : parts.join(' · ');
+  return parts.length === 0 ? none() : parts.join(' · ');
 }
 
 function spanWord(day: Record<string, unknown> | undefined): string {
-  if (day === undefined || typeof day.opens !== 'string' || typeof day.closes !== 'string') return '쉼';
+  if (day === undefined || typeof day.opens !== 'string' || typeof day.closes !== 'string') return t('audit.dayOff');
   return `${day.opens}–${day.closes}`;
 }
 
@@ -385,20 +406,23 @@ function hoursWord(from: Record<string, unknown>[], to: Record<string, unknown>[
     const is = spanWord(to.find((d) => d.weekday === weekday));
     if (was !== is) parts.push(`${word(WEEKDAY_WORDS, weekday)} ${was} → ${is}`);
   }
-  return parts.length === 0 ? NONE : parts.join(' · ');
+  return parts.length === 0 ? none() : parts.join(' · ');
 }
 
 function daysWord(days: string[]): string {
   const shown = days.slice(0, SHOWN_DAYS).join(', ');
-  return days.length > SHOWN_DAYS ? `${shown} 외 ${String(days.length - SHOWN_DAYS)}개` : shown;
+  return days.length > SHOWN_DAYS ? tf('audit.moreDays', { shown, count: days.length - SHOWN_DAYS }) : shown;
 }
 
 /** "더함 2027-01-01, 뺌 2026-12-25": the days are written as they are stored, with the year. */
 function holidaysWord(from: string[], to: string[]): string {
   const added = to.filter((d) => !from.includes(d)).sort();
   const removed = from.filter((d) => !to.includes(d)).sort();
-  const parts = [added.length > 0 ? `더함 ${daysWord(added)}` : '', removed.length > 0 ? `뺌 ${daysWord(removed)}` : ''].filter(Boolean);
-  return parts.length === 0 ? NONE : parts.join(', ');
+  const parts = [
+    added.length > 0 ? tf('audit.holidaysAdded', { days: daysWord(added) }) : '',
+    removed.length > 0 ? tf('audit.holidaysRemoved', { days: daysWord(removed) }) : '',
+  ].filter(Boolean);
+  return parts.length === 0 ? none() : parts.join(', ');
 }
 
 function strings(value: unknown): string[] | null {
@@ -422,7 +446,7 @@ function slaPartWord(field: string, from: unknown, to: unknown): string | null {
 
 /** An accent as stored: `#RRGGBB`, or `null` for the default. */
 function accentWord(value: unknown): string {
-  return typeof value === 'string' ? value : '기본';
+  return typeof value === 'string' ? value : t('audit.accentDefault');
 }
 
 /**
@@ -432,8 +456,9 @@ function accentWord(value: unknown): string {
 function brandingWord(action: string, field: string, from: unknown, to: unknown): string | null {
   if (action === 'BRANDING_CHANGED' && field === 'accent') return `${accentWord(from)} → ${accentWord(to)}`;
   if (action !== 'BRANDING_LOGO_CHANGED' || field !== 'logo') return null;
-  if (from !== null && to !== null) return '바뀜';
-  return `${from === null ? NONE : '바뀜'} → ${to === null ? NONE : '바뀜'}`;
+  const changed = t('audit.logoChanged');
+  if (from !== null && to !== null) return changed;
+  return `${from === null ? none() : changed} → ${to === null ? none() : changed}`;
 }
 
 /** One line for each changed field: "역할: 상담원 → 관리자", or "칸: 값" for a value that is not from and to. */

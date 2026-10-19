@@ -8,6 +8,7 @@ import { FieldSummary, SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { useFieldErrors, useLoad } from '../app/hooks';
 import { LoadFailed, PageTitle } from '../app/layout';
+import { t, tf } from '../app/locale';
 import { TEXT } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { PageNav } from '../app/PageNav';
@@ -17,21 +18,22 @@ import { useToast } from '../app/toastContext';
 
 type Company = Schemas['Company'];
 
-const columns: DataTableColumn<Company>[] = [
-  { key: 'code', header: '코드', cell: (c) => <span className="pd-key">{c.code}</span>, sticky: true, width: '7rem' },
-  { key: 'name', header: '이름', cell: (c) => <Link to={`/companies/${encodeURIComponent(c.code)}`}>{c.name}</Link> },
-  { key: 'legalName', header: '회사명', cell: (c) => c.legalName },
-  { key: 'status', header: '상태', cell: (c) => <StatusBadge kind="project" status={c.status} /> },
+// Built while drawing, so the headers follow the screen language.
+const columns = (): DataTableColumn<Company>[] => [
+  { key: 'code', header: t('companies.code'), cell: (c) => <span className="pd-key">{c.code}</span>, sticky: true, width: '7rem' },
+  { key: 'name', header: t('companies.name'), cell: (c) => <Link to={`/companies/${encodeURIComponent(c.code)}`}>{c.name}</Link> },
+  { key: 'legalName', header: t('companies.legalName'), cell: (c) => c.legalName },
+  { key: 'status', header: t('companies.status'), cell: (c) => <StatusBadge kind="project" status={c.status} /> },
   {
     key: 'requests',
-    header: '소속 요청',
+    header: t('companies.requests'),
     // The cell holds the number alone; the link's name says what it counts. Nothing open: an empty cell, no link.
     cell: (c) =>
       c.pendingMembershipRequests > 0 ? (
         <Link
           className="pd-count-link"
           to={`/companies/${encodeURIComponent(c.code)}#membership-requests`}
-          aria-label={`${c.name} 소속 요청 ${String(c.pendingMembershipRequests)}건`}
+          aria-label={tf('companies.requestsOf', { name: c.name, count: c.pendingMembershipRequests })}
         >
           <Badge tone="accent">{c.pendingMembershipRequests}</Badge>
         </Link>
@@ -56,7 +58,7 @@ function CreateCompanyDialog(props: { open: boolean; onClose: () => void; onClos
   });
   const fields = useFieldErrors({
     name: { id: 'company-name', limits: { max: 100 } },
-    code: { id: 'company-code', text: { INVALID_FORMAT: '대문자와 숫자 2~10자로 넣어 주세요.' } },
+    code: { id: 'company-code', text: { INVALID_FORMAT: t('companies.codeFormat') } },
     legalName: { id: 'company-legal-name', limits: { max: 100 } },
   });
 
@@ -93,14 +95,14 @@ function CreateCompanyDialog(props: { open: boolean; onClose: () => void; onClos
       return;
     }
     if (result.ok) {
-      toast(`고객사를 만들었습니다(${result.data.name})`);
+      toast(tf('companies.created', { name: result.data.name }));
       close();
       void navigate(`/companies/${encodeURIComponent(result.data.code)}`);
       return;
     }
     const f = result.failure;
     if (f.kind === 'invalid') fields.applyFields(f.fields, f.message);
-    else if (f.kind === 'rejected' && f.code === 'COMPANY_CODE_TAKEN') fields.setError('code', '이미 쓰는 코드입니다.');
+    else if (f.kind === 'rejected' && f.code === 'COMPANY_CODE_TAKEN') fields.setError('code', t('companies.codeTaken'));
     else setFailure(f);
   };
 
@@ -108,7 +110,7 @@ function CreateCompanyDialog(props: { open: boolean; onClose: () => void; onClos
     <>
       <Dialog
         open={props.open}
-        title="고객사 만들기"
+        title={t('companies.create')}
         closeLabel={TEXT.close}
         pending={pending}
         onClose={requestClose}
@@ -118,7 +120,7 @@ function CreateCompanyDialog(props: { open: boolean; onClose: () => void; onClos
               {TEXT.cancel}
             </Button>
             <Button type="submit" form={FORM_ID} pending={pending} pendingLabel={TEXT.sending}>
-              만들기
+              {t('companies.createSubmit')}
             </Button>
           </>
         }
@@ -135,16 +137,16 @@ function CreateCompanyDialog(props: { open: boolean; onClose: () => void; onClos
           <SaveFailure failure={failure} />
           <TextField
             id="company-name"
-            label="이름"
+            label={t('companies.name')}
             value={name}
             onChange={setName}
             maxLength={100}
-            helpText="콘솔과 포털에 보이는 이름입니다."
+            helpText={t('companies.nameHelp')}
             {...(fields.errors.name ? { error: fields.errors.name } : {})}
           />
           <TextField
             id="company-code"
-            label="코드"
+            label={t('companies.code')}
             value={code}
             onChange={(v) => {
               setCode(v.toUpperCase());
@@ -152,26 +154,26 @@ function CreateCompanyDialog(props: { open: boolean; onClose: () => void; onClos
             maxLength={10}
             autoCapitalize="characters"
             spellCheck={false}
-            helpText="대문자와 숫자 2~10자. 문의 키 앞에 붙습니다. 나중에 바꿀 수 없습니다."
+            helpText={t('companies.codeHelp')}
             {...(fields.errors.code ? { error: fields.errors.code } : {})}
           />
           <TextField
             id="company-legal-name"
-            label="회사명"
+            label={t('companies.legalName')}
             value={legalName}
             onChange={setLegalName}
             maxLength={100}
-            helpText="계약서에 쓰는 회사 이름입니다."
+            helpText={t('companies.legalNameHelp')}
             {...(fields.errors.legalName ? { error: fields.errors.legalName } : {})}
           />
         </form>
       </Dialog>
       <ConfirmDialog
         open={askDiscard}
-        title="쓰던 내용을 버릴까요?"
-        message="닫으면 이 대화상자에 쓴 값이 사라집니다."
-        confirmLabel="버리고 닫기"
-        cancelLabel="계속 쓰기"
+        title={t('companies.discardTitle')}
+        message={t('companies.discardMessage')}
+        confirmLabel={t('companies.discard')}
+        cancelLabel={t('companies.keepWriting')}
         tone="danger"
         onConfirm={close}
         onCancel={() => {
@@ -203,16 +205,16 @@ export function C8CompanyList() {
   return (
     <div className="pd-screen">
       <div className="pd-screen-head">
-        <PageTitle titleRef={heading}>고객사 목록</PageTitle>
+        <PageTitle titleRef={heading}>{t('companies.title')}</PageTitle>
         <Button
           onClick={() => {
             setCreating(true);
           }}
         >
-          고객사 만들기
+          {t('companies.create')}
         </Button>
       </div>
-      <Checkbox label="보관된 고객사 보기" checked={showArchived} onChange={setShowArchived} />
+      <Checkbox label={t('companies.showArchived')} checked={showArchived} onChange={setShowArchived} />
       {load.status === 'failed' && (
         <LoadFailed
           onRetry={() => {
@@ -222,8 +224,8 @@ export function C8CompanyList() {
       )}
       {(load.status !== 'failed' || data) && (
         <DataTable
-          caption={`고객사 목록, ${String(data?.totalElements ?? 0)}건`}
-          columns={columns}
+          caption={tf('companies.caption', { count: data?.totalElements ?? 0 })}
+          columns={columns()}
           rows={rows}
           rowKey={(c) => c.code}
           status={firstLoad ? 'loading' : 'ready'}
@@ -231,11 +233,11 @@ export function C8CompanyList() {
           density="compact"
           empty={
             outOfRange ? (
-              <EmptyState title="이 쪽에는 고객사가 없습니다" action={<Link to="/companies">1쪽으로</Link>} />
+              <EmptyState title={t('companies.noneOnPage')} action={<Link to="/companies">{t('companies.toFirstPage')}</Link>} />
             ) : onlyArchived ? (
-              <EmptyState title="이 쪽에는 보관된 고객사만 있습니다" description="위의 보관된 고객사 보기를 켜면 나옵니다." />
+              <EmptyState title={t('companies.onlyArchived')} description={t('companies.onlyArchivedHelp')} />
             ) : (
-              <EmptyState title="첫 고객사를 만드세요. 고객사를 만들어야 고객을 초대할 수 있습니다." />
+              <EmptyState title={t('companies.empty')} />
             )
           }
         />

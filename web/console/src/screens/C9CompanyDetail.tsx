@@ -31,6 +31,7 @@ import { useMainBusy } from '../app/busy';
 import { useFieldErrors, useFocusWhenReady, useLive, useLoad } from '../app/hooks';
 import { InviteDialog } from '../app/InviteDialog';
 import { LoadFailed, NotFound, PageTitle } from '../app/layout';
+import { t, texts, tf } from '../app/locale';
 import { TEXT } from '../app/messages';
 import { useNavCountRefresh } from '../app/navCount';
 import { clearedText, useOpenAssignments } from '../app/openAssignments';
@@ -48,20 +49,20 @@ const LIST_SIZE = 100;
 /** C-8's 소속 요청 number links here: the screen opens on the requests. */
 const REQUESTS_HASH = '#membership-requests';
 
-const ROLE_WORDS: Record<Account['role'], string> = { CUSTOMER: '고객', AGENT: '상담원', ADMIN: '관리자' };
-const REQUEST_CLOSED_TEXT = '이미 처리된 요청입니다';
+const ROLE_WORDS: Readonly<Record<Account['role'], string>> = texts({
+  CUSTOMER: 'companyDetail.roleCustomer',
+  AGENT: 'companyDetail.roleAgent',
+  ADMIN: 'companyDetail.roleAdmin',
+});
 
-const SUSPENDED_BAND = '멈춘 고객사입니다. 새 문의를 받지 않습니다.';
-const ARCHIVED_BAND = '보관된 고객사입니다. 되돌릴 수 없습니다.';
-
-const COMPANY_ERRORS: Record<string, string> = {
-  COMPANY_ARCHIVED: '보관된 고객사라 바꿀 수 없습니다.',
-  COMPANY_NOT_ACTIVE: '보관된 고객사에는 더할 수 없습니다.',
-  NOT_A_CUSTOMER: '상담 쪽 계정은 고객사에 소속시킬 수 없습니다.',
-  NOT_FOUND: '고객사나 계정을 찾을 수 없습니다.',
+const COMPANY_ERRORS: Readonly<Record<string, string>> = texts({
+  COMPANY_ARCHIVED: 'companyDetail.errArchived',
+  COMPANY_NOT_ACTIVE: 'companyDetail.errNotActive',
+  NOT_A_CUSTOMER: 'companyDetail.errNotCustomer',
+  NOT_FOUND: 'companyDetail.errNotFound',
   // The same words as C-10 (b2 screens.md 1절): another admin anonymized the account after the table was read.
-  ACCOUNT_ANONYMIZED: '이미 익명화한 계정입니다.',
-};
+  ACCOUNT_ANONYMIZED: 'companyDetail.errAnonymized',
+});
 
 /** Another tab changed the company: the screen is old, so it reads again (screens.md C-9 400). */
 function isStale(failure: Failure): boolean {
@@ -128,7 +129,7 @@ function AssignDialog(props: { open: boolean; code: string; assigned: readonly M
     );
     setPending(false);
     if (result.ok) {
-      toast('상담원을 배정했습니다');
+      toast(t('companyDetail.assignedToast'));
       close();
       props.onAssigned();
       return;
@@ -139,8 +140,8 @@ function AssignDialog(props: { open: boolean; code: string; assigned: readonly M
   return (
     <Dialog
       open={props.open}
-      title="상담원 배정"
-      description="배정된 상담원은 이 고객사의 문의를 보고 답합니다."
+      title={t('companyDetail.assignTitle')}
+      description={t('companyDetail.assignHelp')}
       closeLabel={TEXT.close}
       pending={pending}
       onClose={close}
@@ -157,7 +158,7 @@ function AssignDialog(props: { open: boolean; code: string; assigned: readonly M
                 void assign();
               }}
             >
-              배정
+              {t('companyDetail.assign')}
             </Button>
           )}
         </>
@@ -169,21 +170,21 @@ function AssignDialog(props: { open: boolean; code: string; assigned: readonly M
           <Skeleton shape="line" count={3} />
         </div>
       ) : offered.length === 0 ? (
-        <p className="pd-muted">배정할 수 있는 상담원이 없습니다. 상담원을 먼저 초대하세요.</p>
+        <p className="pd-muted">{t('companyDetail.noAgents')}</p>
       ) : (
         <RadioGroup
-          legend="배정할 상담원"
+          legend={t('companyDetail.assignLegend')}
           options={offered.map((a) => ({
             value: String(a.id),
             label: `${a.name} · ${a.email}`,
-            ...(a.status === 'INVITED' ? { description: '수락 전' } : {}),
+            ...(a.status === 'INVITED' ? { description: t('companyDetail.notAccepted') } : {}),
           }))}
           value={chosen}
           onChange={(v) => {
             setChosen(v);
             setMissing(false);
           }}
-          {...(missing ? { error: '배정할 상담원을 고르세요.' } : {})}
+          {...(missing ? { error: t('companyDetail.chooseAgent') } : {})}
         />
       )}
     </Dialog>
@@ -220,7 +221,7 @@ function AddCustomerDialog(props: { code: string; members: readonly Member[]; on
     if (!live()) return;
     setPending(false);
     if (result.ok) {
-      toast(`${result.data.name} 님을 소속 고객에 더했습니다`);
+      toast(tf('companyDetail.addedToast', { name: result.data.name }));
       props.onClose();
       return;
     }
@@ -230,8 +231,8 @@ function AddCustomerDialog(props: { code: string; members: readonly Member[]; on
   return (
     <Dialog
       open
-      title="소속 고객 더하기"
-      description="이미 있는 고객 계정을 이 고객사에 더합니다. 계정이 없으면 초대하세요."
+      title={t('companyDetail.addTitle')}
+      description={t('companyDetail.addHelp')}
       closeLabel={TEXT.close}
       pending={pending}
       onClose={props.onClose}
@@ -247,7 +248,7 @@ function AddCustomerDialog(props: { code: string; members: readonly Member[]; on
               void add();
             }}
           >
-            더하기
+            {t('companyDetail.add')}
           </Button>
         </>
       }
@@ -255,7 +256,7 @@ function AddCustomerDialog(props: { code: string; members: readonly Member[]; on
       <div className="pd-form">
         <SaveFailure failure={failure} known={COMPANY_ERRORS} />
         <AccountFinder
-          legend="더할 고객"
+          legend={t('companyDetail.addLegend')}
           role="CUSTOMER"
           // An anonymized customer can never be added (S10A-AC-36).
           anonymized={false}
@@ -266,12 +267,12 @@ function AddCustomerDialog(props: { code: string; members: readonly Member[]; on
           }}
           describe={(a) => {
             const member = memberIds.has(a.id);
-            const note = member ? '소속됨' : a.status === 'INVITED' ? '수락 전' : a.status === 'SUSPENDED' ? '정지' : undefined;
+            const note = member ? t('companyDetail.member') : a.status === 'INVITED' ? t('companyDetail.notAccepted') : a.status === 'SUSPENDED' ? t('companyDetail.suspended') : undefined;
             return { ...(note === undefined ? {} : { description: note }), ...(member ? { disabled: true } : {}) };
           }}
-          idleText="이름이나 이메일의 일부를 넣으면 고객 계정을 찾습니다."
-          emptyText="맞는 고객 계정이 없습니다."
-          {...(missing ? { error: '더할 고객을 고르세요.' } : {})}
+          idleText={t('companyDetail.findIdle')}
+          emptyText={t('companyDetail.findEmpty')}
+          {...(missing ? { error: t('companyDetail.chooseCustomer') } : {})}
           onFound={() => {
             setChosen(null);
           }}
@@ -305,7 +306,7 @@ function RejectDialog(props: { request: MembershipRequest; onClose: () => void; 
     if (!live()) return;
     setPending(false);
     if (result.ok || closed) {
-      toast(closed ? REQUEST_CLOSED_TEXT : '요청을 거절했습니다', closed ? 'info' : 'success');
+      toast(closed ? t('companyDetail.requestClosed') : t('companyDetail.rejectedToast'), closed ? 'info' : 'success');
       props.onClose();
       return;
     }
@@ -316,17 +317,17 @@ function RejectDialog(props: { request: MembershipRequest; onClose: () => void; 
     <ConfirmDialog
       open
       tone="danger"
-      title="소속 요청 거절"
+      title={t('companyDetail.rejectTitle')}
       message={
         <>
-          <p>이 요청을 거절할까요? 요청한 담당자의 목록에서 이 사람이 사라집니다.</p>
+          <p>{t('companyDetail.rejectAsk')}</p>
           <p className="pd-muted">
             {request.name}({request.email})
           </p>
           <SaveFailure failure={failure} known={COMPANY_ERRORS} />
         </>
       }
-      confirmLabel="거절"
+      confirmLabel={t('companyDetail.reject')}
       cancelLabel={TEXT.cancel}
       pending={pending}
       pendingLabel={TEXT.sending}
@@ -375,7 +376,11 @@ function RemoveDialog(props: { code: string; kind: 'customer' | 'agent'; member:
     if (!live()) return;
     setPending(false);
     if (failed === null) {
-      toast(kind === 'customer' ? `${member.name} 님을 소속 고객에서 뺐습니다` : `${member.name} 님을 배정에서 뺐습니다${clearedText(cleared)}`);
+      toast(
+        kind === 'customer'
+          ? tf('companyDetail.removedCustomerToast', { name: member.name })
+          : `${tf('companyDetail.removedAgentToast', { name: member.name })}${clearedText(cleared)}`,
+      );
       props.onClose();
       return;
     }
@@ -386,18 +391,19 @@ function RemoveDialog(props: { code: string; kind: 'customer' | 'agent'; member:
     <ConfirmDialog
       open
       tone="danger"
-      title={kind === 'customer' ? '소속 고객 빼기' : '배정 빼기'}
+      title={kind === 'customer' ? t('companyDetail.removeCustomerTitle') : t('companyDetail.removeAgentTitle')}
       message={
         <>
           <p>
-            {member.name} 님은 이 고객사의 문의를 더 보지 못합니다.{kind === 'customer' && ' 자기가 올린 문의는 계속 봅니다.'}
+            {tf('companyDetail.removeSees', { name: member.name })}
+            {kind === 'customer' && t('companyDetail.removeOwn')}
           </p>
-          {kind === 'customer' && member.manager && <p>이 사람은 담당자입니다. 빼면 담당자 표시도 사라집니다.</p>}
+          {kind === 'customer' && member.manager && <p>{t('companyDetail.removeManager')}</p>}
           <ClearAssignments name={member.name} open={open} scope="company" checked={clear} onChange={setClear} />
           <SaveFailure failure={failure} known={COMPANY_ERRORS} />
         </>
       }
-      confirmLabel="빼기"
+      confirmLabel={t('companyDetail.remove')}
       cancelLabel={TEXT.cancel}
       pending={pending}
       pendingLabel={TEXT.sending}
@@ -431,7 +437,7 @@ function ArchiveDialog(props: { company: Company; onClose: () => void; onArchive
     if (!live()) return;
     setPending(false);
     if (result.ok) {
-      toast(`고객사를 보관했습니다(${company.name})`);
+      toast(tf('companyDetail.archivedToast', { name: company.name }));
       props.onClose();
       return;
     }
@@ -442,7 +448,7 @@ function ArchiveDialog(props: { company: Company; onClose: () => void; onArchive
     <Dialog
       open
       role="alertdialog"
-      title="고객사 보관"
+      title={t('companyDetail.archiveTitle')}
       closable={false}
       pending={pending}
       onClose={props.onClose}
@@ -460,7 +466,7 @@ function ArchiveDialog(props: { company: Company; onClose: () => void; onArchive
               void archive();
             }}
           >
-            보관
+            {t('companyDetail.archive')}
           </Button>
         </>
       }
@@ -473,10 +479,10 @@ function ArchiveDialog(props: { company: Company; onClose: () => void; onArchive
           void archive();
         }}
       >
-        <p>보관하면 되돌릴 수 없습니다. 새 문의, 소속·배정 더하기, 이름 고치기가 막힙니다.</p>
+        <p>{t('companyDetail.archiveWarning')}</p>
         <SaveFailure failure={failure} known={COMPANY_ERRORS} />
         <TextField
-          label="고객사 코드"
+          label={t('companyDetail.companyCode')}
           value={typed}
           onChange={(v) => {
             setTyped(v.toUpperCase());
@@ -485,7 +491,7 @@ function ArchiveDialog(props: { company: Company; onClose: () => void; onArchive
           autoComplete="off"
           autoCapitalize="characters"
           spellCheck={false}
-          helpText={`보관하려면 이 고객사의 코드 ${company.code}를 넣으세요.`}
+          helpText={tf('companyDetail.archiveHelp', { code: company.code })}
         />
       </form>
     </Dialog>
@@ -517,7 +523,7 @@ function EditForm(props: { company: Company; onDone: () => void; onSaved: () => 
     if (result.ok) {
       await props.onSaved();
       if (!live()) return;
-      toast('고객사 정보를 고쳤습니다');
+      toast(t('companyDetail.editedToast'));
       props.onDone();
       return;
     }
@@ -531,7 +537,7 @@ function EditForm(props: { company: Company; onDone: () => void; onSaved: () => 
   return (
     <form
       className="pd-form pd-detail-edit"
-      aria-label="고객사 정보 고치기"
+      aria-label={t('companyDetail.editForm')}
       noValidate
       onSubmit={(e) => {
         void submit(e);
@@ -539,23 +545,23 @@ function EditForm(props: { company: Company; onDone: () => void; onSaved: () => 
     >
       <FieldSummary summary={fields.summary} />
       <SaveFailure failure={failure} known={COMPANY_ERRORS} />
-      <TextField label="코드" value={company.code} onChange={() => undefined} readOnly helpText="코드는 바꿀 수 없습니다" />
+      <TextField label={t('companyDetail.code')} value={company.code} onChange={() => undefined} readOnly helpText={t('companyDetail.codeFixed')} />
       <TextField
         id="company-name"
-        label="이름"
+        label={t('companyDetail.name')}
         value={name}
         onChange={setName}
         maxLength={100}
-        helpText="콘솔과 포털에 보이는 이름입니다."
+        helpText={t('companyDetail.nameHelp')}
         {...(fields.errors.name ? { error: fields.errors.name } : {})}
       />
       <TextField
         id="company-legal-name"
-        label="회사명"
+        label={t('companyDetail.legalName')}
         value={legalName}
         onChange={setLegalName}
         maxLength={100}
-        helpText="계약서에 쓰는 회사 이름입니다."
+        helpText={t('companyDetail.legalNameHelp')}
         {...(fields.errors.legalName ? { error: fields.errors.legalName } : {})}
       />
       <div className="pd-form-actions">
@@ -563,7 +569,7 @@ function EditForm(props: { company: Company; onDone: () => void; onSaved: () => 
           {TEXT.cancel}
         </Button>
         <Button type="submit" pending={pending} pendingLabel={TEXT.sending}>
-          저장
+          {t('companyDetail.save')}
         </Button>
       </div>
     </form>
@@ -642,7 +648,7 @@ function CompanyDetail(props: { code: string }) {
   useFocusWhenReady(requestsHeading, location.hash === REQUESTS_HASH && (load.data?.requests.length ?? 0) > 0);
 
   if (load.status === 'failed' && load.failure?.kind === 'notFound') {
-    return <NotFound listHref="/companies" listLabel="고객사 목록으로" />;
+    return <NotFound listHref="/companies" listLabel={t('companyDetail.toList')} />;
   }
   const detail = load.data;
   if (!detail) {
@@ -691,7 +697,7 @@ function CompanyDetail(props: { code: string }) {
     if (result.ok || isStale(result.failure)) await load.reload();
     if (!live()) return;
     setStatusPending(false);
-    if (result.ok) toast(status === 'SUSPENDED' ? '고객사를 멈췄습니다' : '고객사를 다시 사용합니다');
+    if (result.ok) toast(status === 'SUSPENDED' ? t('companyDetail.suspendedToast') : t('companyDetail.activeToast'));
     else setFailure(result.failure);
   };
 
@@ -708,7 +714,7 @@ function CompanyDetail(props: { code: string }) {
     if (!live()) return;
     // A 400 or a 404 often means the list is old.
     if (result.ok || result.failure.kind === 'rejected' || result.failure.kind === 'notFound') reload();
-    if (result.ok) toast(manager ? '담당자로 지정했습니다' : '담당자에서 해제했습니다');
+    if (result.ok) toast(manager ? t('companyDetail.managerSetToast') : t('companyDetail.managerUnsetToast'));
     else setFailure(result.failure);
   };
 
@@ -723,8 +729,8 @@ function CompanyDetail(props: { code: string }) {
     if (result.ok || closed) recount();
     if (!live()) return;
     if (result.ok || result.failure.kind === 'rejected' || result.failure.kind === 'notFound') reload();
-    if (result.ok) toast('소속시켰습니다');
-    else if (closed) toast(REQUEST_CLOSED_TEXT, 'info');
+    if (result.ok) toast(t('companyDetail.approvedToast'));
+    else if (closed) toast(t('companyDetail.requestClosed'), 'info');
     else setFailure(result.failure);
   };
 
@@ -737,23 +743,23 @@ function CompanyDetail(props: { code: string }) {
         open({ what: 'remove', kind, member: m });
       }}
     >
-      빼기
+      {t('companyDetail.remove')}
     </Button>
   );
 
   const customerColumns: DataTableColumn<Member>[] = [
-    { key: 'name', header: '이름', cell: memberCell },
-    { key: 'email', header: '이메일', cell: (m) => m.email },
+    { key: 'name', header: t('companyDetail.name'), cell: memberCell },
+    { key: 'email', header: t('companyDetail.email'), cell: (m) => m.email },
     // An anonymized account is `SUSPENDED` in the API, so `anonymized` is asked first, as C-10 does (B2-AC-04).
     {
       key: 'status',
-      header: '계정 상태',
-      cell: (m) => (m.anonymized ? <Badge tone="neutral">익명화됨</Badge> : <StatusBadge kind="account" status={m.status} />),
+      header: t('companyDetail.accountStatus'),
+      cell: (m) => (m.anonymized ? <Badge tone="neutral">{t('companyDetail.anonymized')}</Badge> : <StatusBadge kind="account" status={m.status} />),
     },
-    { key: 'manager', header: '담당자', cell: (m) => (m.manager ? <Badge tone="accent">담당자</Badge> : null) },
+    { key: 'manager', header: t('companyDetail.manager'), cell: (m) => (m.manager ? <Badge tone="accent">{t('companyDetail.manager')}</Badge> : null) },
     {
       key: 'actions',
-      header: <span className="pd-sr-only">동작</span>,
+      header: <span className="pd-sr-only">{t('companyDetail.actions')}</span>,
       align: 'end',
       cell: (m) => (
         <span className="pd-row-actions">
@@ -767,7 +773,7 @@ function CompanyDetail(props: { code: string }) {
                 void setManager(m, !m.manager);
               }}
             >
-              {m.manager ? '담당자 해제' : '담당자로 지정'}
+              {m.manager ? t('companyDetail.unsetManager') : t('companyDetail.setManager')}
             </Button>
           )}
           {removeButton('customer', m)}
@@ -783,7 +789,7 @@ function CompanyDetail(props: { code: string }) {
   const requestColumns: DataTableColumn<MembershipRequest>[] = [
     {
       key: 'requestedBy',
-      header: '요청한 사람',
+      header: t('companyDetail.requestedBy'),
       cell: (r) => (
         <span className="pd-two-lines">
           <span>{r.requestedBy.name}</span>
@@ -793,7 +799,7 @@ function CompanyDetail(props: { code: string }) {
     },
     {
       key: 'typed',
-      header: '넣은 이름과 이메일',
+      header: t('companyDetail.typed'),
       cell: (r) => (
         <span className="pd-two-lines">
           <span id={`request-${String(r.id)}`}>{r.name}</span>
@@ -803,7 +809,7 @@ function CompanyDetail(props: { code: string }) {
     },
     {
       key: 'account',
-      header: '계정',
+      header: t('companyDetail.account'),
       cell: (r) => (
         <span className="pd-two-lines">
           <span className="pd-inline">
@@ -811,17 +817,17 @@ function CompanyDetail(props: { code: string }) {
             <span>{ROLE_WORDS[r.account.role]}</span>
             <StatusBadge kind="account" status={accountStatus(r)} />
           </span>
-          {r.account.role !== 'CUSTOMER' && <span className="pd-muted">상담 쪽 계정은 고객사에 소속시킬 수 없습니다</span>}
+          {r.account.role !== 'CUSTOMER' && <span className="pd-muted">{t('companyDetail.supportSide')}</span>}
           {r.account.role === 'CUSTOMER' && r.account.invitationCancelled && (
-            <span className="pd-muted">승인한 뒤 구성원 목록에서 초대를 다시 보내세요</span>
+            <span className="pd-muted">{t('companyDetail.resendAfter')}</span>
           )}
         </span>
       ),
     },
-    { key: 'requestedAt', header: '요청한 시각', cell: (r) => <RelativeTime dateTime={r.requestedAt} focusable={false} /> },
+    { key: 'requestedAt', header: t('companyDetail.requestedAt'), cell: (r) => <RelativeTime dateTime={r.requestedAt} focusable={false} /> },
     {
       key: 'actions',
-      header: <span className="pd-sr-only">동작</span>,
+      header: <span className="pd-sr-only">{t('companyDetail.actions')}</span>,
       align: 'end',
       cell: (r) => (
         <span className="pd-row-actions">
@@ -834,7 +840,7 @@ function CompanyDetail(props: { code: string }) {
                 void approve(r);
               }}
             >
-              승인
+              {t('companyDetail.approve')}
             </Button>
           )}
           <Button
@@ -845,7 +851,7 @@ function CompanyDetail(props: { code: string }) {
               open({ what: 'reject', request: r });
             }}
           >
-            거절
+            {t('companyDetail.reject')}
           </Button>
         </span>
       ),
@@ -853,9 +859,9 @@ function CompanyDetail(props: { code: string }) {
   ];
 
   const agentColumns: DataTableColumn<Member>[] = [
-    { key: 'name', header: '이름', cell: memberCell },
-    { key: 'email', header: '이메일', cell: (m) => m.email },
-    { key: 'actions', header: <span className="pd-sr-only">동작</span>, align: 'end', cell: (m) => removeButton('agent', m) },
+    { key: 'name', header: t('companyDetail.name'), cell: memberCell },
+    { key: 'email', header: t('companyDetail.email'), cell: (m) => m.email },
+    { key: 'actions', header: <span className="pd-sr-only">{t('companyDetail.actions')}</span>, align: 'end', cell: (m) => removeButton('agent', m) },
   ];
 
   return (
@@ -872,7 +878,7 @@ function CompanyDetail(props: { code: string }) {
                   setEditing(true);
                 }}
               >
-                고치기
+                {t('companyDetail.edit')}
               </Button>
             )}
             <Button
@@ -883,7 +889,7 @@ function CompanyDetail(props: { code: string }) {
                 void changeStatus(company.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE');
               }}
             >
-              {company.status === 'ACTIVE' ? '멈춤' : '다시 사용'}
+              {company.status === 'ACTIVE' ? t('companyDetail.suspend') : t('companyDetail.reactivate')}
             </Button>
             <Button
               variant="secondary"
@@ -891,7 +897,7 @@ function CompanyDetail(props: { code: string }) {
                 open({ what: 'archive' });
               }}
             >
-              보관
+              {t('companyDetail.archive')}
             </Button>
           </div>
         )}
@@ -899,10 +905,10 @@ function CompanyDetail(props: { code: string }) {
       {load.status === 'failed' && <LoadFailed onRetry={reload} />}
       {company.status === 'SUSPENDED' && (
         <Alert tone="warning" live="status">
-          {SUSPENDED_BAND}
+          {t('companyDetail.suspendedBand')}
         </Alert>
       )}
-      {archived && <Alert tone="info">{ARCHIVED_BAND}</Alert>}
+      {archived && <Alert tone="info">{t('companyDetail.archivedBand')}</Alert>}
       <SaveFailure failure={failure} known={COMPANY_ERRORS} />
       {editing && !archived ? (
         <EditForm
@@ -922,19 +928,19 @@ function CompanyDetail(props: { code: string }) {
       ) : (
         <dl className="pd-meta">
           <div>
-            <dt>코드</dt>
+            <dt>{t('companyDetail.code')}</dt>
             <dd className="pd-key">{company.code}</dd>
           </div>
           <div>
-            <dt>이름</dt>
+            <dt>{t('companyDetail.name')}</dt>
             <dd>{company.name}</dd>
           </div>
           <div>
-            <dt>회사명</dt>
+            <dt>{t('companyDetail.legalName')}</dt>
             <dd>{company.legalName}</dd>
           </div>
           <div>
-            <dt>상태</dt>
+            <dt>{t('companyDetail.status')}</dt>
             <dd>
               <StatusBadge kind="project" status={company.status} />
             </dd>
@@ -945,7 +951,7 @@ function CompanyDetail(props: { code: string }) {
       <section className="pd-section" aria-labelledby="customers-title">
         <div className="pd-section-head">
           <h2 id="customers-title" className="pd-section-title">
-            소속 고객
+            {t('companyDetail.customers')}
           </h2>
           {!archived && (
             <div className="pd-inline">
@@ -956,7 +962,7 @@ function CompanyDetail(props: { code: string }) {
                   open({ what: 'add-customer' });
                 }}
               >
-                고객 더하기
+                {t('companyDetail.addCustomer')}
               </Button>
               <Button
                 variant="secondary"
@@ -965,18 +971,18 @@ function CompanyDetail(props: { code: string }) {
                   setInviting(true);
                 }}
               >
-                이 고객사로 고객 초대
+                {t('companyDetail.inviteCustomer')}
               </Button>
             </div>
           )}
         </div>
         <DataTable
-          caption={`소속 고객, ${String(detail.customers.length)}명`}
+          caption={tf('companyDetail.customersCaption', { count: detail.customers.length })}
           columns={customerColumns}
           rows={detail.customers}
           rowKey={(m) => String(m.accountId)}
           density="compact"
-          empty={<EmptyState title="아직 고객이 없습니다." headingLevel={3} />}
+          empty={<EmptyState title={t('companyDetail.noCustomers')} headingLevel={3} />}
         />
       </section>
 
@@ -984,10 +990,10 @@ function CompanyDetail(props: { code: string }) {
       {detail.requests.length > 0 && (
         <section className="pd-section" aria-labelledby="membership-requests-title">
           <h2 id="membership-requests-title" ref={requestsHeading} className="pd-section-title" tabIndex={-1}>
-            소속 요청
+            {t('companyDetail.requests')}
           </h2>
           <DataTable
-            caption={`소속 요청, ${String(detail.requests.length)}건`}
+            caption={tf('companyDetail.requestsCaption', { count: detail.requests.length })}
             columns={requestColumns}
             rows={detail.requests}
             rowKey={(r) => String(r.id)}
@@ -999,7 +1005,7 @@ function CompanyDetail(props: { code: string }) {
       <section className="pd-section" aria-labelledby="agents-title">
         <div className="pd-section-head">
           <h2 id="agents-title" ref={agentsHeading} className="pd-section-title" tabIndex={-1}>
-            배정 상담원
+            {t('companyDetail.agents')}
           </h2>
           {!archived && (
             <Button
@@ -1009,17 +1015,17 @@ function CompanyDetail(props: { code: string }) {
                 setAssigning(true);
               }}
             >
-              상담원 배정
+              {t('companyDetail.assignTitle')}
             </Button>
           )}
         </div>
         <DataTable
-          caption={`배정 상담원, ${String(detail.agents.length)}명`}
+          caption={tf('companyDetail.agentsCaption', { count: detail.agents.length })}
           columns={agentColumns}
           rows={detail.agents}
           rowKey={(m) => String(m.accountId)}
           density="compact"
-          empty={<EmptyState title="배정된 상담원이 없습니다. 관리자만 이 고객사의 문의를 봅니다." headingLevel={3} />}
+          empty={<EmptyState title={t('companyDetail.noAssigned')} headingLevel={3} />}
         />
       </section>
 

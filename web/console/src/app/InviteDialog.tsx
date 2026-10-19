@@ -11,15 +11,12 @@ import { useCooldown, useFieldErrors } from './hooks';
 import { TEXT } from './messages';
 import { call, type Failure } from './result';
 import { useToast } from './toastContext';
+import { t } from './locale';
 
 type Role = Schemas['CreateInvitationRequest']['role'];
 type Company = Schemas['Company'];
 
-const ROLES: { value: Role; label: string }[] = [
-  { value: 'CUSTOMER', label: '고객' },
-  { value: 'AGENT', label: '상담원' },
-  { value: 'ADMIN', label: '관리자' },
-];
+const ROLES: readonly Role[] = ['CUSTOMER', 'AGENT', 'ADMIN'];
 
 const FORM_ID = 'invite-form';
 
@@ -52,10 +49,10 @@ export function InviteDialog(props: InviteDialogProps) {
     open.current = props.open;
   });
   const fields = useFieldErrors({
-    email: { id: 'invite-email', limits: { max: 100, format: '이메일' } },
+    email: { id: 'invite-email', limits: { max: 100, format: t('field.email') } },
     name: { id: 'invite-name', limits: { max: 50 } },
     role: { id: 'invite-role' },
-    companyCodes: { id: 'invite-companies', text: { REQUIRED: '고객사를 하나 이상 고르세요.', UNKNOWN_VALUE: '고를 수 없는 고객사가 있습니다.' } },
+    companyCodes: { id: 'invite-companies', text: { REQUIRED: t('inviteDialog.companiesRequired'), UNKNOWN_VALUE: t('inviteDialog.companiesUnknown') } },
   });
 
   useEffect(() => {
@@ -100,7 +97,7 @@ export function InviteDialog(props: InviteDialogProps) {
     cooldown.clearEnded();
     fields.clear();
     if (role === null) {
-      fields.setError('role', '역할을 고르세요.');
+      fields.setError('role', t('inviteDialog.roleRequired'));
       return;
     }
     const mine = (request.current += 1);
@@ -113,7 +110,7 @@ export function InviteDialog(props: InviteDialogProps) {
     if (!open.current) return;
     if (result.ok) {
       if (result.data.inviteLink === null) {
-        toast('초대 메일을 보냈습니다');
+        toast(t('inviteDialog.sentToast'));
         close();
       } else {
         setLink(result.data.inviteLink);
@@ -122,7 +119,7 @@ export function InviteDialog(props: InviteDialogProps) {
     }
     const f = result.failure;
     if (f.kind === 'invalid') fields.applyFields(f.fields, f.message);
-    else if (f.kind === 'rejected' && f.code === 'EMAIL_TAKEN') fields.setError('email', '이미 등록된 이메일입니다.');
+    else if (f.kind === 'rejected' && f.code === 'EMAIL_TAKEN') fields.setError('email', t('inviteDialog.emailTaken'));
     else if (f.kind === 'rateLimited') cooldown.start(f.seconds);
     else setFailure(f);
   };
@@ -134,7 +131,7 @@ export function InviteDialog(props: InviteDialogProps) {
           {TEXT.cancel}
         </Button>
         <Button type="submit" form={FORM_ID} pending={pending} pendingLabel={TEXT.sending} blocked={cooldown.active}>
-          초대 보내기
+          {t('inviteDialog.send')}
         </Button>
       </>
     ) : (
@@ -143,7 +140,7 @@ export function InviteDialog(props: InviteDialogProps) {
 
   return (
     <>
-      <Dialog open={props.open} title="구성원 초대" closeLabel={TEXT.close} pending={pending} onClose={requestClose} footer={footer} size="lg">
+      <Dialog open={props.open} title={t('inviteDialog.title')} closeLabel={TEXT.close} pending={pending} onClose={requestClose} footer={footer} size="lg">
         {link === null ? (
           <form
             id={FORM_ID}
@@ -158,7 +155,7 @@ export function InviteDialog(props: InviteDialogProps) {
             <RateLimitBand {...cooldown} />
             <TextField
               id="invite-email"
-              label="이메일"
+              label={t('inviteDialog.email')}
               type="email"
               autoComplete="off"
               autoCapitalize="none"
@@ -170,7 +167,7 @@ export function InviteDialog(props: InviteDialogProps) {
             />
             <TextField
               id="invite-name"
-              label="이름"
+              label={t('inviteDialog.name')}
               value={name}
               onChange={setName}
               maxLength={50}
@@ -179,8 +176,8 @@ export function InviteDialog(props: InviteDialogProps) {
             <RadioGroup
               id="invite-role"
               name="invite-role"
-              legend="역할"
-              options={ROLES}
+              legend={t('inviteDialog.role')}
+              options={ROLES.map((value) => ({ value, label: t(`members.role.${value}`) }))}
               value={role}
               onChange={setRole}
               orientation="horizontal"
@@ -189,31 +186,31 @@ export function InviteDialog(props: InviteDialogProps) {
             {role === 'CUSTOMER' &&
               (companies !== null && companies.length === 0 ? (
                 <Alert tone="info">
-                  먼저 고객사를 만드세요. 고객은 고객사에 속해야 문의를 올립니다. <Link to="/companies">고객사 목록으로</Link>
+                  {t('inviteDialog.noCompanies')} <Link to="/companies">{t('inviteDialog.toCompanies')}</Link>
                 </Alert>
               ) : (
                 <CheckboxGroup
                   id="invite-companies"
-                  legend="소속 고객사"
+                  legend={t('inviteDialog.companies')}
                   name="invite-companies"
                   options={(companies ?? []).map((c) => ({ value: c.code, label: `${c.name} (${c.code})` }))}
                   value={companyCodes}
                   onChange={setCompanyCodes}
-                  helpText="고객은 고른 고객사의 문의를 봅니다."
+                  helpText={t('inviteDialog.companiesHelp')}
                   {...(fields.errors.companyCodes ? { error: fields.errors.companyCodes } : {})}
                 />
               ))}
           </form>
         ) : (
-          <InviteLink link={link} intro="메일 설정이 없어 초대 메일이 나가지 않았습니다. 아래 링크를 복사해 직접 전하세요." />
+          <InviteLink link={link} intro={t('inviteDialog.noMail')} />
         )}
       </Dialog>
       <ConfirmDialog
         open={askDiscard}
-        title="쓰던 내용을 버릴까요?"
-        message="닫으면 이 대화상자에 쓴 값이 사라집니다."
-        confirmLabel="버리고 닫기"
-        cancelLabel="계속 쓰기"
+        title={t('inviteDialog.discardTitle')}
+        message={t('inviteDialog.discardMessage')}
+        confirmLabel={t('inviteDialog.discard')}
+        cancelLabel={t('inviteDialog.keepWriting')}
         tone="danger"
         onConfirm={close}
         onCancel={() => {

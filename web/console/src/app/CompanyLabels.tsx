@@ -25,7 +25,7 @@ import { TEXT } from './messages';
 import { byName } from './labelItems';
 import { call, type Failure } from './result';
 import { useToast } from './toastContext';
-import { screenLocale } from './locale';
+import { formatNumber, t, texts, tf } from './locale';
 
 type Label = Schemas['Label'];
 
@@ -33,28 +33,30 @@ type Label = Schemas['Label'];
 const COMPANY_LABEL_LIMIT = 200;
 const NAME_MAX = 30;
 const DEFAULT_COLOR = '#808080';
-const TAKEN_TEXT = '이 고객사에 같은 이름의 라벨이 있습니다.';
-const LIMIT_TEXT = '라벨은 고객사마다 200개까지 만듭니다.';
-const NAME_MISSING_TEXT = '이름을 넣어 주세요.';
-const NAME_LONG_TEXT = '이름은 30자까지 씁니다.';
-const COLOR_TEXT = '#과 16진수 여섯 자리로 적어 주세요. 예: #808080';
+const WORDS = texts({
+  taken: 'companyLabels.taken',
+  limit: 'companyLabels.limit',
+  nameMissing: 'companyLabels.nameMissing',
+  nameLong: 'companyLabels.nameLong',
+  color: 'companyLabels.colorFormat',
+});
 
-const LABEL_ERRORS: Record<string, string> = {
-  LABEL_LIMIT_EXCEEDED: LIMIT_TEXT,
-  COMPANY_NOT_ACTIVE: '보관된 고객사에는 라벨을 만들 수 없습니다.',
-  NOT_FOUND: '이미 지워진 라벨입니다.',
-};
+const LABEL_ERRORS: Readonly<Record<string, string>> = texts({
+  LABEL_LIMIT_EXCEEDED: 'companyLabels.limit',
+  COMPANY_NOT_ACTIVE: 'companyLabels.errNotActive',
+  NOT_FOUND: 'companyLabels.errNotFound',
+});
 
 /** The eight swatches (screens.md 4절): each has text, black or white, of at least 4.5:1 on it. */
 const SWATCHES = [
-  ['회색', '#808080'],
-  ['빨강', '#C0262D'],
-  ['주황', '#B07A00'],
-  ['노랑', '#F2C14E'],
-  ['초록', '#1F7A3A'],
-  ['청록', '#0F766E'],
-  ['파랑', '#245FB0'],
-  ['보라', '#6D28D9'],
+  ['companyLabels.gray', '#808080'],
+  ['companyLabels.red', '#C0262D'],
+  ['companyLabels.orange', '#B07A00'],
+  ['companyLabels.yellow', '#F2C14E'],
+  ['companyLabels.green', '#1F7A3A'],
+  ['companyLabels.teal', '#0F766E'],
+  ['companyLabels.blue', '#245FB0'],
+  ['companyLabels.purple', '#6D28D9'],
 ] as const;
 
 /** The name as the server keeps it: no space around it, one form of each letter. */
@@ -76,8 +78,8 @@ function LabelDialog(props: { code: string; label: Label | null; onClose: () => 
   const save = async () => {
     if (pending) return;
     const sent = trimmed(name);
-    const nameProblem = sent === '' ? NAME_MISSING_TEXT : codePoints(sent) > NAME_MAX ? NAME_LONG_TEXT : undefined;
-    const colorProblem = labelTextColor(color) === null || !color.trim().startsWith('#') ? COLOR_TEXT : undefined;
+    const nameProblem = sent === '' ? WORDS.nameMissing : codePoints(sent) > NAME_MAX ? WORDS.nameLong : undefined;
+    const colorProblem = labelTextColor(color) === null || !color.trim().startsWith('#') ? WORDS.color : undefined;
     setNameError(nameProblem);
     setColorError(colorProblem);
     setFailure(null);
@@ -92,16 +94,16 @@ function LabelDialog(props: { code: string; label: Label | null; onClose: () => 
     if (!live()) return;
     setPending(false);
     if (result.ok) {
-      toast(editing ? '라벨을 고쳤습니다' : '라벨을 만들었습니다');
+      toast(editing ? t('companyLabels.editedToast') : t('companyLabels.createdToast'));
       props.onClose();
       return;
     }
     const f = result.failure;
-    if (f.kind === 'rejected' && f.code === 'LABEL_NAME_TAKEN') setNameError(TAKEN_TEXT);
+    if (f.kind === 'rejected' && f.code === 'LABEL_NAME_TAKEN') setNameError(WORDS.taken);
     else if (f.kind === 'invalid') {
       for (const p of f.fields) {
-        if (p.field === 'name') setNameError(p.code === 'TOO_LONG' ? NAME_LONG_TEXT : NAME_MISSING_TEXT);
-        if (p.field === 'color') setColorError(COLOR_TEXT);
+        if (p.field === 'name') setNameError(p.code === 'TOO_LONG' ? WORDS.nameLong : WORDS.nameMissing);
+        if (p.field === 'color') setColorError(WORDS.color);
       }
     } else setFailure(f);
   };
@@ -110,7 +112,7 @@ function LabelDialog(props: { code: string; label: Label | null; onClose: () => 
   return (
     <Dialog
       open
-      title={editing ? '라벨 고치기' : '라벨 만들기'}
+      title={editing ? t('companyLabels.editTitle') : t('companyLabels.createTitle')}
       closeLabel={TEXT.close}
       pending={pending}
       onClose={props.onClose}
@@ -126,7 +128,7 @@ function LabelDialog(props: { code: string; label: Label | null; onClose: () => 
               void save();
             }}
           >
-            {editing ? '저장' : '만들기'}
+            {editing ? t('companyLabels.save') : t('companyLabels.create')}
           </Button>
         </>
       }
@@ -140,10 +142,10 @@ function LabelDialog(props: { code: string; label: Label | null; onClose: () => 
         }}
       >
         <SaveFailure failure={failure} known={LABEL_ERRORS} />
-        <TextField label="이름" value={name} onChange={setName} maxLength={NAME_MAX} showCount {...(nameError === undefined ? {} : { error: nameError })} />
+        <TextField label={t('companyLabels.name')} value={name} onChange={setName} maxLength={NAME_MAX} showCount {...(nameError === undefined ? {} : { error: nameError })} />
         <div className="pd-field">
           <span id="label-swatches" className="pd-label">
-            색
+            {t('companyLabels.color')}
           </span>
           <div className="pd-swatches" role="radiogroup" aria-labelledby="label-swatches">
             {SWATCHES.map(([word, value]) => (
@@ -159,15 +161,15 @@ function LabelDialog(props: { code: string; label: Label | null; onClose: () => 
                     setColorError(undefined);
                   }}
                 />
-                <span className="pd-sr-only">{word}</span>
+                <span className="pd-sr-only">{t(word)}</span>
               </label>
             ))}
           </div>
         </div>
-        <TextField label="색 값 (#RRGGBB)" value={color} onChange={setColor} maxLength={7} spellCheck={false} {...(colorError === undefined ? {} : { error: colorError })} />
+        <TextField label={t('companyLabels.colorValue')} value={color} onChange={setColor} maxLength={7} spellCheck={false} {...(colorError === undefined ? {} : { error: colorError })} />
         <div className="pd-field">
-          <span className="pd-label">미리 보기</span>
-          <span>{trimmed(name) === '' ? <span className="pd-muted">이름을 넣으면 보입니다</span> : <LabelChip name={trimmed(name)} color={valid ? color.trim().toUpperCase() : DEFAULT_COLOR} />}</span>
+          <span className="pd-label">{t('companyLabels.preview')}</span>
+          <span>{trimmed(name) === '' ? <span className="pd-muted">{t('companyLabels.previewEmpty')}</span> : <LabelChip name={trimmed(name)} color={valid ? color.trim().toUpperCase() : DEFAULT_COLOR} />}</span>
         </div>
       </form>
     </Dialog>
@@ -190,7 +192,7 @@ function DeleteLabelDialog(props: { code: string; label: Label; onClose: () => v
     if (!live()) return;
     setPending(false);
     if (result.ok) {
-      toast('라벨을 지웠습니다');
+      toast(t('companyLabels.deletedToast'));
       props.onClose();
       return;
     }
@@ -201,16 +203,14 @@ function DeleteLabelDialog(props: { code: string; label: Label; onClose: () => v
     <ConfirmDialog
       open
       tone="danger"
-      title="라벨 지우기"
+      title={t('companyLabels.deleteTitle')}
       message={
         <>
-          <p>
-            라벨 &apos;{label.name}&apos;을 지웁니다. 붙어 있는 문의 {label.issueCount.toLocaleString(screenLocale())}건에서도 떨어집니다. 이력에는 남지 않습니다.
-          </p>
+          <p>{tf('companyLabels.deleteAsk', { name: label.name, count: formatNumber(label.issueCount) })}</p>
           <SaveFailure failure={failure} known={LABEL_ERRORS} />
         </>
       }
-      confirmLabel="지우기"
+      confirmLabel={t('companyLabels.delete')}
       cancelLabel={TEXT.cancel}
       pending={pending}
       pendingLabel={TEXT.sending}
@@ -248,24 +248,24 @@ export function CompanyLabels(props: { code: string; archived: boolean }) {
   const full = labels.length >= COMPANY_LABEL_LIMIT;
 
   const columns: DataTableColumn<Label>[] = [
-    { key: 'name', header: '라벨', cell: (l) => <LabelChip name={l.name} color={l.color} /> },
-    { key: 'issues', header: '붙은 문의', cell: (l) => `문의 ${l.issueCount.toLocaleString(screenLocale())}건` },
+    { key: 'name', header: t('companyLabels.label'), cell: (l) => <LabelChip name={l.name} color={l.color} /> },
+    { key: 'issues', header: t('companyLabels.issues'), cell: (l) => tf('companyLabels.issueCount', { count: formatNumber(l.issueCount) }) },
     {
       key: 'actions',
-      header: <span className="pd-sr-only">동작</span>,
+      header: <span className="pd-sr-only">{t('companyLabels.actions')}</span>,
       align: 'end',
       cell: (l) => (
         <RowMenu
-          label={`${l.name} 동작`}
+          label={tf('companyLabels.actionsOf', { name: l.name })}
           items={[
             {
-              label: '고치기',
+              label: t('companyLabels.edit'),
               onSelect: () => {
                 open({ what: 'edit', label: l });
               },
             },
             {
-              label: '지우기',
+              label: t('companyLabels.delete'),
               tone: 'danger',
               onSelect: () => {
                 open({ what: 'delete', label: l });
@@ -281,7 +281,7 @@ export function CompanyLabels(props: { code: string; archived: boolean }) {
     <section id="labels" className="pd-section pd-company-labels" aria-labelledby="labels-title">
       <div className="pd-section-head">
         <h2 id="labels-title" className="pd-section-title">
-          라벨
+          {t('companyLabels.title')}
         </h2>
         {/* An archived company takes no new label; its labels can still be changed and deleted. */}
         {!props.archived && (
@@ -293,21 +293,21 @@ export function CompanyLabels(props: { code: string; archived: boolean }) {
               open({ what: 'create' });
             }}
           >
-            라벨 만들기
+            {t('companyLabels.createTitle')}
           </Button>
         )}
       </div>
-      {full && !props.archived && <p className="pd-muted">{LIMIT_TEXT}</p>}
+      {full && !props.archived && <p className="pd-muted">{WORDS.limit}</p>}
       {load.status === 'failed' && <LoadFailed onRetry={reload} />}
       {load.status !== 'failed' || load.data ? (
         <DataTable
-          caption={`라벨, ${String(labels.length)}개`}
+          caption={tf('companyLabels.caption', { count: labels.length })}
           columns={columns}
           rows={labels}
           rowKey={(l) => String(l.id)}
           status={load.data === undefined ? 'loading' : 'ready'}
           density="compact"
-          empty={<EmptyState title="아직 라벨이 없습니다." headingLevel={3} />}
+          empty={<EmptyState title={t('companyLabels.none')} headingLevel={3} />}
         />
       ) : null}
       {(opened?.what === 'create' || opened?.what === 'edit') && (

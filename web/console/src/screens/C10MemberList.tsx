@@ -32,6 +32,7 @@ import { startExport } from '../app/exportDownload';
 import { useFieldErrors, useLive, useLoad } from '../app/hooks';
 import { InviteDialog } from '../app/InviteDialog';
 import { InviteLink } from '../app/InviteLink';
+import { t, texts, tf } from '../app/locale';
 import { LoadFailed, PageTitle } from '../app/layout';
 import { matchesEmail } from '../app/matchesEmail';
 import { rateLimitedText, TEXT } from '../app/messages';
@@ -47,42 +48,45 @@ import { useToast } from '../app/toastContext';
 type Account = Schemas['Account'];
 type Role = Account['role'];
 
-const ROLE_WORDS: Record<Role, string> = { CUSTOMER: '고객', AGENT: '상담원', ADMIN: '관리자' };
-// The role a staff member is changed to, with its particle.
-const ROLE_TO: Record<'AGENT' | 'ADMIN', string> = { AGENT: '상담원으로', ADMIN: '관리자로' };
-const ROLE_OPTIONS = (['CUSTOMER', 'AGENT', 'ADMIN'] as const).map((value) => ({ value, label: ROLE_WORDS[value] }));
-const STATUS_OPTIONS = (['ACTIVE', 'INVITED', 'SUSPENDED'] as const).map((value) => ({ value, label: ACCOUNT_STATUS_WORDS[value] }));
+const roleWord = (role: Role) => t(`members.role.${role}`);
+// The role a staff member is changed to, with its particle in Korean.
+const roleTo = (role: 'AGENT' | 'ADMIN') => t(`members.roleTo.${role}`);
+const ROLES = ['CUSTOMER', 'AGENT', 'ADMIN'] as const;
+const STATUSES = ['ACTIVE', 'INVITED', 'SUSPENDED'] as const;
+// Made while drawing, so the labels follow the screen language.
+const roleOptions = () => ROLES.map((value) => ({ value, label: roleWord(value) }));
+const statusOptions = () => STATUSES.map((value) => ({ value, label: ACCOUNT_STATUS_WORDS[value] }));
 
-const ACCOUNT_ERRORS: Record<string, string> = {
-  OWN_ACCOUNT: '자기 계정은 정지하거나 역할을 바꿀 수 없습니다.',
-  CUSTOMER_ROLE_FIXED: '고객 계정의 역할은 바꿀 수 없습니다.',
-  LAST_ADMIN: '사용 중인 관리자가 한 명은 남아야 합니다.',
-  ACCOUNT_NOT_ACTIVE: '사용 중인 계정에만 할 수 있습니다.',
-  INVITATION_NOT_ACCEPTED: '초대를 수락한 적이 없는 계정입니다. 초대를 다시 보내세요.',
-  INVITATION_ALREADY_ACCEPTED: '이미 초대를 수락한 계정입니다.',
-  NOT_FOUND: '계정을 찾을 수 없습니다.',
-  ACCOUNT_ANONYMIZED: '이미 익명화한 계정입니다.',
-  ANONYMIZATION_RUNNING: '다른 익명화가 진행 중입니다. 잠시 뒤 다시 시도해 주세요.',
-};
+const ACCOUNT_ERRORS: Readonly<Record<string, string>> = texts({
+  OWN_ACCOUNT: 'members.error.ownAccount',
+  CUSTOMER_ROLE_FIXED: 'members.error.customerRoleFixed',
+  LAST_ADMIN: 'members.error.lastAdmin',
+  ACCOUNT_NOT_ACTIVE: 'members.error.accountNotActive',
+  INVITATION_NOT_ACCEPTED: 'members.error.invitationNotAccepted',
+  INVITATION_ALREADY_ACCEPTED: 'members.error.invitationAlreadyAccepted',
+  NOT_FOUND: 'members.error.notFound',
+  ACCOUNT_ANONYMIZED: 'members.error.accountAnonymized',
+  ANONYMIZATION_RUNNING: 'members.error.anonymizationRunning',
+});
 
 /**
  * The 익명화 dialog says OWN_ACCOUNT in its own words: the shared text is about 정지 and 역할.
  * AUDIT_CHAIN_BROKEN comes only from 익명화; its `brokenSeq` is not shown (S10A-AC-37).
  */
 // 연결 풀기 (11 screens.md C-10): a 404 means the link is gone already.
-const UNLINK_ERRORS: Record<string, string> = { ...ACCOUNT_ERRORS, NOT_FOUND: '이미 연결이 풀렸습니다.' };
+const unlinkErrors = (): Record<string, string> => ({ ...ACCOUNT_ERRORS, NOT_FOUND: t('members.error.alreadyUnlinked') });
 
-const ANONYMIZE_ERRORS: Record<string, string> = {
+const anonymizeErrors = (): Record<string, string> => ({
   ...ACCOUNT_ERRORS,
-  OWN_ACCOUNT: '자기 계정은 익명화할 수 없습니다.',
-  AUDIT_CHAIN_BROKEN: '감사 로그의 사슬이 끊겨 있어 익명화하지 않았습니다. 감사 로그에서 무결성 확인을 돌려 보세요.',
-};
+  OWN_ACCOUNT: t('members.error.anonymizeOwn'),
+  AUDIT_CHAIN_BROKEN: t('members.error.auditChainBroken'),
+});
 
 /** The 503 of 정보 내보내기, with the seconds of `Retry-After`. */
 function exportBusyText(seconds: number | null): string {
   return seconds === null
-    ? '내보내기가 몰려 있습니다. 잠시 뒤 다시 시도해 주세요.'
-    : `내보내기가 몰려 있습니다. ${String(seconds)}초 뒤 다시 시도해 주세요.`;
+    ? t('members.exportBusy')
+    : tf('members.exportBusyFor', { seconds });
 }
 
 interface ListData {
@@ -144,14 +148,14 @@ function NewLinkDialog(props: { account: Account | null; onClose: () => void }) 
     <>
       <ConfirmDialog
         open={open && asked}
-        title="초대 링크 다시 만들기"
+        title={t('members.newLinkTitle')}
         message={
           <>
-            <p>새 링크를 만들면 이전 링크는 쓸 수 없게 됩니다.</p>
+            <p>{t('members.newLinkText')}</p>
             <SaveFailure failure={failure} />
           </>
         }
-        confirmLabel="새 링크 만들기"
+        confirmLabel={t('members.newLinkConfirm')}
         cancelLabel={TEXT.cancel}
         pending={pending}
         pendingLabel={TEXT.sending}
@@ -162,13 +166,13 @@ function NewLinkDialog(props: { account: Account | null; onClose: () => void }) 
       />
       <Dialog
         open={open && !asked && link !== null}
-        title="초대 링크"
-        description={props.account ? `${props.account.name}(${props.account.email})에게 보낼 링크입니다.` : ''}
+        title={t('members.inviteLinkTitle')}
+        description={props.account ? tf('members.linkFor', { name: props.account.name, email: props.account.email }) : ''}
         closeLabel={TEXT.close}
         onClose={close}
         footer={<Button onClick={close}>{TEXT.close}</Button>}
       >
-        {link !== null && <InviteLink link={link} intro="메일 설정이 없어 초대 메일을 보낼 수 없습니다. 아래 링크를 복사해 직접 전하세요." />}
+        {link !== null && <InviteLink link={link} intro={t('members.noMailInvite')} />}
       </Dialog>
     </>
   );
@@ -247,44 +251,44 @@ function AskDialog(
       setFailure(failed);
       return;
     }
-    if (action === 'suspend') toast(`${account.name} 님을 정지했습니다${clearedText(cleared)}`);
-    else if (action === 'role') toast(`${account.name} 님의 역할을 ${ROLE_TO[nextRole]} 바꿨습니다`);
-    else if (action === 'cancel') toast('초대를 취소했습니다');
-    else if (action === 'unlink') toast('OIDC 연결을 풀었습니다.');
-    else if (link === null) toast('재설정 메일을 보냈습니다.');
+    if (action === 'suspend') toast(`${tf('members.suspendedToast', { name: account.name })}${clearedText(cleared)}`);
+    else if (action === 'role') toast(tf('members.roleChangedToast', { name: account.name, to: roleTo(nextRole) }));
+    else if (action === 'cancel') toast(t('members.inviteCancelledToast'));
+    else if (action === 'unlink') toast(t('members.unlinkedToast'));
+    else if (link === null) toast(t('members.resetSentToast'));
     else props.onLink(link);
     props.onClose();
   };
 
   const asks = {
     suspend: {
-      title: '계정 정지',
-      text: `${account.name} 님을 정지합니다. 로그인이 끊기고 다시 로그인할 수 없습니다.`,
-      confirm: '정지',
+      title: t('members.suspendTitle'),
+      text: tf('members.suspendText', { name: account.name }),
+      confirm: t('members.suspend'),
       danger: true,
     },
     role: {
-      title: '역할 바꾸기',
-      text: `역할을 ${ROLE_WORDS[account.role]}에서 ${ROLE_TO[nextRole]} 바꿉니다. ${account.name} 님은 다시 로그인해야 합니다.`,
-      confirm: '역할 바꾸기',
+      title: t('members.roleTitle'),
+      text: tf('members.roleText', { from: roleWord(account.role), to: roleTo(nextRole), name: account.name }),
+      confirm: t('members.roleTitle'),
       danger: false,
     },
     reset: {
-      title: '비밀번호 초기화',
-      text: '지금 비밀번호를 못 쓰게 하고 재설정 메일을 보냅니다.',
-      confirm: '초기화',
+      title: t('members.resetTitle'),
+      text: t('members.resetText'),
+      confirm: t('members.resetConfirm'),
       danger: true,
     },
     cancel: {
-      title: '초대 취소',
-      text: '보낸 초대 링크를 못 쓰게 합니다.',
-      confirm: '초대 취소',
+      title: t('members.cancelTitle'),
+      text: t('members.cancelText'),
+      confirm: t('members.cancelTitle'),
       danger: true,
     },
     unlink: {
-      title: 'OIDC 연결을 풀까요?',
-      text: `${account.name}님이 로그인한 곳에서 모두 로그아웃됩니다. 다음에 회사 계정으로 로그인하면 그때의 이메일로 다시 연결됩니다.`,
-      confirm: '연결 풀기',
+      title: t('members.unlinkTitle'),
+      text: tf('members.unlinkText', { name: account.name }),
+      confirm: t('members.unlinkConfirm'),
       danger: true,
     },
   }[action];
@@ -296,14 +300,14 @@ function AskDialog(
       message={
         <>
           <p>{asks.text}</p>
-          {action === 'reset' && !props.mailEnabled && <p>메일 설정이 없으면 메일 대신 재설정 링크를 이 화면에 한 번 보입니다.</p>}
+          {action === 'reset' && !props.mailEnabled && <p>{t('members.resetNoMail')}</p>}
           {action === 'suspend' && <ClearAssignments name={account.name} open={open} scope="all" checked={clear} onChange={setClear} />}
           {action !== 'suspend' && action !== 'role' && action !== 'unlink' && (
             <p className="pd-muted">
               {account.name}({account.email})
             </p>
           )}
-          <ActionFailure failure={failure} {...(action === 'unlink' ? { known: UNLINK_ERRORS } : {})} />
+          <ActionFailure failure={failure} {...(action === 'unlink' ? { known: unlinkErrors() } : {})} />
         </>
       }
       confirmLabel={asks.confirm}
@@ -349,7 +353,7 @@ function RenameDialog(props: ActionDialogProps) {
     if (result.ok) {
       // The menu shows my own name.
       if (me?.id === account.id) setMe({ ...me, name: result.data.name });
-      toast('이름을 고쳤습니다');
+      toast(t('members.renamedToast'));
       props.onClose();
       return;
     }
@@ -360,7 +364,7 @@ function RenameDialog(props: ActionDialogProps) {
   return (
     <Dialog
       open
-      title="이름 고치기"
+      title={t('members.renameTitle')}
       description={account.email}
       closeLabel={TEXT.close}
       pending={pending}
@@ -371,7 +375,7 @@ function RenameDialog(props: ActionDialogProps) {
             {TEXT.cancel}
           </Button>
           <Button type="submit" form={RENAME_FORM_ID} pending={pending} pendingLabel={TEXT.sending}>
-            저장
+            {t('members.save')}
           </Button>
         </>
       }
@@ -388,7 +392,7 @@ function RenameDialog(props: ActionDialogProps) {
         <ActionFailure failure={failure} />
         <TextField
           id="account-name"
-          label="이름"
+          label={t('members.name')}
           value={name}
           onChange={setName}
           maxLength={50}
@@ -441,12 +445,12 @@ function AnonymizeDialog(props: ActionDialogProps) {
       setFailure(result.failure);
       return;
     }
-    toast(`익명화했습니다${clearedText(clear ? result.data.cleared.issues : undefined)}`);
+    toast(`${t('members.anonymizedToast')}${clearedText(clear ? result.data.cleared.issues : undefined)}`);
     props.onClose();
   };
 
   return (
-    <Dialog open title={`${account.name} 님을 익명화할까요?`} closeLabel={TEXT.close} pending={pending} initialFocus={field} onClose={props.onClose}>
+    <Dialog open title={tf('members.anonymizeTitle', { name: account.name })} closeLabel={TEXT.close} pending={pending} initialFocus={field} onClose={props.onClose}>
       <form
         id={ANONYMIZE_FORM_ID}
         className="pd-form"
@@ -456,29 +460,29 @@ function AnonymizeDialog(props: ActionDialogProps) {
         }}
       >
         <p>
-          <strong>되돌릴 수 없습니다.</strong>
+          <strong>{t('members.cannotUndo')}</strong>
         </p>
         <ul className="pd-anonymize-changes">
-          <li>{`이름은 '삭제된 사용자', 이메일은 'deleted-${String(account.id)}@invalid'로 바뀝니다`}</li>
-          <li>프로필 사진과 로그인한 세션을 지웁니다</li>
-          <li>{"이 사람이 쓴 문의와 댓글은 남고 작성자는 '삭제된 사용자'로 보입니다"}</li>
-          <li>감사 로그의 이름과 이메일도 바뀝니다</li>
+          <li>{tf('members.anonymizeChangesName', { id: account.id })}</li>
+          <li>{t('members.anonymizeChangesPhoto')}</li>
+          <li>{t('members.anonymizeChangesWritings')}</li>
+          <li>{t('members.anonymizeChangesAudit')}</li>
         </ul>
         <ClearAssignments name={account.name} open={open} scope="all" checked={clear} onChange={setClear} />
         <TextField
           ref={field}
           id="anonymize-email"
-          label={`확인하려면 이 사람의 이메일 ${account.email}을 입력하세요`}
+          label={tf('members.anonymizeTypeEmail', { email: account.email })}
           value={typed}
           onChange={setTyped}
         />
-        <ActionFailure failure={failure} known={ANONYMIZE_ERRORS} />
+        <ActionFailure failure={failure} known={anonymizeErrors()} />
         <div className="pd-form-actions">
           <Button variant="secondary" onClick={props.onClose}>
             {TEXT.cancel}
           </Button>
-          <Button type="submit" variant="danger" blocked={!matches} pending={pending} pendingLabel="익명화하는 중…">
-            익명화
+          <Button type="submit" variant="danger" blocked={!matches} pending={pending} pendingLabel={t('members.anonymizing')}>
+            {t('members.anonymize')}
           </Button>
         </div>
       </form>
@@ -506,8 +510,8 @@ export function C10MemberList() {
   const [linkFor, setLinkFor] = useState<Account | null>(null);
 
   // Filters: the address holds them, under the names the API takes (S3-AC-86). A value the list cannot take is left out.
-  const role = ROLE_OPTIONS.find((o) => o.value === searchParams.get('role'))?.value ?? '';
-  const status = STATUS_OPTIONS.find((o) => o.value === searchParams.get('status'))?.value ?? '';
+  const role = ROLES.find((value) => value === searchParams.get('role')) ?? '';
+  const status = STATUSES.find((value) => value === searchParams.get('status')) ?? '';
   const q = (searchParams.get('q') ?? '').trim().slice(0, 100);
   /** A new filter starts on the first page. */
   const setFilters = (next: { role: string; status: string; q: string }, options: { replace?: boolean } = {}) => {
@@ -589,7 +593,7 @@ export function C10MemberList() {
         if (live()) window.location.assign(url);
       },
       busyText: exportBusyText,
-      known: { NOT_FOUND: '이 계정을 찾을 수 없습니다.' },
+      known: { NOT_FOUND: t('members.error.exportNotFound') },
     });
     if (!live() || check.ok) return;
     if (check.status === 401) toLogin();
@@ -605,7 +609,7 @@ export function C10MemberList() {
     sending.current = false;
     if (!live()) return;
     reload();
-    if (result.ok) toast(`${account.name} 님의 정지를 풀었습니다`);
+    if (result.ok) toast(tf('members.reactivatedToast', { name: account.name }));
     else setRowFailure(result.failure);
   };
 
@@ -618,7 +622,7 @@ export function C10MemberList() {
     if (!live()) return;
     reload();
     if (!result.ok) setRowFailure(result.failure);
-    else if (result.data.inviteLink === null) toast('초대 메일을 다시 보냈습니다');
+    else if (result.data.inviteLink === null) toast(t('members.resentToast'));
     else setShownLink({ kind: 'invite', account, link: result.data.inviteLink });
   };
 
@@ -629,7 +633,7 @@ export function C10MemberList() {
    */
   const actionsOf = (a: Account): RowMenuItem[] => {
     const exportItem: RowMenuItem = {
-      label: '정보 내보내기',
+      label: t('members.exportInfo'),
       onSelect: () => {
         void exportOf(a);
       },
@@ -639,7 +643,7 @@ export function C10MemberList() {
     const mine = a.id === me?.id;
     const items: RowMenuItem[] = [
       {
-        label: '이름 고치기',
+        label: t('members.renameTitle'),
         onSelect: () => {
           open('rename', a);
         },
@@ -649,14 +653,14 @@ export function C10MemberList() {
       // Only staff roles change into each other, and never my own (S1A-AC-32, 33).
       if (!mine && a.role !== 'CUSTOMER') {
         items.push({
-          label: '역할 바꾸기',
+          label: t('members.roleTitle'),
           onSelect: () => {
             open('role', a);
           },
         });
       }
       items.push({
-        label: '비밀번호 초기화',
+        label: t('members.resetTitle'),
         onSelect: () => {
           open('reset', a);
         },
@@ -664,7 +668,7 @@ export function C10MemberList() {
       items.push(exportItem);
       if (!mine) {
         items.push({
-          label: '정지',
+          label: t('members.suspend'),
           tone: 'danger',
           onSelect: () => {
             open('suspend', a);
@@ -673,7 +677,7 @@ export function C10MemberList() {
       }
     } else if (shown === 'SUSPENDED') {
       items.push({
-        label: '정지 풀기',
+        label: t('members.reactivate'),
         onSelect: () => {
           void reactivate(a);
         },
@@ -681,7 +685,7 @@ export function C10MemberList() {
       items.push(exportItem);
     } else {
       items.push({
-        label: '초대 다시 보내기',
+        label: t('members.resend'),
         onSelect: () => {
           void resend(a);
         },
@@ -689,7 +693,7 @@ export function C10MemberList() {
       items.push(exportItem);
       if (shown === 'INVITED') {
         items.push({
-          label: '초대 취소',
+          label: t('members.cancelTitle'),
           tone: 'danger',
           onSelect: () => {
             open('cancel', a);
@@ -700,7 +704,7 @@ export function C10MemberList() {
     // 11 screens.md C-10: only a linked account, whatever its status.
     if (linked(a)) {
       items.push({
-        label: 'OIDC 연결 풀기',
+        label: t('members.unlink'),
         onSelect: () => {
           open('unlink', a);
         },
@@ -708,7 +712,7 @@ export function C10MemberList() {
     }
     if (!mine) {
       items.push({
-        label: '익명화',
+        label: t('members.anonymize'),
         tone: 'danger',
         onSelect: () => {
           open('anonymize', a);
@@ -721,29 +725,29 @@ export function C10MemberList() {
   const columns: DataTableColumn<Account>[] = [
     {
       key: 'name',
-      header: '이름',
+      header: t('members.name'),
       cell: (a) => (
         <span className="pd-person">
           <Avatar name={a.name} photoUrl={photoUrl(a.id, a.photoUpdatedAt)} size="sm" decorative />
           <span>{a.name}</span>
-          {linked(a) && <Badge tone="neutral">OIDC 연결</Badge>}
+          {linked(a) && <Badge tone="neutral">{t('members.oidcLinked')}</Badge>}
         </span>
       ),
       sticky: true,
       width: '11rem',
     },
-    { key: 'email', header: '이메일', cell: (a) => a.email },
-    { key: 'role', header: '역할', cell: (a) => ROLE_WORDS[a.role] },
+    { key: 'email', header: t('members.email'), cell: (a) => a.email },
+    { key: 'role', header: t('members.roleHeader'), cell: (a) => roleWord(a.role) },
     {
       key: 'status',
-      header: '상태',
+      header: t('members.status'),
       // Neither 정지 nor 초대 취소됨: the account is gone for good (S10A-AC-32).
-      cell: (a) => (a.anonymized ? <Badge tone="neutral">익명화됨</Badge> : <StatusBadge kind="account" status={shownStatus(a)} />),
+      cell: (a) => (a.anonymized ? <Badge tone="neutral">{t('members.anonymized')}</Badge> : <StatusBadge kind="account" status={shownStatus(a)} />),
     },
-    { key: 'created', header: '만든 시각', cell: (a) => <RelativeTime dateTime={a.createdAt} focusable={false} /> },
+    { key: 'created', header: t('members.created'), cell: (a) => <RelativeTime dateTime={a.createdAt} focusable={false} /> },
     {
       key: 'actions',
-      header: <span className="pd-sr-only">동작</span>,
+      header: <span className="pd-sr-only">{t('members.actions')}</span>,
       align: 'end',
       cell: (a) => (
         <span className="pd-row-actions">
@@ -755,10 +759,10 @@ export function C10MemberList() {
                 setLinkFor(a);
               }}
             >
-              초대 링크 복사
+              {t('members.copyInviteLink')}
             </Button>
           )}
-          <RowMenu label={`${a.name} 동작`} items={actionsOf(a)} />
+          <RowMenu label={tf('members.rowActions', { name: a.name })} items={actionsOf(a)} />
         </span>
       ),
     },
@@ -779,29 +783,29 @@ export function C10MemberList() {
   return (
     <div className="pd-screen">
       <div className="pd-screen-head">
-        <PageTitle titleRef={heading}>구성원 목록</PageTitle>
+        <PageTitle titleRef={heading}>{t('members.title')}</PageTitle>
         <Button
           onClick={() => {
             setInviting(true);
           }}
         >
-          초대
+          {t('members.invite')}
         </Button>
       </div>
       <div className="pd-filters">
         <Select
-          label="역할"
-          placeholder="전체"
-          options={ROLE_OPTIONS}
+          label={t('members.roleHeader')}
+          placeholder={t('members.all')}
+          options={roleOptions()}
           value={role}
           onChange={(value) => {
             setFilters({ role: value, status, q });
           }}
         />
         <Select
-          label="상태"
-          placeholder="전체"
-          options={STATUS_OPTIONS}
+          label={t('members.status')}
+          placeholder={t('members.all')}
+          options={statusOptions()}
           value={status}
           onChange={(value) => {
             setFilters({ role, status: value, q });
@@ -809,7 +813,7 @@ export function C10MemberList() {
         />
         <SearchField
           ref={searchBox}
-          label="이름·이메일 검색"
+          label={t('members.search')}
           value={q}
           onSearch={(value) => {
             const next = value.trim();
@@ -823,7 +827,7 @@ export function C10MemberList() {
       {exportProblem !== null && <Alert tone="error">{exportProblem}</Alert>}
       {(load.status !== 'failed' || data) && (
         <DataTable
-          caption={`구성원 목록, ${String(data?.accounts.totalElements ?? 0)}명`}
+          caption={tf('members.caption', { count: data?.accounts.totalElements ?? 0 })}
           columns={columns}
           rows={data?.accounts.items ?? []}
           rowKey={(a) => String(a.id)}
@@ -832,18 +836,18 @@ export function C10MemberList() {
           density="compact"
           empty={
             outOfRange ? (
-              <EmptyState title="이 쪽에는 구성원이 없습니다" action={<Link to="/members">1쪽으로</Link>} />
+              <EmptyState title={t('members.emptyPage')} action={<Link to="/members">{t('members.toFirstPage')}</Link>} />
             ) : filtered ? (
               <EmptyState
-                title="조건에 맞는 구성원이 없습니다"
+                title={t('members.noMatch')}
                 action={
                   <Button variant="secondary" size="sm" onClick={clearFilters}>
-                    조건 지우기
+                    {t('members.clearFilters')}
                   </Button>
                 }
               />
             ) : (
-              <EmptyState title="구성원이 없습니다." />
+              <EmptyState title={t('members.empty')} />
             )
           }
         />
@@ -905,8 +909,8 @@ export function C10MemberList() {
       )}
       <Dialog
         open={shownLink !== null}
-        title={shownLink?.kind === 'reset' ? '재설정 링크' : '초대 링크'}
-        description={shownLink ? `${shownLink.account.name}(${shownLink.account.email})에게 보낼 링크입니다.` : ''}
+        title={shownLink?.kind === 'reset' ? t('members.resetLinkTitle') : t('members.inviteLinkTitle')}
+        description={shownLink ? tf('members.linkFor', { name: shownLink.account.name, email: shownLink.account.email }) : ''}
         closeLabel={TEXT.close}
         onClose={closeLink}
         footer={<Button onClick={closeLink}>{TEXT.close}</Button>}
@@ -914,12 +918,12 @@ export function C10MemberList() {
         {shownLink?.kind === 'reset' && (
           <InviteLink
             link={shownLink.link}
-            label="재설정 링크"
-            intro="메일 설정이 없어 재설정 메일을 보낼 수 없습니다. 아래 링크를 복사해 직접 전하세요. 링크는 1시간 동안 쓸 수 있습니다."
+            label={t('members.resetLinkTitle')}
+            intro={t('members.noMailReset')}
           />
         )}
         {shownLink?.kind === 'invite' && (
-          <InviteLink link={shownLink.link} intro="메일 설정이 없어 초대 메일을 보낼 수 없습니다. 아래 링크를 복사해 직접 전하세요." />
+          <InviteLink link={shownLink.link} intro={t('members.noMailInvite')} />
         )}
       </Dialog>
     </div>

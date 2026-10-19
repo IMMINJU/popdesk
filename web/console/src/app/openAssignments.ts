@@ -2,6 +2,7 @@
 // agent out (ClearAssignments.tsx, S3-AC-85). Slice 6b adds the open tasks; an answer
 // without them (an older server) counts none.
 import { useEffect, useState } from 'react';
+import { tf } from './locale';
 import { call, type Result } from './result';
 
 /** `loading`, `failed`, or the numbers of open issues and open tasks. */
@@ -33,5 +34,5 @@ export function useOpenAssignments(ask: (() => Promise<{ data?: Counts; error?: 
 
 /** "담당 N건을 비웠습니다" after the toast of the dialog, when the server cleared any. */
 export function clearedText(issues: number | undefined): string {
-  return issues !== undefined && issues > 0 ? `. 담당 ${String(issues)}건을 비웠습니다` : '';
+  return issues !== undefined && issues > 0 ? tf('openAssignments.cleared', { count: issues }) : '';
 }

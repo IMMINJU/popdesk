@@ -1,6 +1,7 @@
 // English for the keys of `ko.ts`; a missing key fails the type check.
 import { commonEn } from './common.en';
 import { portalEn } from './portal.en';
+import { consoleAdminEn } from './consoleAdmin.en';
 import type { ko } from './ko';
 
 export const en: Record<keyof typeof ko, string> = {
@@ -226,4 +227,5 @@ export const en: Record<keyof typeof ko, string> = {
   // Slice b5 (b5 acceptance.md 4절 7): one file for each part of the work, e.g. `common.ko.ts` for ①.
   ...commonEn,
   ...portalEn,
+  ...consoleAdminEn,
 };

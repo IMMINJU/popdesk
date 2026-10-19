@@ -13,7 +13,6 @@ import {
   Select,
   TextField,
   type DataTableColumn,
-  type Option,
   type SelectOption,
 } from '@popdesk/ui';
 import type { ConsolePaths } from '@popdesk/api/console';
@@ -21,13 +20,25 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api, type Schemas } from '../api';
 import { AccountFinder } from '../app/AccountFinder';
-import { changeLines, entryKindWord, KIND_GROUPS, kindsOfChoice, kindWord, NOT_SIGN_IN, targetOf, targetWord, type Target } from '../app/auditWords';
+import {
+  accountWord,
+  changeLines,
+  entryKindWord,
+  KIND_GROUPS,
+  kindsOfChoice,
+  kindWord,
+  NOT_SIGN_IN,
+  systemWord,
+  targetOf,
+  targetWord,
+  type Target,
+} from '../app/auditWords';
 import { SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { startExport } from '../app/exportDownload';
 import { useLive, useLoad } from '../app/hooks';
 import { LoadFailed, NoPermission, PageTitle } from '../app/layout';
-import { screenLocale, t } from '../app/locale';
+import { formatNumber, screenLocale, t, texts, tf } from '../app/locale';
 import { TEXT } from '../app/messages';
 import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, pageHref, usePageMove, usePageParam } from '../app/paging';
@@ -44,24 +55,25 @@ const PATH = '/audit-log';
 const EXPORT_PATH = '/api/console/audit-log/export';
 /** popdesk itself as the one who did it: the first admin, the commands in the container. */
 const SYSTEM_ID = 0;
-const SYSTEM = '시스템';
 const TARGET_TYPES = ['ACCOUNT', 'COMPANY', 'DATABASE', 'AUDIT_LOG'] as const;
 /**
  * The server records an export when the download starts, which the screen
  * cannot see. The list is read again at once and once more after this long.
  */
 const EXPORT_RELOAD_MS = 1500;
-const EXPORT_BUSY = '다른 내보내기가 돌고 있습니다. 잠시 뒤 다시 하세요.';
 
-const KIND_OPTIONS: SelectOption[] = [
-  { value: NOT_SIGN_IN, label: '로그인 기록 빼고' },
-  ...KIND_GROUPS.map((g) => ({ value: g.key, label: g.name })),
-  ...KIND_GROUPS.flatMap((g) => Object.entries(g.kinds).map(([value, label]) => ({ value, label, group: g.name }))),
-];
+/** The choices of the 종류 filter, in the screen language. */
+function kindOptions(): SelectOption[] {
+  return [
+    { value: NOT_SIGN_IN, label: t('audit.notSignIn') },
+    ...KIND_GROUPS.map((g) => ({ value: g.key, label: g.name })),
+    ...KIND_GROUPS.flatMap((g) => Object.entries(g.kinds).map(([value, label]) => ({ value, label, group: g.name }))),
+  ];
+}
 
-const VERIFY_ERRORS: Record<string, string> = {
-  AUDIT_VERIFICATION_RUNNING: '이미 확인이 돌고 있습니다. 끝난 뒤 다시 하세요.',
-};
+const VERIFY_ERRORS: Readonly<Record<string, string>> = texts({
+  AUDIT_VERIFICATION_RUNNING: 'auditLog.verifyRunning',
+});
 
 /** The filters as the address holds them. `from` and `to` are days (`YYYY-MM-DD`) in the browser's time zone; `to` is the last day shown. */
 interface Filters {
@@ -158,6 +170,7 @@ function exportHref(format: ExportFormat, query: FilterQuery): string {
 function minuteText(iso: string): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return iso;
+  if (screenLocale() !== 'ko') return new Intl.DateTimeFormat(screenLocale(), { dateStyle: 'long', timeStyle: 'short' }).format(at);
   return `${String(at.getFullYear())}년 ${String(at.getMonth() + 1)}월 ${String(at.getDate())}일 ${pad(at.getHours())}:${pad(at.getMinutes())}`;
 }
 
@@ -169,12 +182,11 @@ function secondText(iso: string): string {
 }
 
 const ACTOR_FORM_ID = 'audit-actor';
-const SYSTEM_CHOICE: Option[] = [{ value: String(SYSTEM_ID), label: SYSTEM }];
 
 /** 한 사람 필터: finds an account the way C-9 does, with 시스템 on top. Mounted anew for every opening. */
 function ActorDialog(props: { actor: number | null; onPick: (accountId: number, name: string) => void; onClose: () => void }) {
   const [chosen, setChosen] = useState<{ value: string; name: string } | null>(
-    props.actor === SYSTEM_ID ? { value: String(SYSTEM_ID), name: SYSTEM } : null,
+    props.actor === SYSTEM_ID ? { value: String(SYSTEM_ID), name: systemWord() } : null,
   );
   const [failure, setFailure] = useState<Failure | null>(null);
   const [missing, setMissing] = useState(false);
@@ -182,8 +194,8 @@ function ActorDialog(props: { actor: number | null; onPick: (accountId: number, 
   return (
     <Dialog
       open
-      title="한 사람 고르기"
-      description="이 계정이 한 일만 봅니다."
+      title={t('auditLog.actorTitle')}
+      description={t('auditLog.actorHelp')}
       closeLabel={TEXT.close}
       onClose={props.onClose}
       footer={
@@ -192,7 +204,7 @@ function ActorDialog(props: { actor: number | null; onPick: (accountId: number, 
             {TEXT.cancel}
           </Button>
           <Button type="submit" form={ACTOR_FORM_ID}>
-            고르기
+            {t('auditLog.choose')}
           </Button>
         </>
       }
@@ -209,16 +221,16 @@ function ActorDialog(props: { actor: number | null; onPick: (accountId: number, 
       >
         <SaveFailure failure={failure} />
         <AccountFinder
-          legend="한 사람"
+          legend={t('auditLog.actor')}
           value={chosen?.value ?? null}
           onChange={(value, account) => {
-            setChosen({ value, name: account?.name ?? SYSTEM });
+            setChosen({ value, name: account?.name ?? systemWord() });
             setMissing(false);
           }}
-          fixed={SYSTEM_CHOICE}
-          idleText="이름이나 이메일의 일부를 넣으면 계정을 찾습니다."
-          emptyText="맞는 계정이 없습니다."
-          {...(missing ? { error: '한 사람을 고르세요.' } : {})}
+          fixed={[{ value: String(SYSTEM_ID), label: systemWord() }]}
+          idleText={t('auditLog.actorIdle')}
+          emptyText={t('auditLog.actorEmpty')}
+          {...(missing ? { error: t('auditLog.actorMissing') } : {})}
           onFound={() => {
             // 시스템 stays on the list whatever was found.
             setChosen((current) => (current?.value === String(SYSTEM_ID) ? current : null));
@@ -238,7 +250,7 @@ function VerifyResult(props: { verify: Verify; onShow: (occurredAt: string) => v
   if (verify.state === 'failed') {
     const { failure } = verify;
     if (failure.kind === 'server' || failure.kind === 'network') {
-      return <Alert tone="error">{TEXT.server} 항목이 많으면 앞단 프록시의 시간 제한에 걸릴 수 있습니다.</Alert>;
+      return <Alert tone="error">{TEXT.server} {t('auditLog.verifyProxy')}</Alert>;
     }
     return <SaveFailure failure={failure} known={VERIFY_ERRORS} />;
   }
@@ -247,13 +259,13 @@ function VerifyResult(props: { verify: Verify; onShow: (occurredAt: string) => v
   if (result.valid) {
     return (
       <Alert tone="success">
-        <p>모두 맞습니다. 항목 {result.checkedCount.toLocaleString(screenLocale())}건을 확인했습니다.</p>
-        <p className="pd-audit-help">DB를 직접 고칠 수 있는 사람이 사슬 전체를 다시 쓴 것은 찾지 못합니다. 바깥 사본과 함께 쓰세요.</p>
+        <p>{tf('auditLog.verified', { count: formatNumber(result.checkedCount) })}</p>
+        <p className="pd-audit-help">{t('auditLog.verifiedHelp')}</p>
       </Alert>
     );
   }
   const broken = result.brokenEntry;
-  if (!broken) return <Alert tone="error">마지막 항목 뒤가 맞지 않습니다. 가장 최근 항목이 지워졌습니다.</Alert>;
+  if (!broken) return <Alert tone="error">{t('auditLog.tailBroken')}</Alert>;
   return (
     <Alert
       tone="error"
@@ -265,12 +277,11 @@ function VerifyResult(props: { verify: Verify; onShow: (occurredAt: string) => v
             props.onShow(broken.occurredAt);
           }}
         >
-          이 항목 보기
+          {t('auditLog.showEntry')}
         </Button>
       }
     >
-      {minuteText(broken.occurredAt)}의 &apos;{kindWord(broken.action) ?? broken.action}&apos; 항목부터 맞지 않습니다. 이 항목이나 그 앞 항목이 고쳐지거나
-      지워졌습니다.
+      {tf('auditLog.brokenAt', { at: minuteText(broken.occurredAt), kind: kindWord(broken.action) ?? broken.action })}
     </Alert>
   );
 }
@@ -347,8 +358,8 @@ export function C12AuditLog() {
   };
 
   const actorName = (accountId: number): string => {
-    if (accountId === SYSTEM_ID) return SYSTEM;
-    return actorNames[accountId] ?? data?.items.find((e) => e.actor.accountId === accountId)?.actor.name ?? `계정 ${String(accountId)}`;
+    if (accountId === SYSTEM_ID) return systemWord();
+    return actorNames[accountId] ?? data?.items.find((e) => e.actor.accountId === accountId)?.actor.name ?? accountWord(accountId);
   };
 
   const exportAs = async (format: ExportFormat) => {
@@ -359,7 +370,7 @@ export function C12AuditLog() {
       navigate: (url) => {
         if (current()) window.location.assign(url);
       },
-      busyText: () => EXPORT_BUSY,
+      busyText: () => t('auditLog.exportBusy'),
     });
     if (!current()) return;
     if (!check.ok) {
@@ -382,23 +393,23 @@ export function C12AuditLog() {
 
   const columns: DataTableColumn<AuditEntry>[] = [
     // One Tab stop less in every row: the exact time is in the opened row.
-    { key: 'at', header: '시각', cell: (e) => <RelativeTime dateTime={e.occurredAt} focusable={false} />, width: '8rem' },
+    { key: 'at', header: t('auditLog.time'), cell: (e) => <RelativeTime dateTime={e.occurredAt} focusable={false} />, width: '8rem' },
     {
       key: 'actor',
-      header: '한 사람',
+      header: t('auditLog.actor'),
       cell: (e) =>
         e.actor.accountId === SYSTEM_ID ? (
-          SYSTEM
+          systemWord()
         ) : (
           <span className="pd-audit-actor">
-            <span>{e.actor.name ?? `계정 ${String(e.actor.accountId)}`}</span>
+            <span>{e.actor.name ?? accountWord(e.actor.accountId)}</span>
             {e.actor.email !== null && <span className="pd-muted">{e.actor.email}</span>}
           </span>
         ),
     },
     {
       key: 'action',
-      header: '일',
+      header: t('auditLog.action'),
       cell: (e) => {
         const word = entryKindWord(e.action, e.changes);
         return word === undefined ? <code className="pd-code">{e.action}</code> : <span className="pd-audit-one-line">{word}</span>;
@@ -406,7 +417,7 @@ export function C12AuditLog() {
     },
     {
       key: 'target',
-      header: '대상',
+      header: t('auditLog.target'),
       cell: (e) => {
         const target = targetOf(e.target);
         if (!target) return null;
@@ -427,7 +438,7 @@ export function C12AuditLog() {
     },
     {
       key: 'changes',
-      header: '바뀐 값',
+      header: t('auditLog.changes'),
       cell: (e) => {
         const lines = changeLines(e.action, e.changes);
         if (lines.length === 0) return null;
@@ -445,7 +456,7 @@ export function C12AuditLog() {
   const outOfRange = data !== undefined && data.items.length === 0 && page > 1;
   const clearButton = (
     <Button variant="secondary" size="sm" onClick={clearFilters}>
-      조건 지우기
+      {t('auditLog.clearFilters')}
     </Button>
   );
 
@@ -456,9 +467,9 @@ export function C12AuditLog() {
       </div>
       <div className="pd-filters pd-audit-filters">
         <Select
-          label="종류"
-          placeholder="전체"
-          options={KIND_OPTIONS}
+          label={t('auditLog.kind')}
+          placeholder={t('auditLog.all')}
+          options={kindOptions()}
           value={filters.kind}
           onChange={(kind) => {
             setFilters({ ...filters, kind });
@@ -471,11 +482,11 @@ export function C12AuditLog() {
               setChoosingActor(true);
             }}
           >
-            한 사람: {filters.actor === null ? '전체' : actorName(filters.actor)}
+            {tf('audit.filter.actor', { actor: filters.actor === null ? t('auditLog.all') : actorName(filters.actor) })}
           </Button>
           {filters.actor !== null && (
             <IconButton
-              label="한 사람 조건 풀기"
+              label={t('auditLog.removeActor')}
               icon={<CloseIcon size={14} />}
               size="sm"
               onClick={() => {
@@ -486,7 +497,7 @@ export function C12AuditLog() {
         </span>
         <div className="pd-audit-dates">
           <TextField
-            label="부터"
+            label={t('auditLog.from')}
             type="date"
             value={shownDates.from}
             onChange={(value) => {
@@ -494,20 +505,20 @@ export function C12AuditLog() {
             }}
           />
           <TextField
-            label="까지"
+            label={t('auditLog.to')}
             type="date"
             value={shownDates.to}
             onChange={(value) => {
               setDate('to', value);
             }}
-            {...(reversed ? { error: '부터보다 앞선 날짜입니다.' } : {})}
+            {...(reversed ? { error: t('auditLog.reversed') } : {})}
           />
         </div>
         {filters.target && (
           <span className="pd-inline pd-audit-chip">
-            <span>대상: {targetWord(filters.target)}</span>
+            <span>{tf('audit.filter.target', { target: targetWord(filters.target) })}</span>
             <IconButton
-              label="대상 조건 풀기"
+              label={t('auditLog.removeTarget')}
               icon={<CloseIcon size={14} />}
               size="sm"
               onClick={() => {
@@ -526,7 +537,7 @@ export function C12AuditLog() {
                 void exportAs('CSV');
               }}
             >
-              CSV로 내보내기
+              {t('auditLog.exportCsv')}
             </Button>
             <Button
               variant="secondary"
@@ -534,26 +545,26 @@ export function C12AuditLog() {
                 void exportAs('JSONL');
               }}
             >
-              JSON Lines로 내보내기
+              {t('auditLog.exportJsonl')}
             </Button>
           </span>
-          <p className="pd-audit-help">지금 건 조건의 항목을 모두 받습니다. 내보낸 일은 감사 로그에 남습니다.</p>
-          {filtered && <p className="pd-audit-help">조건을 건 파일로는 사슬을 확인할 수 없습니다. 확인하려면 조건을 지우고 JSON Lines로 받으세요.</p>}
+          <p className="pd-audit-help">{t('auditLog.exportHelp')}</p>
+          {filtered && <p className="pd-audit-help">{t('auditLog.exportFilteredHelp')}</p>}
         </div>
         <div className="pd-audit-action">
           <span className="pd-inline">
             <Button
               variant="secondary"
               pending={verify.state === 'running'}
-              pendingLabel="확인하는 중…"
+              pendingLabel={t('auditLog.verifying')}
               onClick={() => {
                 void runVerify();
               }}
             >
-              무결성 확인
+              {t('auditLog.verify')}
             </Button>
           </span>
-          <p className="pd-audit-help">항목의 해시를 처음부터 다시 계산해, 고치거나 지운 흔적이 있는지 봅니다.</p>
+          <p className="pd-audit-help">{t('auditLog.verifyHelp')}</p>
         </div>
       </div>
       {exportProblem && <Alert tone="error">{exportProblem}</Alert>}
@@ -569,7 +580,7 @@ export function C12AuditLog() {
         (load.failure?.kind === 'invalid' ? (
           // A filter value from an old address that the server does not take.
           <Alert tone="error" action={clearButton}>
-            조건 값이 맞지 않습니다. 조건을 지우고 다시 하세요.
+            {t('auditLog.badFilter')}
           </Alert>
         ) : (
           <LoadFailed onRetry={reload} />
@@ -578,7 +589,7 @@ export function C12AuditLog() {
         <DataTable
           // A new page or filter folds every opened row.
           key={`${String(page)}\n${filterKey}`}
-          caption={`${t('auditLog.title')}, ${String(data?.totalElements ?? 0)}건`}
+          caption={tf('auditLog.caption', { title: t('auditLog.title'), count: String(data?.totalElements ?? 0) })}
           columns={columns}
           rows={data?.items ?? []}
           rowKey={(e) => String(e.id)}
@@ -588,39 +599,39 @@ export function C12AuditLog() {
           renderExpanded={(e) => (
             <dl className="pd-meta">
               <div>
-                <dt>항목 ID</dt>
+                <dt>{t('auditLog.entryId')}</dt>
                 <dd>
                   <code className="pd-code">{e.id}</code>
                 </dd>
               </div>
               <div>
-                <dt>시각</dt>
+                <dt>{t('auditLog.time')}</dt>
                 <dd>
                   <time dateTime={e.occurredAt}>{secondText(e.occurredAt)}</time>
                 </dd>
               </div>
               <div>
-                <dt>해시</dt>
+                <dt>{t('auditLog.hash')}</dt>
                 <dd>
                   <code className="pd-code">{e.hash}</code>
                 </dd>
               </div>
               <div>
-                <dt>앞 해시</dt>
+                <dt>{t('auditLog.prevHash')}</dt>
                 <dd>
                   <code className="pd-code">{e.prevHash}</code>
                 </dd>
               </div>
             </dl>
           )}
-          expandLabel={(e) => `항목 ${String(e.id)} 자세히`}
+          expandLabel={(e) => tf('auditLog.expand', { id: e.id })}
           empty={
             outOfRange ? (
-              <EmptyState title="이 쪽에는 항목이 없습니다" action={<Link to={pageHref(PATH, 1)}>1쪽으로</Link>} />
+              <EmptyState title={t('auditLog.emptyPage')} action={<Link to={pageHref(PATH, 1)}>{t('auditLog.toFirstPage')}</Link>} />
             ) : filtered ? (
-              <EmptyState title="조건에 맞는 항목이 없습니다" action={clearButton} />
+              <EmptyState title={t('auditLog.noMatch')} action={clearButton} />
             ) : (
-              <EmptyState title="감사 항목이 없습니다." />
+              <EmptyState title={t('auditLog.empty')} />
             )
           }
         />

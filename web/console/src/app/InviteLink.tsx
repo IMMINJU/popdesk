@@ -4,9 +4,7 @@
 import { Alert, CopyField } from '@popdesk/ui';
 import { useState } from 'react';
 import { useToast } from './toastContext';
-
-const ONCE = '이 링크는 지금만 보입니다. 대화상자를 닫으면 다시 볼 수 없습니다.';
-const BY_HAND = 'Ctrl+C로 복사하세요';
+import { t } from './locale';
 
 export function InviteLink(props: { link: string; intro: string; label?: string }) {
   const toast = useToast();
@@ -18,7 +16,7 @@ export function InviteLink(props: { link: string; intro: string; label?: string 
       if (!('clipboard' in navigator)) throw new Error('no clipboard');
       await navigator.clipboard.writeText(props.link);
       setStatus('copied');
-      toast('복사했습니다', 'info');
+      toast(t('inviteLink.copied'), 'info');
     } catch {
       setStatus('unavailable');
     }
@@ -30,11 +28,11 @@ export function InviteLink(props: { link: string; intro: string; label?: string 
         {props.intro}
       </Alert>
       <CopyField
-        label={props.label ?? '초대 링크'}
+        label={props.label ?? t('inviteLink.label')}
         value={props.link}
         status={status}
-        copyLabel="복사"
-        helpText={status === 'unavailable' ? BY_HAND : ONCE}
+        copyLabel={t('inviteLink.copy')}
+        helpText={status === 'unavailable' ? t('inviteLink.byHand') : t('inviteLink.once')}
         onCopy={() => {
           void copy();
         }}

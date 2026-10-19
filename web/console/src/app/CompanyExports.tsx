@@ -7,6 +7,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { api, type Schemas } from '../api';
 import { startExport } from './exportDownload';
 import { useLive } from './hooks';
+import { t, texts, tf } from './locale';
 import { TEXT, failureText } from './messages';
 import { usePoll } from './poll';
 import { call, failureOf, retryAfter, type Failure, type Result } from './result';
@@ -19,42 +20,51 @@ type ExportFailure = NonNullable<CompanyExport['failure']>;
 /** How often the list is read while an export runs (10b acceptance.md 5절 10). */
 export const EXPORT_POLL_MS = 5000;
 
-const STATES: Readonly<Record<ExportState, { word: string; tone: BadgeTone }>> = {
-  RUNNING: { word: '진행 중', tone: 'accent' },
-  DONE: { word: '완료', tone: 'neutral' },
+const STATE_WORDS: Readonly<Record<ExportState, string>> = texts({
+  RUNNING: 'companyExports.running',
+  DONE: 'companyExports.done',
+  FAILED: 'companyExports.failed',
+  EXPIRED: 'companyExports.expired',
+});
+
+const STATE_TONES: Readonly<Record<ExportState, BadgeTone>> = {
+  RUNNING: 'accent',
+  DONE: 'neutral',
   // The shared Badge keeps its tones (acceptance.md 5절 22); the reason stands next to it.
-  FAILED: { word: '실패', tone: 'warning' },
-  EXPIRED: { word: '기간 지남', tone: 'neutral' },
+  FAILED: 'warning',
+  EXPIRED: 'neutral',
 };
 
-const FAILURE_WORDS: Readonly<Record<ExportFailure, string>> = {
-  INTERRUPTED: '앱이 다시 시작되어 멈췄습니다.',
-  STORAGE: '첨부 저장소를 읽지 못했습니다.',
-  DISK: '내보내기 파일을 쓸 공간이 없습니다.',
-  UNEXPECTED: '알 수 없는 오류로 멈췄습니다.',
-};
+const FAILURE_WORDS: Readonly<Record<ExportFailure, string>> = texts({
+  INTERRUPTED: 'companyExports.interrupted',
+  STORAGE: 'companyExports.storage',
+  DISK: 'companyExports.disk',
+  UNEXPECTED: 'companyExports.unexpected',
+});
 
-const FINISHED_TEXT = '내보내기가 끝났습니다';
-const FAILED_TEXT = '내보내기가 실패했습니다';
-const NONE_TEXT = '아직 내보낸 적이 없습니다.';
-const LOAD_FAILED_TEXT = '내보내기 목록을 불러오지 못했습니다.';
-const RELOAD_FAILED_TEXT = '목록을 새로 고치지 못했습니다.';
-const NO_FILE_TEXT = '파일이 없습니다. 기간이 지났거나 지워졌습니다.';
+const WORDS = texts({
+  finished: 'companyExports.finished',
+  failed: 'companyExports.failedText',
+  none: 'companyExports.none',
+  loadFailed: 'companyExports.loadFailed',
+  reloadFailed: 'companyExports.reloadFailed',
+  noFile: 'companyExports.noFile',
+  body: 'companyExports.body',
+  privateLabel: 'companyExports.privateLabel',
+  privateHelp: 'companyExports.privateHelp',
+  internalLabel: 'companyExports.internalLabel',
+  internalHelp: 'companyExports.internalHelp',
+});
 
-const BODY_TEXT = '이 고객사의 공개 문의, 공개 댓글, 첨부 파일, 소속 고객(이메일과 이름)을 ZIP 파일 하나로 만듭니다. 다 되면 알림함으로 알립니다.';
-const PRIVATE_LABEL = '비공개 문의도 넣기';
-const PRIVATE_HELP = '비공개 문의는 같은 고객사의 다른 고객도 보지 못하는 문의입니다.';
-const INTERNAL_LABEL = '내부 댓글과 작업도 넣기';
-const INTERNAL_HELP = "상담 쪽 사람의 이름은 '지원팀'으로 적습니다. 내부 댓글 본문에 쓴 이름은 그대로 들어갑니다.";
-
-const EXPORT_ERRORS: Record<string, string> = {
-  EXPORT_RUNNING: '다른 내보내기가 진행 중입니다. 끝난 뒤 다시 시도해 주세요.',
-  NOT_FOUND: '고객사를 찾을 수 없습니다.',
-};
+const EXPORT_ERRORS: Readonly<Record<string, string>> = texts({
+  EXPORT_RUNNING: 'companyExports.errRunning',
+  NOT_FOUND: 'companyExports.errNotFound',
+});
 
 /** The 503 text with the seconds of `Retry-After`, or "잠시 뒤" without the header. */
 function busyText(seconds: number | null): string {
-  return `서버가 잠시 내보내기를 받을 수 없습니다. ${seconds === null ? '잠시 뒤' : `${String(seconds)}초 뒤`} 다시 시도해 주세요.`;
+  const when = seconds === null ? t('companyExports.busySoon') : tf('companyExports.busySeconds', { seconds });
+  return tf('companyExports.busy', { when });
 }
 
 function fileOf(e: CompanyExport): string {
@@ -110,7 +120,7 @@ function ExportDialog(props: { code: string; name: string; onClose: () => void; 
   return (
     <Dialog
       open
-      title={`${props.name} 내보내기`}
+      title={tf('companyExports.dialogTitle', { name: props.name })}
       closeLabel={TEXT.close}
       pending={pending}
       onClose={props.onClose}
@@ -121,12 +131,12 @@ function ExportDialog(props: { code: string; name: string; onClose: () => void; 
           </Button>
           <Button
             pending={pending}
-            pendingLabel="요청하는 중…"
+            pendingLabel={t('companyExports.requesting')}
             onClick={() => {
               void send();
             }}
           >
-            내보내기
+            {t('companyExports.export')}
           </Button>
         </>
       }
@@ -140,9 +150,9 @@ function ExportDialog(props: { code: string; name: string; onClose: () => void; 
         }}
       >
         {problem !== null && <Alert tone="error">{problem}</Alert>}
-        <p>{BODY_TEXT}</p>
-        <Checkbox label={PRIVATE_LABEL} description={PRIVATE_HELP} checked={includePrivate} onChange={setIncludePrivate} />
-        <Checkbox label={INTERNAL_LABEL} description={INTERNAL_HELP} checked={includeInternal} onChange={setIncludeInternal} />
+        <p>{WORDS.body}</p>
+        <Checkbox label={WORDS.privateLabel} description={WORDS.privateHelp} checked={includePrivate} onChange={setIncludePrivate} />
+        <Checkbox label={WORDS.internalLabel} description={WORDS.internalHelp} checked={includeInternal} onChange={setIncludeInternal} />
       </form>
     </Dialog>
   );
@@ -156,8 +166,8 @@ function endedNow(before: ReadonlyMap<string, ExportState>, now: readonly Compan
   let said: string | null = null;
   for (const e of now) {
     if (before.get(e.id) !== 'RUNNING') continue;
-    if (e.state === 'DONE') said = FINISHED_TEXT;
-    else if (e.state === 'FAILED') said = FAILED_TEXT;
+    if (e.state === 'DONE') said = WORDS.finished;
+    else if (e.state === 'FAILED') said = WORDS.failed;
   }
   return said;
 }
@@ -255,7 +265,7 @@ export function CompanyExports(props: { code: string; name: string }) {
         if (live()) window.location.assign(url);
       },
       busyText,
-      known: { NOT_FOUND: NO_FILE_TEXT },
+      known: { NOT_FOUND: WORDS.noFile },
     });
     if (!live() || check.ok) return;
     if (check.status === 401) toLogin();
@@ -265,15 +275,15 @@ export function CompanyExports(props: { code: string; name: string }) {
   const columns: DataTableColumn<CompanyExport>[] = [
     {
       key: 'state',
-      header: '상태',
-      cell: (e) => <Badge tone={STATES[e.state].tone}>{STATES[e.state].word}</Badge>,
+      header: t('companyExports.status'),
+      cell: (e) => <Badge tone={STATE_TONES[e.state]}>{STATE_WORDS[e.state]}</Badge>,
     },
-    { key: 'requestedBy', header: '요청한 사람', cell: (e) => <span className="pd-company-export-who">{e.requestedBy.name}</span> },
-    { key: 'requestedAt', header: '요청 시각', cell: (e) => <RelativeTime dateTime={e.requestedAt} focusable={false} /> },
-    { key: 'size', header: '크기', cell: (e) => (e.state === 'DONE' && e.size !== null ? formatBytes(e.size) : null) },
+    { key: 'requestedBy', header: t('companyExports.requestedBy'), cell: (e) => <span className="pd-company-export-who">{e.requestedBy.name}</span> },
+    { key: 'requestedAt', header: t('companyExports.requestedAt'), cell: (e) => <RelativeTime dateTime={e.requestedAt} focusable={false} /> },
+    { key: 'size', header: t('companyExports.size'), cell: (e) => (e.state === 'DONE' && e.size !== null ? formatBytes(e.size) : null) },
     {
       key: 'end',
-      header: <span className="pd-sr-only">내려받기 또는 실패 까닭</span>,
+      header: <span className="pd-sr-only">{t('companyExports.end')}</span>,
       cell: (e) => {
         if (e.state === 'DONE') {
           return (
@@ -284,7 +294,7 @@ export function CompanyExports(props: { code: string; name: string }) {
                 void download(e);
               }}
             >
-              내려받기
+              {t('companyExports.download')}
             </Button>
           );
         }
@@ -299,7 +309,7 @@ export function CompanyExports(props: { code: string; name: string }) {
     <section id="exports" className="pd-section pd-company-exports" aria-labelledby="exports-title">
       <div className="pd-section-head">
         <h2 id="exports-title" className="pd-section-title">
-          내보내기
+          {t('companyExports.title')}
         </h2>
         <Button
           variant="secondary"
@@ -309,7 +319,7 @@ export function CompanyExports(props: { code: string; name: string }) {
             setOpened(true);
           }}
         >
-          내보내기
+          {t('companyExports.export')}
         </Button>
       </div>
       {firstFailed ? (
@@ -317,24 +327,24 @@ export function CompanyExports(props: { code: string; name: string }) {
           tone="error"
           action={
             <Button variant="secondary" size="sm" onClick={reload}>
-              다시 시도
+              {t('companyExports.retry')}
             </Button>
           }
         >
-          {LOAD_FAILED_TEXT}
+          {WORDS.loadFailed}
         </Alert>
       ) : (
         <DataTable
-          caption={`내보내기, ${String(exports.length)}건`}
+          caption={tf('companyExports.caption', { count: exports.length })}
           columns={columns}
           rows={exports}
           rowKey={(e) => e.id}
           status={load.data === undefined ? 'loading' : 'ready'}
           density="compact"
-          empty={<EmptyState title={NONE_TEXT} headingLevel={3} />}
+          empty={<EmptyState title={WORDS.none} headingLevel={3} />}
         />
       )}
-      {load.failed && load.data !== undefined && <p className="pd-muted">{RELOAD_FAILED_TEXT}</p>}
+      {load.failed && load.data !== undefined && <p className="pd-muted">{WORDS.reloadFailed}</p>}
       {fileProblem !== null && <Alert tone="error">{fileProblem}</Alert>}
       <p role="status" className="pd-sr-only">
         {spoken}
