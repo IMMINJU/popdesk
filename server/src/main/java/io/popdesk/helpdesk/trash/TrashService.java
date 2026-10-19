@@ -21,11 +21,13 @@ import io.popdesk.helpdesk.label.LabelRepository;
 import io.popdesk.helpdesk.link.LinkRepository;
 import io.popdesk.helpdesk.link.LinkRules.Link;
 import io.popdesk.helpdesk.link.RestoreLinkCheck;
+import io.popdesk.helpdesk.mailin.MailReceivedRepository;
 import io.popdesk.helpdesk.sla.SlaPolicies;
 import io.popdesk.helpdesk.sla.SlaWrite;
 import io.popdesk.helpdesk.task.TaskRepository;
 import io.popdesk.notification.IssueInbox;
 import io.popdesk.notification.MailQueue;
+import io.popdesk.notification.SentMailLookup;
 import io.popdesk.notification.WebhookQueue;
 import java.time.Clock;
 import java.time.Duration;
@@ -71,6 +73,8 @@ public class TrashService {
     private final IssueInbox inbox;
     private final MailQueue mail;
     private final WebhookQueue webhooks;
+    private final SentMailLookup sentMail;
+    private final MailReceivedRepository receivedMail;
     private final AuditLog audit;
     private final Transactions transactions;
     private final SlaPolicies sla;
@@ -78,8 +82,9 @@ public class TrashService {
 
     TrashService(IssueRepository issues, IssueHistoryRepository history, AttachmentService attachments,
             CommentRepository comments, TaskRepository tasks, LinkRepository links, LabelRepository labels,
-            IdempotencyKeyRepository keys, IssueInbox inbox, MailQueue mail, WebhookQueue webhooks, AuditLog audit,
-            Transactions transactions, SlaPolicies sla, Clock clock) {
+            IdempotencyKeyRepository keys, IssueInbox inbox, MailQueue mail, WebhookQueue webhooks,
+            SentMailLookup sentMail, MailReceivedRepository receivedMail, AuditLog audit, Transactions transactions,
+            SlaPolicies sla, Clock clock) {
         this.issues = issues;
         this.history = history;
         this.attachments = attachments;
@@ -91,6 +96,8 @@ public class TrashService {
         this.inbox = inbox;
         this.mail = mail;
         this.webhooks = webhooks;
+        this.sentMail = sentMail;
+        this.receivedMail = receivedMail;
         this.audit = audit;
         this.transactions = transactions;
         this.sla = sla;
@@ -292,7 +299,8 @@ public class TrashService {
      * Empties the issue in the caller's transaction, under the lock of its row (slice 7a design section 4):
      * its attachments become {@code purging} first (lock order step 2), then its inbox items and the items
      * about it on other issues, its queue rows, comments and mentions, tasks and notes, links, labels, and
-     * filing key go; the title and content values of its history are cleared; the issue keeps an empty
+     * filing key go, and so do the records of email sent about it, while the records of email received keep no
+     * link to it (slice 12 design.md 0절 12); the title and content values of its history are cleared; the issue keeps an empty
      * title and content; and a last {@code TRASH} entry says it was purged.
      *
      * @param deletedBy the admin who purges, or null for popdesk itself
@@ -304,6 +312,8 @@ public class TrashService {
         inbox.deleteOfIssue(id);
         mail.dropAbout(id);
         webhooks.dropAbout(id);
+        sentMail.deleteAbout(id);
+        receivedMail.clearIssue(id);
         comments.deleteOfIssue(id);
         tasks.deleteOfIssue(id);
         links.deleteOfIssue(id);
