@@ -116,8 +116,7 @@ function hrefOf(n: Notification): string | undefined {
     case 'WEBHOOK_STALLED':
     case 'AUDIT_FORWARD_STALLED':
     case 'CLEANUP_STALLED':
-    // Slice 12: receiving email (12 screens.md "C-7 알림함").
-    case 'MAIL_IN_STALLED':
+    case 'MAIL_IN_STALLED': // Slice 12: receiving email (12 screens.md "C-7 알림함").
     case 'MAIL_IN_QUARANTINED':
       return '/system';
     // Slice 8b: the issues by due time, the soonest first (8b screens.md 1절).
