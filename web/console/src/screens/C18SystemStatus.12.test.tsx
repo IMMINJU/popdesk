@@ -127,17 +127,6 @@ describe('C-18 시스템 상태의 메일 받기 구역 (12 묶음)', () => {
     },
   );
 
-  test('S12-AC-38 C-18 마지막 실패 UNSUPPORTED: "마지막 실패:" 줄과 그 시각이 있고 종류 이름이 그대로 나오지 않는다', async () => {
-    // screens.md gives no sentence for this kind; the test holds only what it says of every failure (see the report).
-    state.status = withMailIn(mailInOn({ lastSuccessAt: LAST_SUCCESS, roundFailures: 1, lastFailure: { kind: 'UNSUPPORTED', at: LAST_FAILURE } }));
-    renderAt(URL_SYSTEM);
-
-    const part = await mailInPart();
-    expect(text(part)).toContain('마지막 실패: ');
-    expect(text(part), '종류 이름 그대로').not.toContain('UNSUPPORTED');
-    expect(timeOf(timeAfter(part, '마지막 실패')), '마지막 실패 <time>').toBe(new Date(LAST_FAILURE).getTime());
-  });
-
   test('S12-AC-38 C-18 마지막 실패가 없음: "마지막 실패" 줄이 없다', async () => {
     state.status = withMailIn(mailInOn({ lastSuccessAt: LAST_SUCCESS, roundFailures: 0, lastFailure: null }));
     renderAt(URL_SYSTEM);
@@ -203,12 +192,13 @@ describe('C-18 시스템 상태의 메일 받기 구역 (12 묶음)', () => {
     const part = await mailInPart();
     const channels = await section(CHANNELS);
     const oidc = await section(OIDC_TITLE);
+    // After the OIDC part: the locked S11-AC-34 test wants OIDC right after the channels (design changed 2026-10-19, C-7 web D1).
     expect(before(channels, part), '채널 구역 뒤').toBe(true);
-    expect(before(part, oidc), 'OIDC 구역 앞').toBe(true);
+    expect(before(oidc, part), 'OIDC 구역 뒤').toBe(true);
     expect(channels.contains(part) || part.contains(oidc) || oidc.contains(part), '다른 구역 안이 아니다').toBe(false);
     const names = h2Names();
-    expect(names[names.indexOf(CHANNELS) + 1], `"${CHANNELS}" 다음 구역`).toBe(MAIL_IN_TITLE);
-    expect(names[names.indexOf(MAIL_IN_TITLE) + 1], `"${MAIL_IN_TITLE}" 다음 구역`).toBe(OIDC_TITLE);
+    expect(names[names.indexOf(CHANNELS) + 1], `"${CHANNELS}" 다음 구역`).toBe(OIDC_TITLE);
+    expect(names[names.indexOf(OIDC_TITLE) + 1], `"${OIDC_TITLE}" 다음 구역`).toBe(MAIL_IN_TITLE);
   });
 
   test('S12-AC-38 C-18 axe: 켜짐, 마지막 성공과 실패, 다시 시도할 메일과 격리한 메일이 다 있는 메일 받기 구역에 접근성 위반이 없다', async () => {

@@ -20,10 +20,11 @@ export const SANDBOX_OFF = '꺼짐(샌드박스)';
 export const ON = '켜짐';
 export const NO_SUCCESS = '아직 없음';
 /** The kinds screens.md gives a sentence for. `UNSUPPORTED` has none there (see the 12 web test report). */
-export const FAILURE_WORDS: Readonly<Partial<Record<MailInFailureKind, string>>> = {
+export const FAILURE_WORDS: Readonly<Record<MailInFailureKind, string>> = {
   CONNECT: '메일 서버에 연결하지 못함',
   AUTH: '로그인이 거절됨',
   FOLDER: '받는 폴더가 없음',
+  UNSUPPORTED: '메일 서버가 메일 옮기기를 지원하지 않음',
 };
 export const QUARANTINE_NOTE = '메일함의 격리 폴더(설정 IMAP_QUARANTINE_FOLDER)에서 확인하세요.';
 export const COUNT_NOTE = '회차와 실패 수는 앱이 다시 시작하면 0부터 셉니다.';

@@ -41,7 +41,7 @@ const MAIL_IN: Schemas['MailInStatus'] = {
   offReason: null,
   lastSuccessAt: '2026-12-31T14:59:59Z',
   roundFailures: INT32_MAX,
-  lastFailure: { kind: 'CONNECT', at: '2026-12-31T14:58:47Z' },
+  lastFailure: { kind: 'UNSUPPORTED', at: '2026-12-31T14:58:47Z' },
   retrying: INT32_MAX,
   quarantined90d: INT32_MAX,
 };
