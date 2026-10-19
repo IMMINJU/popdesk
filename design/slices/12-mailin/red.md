@@ -161,3 +161,7 @@
 - `src/screens/C7Inbox.12.test.tsx.C-7 알림함의 메일 받기 경보 (12 묶음) > S12-AC-39 C-7 경보 MAIL_IN_STALLED: "메일 받기가 한 시간 넘게 실패하고 있습니다"이고, 누르면 읽음 요청을 보내고 /system 으로 간다`: 알림 항목 "메일 받기가 한 시간 넘게 실패하고 있습니다": expected undefined to be defined  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m  
 - `src/screens/C7Inbox.12.test.tsx.C-7 알림함의 메일 받기 경보 (12 묶음) > S12-AC-39 C-7 경보 MAIL_IN_QUARANTINED: "격리한 받은 메일이 있습니다"이고, 누르면 읽음 요청을 보내고 /system 으로 간다`: 알림 항목 "격리한 받은 메일이 있습니다": expected undefined to be defined  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"ko"[39m [36m>[39m   [36m<hea
 - `src/screens/C7Inbox.12.test.tsx.C-7 알림함의 메일 받기 경보 (12 묶음) > S12-AC-39 C-7 axe: 메일 받기 경보 둘이 있는 알림함에 접근성 위반이 없다`: 경보 둘: expected '알림함안 읽음 새 알림이 있습니다 2주 전안 읽음 새 알림이 있습니…' to contain '격리한 받은 메일이 있습니다'  Ignored nodes: comments, script, style [36m<html[39m   [33mlang[39m=[32m"k
+
+## 뒤에 더한 것 (s12-t-schema)
+
+- `io.popdesk.mailin.MailInSchemaTest` 2개: 단언 실패 2(무작위 세 번 같음). `deploy/MailInSampleTest`는 이미지가 없어 이미지 있음 확인의 단언에서 실패한다(C-10에서 이미지로 돈다).
