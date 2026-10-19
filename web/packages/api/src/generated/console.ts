@@ -2757,7 +2757,7 @@ export interface components {
             lastFailure: components["schemas"]["MailInFailure"] | null;
             /**
              * Format: date-time
-             * @description The end of the last round that read the inbox folder through; null before the first since the app started.
+             * @description The end of the last round that succeeded: written once its emails (up to 100) are handled and moved, the alerts judged, and the daily mailbox cleanup done. Null before the first since the app started.
              */
             lastSuccessAt: string | null;
             /**
@@ -2767,7 +2767,7 @@ export interface components {
             offReason: "NOT_SET" | "SANDBOX" | null;
             /**
              * Format: int32
-             * @description Emails quarantined in the last 90 days, over the attempt limit or the rate limit (`QUARANTINED` and `RATE_LIMITED`).
+             * @description Emails quarantined in the last 90 days: failed five times, too large, too complex, or over the rate limit (`QUARANTINED` and `RATE_LIMITED`).
              */
             quarantined90d: number;
             /**
