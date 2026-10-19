@@ -265,6 +265,19 @@ export function useFocusWhenReady(ref: { current: HTMLElement | null }, ready: b
 }
 
 /**
+ * Where focus goes when "다시 불러오기" is pressed (b1 screens.md 2절): the title of the dialog the
+ * button is in, else the screen title (`h1` of `PageTitle`). The band goes away while it reads again,
+ * so focus would fall to `body`. Without either, focus stays.
+ */
+export function focusTitleFor(from: Element) {
+  const dialog = from.closest('[role="dialog"], [role="alertdialog"]');
+  const title = dialog
+    ? document.getElementById(dialog.getAttribute('aria-labelledby') ?? '')
+    : document.querySelector<HTMLElement>('h1.pd-page-title');
+  title?.focus();
+}
+
+/**
  * Sets `document.title`; the screen title goes first, then the app's `displayName` (screens.md 2절 접근성).
  * Without `displayName`: the branding name of `useBranding()`, "popdesk" without a
  * `BrandingProvider` (slice 9 design.md 0절 10), so the callers stay as they are.

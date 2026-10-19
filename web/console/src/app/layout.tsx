@@ -6,7 +6,7 @@ import { Link, Outlet, useLocation } from 'react-router';
 import { api } from '../api';
 import { logoOf, useBranding } from './branding';
 import { BusyContext } from './busy';
-import { useDocumentTitle, useFocusWhenReady } from './hooks';
+import { focusTitleFor, useDocumentTitle, useFocusWhenReady } from './hooks';
 import { MY_ISSUES_HREF } from './issueFilters';
 import { t, tf } from './locale';
 import { TEXT } from './messages';
@@ -258,7 +258,14 @@ export function LoadFailed(props: { onRetry: () => void; text?: string }) {
     <Alert
       tone="error"
       action={
-        <Button variant="secondary" size="sm" onClick={props.onRetry}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={(e) => {
+            focusTitleFor(e.currentTarget);
+            props.onRetry();
+          }}
+        >
           {TEXT.retryLoad}
         </Button>
       }

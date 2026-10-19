@@ -115,7 +115,8 @@ export function Dialog(props: DialogProps) {
       return;
     }
     const active = document.activeElement;
-    if (e.shiftKey && (active === first || !box.current.contains(active))) {
+    // The title takes focus after "다시 불러오기" (b1 screens.md 2절); it comes before every control.
+    if (e.shiftKey && (active === first || active?.id === titleId || !box.current.contains(active))) {
       e.preventDefault();
       last.focus();
     } else if (!e.shiftKey && (active === last || !box.current.contains(active))) {
@@ -146,7 +147,7 @@ export function Dialog(props: DialogProps) {
         onKeyDown={onKeyDown}
       >
         <div className="pd-dialog-head">
-          <h2 id={titleId} className="pd-dialog-title">
+          <h2 id={titleId} className="pd-dialog-title" tabIndex={-1}>
             {props.title}
           </h2>
           {props.closable !== false && (
