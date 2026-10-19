@@ -58,7 +58,7 @@ class ConsoleCompanyController {
 
     static CompanyMember member(MemberRow row) {
         return new CompanyMember(row.accountId(), row.name(), row.email(), row.status(),
-                row.photoUpdatedAt() == null ? null : row.photoUpdatedAt().atOffset(ZoneOffset.UTC), row.manager());
+                row.photoUpdatedAt() == null ? null : row.photoUpdatedAt().atOffset(ZoneOffset.UTC), row.manager(), false);
     }
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only (S0-AC-30).";
@@ -223,7 +223,9 @@ class ConsoleCompanyController {
                     + "request; in their other companies nothing changes (S2-AC-01, S2-AC-03, S2-AC-05). Marking "
                     + "again is 200 too.")
     @ApiResponse(responseCode = "200", description = "A manager.")
-    @ApiResponse(responseCode = "400", description = "`COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-06).")
+    @ApiResponse(responseCode = "400", description = "`ACCOUNT_ANONYMIZED`: the account is anonymized, and nothing "
+            + "changes (B2-AC-02). `COMPANY_NOT_ACTIVE`: the company is `ARCHIVED` (S2-AC-06). Checked in this order: "
+            + "the caller's role (403), the company (404), membership (404), anonymized (400), archived company (400).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "404", description = NOT_A_MEMBER)
@@ -235,7 +237,8 @@ class ConsoleCompanyController {
 
     @Operation(operationId = "unmarkCompanyManager", summary = "Make a customer no longer a manager of a company",
             description = "The customer stays a member. Applies from the next request (S2-AC-01). Works for a "
-                    + "company of any status, and unmarking again is 200 too.")
+                    + "company of any status and for an anonymized account (a manager before anonymization can "
+                    + "be unmarked, B2-AC-03), and unmarking again is 200 too.")
     @ApiResponse(responseCode = "200", description = "Not a manager.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = ADMIN_ONLY + " `CSRF_TOKEN_INVALID`.")
