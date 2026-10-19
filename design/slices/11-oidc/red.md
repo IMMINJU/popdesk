@@ -1,11 +1,12 @@
 # 실패 확인
 
-- 단언 실패 80, 통과 0, 허용한 통과 1, 오류 0, 건너뜀 0
+- 단언 실패 101, 통과 0, 허용한 통과 2, 오류 0, 건너뜀 0
 - 판정: 통과
 
 ## 처음부터 통과해도 된다고 허용한 테스트 (점검에서 이유를 본다)
 
 - `io.popdesk.auth.OidcOffTest.signInOptionsSayOff`: C-4 껍데기가 {oidc:false}를 주고, OIDC 설정이 없는 공용 컨텍스트에서는 그 값이 맞다
+- `io.popdesk.auth.OidcStatusOffTest.statusSaysOff`: C-4 껍데기가 꺼진 oidc 값을 주고, OIDC 설정이 없는 공용 컨텍스트에서는 그 값이 맞다
 
 ## 단언에서 실패한 테스트
 
@@ -89,3 +90,24 @@
 - `io.popdesk.start.OidcSettingsStartTest.someKeysOnlyEndTheStart(String, String)[3]`: The app started, but it should not: only OIDC_CLIENT_ID OIDC_CLIENT_SECRET of the OIDC keys are set
 - `io.popdesk.start.OidcSettingsStartTest.unknownAppsEndTheStart(String)[1]`: The app started, but it should not: OIDC_APPS=everyone
 - `io.popdesk.start.OidcSettingsStartTest.unknownAppsEndTheStart(String)[2]`: The app started, but it should not: OIDC_APPS=console,portal
+- `io.popdesk.auth.OidcAccountListTest.suspendedAccountStaysLinked`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcAccountListTest.listGivesOidcLinked(Role)[1]`: Expected 302 from GET /api/public/oidc/start on portal.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcAccountListTest.listGivesOidcLinked(Role)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcAnonymizeTest.anonymizingRemovesTheLink`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcSchemaTest.oidcLinkTable`: [V24 in flyway_schema_history] 
+- `io.popdesk.auth.OidcSchemaTest.oidcRequestTable`: [columns of oidc_request] 
+- `io.popdesk.auth.OidcStatusTest.accountSideFailuresAreNotCounted`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcStatusTest.signInSetsLastSuccessAt`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcStatusTest.statusSaysOnForBothApps`: [enabled of {"enabled":false,"apps":[],"lastSuccessAt":null,"providerFailures":0,"lastFailure":null}] 
+- `io.popdesk.auth.OidcStatusTest.providerFailuresAreCounted(ProviderFailure)[1]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcStatusTest.providerFailuresAreCounted(ProviderFailure)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcUnlinkAccessTest.agentIsForbidden`: Expected 302 from GET /api/public/oidc/start on portal.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcUnlinkAccessTest.anonymizedAccountIsNotFound`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcUnlinkAccessTest.portalHostGets404`: Expected 302 from GET /api/public/oidc/start on portal.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcUnlinkAccessTest.unknownAccountIsNotFound(long)[1]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcUnlinkAccessTest.unknownAccountIsNotFound(long)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcUnlinkAccessTest.signedOutGets401`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcUnlinkAccessTest.unlinkingNeedsTheCsrfToken`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcUnlinkTest.unlinkEndsTheLinkAndTheSessions`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcUnlinkTest.anotherSubLinksAgainAfterUnlinking`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcUnlinkTest.unlinkWithoutALinkIs404`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}

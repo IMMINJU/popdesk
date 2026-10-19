@@ -91,7 +91,9 @@ b41303dedbf2f5a02ffb21ee777f90aad088048eabd9902b0f4c27ac60df7b5d  server/src/tes
 1ece0772d6a0523d4c56f8a74539733eb362e198077bcfdb1fb040144be7adc2  server/src/test/java/io/popdesk/auth/InvitationLinkTest.java
 2c6ca0a7b6eef525b1f48f09ea80db4a3e1928ad7eab6ae788f450424cee7e13  server/src/test/java/io/popdesk/auth/LockoutTest.java
 b6cff38b77ba386bfd5d5a45cebae054d0dd9ac738764a81a5eb4a7879363291  server/src/test/java/io/popdesk/auth/ManagementPortTest.java
-e99f509428d72900988d4b88c32b61da988d436282a3ba7bfe6627c38e5fd6ea  server/src/test/java/io/popdesk/auth/OidcAppTest.java
+6fcd981f126e14ad56985bc739af3d221c731e24cadfa1ba834b486f32caf3e1  server/src/test/java/io/popdesk/auth/OidcAccountListTest.java
+fa3ee191a2d05f7aede53297b94c7fb05f968e21dfc1521afcad3b0e0a27f5e1  server/src/test/java/io/popdesk/auth/OidcAnonymizeTest.java
+a077b54a656ab5bf1d5b2d0d22c25416495ad078a59ba8dedc01e889dc42c59e  server/src/test/java/io/popdesk/auth/OidcAppTest.java
 2a8191038f678d94f2d77f8a19b8581ad9af6173ae66b26f37c51d5397019913  server/src/test/java/io/popdesk/auth/OidcAuditTest.java
 c774980d65bebd0dc1e6f61468811f19a813eec987bf68786ccf93baacda19c8  server/src/test/java/io/popdesk/auth/OidcCallbackTest.java
 0576d0fdd8c614950db8feea545e2ee06853b7681a839d52547158f92d18a672  server/src/test/java/io/popdesk/auth/OidcConcurrentLinkTest.java
@@ -101,8 +103,13 @@ e329315067b9c6c95723ffc0939c1689077e4d6b5afe3ad445071b76576aaa60  server/src/tes
 31352ce4bf0b62d9c46bc3dc98858aabbe3d941dcbdd00e7f3930cf50e0d8ac9  server/src/test/java/io/popdesk/auth/OidcNextTest.java
 c91f8b46bae8e018f7cd115e6482b069955669eda23aeeaab3450682bbe0abfa  server/src/test/java/io/popdesk/auth/OidcOffTest.java
 816132144bd2d1245928a35e686c0cbbb6fb0e1e89296486d2424615bb960929  server/src/test/java/io/popdesk/auth/OidcPasswordTest.java
+aab62f951696965d768ecc68ac5c38f53f5aefc2e2deabe6ecdc035f170dfe18  server/src/test/java/io/popdesk/auth/OidcSchemaTest.java
 9649d13ca009006506c292c4fb6497c6c67dea53df2870a1935c3e0cf99db156  server/src/test/java/io/popdesk/auth/OidcSessionTest.java
 2c7f857dc0ab408a9bb89efc2963871138b175ebe8f52e19abb3122ffbc924ed  server/src/test/java/io/popdesk/auth/OidcStartTest.java
+737c8d3a80ad7482da7f5dd9ca769365a5d9dcfe125729c9d84c9a9d58d552e6  server/src/test/java/io/popdesk/auth/OidcStatusOffTest.java
+c2137a334bd795bcb2bc256baa0177150061f25a0b40fd472e3ae03e02243b36  server/src/test/java/io/popdesk/auth/OidcStatusTest.java
+5d319d366157fa49aa94dfd2576e585d5722c39519fce439c9d2609ec368f3e3  server/src/test/java/io/popdesk/auth/OidcUnlinkAccessTest.java
+88a7156e0bdaf21875f8206fc59386bf72ff383967ffd50773b16381da708ae1  server/src/test/java/io/popdesk/auth/OidcUnlinkTest.java
 e5f8e15a705e7711e5b13791ef1fface8260f0503e499f60ae78d8186ff250c5  server/src/test/java/io/popdesk/auth/OwnPasswordTest.java
 7b5e90b51ee0b5cdced8c651f9533c976996377584ff258a7755a4f1f1f6f023  server/src/test/java/io/popdesk/auth/OwnProfileNullFieldTest.java
 f443a3479317d005f8f328ede906bb5a71e9bf2bf80edc1b15b52db1f0beddf7  server/src/test/java/io/popdesk/auth/OwnProfileTest.java
@@ -187,6 +194,7 @@ b1a5a1c8d6fd72ccef65669cfff3c3ac54072c53d8a772c950d9a74174a9a9bb  server/src/tes
 ebeefb2f08abae93394b2f838b9357d862b85a83613db2823382b7f1d00af566  server/src/test/java/io/popdesk/deploy/ManagerUpgradeTest.java
 374c899d367ae1415ca636e8dc3694fd33c30955f55ea33e4b8af06495ece66d  server/src/test/java/io/popdesk/deploy/Metrics.java
 95acb034f998b7053ab51304925cf97da264248aed9291367dbba2a93a29c540  server/src/test/java/io/popdesk/deploy/ObservabilityComposeTest.java
+c250f20325e3736553218aae3d9027404d0930dac85ae0166946bccda44876b1  server/src/test/java/io/popdesk/deploy/OidcSampleTest.java
 8b048e0b8d4a6b01a91945c725be7e31fb04922fbf78d6f6053fb332e82ae79d  server/src/test/java/io/popdesk/deploy/Once.java
 b723f7cfd8a7a74aa71ba3c607bdffabb111f80142d6c479c6cadfe09d7468a5  server/src/test/java/io/popdesk/deploy/PhotoLoadTest.java
 be0eee15f08c965614e59bb45a588e4bfa68703776611f31853f2028ab3a1239  server/src/test/java/io/popdesk/deploy/PrivacySampleTest.java
@@ -442,7 +450,7 @@ e19d5fde27322908ae78c389a533b8e9a33d0cb60586bbf82227e4ec88ee983b  server/src/tes
 510e624e03de1487711d7df4a16164ac30d4e039f6a936dac89c786597be800d  server/src/test/java/io/popdesk/ops/ScopedReadRulesTest.java
 db011e2dde17e9b8183e357cca7ffb9d7569e658a12bb73f42fce501174836d0  server/src/test/java/io/popdesk/ops/SignInAuditTargetTest.java
 d39aebbabb4980083fbb68f9c25d68c095bd76a681fff40dda39bc2841af3fc5  server/src/test/java/io/popdesk/ops/StalledAlertTest.java
-85461478a923679c1bcead251bfdb111d71a652d79eb7c4fc7178d163ae3570c  server/src/test/java/io/popdesk/ops/SystemStatusTest.java
+ebd4ce38e9a8f6fd43822415795f437e6ee3c14d5f8086b9dfd5a02e0a9cac7f  server/src/test/java/io/popdesk/ops/SystemStatusTest.java
 1e07303169ca95c53df281195c38b2b360a8b5c3600684170b995b93af1a7b69  server/src/test/java/io/popdesk/ops/SystemStatusWithSmtpTest.java
 8056f36546b58c993799d0c3a38e1c481331322100106f267c7a121c6100a895  server/src/test/java/io/popdesk/ops/TalkCheckOrderTest.java
 d696210cbfc6496a52250a6d987f767e2f43b083c511182029e9f244fa23a6fa  server/src/test/java/io/popdesk/ops/TalkLogTest.java

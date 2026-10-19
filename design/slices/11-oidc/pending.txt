@@ -14,3 +14,11 @@ server io/popdesk/auth/OidcSessionTest.java
 server io/popdesk/auth/OidcStartTest.java
 server io/popdesk/start/OidcProviderDownStartTest.java
 server io/popdesk/start/OidcSettingsStartTest.java
+server io/popdesk/auth/OidcAccountListTest.java
+server io/popdesk/auth/OidcAnonymizeTest.java
+server io/popdesk/auth/OidcSchemaTest.java
+server io/popdesk/auth/OidcStatusOffTest.java
+server io/popdesk/auth/OidcStatusTest.java
+server io/popdesk/auth/OidcUnlinkAccessTest.java
+server io/popdesk/auth/OidcUnlinkTest.java
+server io/popdesk/deploy/OidcSampleTest.java
