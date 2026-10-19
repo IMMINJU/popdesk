@@ -54,13 +54,13 @@ export const en: Record<keyof typeof ko, string> = {
   'myInfo.currentPasswordWrong': 'The current password is wrong.',
   'myInfo.passwordChanged': 'Password changed. Other devices have to sign in again.',
 
-  // Slice 1b (design/slices/1b-audit/screens.md 1절).
+  // Slice 1b (design/archive/1b-audit/screens.md 1절).
   'auditLog.title': 'Audit log',
 
-  // Slice 2 (design/slices/2-manager/screens.md 1절).
+  // Slice 2 (design/archive/2-manager/screens.md 1절).
   'companyPeople.title': 'People in our company',
 
-  // Slice 3 (design/slices/3-issues/screens.md 1절).
+  // Slice 3 (design/archive/3-issues/screens.md 1절).
   'issueOnBehalf.title': 'New issue for a customer',
   'issueOnBehalf.companyPlaceholder': 'Choose a company',
   'issueOnBehalf.companyRequired': 'Choose a company.',

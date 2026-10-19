@@ -15,7 +15,7 @@ import { P7Inbox } from './screens/P7Inbox';
 import { P8Members } from './screens/P8Members';
 import { P9PasswordForgot } from './screens/P9PasswordForgot';
 
-// First-slice screens (design/slices/0-first/screens.md 3절). `/` opens the issue
+// First-slice screens (design/archive/0-first/screens.md 3절). `/` opens the issue
 // list; signed-in screens sit in PortalLayout. Slice 1a adds P-9 and P-10 (signed
 // out; P-10 takes its token after `#`, like the invitation) and P-6 (signed in).
 // Slice 2 adds P-8 (signed in; managers only, which the server's answers decide).

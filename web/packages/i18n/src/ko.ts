@@ -1,4 +1,4 @@
-// Texts of the slice 1a screens (design/slices/1a-people/screens.md 1절). Both apps
+// Texts of the slice 1a screens (design/archive/1a-people/screens.md 1절). Both apps
 // share them. Keys are flat, joined with dots (design.md 5-1절).
 export const ko = {
   'passwordForgot.title': '비밀번호 찾기',
@@ -53,13 +53,13 @@ export const ko = {
   'myInfo.currentPasswordWrong': '지금 비밀번호가 맞지 않습니다.',
   'myInfo.passwordChanged': '비밀번호를 바꿨습니다. 다른 기기에서는 다시 로그인해야 합니다.',
 
-  // Slice 1b (design/slices/1b-audit/screens.md 1절).
+  // Slice 1b (design/archive/1b-audit/screens.md 1절).
   'auditLog.title': '감사 로그',
 
-  // Slice 2 (design/slices/2-manager/screens.md 1절).
+  // Slice 2 (design/archive/2-manager/screens.md 1절).
   'companyPeople.title': '우리 회사 사람',
 
-  // Slice 3 (design/slices/3-issues/screens.md 1절).
+  // Slice 3 (design/archive/3-issues/screens.md 1절).
   'issueOnBehalf.title': '대리 등록',
   'issueOnBehalf.companyPlaceholder': '고객사를 고르세요',
   'issueOnBehalf.companyRequired': '고객사를 골라 주세요.',

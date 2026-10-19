@@ -25,7 +25,7 @@ import { C7Inbox } from './screens/C7Inbox';
 import { C8CompanyList } from './screens/C8CompanyList';
 import { C9CompanyDetail } from './screens/C9CompanyDetail';
 
-// First-slice screens (design/slices/0-first/screens.md 4절). `/` opens the issue
+// First-slice screens (design/archive/0-first/screens.md 4절). `/` opens the issue
 // list on 내 담당 (slice 3); signed-in screens sit in ConsoleLayout, admin screens also in AdminOnly.
 // Slice 1a adds C-16 and C-17 (signed out; C-17 takes its token after `#`, like
 // the invitation) and C-6 (signed in, every role).
