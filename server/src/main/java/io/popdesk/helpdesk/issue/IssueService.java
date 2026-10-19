@@ -71,6 +71,9 @@ public class IssueService {
     static final int SEARCH_MAX = 100;
     static final String CHANNEL_PORTAL = "PORTAL";
 
+    /** The channel of an issue made from a received email (S12-AC-20). */
+    public static final String CHANNEL_EMAIL = "EMAIL";
+
     /** How a request staff file for a customer can have come in (ISSUE-9); the names are stored. */
     static final Set<String> CHANNELS_ON_BEHALF = Set.of("PHONE", "OTHER");
 
@@ -209,6 +212,15 @@ public class IssueService {
      * @param idempotencyKey the {@code Idempotency-Key} header as sent, or null
      */
     public Prepared prepare(Viewer viewer, NewIssue input, String idempotencyKey) {
+        return prepare(viewer, input, idempotencyKey, CHANNEL_PORTAL);
+    }
+
+    /**
+     * Checks a filing by a customer as {@link #prepare(Viewer, NewIssue, String)} does, for an issue that came in
+     * by {@code channel}: {@link #CHANNEL_EMAIL} for one made from a received email (S12-AC-20), which comes without
+     * a key.
+     */
+    public Prepared prepare(Viewer viewer, NewIssue input, String idempotencyKey, String channel) {
         rateLimit.count(AccountRateLimit.Action.ISSUE, viewer.accountId());
         List<ApiError.FieldError> errors = new ArrayList<>();
         CompanyRow company = null;
@@ -225,7 +237,7 @@ public class IssueService {
         if (!errors.isEmpty()) {
             throw ApiException.invalid(errors);
         }
-        return prepared(viewer, new Draft(UUID.randomUUID(), viewer.accountId(), null, CHANNEL_PORTAL, company, title,
+        return prepared(viewer, new Draft(UUID.randomUUID(), viewer.accountId(), null, channel, company, title,
                 content, priority, Boolean.TRUE.equals(input.privateIssue()), images, null),
                 keyed ? idempotencyKey : null);
     }

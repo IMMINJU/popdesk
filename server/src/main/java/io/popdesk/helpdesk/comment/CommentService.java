@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -110,6 +111,18 @@ public class CommentService {
      */
     public CommentRow add(Viewer viewer, String key, String content, boolean internal, List<Long> mentions,
             JsonNode imageIds) {
+        return add(viewer, key, content, internal, mentions, imageIds, id -> {});
+    }
+
+    /**
+     * Adds a comment as {@link #add(Viewer, String, String, boolean, List, JsonNode)} does, and calls
+     * {@code added} with the new comment's ID in the same transaction, right after the comment row is written and
+     * before its mentions and what is told about it: a received email's files and its record go with the comment
+     * (S12-AC-25, S12-AC-30). When {@code added} throws, nothing of the comment is kept. A retry after a lock
+     * conflict calls it again.
+     */
+    public CommentRow add(Viewer viewer, String key, String content, boolean internal, List<Long> mentions,
+            JsonNode imageIds, LongConsumer added) {
         rateLimit.count(AccountRateLimit.Action.COMMENT, viewer.accountId());
         IssueKey issueKey = IssueKey.parse(key).orElseThrow(ApiException::notFound);
         boolean answer = viewer.staff() && !internal;
@@ -134,6 +147,7 @@ public class CommentService {
             long id = comments.nextId();
             attachments.attachImages(viewer.accountId(), issue.id(), id, internal, false, images, now);
             comments.insert(id, issue.id(), viewer.accountId(), internal, text, now);
+            added.accept(id);
             comments.insertMentions(id, mentioned, now);
             if (viewer.customer()) {
                 webhooks.queue(WebhookKind.CUSTOMER_COMMENT, issue.id(), id);

@@ -185,6 +185,16 @@ public class AttachmentRepository {
     }
 
     /**
+     * Step ③ of a file of a received email that became a comment (S12-AC-25): {@code pending} to {@code stored} on
+     * the issue and the comment. Returns 0 when the row is no longer pending.
+     */
+    int updateStoredOnComment(UUID id, UUID issueId, long commentId) {
+        return jdbc.sql("update attachment set state = 'stored', issue_id = ?, comment_id = ? where id = ? "
+                        + "and state = 'pending'")
+                .params(issueId, commentId, id).update();
+    }
+
+    /**
      * Step ③ of a temporary image, which has no issue to be stored on: {@code pending} to
      * {@code stored}. Returns 0 when the row is no longer pending.
      */

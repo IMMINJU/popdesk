@@ -101,6 +101,19 @@ public class AttachmentService implements IssueAttachments {
     /** A file in a request, as the service checks and stores it. */
     private record Received(MultipartFile file, String name, String contentType) {}
 
+    /**
+     * Why a file of a received email is left out (S12-AC-26): empty, over 10 MB, one too many for one filing, over the
+     * issue's 50 MB of public attachments, over the team's limit, a name over 255 characters.
+     */
+    public enum Refusal {
+        EMPTY,
+        TOO_LARGE,
+        TOO_MANY,
+        ISSUE_TOTAL,
+        QUOTA,
+        NAME_TOO_LONG
+    }
+
     /** A downloadable attachment: its row and its contents. */
     public record Download(AttachmentRow attachment, AttachmentContents contents) {}
 
@@ -232,6 +245,69 @@ public class AttachmentService implements IssueAttachments {
         }
         checkQuota(attachments.storedBytes() + total);
         return writePending(viewer, null, null, false, received);
+    }
+
+    /**
+     * Which files of a received email {@link #writeFiling} would take, by the rules of the portal (S12-AC-25,
+     * S12-AC-26, ATT-2, ATT-3), so that a file that breaks one is left out alone and the others are kept. In the
+     * files' order, each kept file counts toward the limits of the next: its name (255 characters), empty, 10 MB, 20
+     * files, the issue's 50 MB of public attachments with what it has, and the team's limit with what is stored.
+     * Counted without a lock; the store under the issue's lock checks again.
+     *
+     * @param files the named parts of the email; may be empty
+     * @param issueId the issue the files go to, or null for a new issue
+     * @return per file, why it is left out, or null when it is kept
+     */
+    public List<Refusal> sortOutMail(List<MultipartFile> files, UUID issueId) {
+        long issueBytes = issueId == null ? 0 : attachments.publicBytes(issueId);
+        long stored = attachments.storedBytes();
+        long kept = 0;
+        int count = 0;
+        List<Refusal> out = new ArrayList<>();
+        for (MultipartFile file : files) {
+            String name = file.getOriginalFilename();
+            Refusal refusal = null;
+            if (name == null || TextInput.length(name) > NAME_MAX) {
+                refusal = Refusal.NAME_TOO_LONG;
+            } else if (file.isEmpty()) {
+                refusal = Refusal.EMPTY;
+            } else if (file.getSize() > MAX_FILE) {
+                refusal = Refusal.TOO_LARGE;
+            } else if (count >= MAX_FILES_PER_FILING) {
+                refusal = Refusal.TOO_MANY;
+            } else if (issueBytes + kept + file.getSize() > MAX_PUBLIC_PER_ISSUE) {
+                refusal = Refusal.ISSUE_TOTAL;
+            } else if (stored + kept + file.getSize() > quota) {
+                refusal = Refusal.QUOTA;
+            }
+            if (refusal == null) {
+                kept += file.getSize();
+                count++;
+            }
+            out.add(refusal);
+        }
+        return out;
+    }
+
+    /**
+     * Step ③ for the files of a received email that became a comment (S12-AC-25), inside the comment's transaction
+     * after it locked the issue and wrote the comment: the pending rows of {@link #writeFiling} become stored on the
+     * issue and the comment, in ID order, each with its entry in the issue's history. Then the issue's public
+     * attachments must be within 50 MB, counted under the lock.
+     *
+     * @throws ApiException {@code ISSUE_ATTACHMENTS_TOO_LARGE} when they are not; the caller's transaction rolls back
+     */
+    public void storeOnComment(List<UUID> ids, UUID issueId, long commentId, long uploadedBy) {
+        Instant now = now();
+        for (UUID id : ids.stream().sorted().toList()) {
+            if (attachments.updateStoredOnComment(id, issueId, commentId) != 1) {
+                throw new IllegalStateException("An attachment of the comment was ended before it was stored");
+            }
+            history.insertChanged(issueId, Field.ATTACHMENT, null, id.toString(), uploadedBy, now);
+        }
+        if (!ids.isEmpty() && attachments.publicBytes(issueId) > MAX_PUBLIC_PER_ISSUE) {
+            throw issueAttachmentsTooLarge();
+        }
     }
 
     /**
