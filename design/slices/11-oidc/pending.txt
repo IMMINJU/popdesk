@@ -32,3 +32,9 @@ web **/auditWords.words.test.ts
 web **/C12AuditLog.filters.test.tsx
 web **/C12AuditLog.test.tsx
 web ../../../console/**/Screens11.overflow.stories.tsx
+server io/popdesk/auth/OidcCraftedTokenTest.java
+server io/popdesk/auth/OidcCraftedCallbackTest.java
+server io/popdesk/auth/OidcDiscoveryTest.java
+server io/popdesk/auth/OidcCraftedStatusTest.java
+server io/popdesk/auth/OidcConsoleOnlyTest.java
+server io/popdesk/auth/OidcCraftedLogTest.java

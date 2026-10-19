@@ -1,6 +1,6 @@
 # 실패 확인
 
-- 단언 실패 164, 통과 0, 허용한 통과 8, 오류 0, 건너뜀 0
+- 단언 실패 192, 통과 0, 허용한 통과 8, 오류 0, 건너뜀 0
 - 판정: 통과
 
 ## 처음부터 통과해도 된다고 허용한 테스트 (점검에서 이유를 본다)
@@ -16,6 +16,10 @@
 
 ## 단언에서 실패한 테스트
 
+- `io.popdesk.auth.OidcAccountListTest.suspendedAccountStaysLinked`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcAccountListTest.listGivesOidcLinked(Role)[1]`: Expected 302 from GET /api/public/oidc/start on portal.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcAccountListTest.listGivesOidcLinked(Role)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcAnonymizeTest.anonymizingRemovesTheLink`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcAuditTest.firstSignInOfAnInvitedAccount`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcAuditTest.refusedSignInIsAudited(Refused)[1]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcAuditTest.refusedSignInIsAudited(Refused)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
@@ -32,6 +36,34 @@
 - `io.popdesk.auth.OidcCallbackTest.callbackStartsANewSession`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcConcurrentLinkTest.sameSubjectTwiceAtOnce`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcConcurrentLinkTest.twoSubjectsAtOnceLinkOne`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcConsoleOnlyTest.portalPathsAre404`: Expected 404 from GET /api/public/oidc/start on portal.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcConsoleOnlyTest.signInOptionsSayConsoleOnly`: [oidc is true in {"oidc":false} on console.popdesk.test] 
+- `io.popdesk.auth.OidcCraftedCallbackTest.usedSignInRequestIsGone`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedCallbackTest.tokenEndpointThatFails(int, String)[1]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedCallbackTest.tokenEndpointThatFails(int, String)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedCallbackTest.tokenEndpointThatFails(int, String)[3]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedCallbackTest.tokenEndpointThatFails(int, String)[4]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedLogTest.logOfFailedSignInsHoldsNoSecret`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedStatusTest.discoveryFailureIsCountedOnce`: [status of GET /api/public/oidc/start on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.auth.OidcCraftedStatusTest.statusSaysOnForTheConsoleOnly`: [enabled of {"enabled":false,"apps":[],"lastSuccessAt":null,"providerFailures":0,"lastFailure":null}] 
+- `io.popdesk.auth.OidcCraftedStatusTest.tokenFailureIsCounted`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenThatFailsItsChecksFails(String, Token)[1]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenThatFailsItsChecksFails(String, Token)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenThatFailsItsChecksFails(String, Token)[3]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenThatFailsItsChecksFails(String, Token)[4]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenThatFailsItsChecksFails(String, Token)[5]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenThatFailsItsChecksFails(String, Token)[6]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenThatFailsItsChecksFails(String, Token)[7]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenThatFailsItsChecksFails(String, Token)[8]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenThatFailsItsChecksFails(String, Token)[9]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenThatFailsItsChecksFails(String, Token)[10]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenThatFailsItsChecksFails(String, Token)[11]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenThatFailsItsChecksFails(String, Token)[12]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenWithinTheChecksSignsIn(String, Token)[1]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenWithinTheChecksSignsIn(String, Token)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.craftedTokenWithinTheChecksSignsIn(String, Token)[3]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcCraftedTokenTest.unknownKidFetchesTheKeysOnceMore`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcDiscoveryTest.failedDiscoveryIsKeptThirtySeconds`: [status of GET /api/public/oidc/start on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
 - `io.popdesk.auth.OidcIdTokenTest.tokenWithinTheChecksSignsIn(String, Change)[1]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcIdTokenTest.tokenWithinTheChecksSignsIn(String, Change)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcIdTokenTest.tokenWithinTheChecksSignsIn(String, Change)[3]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
@@ -76,6 +108,8 @@
 - `io.popdesk.auth.OidcPasswordTest.lockedAccountSignsInByOidc`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcPasswordTest.invitedAccountBecomesActive(Role)[1]`: Expected 302 from GET /api/public/oidc/start on portal.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcPasswordTest.invitedAccountBecomesActive(Role)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.auth.OidcSchemaTest.oidcLinkTable`: [V24 in flyway_schema_history] 
+- `io.popdesk.auth.OidcSchemaTest.oidcRequestTable`: [columns of oidc_request] 
 - `io.popdesk.auth.OidcSessionTest.oidcSessionEndsLikeAPasswordSession(Ending)[1]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcSessionTest.oidcSessionEndsLikeAPasswordSession(Ending)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcSessionTest.oidcSessionEndsLikeAPasswordSession(Ending)[3]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
@@ -86,22 +120,6 @@
 - `io.popdesk.auth.OidcStartTest.startGoesToTheProvider(String)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcStartTest.signInOptionsSayOn`: [oidc is true in {"oidc":false} on portal.popdesk.test] 
 - `io.popdesk.auth.OidcStartTest.newStartRemovesRequestsOverTenMinutesOld`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
-- `io.popdesk.start.OidcProviderDownStartTest.startsWithTheProviderDown`: [a WARN line at startup about the http OIDC_ISSUER] 
-- `io.popdesk.start.OidcProviderDownStartTest.startWithTheProviderDownIsUnavailable`: [status of GET /api/public/oidc/start on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
-- `io.popdesk.start.OidcSettingsStartTest.issuerOfTheWrongShapeEndsTheStart(String)[1]`: The app started, but it should not: OIDC_ISSUER=http://localhost:9/default?tenant=a
-- `io.popdesk.start.OidcSettingsStartTest.issuerOfTheWrongShapeEndsTheStart(String)[2]`: The app started, but it should not: OIDC_ISSUER=http://localhost:9/default#part
-- `io.popdesk.start.OidcSettingsStartTest.issuerOfTheWrongShapeEndsTheStart(String)[3]`: The app started, but it should not: OIDC_ISSUER=/default
-- `io.popdesk.start.OidcSettingsStartTest.someKeysOnlyEndTheStart(String, String)[1]`: The app started, but it should not: only OIDC_ISSUER of the OIDC keys are set
-- `io.popdesk.start.OidcSettingsStartTest.someKeysOnlyEndTheStart(String, String)[2]`: The app started, but it should not: only OIDC_ISSUER OIDC_CLIENT_ID of the OIDC keys are set
-- `io.popdesk.start.OidcSettingsStartTest.someKeysOnlyEndTheStart(String, String)[3]`: The app started, but it should not: only OIDC_CLIENT_ID OIDC_CLIENT_SECRET of the OIDC keys are set
-- `io.popdesk.start.OidcSettingsStartTest.unknownAppsEndTheStart(String)[1]`: The app started, but it should not: OIDC_APPS=everyone
-- `io.popdesk.start.OidcSettingsStartTest.unknownAppsEndTheStart(String)[2]`: The app started, but it should not: OIDC_APPS=console,portal
-- `io.popdesk.auth.OidcAccountListTest.suspendedAccountStaysLinked`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
-- `io.popdesk.auth.OidcAccountListTest.listGivesOidcLinked(Role)[1]`: Expected 302 from GET /api/public/oidc/start on portal.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
-- `io.popdesk.auth.OidcAccountListTest.listGivesOidcLinked(Role)[2]`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
-- `io.popdesk.auth.OidcAnonymizeTest.anonymizingRemovesTheLink`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
-- `io.popdesk.auth.OidcSchemaTest.oidcLinkTable`: [V24 in flyway_schema_history] 
-- `io.popdesk.auth.OidcSchemaTest.oidcRequestTable`: [columns of oidc_request] 
 - `io.popdesk.auth.OidcStatusTest.accountSideFailuresAreNotCounted`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcStatusTest.signInSetsLastSuccessAt`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcStatusTest.statusSaysOnForBothApps`: [enabled of {"enabled":false,"apps":[],"lastSuccessAt":null,"providerFailures":0,"lastFailure":null}] 
@@ -117,6 +135,16 @@
 - `io.popdesk.auth.OidcUnlinkTest.unlinkEndsTheLinkAndTheSessions`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcUnlinkTest.anotherSubLinksAgainAfterUnlinking`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
 - `io.popdesk.auth.OidcUnlinkTest.unlinkWithoutALinkIs404`: Expected 302 from GET /api/public/oidc/start on console.popdesk.test but got 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}
+- `io.popdesk.start.OidcProviderDownStartTest.startsWithTheProviderDown`: [a WARN line at startup about the http OIDC_ISSUER] 
+- `io.popdesk.start.OidcProviderDownStartTest.startWithTheProviderDownIsUnavailable`: [status of GET /api/public/oidc/start on console.popdesk.test -> 501: {"code":"NOT_IMPLEMENTED","message":"Not built yet."}] 
+- `io.popdesk.start.OidcSettingsStartTest.issuerOfTheWrongShapeEndsTheStart(String)[1]`: The app started, but it should not: OIDC_ISSUER=http://localhost:9/default?tenant=a
+- `io.popdesk.start.OidcSettingsStartTest.issuerOfTheWrongShapeEndsTheStart(String)[2]`: The app started, but it should not: OIDC_ISSUER=http://localhost:9/default#part
+- `io.popdesk.start.OidcSettingsStartTest.issuerOfTheWrongShapeEndsTheStart(String)[3]`: The app started, but it should not: OIDC_ISSUER=/default
+- `io.popdesk.start.OidcSettingsStartTest.someKeysOnlyEndTheStart(String, String)[1]`: The app started, but it should not: only OIDC_ISSUER of the OIDC keys are set
+- `io.popdesk.start.OidcSettingsStartTest.someKeysOnlyEndTheStart(String, String)[2]`: The app started, but it should not: only OIDC_ISSUER OIDC_CLIENT_ID of the OIDC keys are set
+- `io.popdesk.start.OidcSettingsStartTest.someKeysOnlyEndTheStart(String, String)[3]`: The app started, but it should not: only OIDC_CLIENT_ID OIDC_CLIENT_SECRET of the OIDC keys are set
+- `io.popdesk.start.OidcSettingsStartTest.unknownAppsEndTheStart(String)[1]`: The app started, but it should not: OIDC_APPS=everyone
+- `io.popdesk.start.OidcSettingsStartTest.unknownAppsEndTheStart(String)[2]`: The app started, but it should not: OIDC_APPS=console,portal
 - `src/OidcSignIn.11.test.tsx.OIDC 조각 (11 묶음) > S11-AC-31 단추를 누름(next = 보던 화면): 시작 주소로 한 번 옮기고 next를 그대로 넘긴다`: ./OidcSignIn.tsx의 OidcSignIn: expected 'undefined' to be 'function' // Object.is equality
 - `src/OidcSignIn.11.test.tsx.OIDC 조각 (11 묶음) > S11-AC-31 단추를 누름(next = 첫 화면): 시작 주소로 한 번 옮기고 next를 그대로 넘긴다`: ./OidcSignIn.tsx의 OidcSignIn: expected 'undefined' to be 'function' // Object.is equality
 - `src/OidcSignIn.11.test.tsx.OIDC 조각 (11 묶음) > S11-AC-31 단추를 누름(next 없음): 쿼리 없이 시작 주소로 옮긴다`: ./OidcSignIn.tsx의 OidcSignIn: expected 'undefined' to be 'function' // Object.is equality
