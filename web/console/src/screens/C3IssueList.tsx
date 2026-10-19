@@ -48,7 +48,7 @@ import {
   type IssueSort,
 } from '../app/issueFilters';
 import { LoadFailed, PageTitle } from '../app/layout';
-import { t, texts, tf } from '../app/locale';
+import { formatNumber, t, texts, tf } from '../app/locale';
 import { rateLimitedText, slaWords } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { PageNav } from '../app/PageNav';
@@ -430,7 +430,7 @@ export function C3IssueList() {
       )}
       {load.status !== 'failed' || data ? (
         <DataTable
-          caption={tf('issueList.caption', { count: data?.totalElements ?? 0 })}
+          caption={tf('issueList.caption', { count: formatNumber(data?.totalElements ?? 0) })}
           columns={columns()}
           rows={rows}
           rowKey={(i) => i.key}

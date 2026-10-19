@@ -17,7 +17,7 @@ export const commonEn: Record<keyof typeof commonKo, string> = {
   'app.saveSessionEnded': 'Your session has ended. Sign in again in another tab, then send again.',
   'app.openLogin': 'Sign in in a new tab',
   'app.forbidden': 'You do not have permission to do this.',
-  'app.stale': 'This page is out of date. Refresh it and try again.',
+  'app.stale': 'This page is out of date. Reload the page and try again.',
   'app.server': 'Could not connect to the server. Try again in a moment.',
   'app.tooLarge': 'The file is over the size limit of the server',
   'app.canRetry': 'You can send again now.',
@@ -58,7 +58,7 @@ export const commonEn: Record<keyof typeof commonKo, string> = {
   'attachments.issueClosed': 'Files cannot be attached to a closed issue.',
 
   'images.notImage': 'Only PNG, JPEG, GIF and WebP images can go into the text',
-  'images.tooMany': 'Too many images are not saved yet. Save the text, then upload again',
+  'images.tooMany': 'Too many unsaved images. Save the text, then upload again',
   'images.stale': 'Some images in the text were uploaded too long ago. Upload them again, then save',
   'images.inline': 'Image in text',
 
@@ -119,5 +119,5 @@ export const commonEn: Record<keyof typeof commonKo, string> = {
   'portal.supportTeam': 'Support team',
   'portal.me': 'Me',
   'portal.private': 'Private',
-  'myInfo.manager': 'Manager',
+  'myInfo.manager': 'Company manager',
 };
