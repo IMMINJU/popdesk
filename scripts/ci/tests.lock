@@ -198,6 +198,7 @@ b96ef4f11aaaf1575783b52c3622dc9305e0f1b132880d4d6a1ca5338f18afe3  server/src/tes
 d83bd020931b7a746980c0330626abc9d364a2188f708b919f85cb411277d238  server/src/test/java/io/popdesk/deploy/IssueSampleTest.java
 58f3c797c2818c78ae95eee864b4bb28234f3458ac2fc858e7cd554f82850f62  server/src/test/java/io/popdesk/deploy/IssueUpgradeTest.java
 b1a5a1c8d6fd72ccef65669cfff3c3ac54072c53d8a772c950d9a74174a9a9bb  server/src/test/java/io/popdesk/deploy/LinkSampleTest.java
+c03ce42d72956e649151db485ac6691f9610cffcc94b58d66a5d09893bcaa04c  server/src/test/java/io/popdesk/deploy/MailInSampleTest.java
 ebeefb2f08abae93394b2f838b9357d862b85a83613db2823382b7f1d00af566  server/src/test/java/io/popdesk/deploy/ManagerUpgradeTest.java
 374c899d367ae1415ca636e8dc3694fd33c30955f55ea33e4b8af06495ece66d  server/src/test/java/io/popdesk/deploy/Metrics.java
 95acb034f998b7053ab51304925cf97da264248aed9291367dbba2a93a29c540  server/src/test/java/io/popdesk/deploy/ObservabilityComposeTest.java
@@ -359,6 +360,7 @@ edbd559fbfa73a50a24a0047049ced66e94ec7c7a91f2d776ab3ac1617c494ae  server/src/tes
 beafab46072f8cf8de334174925e1f3e8d3172fe70cd483f7c238c970890c9c5  server/src/test/java/io/popdesk/mailin/MailInAppTest.java
 99d5f4f9faed3ed65ef65d7de6b6bade9bf31fff333609405f580da3152e6013  server/src/test/java/io/popdesk/mailin/MailInLogTest.java
 e13a7fc3205694e42f2ffc87fef572efdcca8e09d27874b8d418839606bfe57a  server/src/test/java/io/popdesk/mailin/MailInMetrics.java
+a85ed7d048acd8e96ccd75fd3b94b2282538c0b4f6b2f7b0781b59636aab8a20  server/src/test/java/io/popdesk/mailin/MailInSchemaTest.java
 eaf80991ae8a1e54a9f28a8c3ce3dc0108c1fe600999cb9cbb03f81672459c6a  server/src/test/java/io/popdesk/mailin/MailInStatusTest.java
 9ad77ab5eb853a2210e41fdd53106649bdb1974fe15c12bae248616c4557cd9b  server/src/test/java/io/popdesk/mailin/MailRateLimitTest.java
 f50bf20815677c957a4d20a4a4e70eaf3d88ec733f4610c612777fb541327212  server/src/test/java/io/popdesk/mailin/MailRetentionTest.java
