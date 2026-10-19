@@ -362,6 +362,15 @@ def fill(project):
     project.sql("insert into notification (tenant_id, account_id, kind, retention_count, retention_days, created_at) "
                 "select 1, id, 'ISSUE_RETENTION_ARMED', 1, 90, now() - interval '1 day' from account "
                 "where role = 'ADMIN' and status = 'ACTIVE'")
+    # What slice 11 added (S11-AC-36, design.md 1절): the API makes neither without an OIDC provider. The ACME
+    # customer linked to a provider's subject (oidc_link), with no audit entry, since rows written here would break
+    # the chain; and a sign-in started and not come back yet (oidc_request), with hashes of no real value.
+    project.sql("insert into oidc_link (tenant_id, account_id, issuer, subject, linked_at) "
+                f"values (1, {customer_id}, 'https://id.sample.popdesk.test', 'sample-subject-1', now())")
+    project.sql("insert into oidc_request (tenant_id, state_hash, browser_hash, nonce_hash, code_verifier, app, "
+                "next_path, created_at) values (1, encode(sha256('sample-state'), 'hex'), "
+                "encode(sha256('sample-browser'), 'hex'), encode(sha256('sample-nonce'), 'hex'), "
+                "'sample-code-verifier-of-43-characters-000000', 'PORTAL', '/', now())")
     # A send queue row in state failed: an email given up after 24 hours of failures.
     project.sql(
         "insert into outbox (tenant_id, channel, kind, recipient_account_id, issue_id, comment_id, state, attempts, "
