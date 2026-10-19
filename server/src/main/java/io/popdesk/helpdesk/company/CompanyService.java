@@ -317,7 +317,8 @@ public class CompanyService {
     /**
      * Marks a customer of a company, invited or active, as its manager (S2-AC-01, S2-AC-05). An account
      * that is no customer of the company is 404 (S2-AC-02). Marking again changes nothing and is not
-     * audited again. An {@code ARCHIVED} company takes no new manager (S2-AC-06).
+     * audited again. An anonymized account is 400 {@code ACCOUNT_ANONYMIZED} (B2-AC-02), and an
+     * {@code ARCHIVED} company takes no new manager (S2-AC-06).
      */
     public MemberRow markManager(Viewer viewer, AuditLog.Actor admin, String code, long accountId) {
         return changeManager(viewer, admin, code, accountId, true);
@@ -336,8 +337,13 @@ public class CompanyService {
             // ends first, and the next one reads this change (S2-AC-11).
             boolean marked = companies.lockManager(company.id(), accountId).orElseThrow(ApiException::notFound);
             AccountRow customer = accounts.findById(accountId).orElseThrow(ApiException::notFound);
-            if (manager && company.status() == CompanyStatus.ARCHIVED) {
-                throw notActive();
+            if (manager) {
+                // After membership, so a customer of another company is 404 whether anonymized or not
+                // (B2-AC-02); unmarking an anonymized manager is taken (B2-AC-03).
+                AccountService.refuseAnonymized(customer);
+                if (company.status() == CompanyStatus.ARCHIVED) {
+                    throw notActive();
+                }
             }
             if (marked != manager) {
                 companies.updateManager(company.id(), accountId, manager);
@@ -350,7 +356,7 @@ public class CompanyService {
 
     private static MemberRow member(CompanyRow company, AccountRow account, boolean manager) {
         return new MemberRow(company.id(), account.id(), account.name(), account.email(), account.status(),
-                account.photoUpdatedAt(), manager);
+                account.photoUpdatedAt(), manager, account.anonymized());
     }
 
     /**

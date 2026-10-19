@@ -33,9 +33,10 @@ public class CompanyRepository {
     /**
      * A customer or agent of a company; {@code photoUpdatedAt} is null without a profile photo.
      * {@code manager}: the customer is a manager of this company; always false for an agent.
+     * {@code anonymized}: the account is anonymized, whose status is {@code SUSPENDED} (B2-AC-01).
      */
     public record MemberRow(long companyId, long accountId, String name, String email, AccountStatus status,
-            Instant photoUpdatedAt, boolean manager) {}
+            Instant photoUpdatedAt, boolean manager, boolean anonymized) {}
 
     /**
      * An account by name and role: an admin or agent who can be the assignee of an issue, or someone who
@@ -157,7 +158,7 @@ public class CompanyRepository {
     /** One page of a company's customers or agents, in name order, if the viewer may see the company. */
     public List<MemberRow> listMembers(Viewer viewer, long companyId, Role role, long offset, int limit) {
         return jdbc.sql("select m.company_id, a.id, a.name, a.email, a.status, p.updated_at, "
-                        + (role == Role.CUSTOMER ? "m.manager" : "false") + " from "
+                        + (role == Role.CUSTOMER ? "m.manager" : "false") + ", a.anonymized_at is not null from "
                         + memberTable(role) + " m join account a on a.id = m.account_id "
                         + "join company c on c.id = m.company_id left join account_photo p on p.account_id = a.id "
                         + "where m.company_id = ? and " + SCOPE + " order by a.name, a.id offset ? limit ?")
@@ -228,8 +229,8 @@ public class CompanyRepository {
      * it, ignoring case; null leaves that out.
      */
     public List<MemberRow> listReporters(Viewer viewer, long companyId, String q, long offset, int limit) {
-        return jdbc.sql("select m.company_id, a.id, a.name, a.email, a.status, p.updated_at, m.manager "
-                        + "from company_member m join account a on a.id = m.account_id "
+        return jdbc.sql("select m.company_id, a.id, a.name, a.email, a.status, p.updated_at, m.manager, "
+                        + "a.anonymized_at is not null from company_member m join account a on a.id = m.account_id "
                         + "join company c on c.id = m.company_id left join account_photo p on p.account_id = a.id "
                         + "where " + REPORTERS + " order by a.name, a.id offset ? limit ?")
                 .params(with(reporters(viewer, companyId, q), offset, limit))
@@ -407,6 +408,6 @@ public class CompanyRepository {
         Timestamp photo = rs.getTimestamp(6);
         return new MemberRow(rs.getLong(1), rs.getLong(2), rs.getString(3), rs.getString(4),
                 AccountStatus.valueOf(rs.getString(5)), photo == null ? null : photo.toInstant(),
-                rs.getBoolean(7));
+                rs.getBoolean(7), rs.getBoolean(8));
     }
 }

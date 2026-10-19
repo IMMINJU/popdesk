@@ -58,7 +58,8 @@ class ConsoleCompanyController {
 
     static CompanyMember member(MemberRow row) {
         return new CompanyMember(row.accountId(), row.name(), row.email(), row.status(),
-                row.photoUpdatedAt() == null ? null : row.photoUpdatedAt().atOffset(ZoneOffset.UTC), row.manager(), false);
+                row.photoUpdatedAt() == null ? null : row.photoUpdatedAt().atOffset(ZoneOffset.UTC), row.manager(),
+                row.anonymized());
     }
 
     static final String ADMIN_ONLY = "`FORBIDDEN`: admins only (S0-AC-30).";
