@@ -47,8 +47,8 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 
 | Module | Package | Owns |
 |---|---|---|
-| `helpdesk` | `io.popdesk.helpdesk` | Accounts, invitations, sign-in (password and OIDC, `helpdesk.account`), customer companies, issues, comments, attachments, labels, audit log, statistics, account export and anonymization and company export (`helpdesk.privacy`), the trash and automatic issue cleanup (`helpdesk.trash`) |
-| `notification` | `io.popdesk.notification` | Outbox, outgoing email, webhooks, incoming email |
+| `helpdesk` | `io.popdesk.helpdesk` | Accounts, invitations, sign-in (password and OIDC, `helpdesk.account`), customer companies, issues, comments, attachments, labels, audit log, statistics, account export and anonymization and company export (`helpdesk.privacy`), the trash and automatic issue cleanup (`helpdesk.trash`), receiving email over IMAP (`helpdesk.mailin`) |
+| `notification` | `io.popdesk.notification` | Outbox, outgoing email and the record of its `Message-ID`s, webhooks |
 
 ### Tables
 
@@ -83,7 +83,7 @@ Spring Modulith modules (ADR D-6). Each table has one owning module, and a modul
 | `mail_sent` | `notification` | The `Message-ID` (without angle brackets) of each email sent to a customer about an issue while receiving email is on (V25, MAIL-7), so that a reply finds its issue. No foreign key; a permanent delete of the issue deletes its rows, and `mail-record-cleanup` deletes rows after 90 days |
 | `cleanup_run` | `notification` | One row per cleanup job: when it last ran and how many rows it deleted. `helpdesk`'s jobs are `CleanupJob` beans that `notification` runs and records |
 
-`notification` reads accounts, issues, and comments only through interfaces it declares and `helpdesk` implements (`Recipients`, `IssueFacts`, `IssueAccess`, `InboxFacts`, `CommentFacts`, `InvitationLinks`, `PasswordResetLinks`, `BrandingName`), so it does not depend on `helpdesk`.
+`notification` reads accounts, issues, and comments only through interfaces it declares and `helpdesk` implements (`Recipients`, `IssueFacts`, `IssueAccess`, `InboxFacts`, `CommentFacts`, `InvitationLinks`, `PasswordResetLinks`, `BrandingName`, `MailInState`), so it does not depend on `helpdesk`. `helpdesk.mailin` finds the issue of a reply through `SentMailLookup`, which `notification` implements over `mail_sent`.
 
 Who is told of what happens on an issue is decided in one class, `helpdesk.issue.IssueNotifications`: it leaves out the person who did it, accounts that are not `ACTIVE`, and accounts that cannot see the issue, and calls `IssueInbox.add` once per person, which writes the inbox item and queues the email together. Services do not queue issue emails themselves.
 

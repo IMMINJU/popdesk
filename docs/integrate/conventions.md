@@ -59,11 +59,11 @@ popdesk can read a mailbox over IMAP and turn the emails into issues and comment
 - `getSystemStatus` has `mailIn` (`MailInStatus`), every field present:
   - `enabled`: `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD`, and `MAIL_INBOUND_ADDRESS` are all set, outside a sandbox.
   - `offReason`: `NOT_SET` without those settings, `SANDBOX` in a sandbox even with them, `null` when `enabled`.
-  - `lastSuccessAt`: the end of the last round that read the inbox folder through, or `null`.
+  - `lastSuccessAt`: the end of the last round that succeeded, or `null`. It is written once the round's emails (up to 100) are handled and moved, the alerts judged, and the daily mailbox cleanup done, so what the round did can be read as soon as it changes.
   - `roundFailures`: rounds that failed since the app started.
   - `lastFailure`: `{"kind": "CONNECT" | "AUTH" | "FOLDER" | "UNSUPPORTED", "at": …}` or `null`. `CONNECT` is a server that could not be reached or did not answer in time, `AUTH` a refused sign-in, `FOLDER` an inbox folder that is not there, `UNSUPPORTED` a server that can neither move a message nor expunge one alone (`MOVE` or `UIDPLUS`).
   - `retrying`: emails left in the inbox folder to try again (tried at least once, no outcome yet).
-  - `quarantined90d`: emails moved to the quarantine folder in the last 90 days, over five attempts or over the rate limit.
+  - `quarantined90d`: emails moved to the quarantine folder in the last 90 days: failed five times, over 30 MB, too many or too deeply nested parts, or over the rate limit.
 - The round fields are counted in the app's memory and are empty after a restart; `retrying` and `quarantined90d` come from the records of received emails and are not. When off, `lastSuccessAt` and `lastFailure` are `null` and the counts `0`. It holds no IMAP host, user, password, or folder name.
 - Two operational alerts belong to it ([Notification inbox](#notification-inbox-inbox-3)): `MAIL_IN_STALLED` when no round has succeeded for over an hour since the failures started, resolved when a round succeeds; `MAIL_IN_QUARANTINED` when an email is quarantined, resolved after 24 hours without another. Customers never get them.
 

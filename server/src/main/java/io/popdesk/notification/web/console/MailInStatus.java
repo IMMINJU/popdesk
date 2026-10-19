@@ -13,11 +13,12 @@ public record MailInStatus(
                 + "outside a sandbox.") boolean enabled,
         @Schema(description = "Why it is off: `NOT_SET` without the settings, `SANDBOX` in a sandbox even with them "
                 + "(S12-AC-03). Null when on.", nullable = true) MailInOffReason offReason,
-        @Schema(description = "The end of the last round that read the inbox folder through; null before the first "
+        @Schema(description = "The end of the last round that succeeded: written once its emails (up to 100) are "
+                + "handled and moved, the alerts judged, and the daily mailbox cleanup done. Null before the first "
                 + "since the app started.", nullable = true) OffsetDateTime lastSuccessAt,
         @Schema(description = "Rounds that failed since the app started (S12-AC-10).") int roundFailures,
         @Schema(description = "The last of them; null without one.", nullable = true) MailInFailure lastFailure,
         @Schema(description = "Emails left in the inbox folder to try again: a record with no outcome and at least "
                 + "one attempt.") int retrying,
-        @Schema(description = "Emails quarantined in the last 90 days, over the attempt limit or the rate limit "
-                + "(`QUARANTINED` and `RATE_LIMITED`).") int quarantined90d) {}
+        @Schema(description = "Emails quarantined in the last 90 days: failed five times, too large, too complex, "
+                + "or over the rate limit (`QUARANTINED` and `RATE_LIMITED`).") int quarantined90d) {}

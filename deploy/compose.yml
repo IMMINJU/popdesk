@@ -66,6 +66,16 @@ services:
       OIDC_CLIENT_SECRET:
       OIDC_CLIENT_SECRET_FILE:
       OIDC_APPS:
+      IMAP_HOST:
+      IMAP_PORT:
+      IMAP_USER:
+      IMAP_PASSWORD:
+      IMAP_PASSWORD_FILE:
+      IMAP_FOLDER:
+      IMAP_PROCESSED_FOLDER:
+      IMAP_QUARANTINE_FOLDER:
+      IMAP_ALLOW_PLAINTEXT:
+      MAIL_INBOUND_ADDRESS:
       # JVM options of the operator's own, for example a larger heap (-Xmx768m).
       JDK_JAVA_OPTIONS:
     volumes:
