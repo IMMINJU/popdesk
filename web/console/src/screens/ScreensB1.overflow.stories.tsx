@@ -38,12 +38,26 @@ type AuditEntry = Schemas['AuditEntry'];
 const INT32_MAX = 2_147_483_647;
 const ONE_LINE_COLUMNS = ['일', '대상'] as const;
 
+/**
+ * Reads the kind names in Korean. They follow `<html lang>` since b5, and Storybook starts the frame
+ * in English, while this story draws the screen for a Korean account.
+ */
+function inKorean<T>(read: () => T): T {
+  const was = document.documentElement.lang;
+  document.documentElement.lang = 'ko';
+  try {
+    return read();
+  } finally {
+    document.documentElement.lang = was;
+  }
+}
+
 /** Every kind whose Korean name is the longest there is. */
-const LONGEST_KINDS: string[] = (() => {
+const LONGEST_KINDS: string[] = inKorean(() => {
   const all = KIND_GROUPS.flatMap((g) => Object.entries(g.kinds));
   const most = Math.max(...all.map(([, word]) => word.length));
   return all.filter(([, word]) => word.length === most).map(([kind]) => kind);
-})();
+});
 
 const LONG_ACTOR = { accountId: 31, name: LONG_PERSON, email: LONG_EMAIL };
 
@@ -69,7 +83,7 @@ const ENTRIES: AuditEntry[] = [
 ];
 
 /** Words the 일 column must show, each in one row. */
-const KIND_TEXTS = ['로그인 (회사 계정)', 'OIDC 연결 풀기', ...LONGEST_KINDS.map((kind) => KIND_GROUPS.map((g) => g.kinds[kind]).find((w) => w !== undefined) ?? kind)];
+const KIND_TEXTS = inKorean(() => ['로그인 (회사 계정)', 'OIDC 연결 풀기', ...LONGEST_KINDS.map((kind) => KIND_GROUPS.map((g) => g.kinds[kind]).find((w) => w !== undefined) ?? kind)]);
 
 function screenStory(width: Width, theme: Theme): Story {
   const { parameters, globals } = at(width, theme, 'console');
