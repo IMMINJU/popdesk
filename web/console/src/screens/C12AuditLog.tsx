@@ -21,7 +21,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api, type Schemas } from '../api';
 import { AccountFinder } from '../app/AccountFinder';
-import { changeLines, KIND_GROUPS, kindsOfChoice, kindWord, NOT_SIGN_IN, targetOf, targetWord, type Target } from '../app/auditWords';
+import { changeLines, entryKindWord, KIND_GROUPS, kindsOfChoice, kindWord, NOT_SIGN_IN, targetOf, targetWord, type Target } from '../app/auditWords';
 import { SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { startExport } from '../app/exportDownload';
@@ -396,7 +396,7 @@ export function C12AuditLog() {
           </span>
         ),
     },
-    { key: 'action', header: '일', cell: (e) => kindWord(e.action) ?? <code className="pd-code">{e.action}</code> },
+    { key: 'action', header: '일', cell: (e) => entryKindWord(e.action, e.changes) ?? <code className="pd-code">{e.action}</code> },
     {
       key: 'target',
       header: '대상',

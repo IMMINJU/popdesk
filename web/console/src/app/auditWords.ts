@@ -28,6 +28,9 @@ export const KIND_GROUPS: readonly KindGroup[] = [
       // Slice 10a (10a design.md 0절 12): 익명화 and the audit chain it computes again.
       ACCOUNT_ANONYMIZED: '익명화',
       AUDIT_RECHAINED: '감사 사슬 다시 계산',
+      // Slice 11: an account linked to its OIDC provider account, and the link removed.
+      OIDC_LINKED: 'OIDC 연결',
+      OIDC_UNLINKED: 'OIDC 연결 풀기',
     },
   },
   {
@@ -38,6 +41,8 @@ export const KIND_GROUPS: readonly KindGroup[] = [
       INVITATION_RESENT: '초대 다시 보내기',
       INVITATION_CANCELLED: '초대 취소',
       INVITATION_LINK_CREATED: '초대 링크 복사',
+      // Slice 11: written when an OIDC sign-in turns on an account not accepted yet.
+      INVITATION_ACCEPTED: '초대 수락',
     },
   },
   {
@@ -94,6 +99,16 @@ const KIND_WORDS: Readonly<Record<string, string>> = Object.assign({}, ...KIND_G
 /** The word for a kind of action; undefined for a name the screen does not know. */
 export function kindWord(action: string): string | undefined {
   return Object.hasOwn(KIND_WORDS, action) ? KIND_WORDS[action] : undefined;
+}
+
+/** The sign-ins whose changes may say how the person signed in (slice 11). */
+const SIGN_IN_KINDS: ReadonlySet<string> = new Set(['SIGN_IN_SUCCEEDED', 'SIGN_IN_FAILED']);
+
+/** The word for an entry's action: a sign-in through OIDC reads "로그인 (회사 계정)" (slice 11 screens.md C-12). */
+export function entryKindWord(action: string, changes: Readonly<Record<string, unknown>> | null): string | undefined {
+  const kind = kindWord(action);
+  if (kind === undefined || !SIGN_IN_KINDS.has(action) || changes?.method !== 'OIDC') return kind;
+  return `${kind} (${METHOD_WORDS.OIDC})`;
 }
 
 /**
@@ -192,8 +207,12 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
   includeInternal: '내부 넣기',
   includePrivate: '비공개 넣기',
   exportId: '작업',
+  // Slice 11: how a person signed in or accepted an invitation, and the provider an account was linked to.
+  method: '로그인 방법',
+  issuer: '발급자',
 };
 
+const METHOD_WORDS = { OIDC: '회사 계정' } as const;
 const LOGO_THEME_WORDS: Readonly<Record<string, string>> = { LIGHT: '밝은 테마', DARK: '어두운 테마' };
 
 /**
@@ -299,6 +318,7 @@ function valueWord(action: string, field: string, value: unknown): string {
   if ((field === 'clearedIssues' || field === 'clearedTasks') && typeof value === 'number') return `${text}건`;
   if (field === 'role') return word(ROLE_WORDS, text);
   if (field === 'channel') return word(CHANNEL_WORDS, text);
+  if (field === 'method') return word(METHOD_WORDS, text);
   // 정지 is an account's word and 멈춤 a company's for the same stored name.
   if (field === 'status') return word(action.startsWith('COMPANY_') ? PROJECT_STATUS_WORDS : ACCOUNT_STATUS_WORDS, text);
   return text;
