@@ -39,7 +39,7 @@
 | 13. 개인정보 (PII) | PII-3·4·5·7 | `../archive/10a-privacy/rules.md`(10a 묶음). PII-4의 OIDC 묶음 지우기는 AUTH-6, 받은 메일 기록의 주소 비우기는 MAILIN-6에 옮겨 적었다 |
 | 13. 개인정보 (PII) | PII-1·2·6·8, 보관 기간 표 | `../archive/10b-privacy/rules.md`(10b 묶음) |
 | 18. 운영 경보와 시스템 상태 (OPS) | OPS-3 | `../archive/4b-delivery/rules.md`(4b 묶음) |
-| 1. 로그인과 계정 (AUTH) | AUTH-6 | `../slices/11-oidc/rules.md`(11번 묶음, 진행 중) |
+| 1. 로그인과 계정 (AUTH) | AUTH-6 | `../archive/11-oidc/rules.md`(11번 묶음) |
 
 ## 0. 공통
 
