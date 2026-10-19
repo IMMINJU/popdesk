@@ -1,6 +1,3 @@
 # Cyclic package edges that existed on 2026-10-13 (PackageCyclesTest).
 # Lines are only removed from this file. A new cycle is fixed in the code.
 
-# account, company
-io.popdesk.helpdesk.account -> io.popdesk.helpdesk.company
-io.popdesk.helpdesk.company -> io.popdesk.helpdesk.account
