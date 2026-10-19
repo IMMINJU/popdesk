@@ -1,6 +1,7 @@
 // C-18 시스템 상태 (관리자, screens.md 4절, 1b screens.md 2절, 4b screens.md). The channels
 // (mail, webhook, the outside copy of the audit log), the `failed` rows with 다시 보내기,
 // 시험 메일 and the cleanup jobs (OPS-3 part, S0-AC-81, S1B-AC-33, S4B-AC-32~36). No secret values.
+// OIDC sign-in and receiving email follow the channels (11, 12 screens.md C-18).
 import { EmptyState } from '@popdesk/ui';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -13,7 +14,7 @@ import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, usePageMove, usePageParam } from '../app/paging';
 import { call, type Failure, type Result } from '../app/result';
 import { useToast } from '../app/toastContext';
-import { ChannelTable, CleanupJobs, FailedTable, OidcPart, SandboxBand, TestMail, type TestMailState } from './C18Parts';
+import { ChannelTable, CleanupJobs, FailedTable, MailInPart, OidcPart, SandboxBand, TestMail, type TestMailState } from './C18Parts';
 
 type FailedDelivery = Schemas['FailedDelivery'];
 
@@ -129,6 +130,7 @@ export function C18SystemStatus() {
         {(load.status !== 'failed' || data) && <ChannelTable status={data?.status} loading={firstLoad} skeletonRows={load.slow ? 3 : 0} />}
       </section>
       {data && <OidcPart oidc={data.status.oidc} />}
+      {data && <MailInPart mailIn={data.status.mailIn} />}
       {data && (
         <TestMail
           enabled={data.status.mail.enabled}

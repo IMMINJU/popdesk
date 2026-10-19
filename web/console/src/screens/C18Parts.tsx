@@ -1,5 +1,5 @@
 // The parts of C-18 시스템 상태 (4b screens.md 1~4절): the sandbox band, the channel table,
-// OIDC sign-in (11 screens.md C-18), the `failed` rows with 다시 보내기, 시험 메일 and the cleanup jobs. They draw what they are
+// OIDC sign-in (11 screens.md C-18), receiving email (12 screens.md C-18), the `failed` rows with 다시 보내기, 시험 메일 and the cleanup jobs. They draw what they are
 // given; the screen asks the server and keeps the states. No secret values.
 import { Alert, Badge, Button, DataTable, RelativeTime, type DataTableColumn } from '@popdesk/ui';
 import type { ReactNode } from 'react';
@@ -12,12 +12,15 @@ type FailedDelivery = Schemas['FailedDelivery'];
 type CleanupJobStatus = Schemas['CleanupJobStatus'];
 type TestMailResult = Schemas['TestMailResult'];
 type OidcStatus = Schemas['OidcStatus'];
+type MailInStatus = Schemas['MailInStatus'];
 
 const DOCS = 'https://github.com/IMMINJU/popdesk/blob/main/docs/operate/configuration.md';
 /** Where an operator reads which environment variables turn a channel on. */
 const CONFIG_DOC = DOCS;
 /** Where an operator reads what a sandbox turns off. */
 const SANDBOX_DOC = `${DOCS}#a-sandbox`;
+/** Where an operator reads which environment variables turn receiving email on. */
+const MAIL_IN_DOC = `${DOCS}#receiving-email`;
 
 const FORWARD = '감사 바깥 사본';
 const CHANNEL_WORDS: Record<FailedDelivery['channel'], string> = { MAIL: '메일', WEBHOOK: '웹훅', AUDIT_FORWARD: FORWARD };
@@ -130,6 +133,67 @@ export function OidcPart(props: { oidc: OidcStatus }) {
       ) : (
         <p>
           <Badge tone="neutral">꺼짐</Badge>
+        </p>
+      )}
+    </section>
+  );
+}
+
+const MAIL_IN_FAILURE_WORDS: Record<NonNullable<MailInStatus['lastFailure']>['kind'], string> = {
+  CONNECT: '메일 서버에 연결하지 못함',
+  AUTH: '로그인이 거절됨',
+  FOLDER: '받는 폴더가 없음',
+  UNSUPPORTED: '메일 서버가 메일 옮기기를 지원하지 않음',
+};
+
+/**
+ * Receiving email, right after OIDC: off and why, or the last round, the failed rounds and the emails left to try
+ * again or quarantined. No folder name and no server address (the status has none).
+ */
+export function MailInPart(props: { mailIn: MailInStatus }) {
+  const { mailIn } = props;
+  return (
+    <section className="pd-section" aria-labelledby="mail-in-title">
+      <h2 id="mail-in-title" className="pd-section-title">
+        메일 받기
+      </h2>
+      {mailIn.enabled ? (
+        <>
+          <ul className="pd-oidc-status">
+            <li>
+              <span className="pd-on">켜짐</span>
+            </li>
+            <li>
+              마지막 성공: {mailIn.lastSuccessAt === null ? <span className="pd-muted">{NEVER}</span> : <RelativeTime dateTime={mailIn.lastSuccessAt} />}
+            </li>
+            <li>실패한 회차: {mailIn.roundFailures.toLocaleString('ko')}회</li>
+            {mailIn.lastFailure !== null && (
+              <li>
+                마지막 실패: {MAIL_IN_FAILURE_WORDS[mailIn.lastFailure.kind]}, <RelativeTime dateTime={mailIn.lastFailure.at} />
+              </li>
+            )}
+            {mailIn.retrying > 0 && <li>다시 시도할 메일: {mailIn.retrying.toLocaleString('ko')}통</li>}
+            {mailIn.quarantined90d > 0 && (
+              <li>
+                격리한 메일(90일): {mailIn.quarantined90d.toLocaleString('ko')}통
+                <span className="pd-muted pd-status-note">
+                  메일함의 격리 폴더(설정 <code className="pd-code">IMAP_QUARANTINE_FOLDER</code>)에서 확인하세요.
+                </span>
+              </li>
+            )}
+          </ul>
+          <p className="pd-muted pd-section-note">회차와 실패 수는 앱이 다시 시작하면 0부터 셉니다.</p>
+        </>
+      ) : mailIn.offReason === 'SANDBOX' ? (
+        <p>
+          <Badge tone="neutral">꺼짐(샌드박스)</Badge>
+        </p>
+      ) : (
+        <p className="pd-inline">
+          <Badge tone="neutral">설정 없음</Badge>
+          <a href={MAIL_IN_DOC} target="_blank" rel="noopener noreferrer">
+            메일 받기 설정 방법
+          </a>
         </p>
       )}
     </section>

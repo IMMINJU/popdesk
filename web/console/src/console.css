@@ -418,7 +418,7 @@
 
 /* C-18 system status */
 
-/* OIDC sign-in (slice 11): one line for each count, without bullets. */
+/* OIDC sign-in (slice 11) and receiving email (slice 12): one line for each count, without bullets. */
 .pd-oidc-status {
   display: flex;
   flex-direction: column;
@@ -429,6 +429,11 @@
   line-height: var(--text-sm-line);
   word-break: keep-all;
   overflow-wrap: anywhere;
+}
+
+/* A muted line under a status line (the quarantine folder, slice 12). */
+.pd-status-note {
+  display: block;
 }
 
 /* One line under a section title, or beside its button. */
