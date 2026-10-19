@@ -150,11 +150,21 @@ public class IssueRepository {
      * The issue with this key, if the viewer may see it, locked {@code FOR NO KEY UPDATE} until the end
      * of the transaction. A write under an issue calls this before any INSERT (architecture.md
      * "Concurrency and lock order", step 1).
+     *
+     * <p>The lock is taken by a statement on the issue row alone, joined only to the company for its code,
+     * which does not change, and the issue is read again after it. Under READ COMMITTED a row that changed
+     * while the lock was waited for is checked again as it is now, but a joined row is not: locking the full
+     * SELECT kept the account of the assignee before the change, without its name and role. The second
+     * statement takes a new snapshot and so reads the issue and its people as they are now, at the cost of
+     * one more read by primary key. Both statements apply the scope, so an issue outside it is empty either
+     * way.
      */
     public Optional<IssueRow> lockByKey(Viewer viewer, IssueKey key) {
-        return jdbc.sql(SELECT + "where c.code = ? and i.number = ? and " + IssueScope.SQL + " for no key update of i")
+        return jdbc.sql("select i.id from issue i join company c on c.id = i.company_id "
+                        + "where c.code = ? and i.number = ? and " + IssueScope.SQL + " for no key update of i")
                 .params(concat(new Object[] {key.companyCode(), key.number()}, IssueScope.params(viewer)))
-                .query(IssueRepository::issue).optional();
+                .query(UUID.class).optional()
+                .flatMap(id -> findById(viewer, id));
     }
 
     /**
@@ -164,11 +174,22 @@ public class IssueRepository {
      * issue the request names first, so two writes on the same two issues wait for each other instead of
      * deadlocking (S6C-AC-08). An issue the viewer may not see is not locked and not returned.
      *
+     * <p>As in {@link #lockByKey}, the locks are taken on the issue rows alone and the issues read again
+     * after, so a change made while a lock was waited for is read with the people it names now; one more
+     * read of at most two rows.
+     *
      * @return the issues found, at most two, smaller ID first
      */
     public List<IssueRow> lockPair(Viewer viewer, UUID one, UUID other) {
-        return jdbc.sql(SELECT + "where i.id in (?, ?) and " + IssueScope.SQL + " order by i.id for no key update of i")
+        List<UUID> locked = jdbc.sql("select i.id from issue i where i.id in (?, ?) and " + IssueScope.SQL
+                        + " order by i.id for no key update of i")
                 .params(concat(new Object[] {one, other}, IssueScope.params(viewer)))
+                .query(UUID.class).list();
+        if (locked.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql(SELECT + "where i.id = any(?) and " + IssueScope.SQL + " order by i.id")
+                .params(concat(new Object[] {locked.toArray(UUID[]::new)}, IssueScope.params(viewer)))
                 .query(IssueRepository::issue).list();
     }
 
@@ -640,12 +661,22 @@ public class IssueRepository {
      * (S6C-AC-08); a purge locks the one issue. The caller looks at whether the issue is in the trash under
      * the lock (TRASH-2, TRASH-3).
      *
+     * <p>As in {@link #lockByKey}, the locks are taken on the issue rows alone and the issues read again
+     * after: a delete made while a lock was waited for is read with the admin who made it, not with the
+     * empty {@code deleted_by} of before. One more read of the same rows by primary key.
+     *
      * @return the issues found, in ID order
      */
     public List<TrashedRow> lockTrashedByIds(Viewer viewer, Collection<UUID> ids) {
-        return jdbc.sql(TRASH_SELECT + "where i.id = any(?) and " + TRASH_READER
+        List<UUID> locked = jdbc.sql("select i.id from issue i where i.id = any(?) and " + TRASH_READER
                         + " order by i.id for no key update of i")
                 .params(concat(new Object[] {ids.toArray(UUID[]::new)}, trashParams(viewer)))
+                .query(UUID.class).list();
+        if (locked.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql(TRASH_SELECT + "where i.id = any(?) order by i.id")
+                .param(locked.toArray(UUID[]::new))
                 .query(IssueRepository::trashed).list();
     }
 
