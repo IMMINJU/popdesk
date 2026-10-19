@@ -158,6 +158,13 @@
             <artifactId>commonmark</artifactId>
             <version>0.30.0</version>
         </dependency>
+        <!-- Turns the HTML part of a received email into text when it has no text part (MAILIN-4, ADR D-67).
+             One jar, pure Java, no dependencies. Parsing only: no fetching of URLs. -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.23.2</version>
+        </dependency>
         <!-- Attachments in S3-compatible storage, POPDESK_STORAGE=s3 (ADR D-38, D-60). Only the JDK's
              URL connection as the HTTP client: the SDK's other clients (Netty, Apache 4 and 5) are left
              out, which keeps this at 32 jars and 8.7 MB. -->

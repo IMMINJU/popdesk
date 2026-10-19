@@ -18,6 +18,10 @@ public enum NotificationKind {
     AUDIT_FORWARD_STALLED,
     /** A cleanup job has not succeeded for its interval plus 24 hours (S7B-AC-10). */
     CLEANUP_STALLED,
+    /** Receiving email has only failed for over an hour (S12-AC-37). */
+    MAIL_IN_STALLED,
+    /** A received email was quarantined (S12-AC-37). */
+    MAIL_IN_QUARANTINED,
     /** A customer manager invited an email that already has an account (S2-AC-39). */
     MEMBERSHIP_REQUESTED,
     /** Staff added a public comment, to the reporter (S4-AC-27). Never in a staff inbox. */

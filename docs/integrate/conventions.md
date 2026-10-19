@@ -52,6 +52,21 @@ OIDC sign-in is on for an app when `OIDC_ISSUER`, `OIDC_CLIENT_ID`, and `OIDC_CL
 - `Account` and `SuspendedAccount` have `oidcLinked`: the account is linked. `DELETE /api/console/accounts/{accountId}/oidc-link` removes the link and ends every session of the account, admins only: 204, 401 without a session, 403 `FORBIDDEN` for an agent or `CSRF_TOKEN_INVALID`, 404 `NOT_FOUND` for an unknown account or one without a link. The portal host answers 404, as for any console path. The next OIDC sign-in links the account again by its email. Anonymizing an account removes its link too.
 - `getSystemStatus` has `oidc` (`OidcStatus`): `enabled`, `apps` (`CONSOLE` before `PORTAL`, empty when off), `lastSuccessAt` (the last OIDC sign-in that started a session, or `null`), `providerFailures` (discovery, token exchange, and ID token failures), and `lastFailure` (`{"kind": "DISCOVERY" | "TOKEN" | "ID_TOKEN", "at": …}` or `null`). They are counted in the app's memory since it started and are empty after a restart. Failures on the account's side (no account, suspended, the other app) are not counted. It holds no issuer, client ID, or secret.
 
+## Receiving email (MAILIN)
+
+popdesk can read a mailbox over IMAP and turn the emails into issues and comments ([configuration.md](../operate/configuration.md)). It adds no HTTP path; what an integration sees is the system status and two alerts.
+
+- `getSystemStatus` has `mailIn` (`MailInStatus`), every field present:
+  - `enabled`: `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD`, and `MAIL_INBOUND_ADDRESS` are all set, outside a sandbox.
+  - `offReason`: `NOT_SET` without those settings, `SANDBOX` in a sandbox even with them, `null` when `enabled`.
+  - `lastSuccessAt`: the end of the last round that read the inbox folder through, or `null`.
+  - `roundFailures`: rounds that failed since the app started.
+  - `lastFailure`: `{"kind": "CONNECT" | "AUTH" | "FOLDER" | "UNSUPPORTED", "at": …}` or `null`. `CONNECT` is a server that could not be reached or did not answer in time, `AUTH` a refused sign-in, `FOLDER` an inbox folder that is not there, `UNSUPPORTED` a server that can neither move a message nor expunge one alone (`MOVE` or `UIDPLUS`).
+  - `retrying`: emails left in the inbox folder to try again (tried at least once, no outcome yet).
+  - `quarantined90d`: emails moved to the quarantine folder in the last 90 days, over five attempts or over the rate limit.
+- The round fields are counted in the app's memory and are empty after a restart; `retrying` and `quarantined90d` come from the records of received emails and are not. When off, `lastSuccessAt` and `lastFailure` are `null` and the counts `0`. It holds no IMAP host, user, password, or folder name.
+- Two operational alerts belong to it ([Notification inbox](#notification-inbox-inbox-3)): `MAIL_IN_STALLED` when no round has succeeded for over an hour since the failures started, resolved when a round succeeds; `MAIL_IN_QUARANTINED` when an email is quarantined, resolved after 24 hours without another. Customers never get them.
+
 ## Invitation links
 
 An invitation link has the form `{scheme}://{host}[:{port}]/invite#token={token}` (INVITE-2). The host is the portal host for customers and the console host for agents and admins, and the port is left out when it is the default for the scheme (S0-AC-20). The token is only in the fragment after `#`, so browsers and proxies never send it in a request line or a `Referer`. The page reads it and sends it in the body of `POST /api/public/invitations/accept`.
@@ -389,7 +404,7 @@ Each app has the inbox of the signed-in account: `/api/portal/notifications` and
 - Items about no issue (operational alerts, membership requests, `SLA_RECALCULATED`, company exports, `ISSUE_RETENTION_ARMED`) go to admins only and have `null` for the issue, the comment, and the actor.
 - Company exports: `COMPANY_EXPORT_READY` goes to the admin who asked for the export when it becomes `DONE`, unless that account is no longer `ACTIVE` or is anonymized; `COMPANY_EXPORT_FAILED` goes to every active admin when it becomes `FAILED`. Both have the company's code in `companyCode`. No email or webhook message goes with them.
 - `ISSUE_RETENTION_ARMED` goes to every active admin when automatic issue cleanup (`POPDESK_ISSUE_RETENTION`) is turned on or made shorter: popdesk waits 24 hours before it moves the first issue. `retentionCount` is how many issues it would move at that moment, and `retentionDays` the period in whole days. Every other kind has `null` for both. No email or webhook message goes with it.
-- The kinds of operational alert are `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, and `CLEANUP_STALLED` (a cleanup job has not succeeded for its interval plus 24 hours). Each goes to every active admin. While one is not resolved it is not made again, except once every 24 hours; when it is resolved, the next one is made at once ([configuration.md](../operate/configuration.md)). An alert names no job, channel, or row; the console's system status shows them.
+- The kinds of operational alert are `DELIVERY_FAILED`, `ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, `CLEANUP_STALLED` (a cleanup job has not succeeded for its interval plus 24 hours), `MAIL_IN_STALLED`, and `MAIL_IN_QUARANTINED` ([Receiving email](#receiving-email-mailin)). Each goes to every active admin. While one is not resolved it is not made again, except once every 24 hours; when it is resolved, the next one is made at once ([configuration.md](../operate/configuration.md)). An alert names no job, channel, or row; the console's system status shows them.
 - What popdesk itself did, such as closing a `RESOLVED` issue after 7 days, has `null` for the actor in the console's items too.
 - Nothing is sent about an issue in the trash: no inbox item, email, or webhook message. Deleting an issue deletes its waiting messages, so restoring it sends none of them. Its inbox items are kept, left out of the list and the unread count, and listed again after a restore.
 

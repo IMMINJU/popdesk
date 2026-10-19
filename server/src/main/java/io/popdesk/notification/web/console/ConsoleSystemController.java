@@ -51,9 +51,11 @@ class ConsoleSystemController {
                     + "The console also reads `mail.enabled` to decide whether to offer invitation links (C-10). "
                     + "In a sandbox the webhook and the outside copy are not `enabled`, and neither is mail "
                     + "without a sandbox address (S4B-AC-08). Each cleanup job comes with its last run "
-                    + "(S4B-AC-30). `oidc` is OIDC sign-in, counted in memory since the app started (S11-AC-30). No "
-                    + "SMTP password, webhook URL, or address or token of the outside copy, and no OIDC issuer, "
-                    + "client ID, or secret (S4B-AC-31).")
+                    + "(S4B-AC-30). `oidc` is OIDC sign-in, counted in memory since the app started (S11-AC-30). "
+                    + "`mailIn` is receiving email over IMAP: rounds counted in memory, retried and quarantined "
+                    + "emails from the records (S12-AC-36). No SMTP password, webhook URL, or address or token of "
+                    + "the outside copy, no OIDC issuer, client ID, or secret, and no IMAP host, user, password, or "
+                    + "folder (S4B-AC-31).")
     @ApiResponse(responseCode = "200", description = "The status.")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: admins only.")
@@ -62,7 +64,7 @@ class ConsoleSystemController {
         return new SystemStatus(channel(status.mail()), channel(status.webhook()), channel(status.auditForward()),
                 status.sandbox(), status.sandboxMailToSet(), cleanupJobs.list().stream()
                         .map(job -> new CleanupJobStatus(job.name(), utc(job.lastRunAt()), job.deleted())).toList(),
-                oidc(oidc.snapshot()));
+                oidc(oidc.snapshot()), new MailInStatus(false, MailInOffReason.NOT_SET, null, 0, null, 0, 0));
     }
 
     private static OidcStatus oidc(OidcSignInState.Snapshot s) {

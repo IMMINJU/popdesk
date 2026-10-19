@@ -9,7 +9,8 @@ public record Notification(
         NotificationKind kind,
         @Schema(description = "The issue the item is about, as it is now; null for `DELIVERY_FAILED`, "
                 + "`ATTACHMENT_QUOTA_WARNING`, `MAIL_STALLED`, `WEBHOOK_STALLED`, `AUDIT_FORWARD_STALLED`, "
-                + "`CLEANUP_STALLED`, `MEMBERSHIP_REQUESTED` (S4-AC-40), `SLA_RECALCULATED` (S8B-AC-15), "
+                + "`CLEANUP_STALLED`, `MAIL_IN_STALLED`, `MAIL_IN_QUARANTINED` (S12-AC-37), "
+                + "`MEMBERSHIP_REQUESTED` (S4-AC-40), `SLA_RECALCULATED` (S8B-AC-15), "
                 + "`COMPANY_EXPORT_READY`, `COMPANY_EXPORT_FAILED`, and `ISSUE_RETENTION_ARMED` (S10B-AC-27).",
                 nullable = true)
                 NotificationIssue issue,
