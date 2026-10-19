@@ -85,6 +85,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/console/accounts/{accountId}/oidc-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unlink an account from its OIDC provider account
+         * @description Removes the account's OIDC link and ends every session of the account, in one transaction (S11-AC-27). The next OIDC sign-in links it again by its verified email, as the first one did. Recorded as `OIDC_UNLINKED`. An anonymized account has no link.
+         */
+        delete: operations["unlinkAccountOidc"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/console/accounts/{accountId}/open-assignments": {
         parameters: {
             query?: never;
@@ -1536,7 +1556,7 @@ export interface paths {
         };
         /**
          * Outgoing channels, the sandbox, and cleanup jobs
-         * @description For mail, webhook, and the outside copy of the audit log (`auditForward`): configured or not, last success, queued and failed rows (S0-AC-81, S1B-AC-33). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10). In a sandbox the webhook and the outside copy are not `enabled`, and neither is mail without a sandbox address (S4B-AC-08). Each cleanup job comes with its last run (S4B-AC-30). No SMTP password, webhook URL, or address or token of the outside copy (S4B-AC-31).
+         * @description For mail, webhook, and the outside copy of the audit log (`auditForward`): configured or not, last success, queued and failed rows (S0-AC-81, S1B-AC-33). The console also reads `mail.enabled` to decide whether to offer invitation links (C-10). In a sandbox the webhook and the outside copy are not `enabled`, and neither is mail without a sandbox address (S4B-AC-08). Each cleanup job comes with its last run (S4B-AC-30). `oidc` is OIDC sign-in, counted in memory since the app started (S11-AC-30). No SMTP password, webhook URL, or address or token of the outside copy, and no OIDC issuer, client ID, or secret (S4B-AC-31).
          */
         get: operations["getSystemStatus"];
         put?: never;
@@ -1727,6 +1747,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/oidc/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Come back from the OIDC provider
+         * @description The `redirect_uri` the provider sends the browser back to; a page, not a call that reads JSON. Checks the cookie and `state` first, then exchanges the code and checks the ID token, matches the account, and starts a new session (S11-AC-09 to S11-AC-17). The sign-in request is deleted whatever happens. Takes no CSRF token: the cookie and `state` stop a forged sign-in.
+         */
+        get: operations["finishOidcSignIn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/oidc/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Start an OIDC sign-in
+         * @description A page the browser opens, not a call that reads JSON: the sign-in button moves the page here (S11-AC-31). Makes a sign-in request used once within 10 minutes and sets the cookie `__Host-POPDESK_OIDC` (https) or `POPDESK_OIDC` (http) that ties it to this browser (S11-AC-04). `no-store`. Takes no CSRF token.
+         */
+        get: operations["startOidcSignIn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/password-reset/confirm": {
         parameters: {
             query?: never;
@@ -1781,6 +1841,26 @@ export interface paths {
          * @description Signs in to the app of the host the request came to: customers on the portal host, agents and admins on the console host. Creates a new session (S0-AC-17, S0-AC-21).
          */
         post: operations["signIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/sign-in-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ways to sign in
+         * @description Whether the sign-in page offers OIDC sign-in on this host (S11-AC-03). Answers without a session. `no-store`.
+         */
+        get: operations["getSignInOptions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1848,6 +1928,8 @@ export interface components {
             /** Format: int64 */
             id: number;
             name: string;
+            /** @description The account is linked to an OIDC provider's account (AUTH-6, S11-AC-26): later OIDC sign-ins match it by that link only. `unlinkAccountOidc` removes it. */
+            oidcLinked: boolean;
             /**
              * Format: date-time
              * @description When the profile photo last changed; null without a photo (`getPhoto`).
@@ -2020,7 +2102,7 @@ export interface components {
             /** @description The kind of action: a value of the `action` filter. An entry someone changed in the database may hold another name, so this is a plain string. */
             action: string;
             actor: components["schemas"]["AuditActor"];
-            /** @description What changed, as stored. A changed value is `{"from": ..., "to": ...}` under its field name; a value set for the first time is the value itself. Null when the action changes no value. */
+            /** @description What changed, as stored. A changed value is `{"from": ..., "to": ...}` under its field name; a value set for the first time is the value itself. Null when the action changes no value. A sign-in by OIDC (`SIGN_IN_SUCCEEDED`, `SIGN_IN_FAILED`) and an invitation accepted by it (`INVITATION_ACCEPTED`) have `{"method": "OIDC"}`; a password sign-in has none. `OIDC_LINKED` has `issuer`, the provider's `iss`; never the `sub` (S11-AC-24). */
             changes: {
                 [key: string]: unknown;
             } | null;
@@ -2040,7 +2122,7 @@ export interface components {
              * @description The entry's place in the hash chain, from 1.
              */
             seq: number;
-            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`, `SLA_POLICY`, `BRANDING`) and the keys that name it (`accountId`, `code`). An issue deleted, restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is `{"type": "COMPANY", "code": …, "issueKey": …}`, with the issue's company and key and never its title, and `changes` is null (S7A-AC-07). A change of the SLA policy (`SLA_POLICY_CHANGED`) is `{"type": "SLA_POLICY", "version": …}` with the new version (S8A-AC-06). A change of the display name or the accent color (`BRANDING_CHANGED`) is `{"type": "BRANDING"}` (S9-AC-20); a new or removed logo (`BRANDING_LOGO_CHANGED`) is `{"type": "BRANDING", "theme": …}` with `LIGHT` or `DARK` (S9-AC-21). An account export or anonymization (`ACCOUNT_EXPORTED`, `ACCOUNT_ANONYMIZED`) is `{"type": "ACCOUNT", "accountId": …}`; the chain computed again after an anonymization (`AUDIT_RECHAINED`) is `{"type": "AUDIT_LOG"}` (S10A-AC-06, S10A-AC-16, S10A-AC-18). A company export asked for or downloaded (`COMPANY_EXPORTED`, `COMPANY_EXPORT_DOWNLOADED`) is `{"type": "COMPANY", "code": …}` (S10B-AC-09). */
+            /** @description What the action was done to, as stored: `type` (`ACCOUNT`, `COMPANY`, `DATABASE`, `AUDIT_LOG`, `SLA_POLICY`, `BRANDING`) and the keys that name it (`accountId`, `code`). An issue deleted, restored, or purged by an admin (`ISSUE_DELETED`, `ISSUE_RESTORED`, `ISSUE_PURGED`) is `{"type": "COMPANY", "code": …, "issueKey": …}`, with the issue's company and key and never its title, and `changes` is null (S7A-AC-07). A change of the SLA policy (`SLA_POLICY_CHANGED`) is `{"type": "SLA_POLICY", "version": …}` with the new version (S8A-AC-06). A change of the display name or the accent color (`BRANDING_CHANGED`) is `{"type": "BRANDING"}` (S9-AC-20); a new or removed logo (`BRANDING_LOGO_CHANGED`) is `{"type": "BRANDING", "theme": …}` with `LIGHT` or `DARK` (S9-AC-21). An account export or anonymization (`ACCOUNT_EXPORTED`, `ACCOUNT_ANONYMIZED`) is `{"type": "ACCOUNT", "accountId": …}`; the chain computed again after an anonymization (`AUDIT_RECHAINED`) is `{"type": "AUDIT_LOG"}` (S10A-AC-06, S10A-AC-16, S10A-AC-18). A company export asked for or downloaded (`COMPANY_EXPORTED`, `COMPANY_EXPORT_DOWNLOADED`) is `{"type": "COMPANY", "code": …}` (S10B-AC-09). An OIDC link made, removed, or an invitation accepted by an OIDC sign-in (`OIDC_LINKED`, `OIDC_UNLINKED`, `INVITATION_ACCEPTED`) is `{"type": "ACCOUNT", "accountId": …}` (S11-AC-24, S11-AC-27). */
             target: {
                 [key: string]: unknown;
             } | null;
@@ -2790,6 +2872,30 @@ export interface components {
             /** @description The title as it is now, not as it was when the item was made. */
             title: string;
         };
+        OidcFailure: {
+            /** Format: date-time */
+            at: string;
+            /** @enum {string} */
+            kind: "DISCOVERY" | "TOKEN" | "ID_TOKEN";
+        };
+        OidcStatus: {
+            /** @description The apps OIDC sign-in is on for, `CONSOLE` before `PORTAL`; empty when off. */
+            apps: ("CONSOLE" | "PORTAL")[];
+            /** @description The OIDC settings are there, for at least one app. */
+            enabled: boolean;
+            /** @description The last of them; null without one. */
+            lastFailure: components["schemas"]["OidcFailure"] | null;
+            /**
+             * Format: date-time
+             * @description The last OIDC sign-in that started a session; null before the first since the app started.
+             */
+            lastSuccessAt: string | null;
+            /**
+             * Format: int32
+             * @description Provider-side failures since the app started: discovery, token exchange, ID token checks.
+             */
+            providerFailures: number;
+        };
         OpenAssignments: {
             /**
              * Format: int64
@@ -3141,6 +3247,10 @@ export interface components {
              */
             dueDate: string;
         };
+        SignInOptions: {
+            /** @description OIDC sign-in is on for this host's app (`OIDC_APPS`): the sign-in page offers it. */
+            oidc: boolean;
+        };
         SignInRequest: {
             /** @description Leading and trailing whitespace and case are ignored. */
             email: string;
@@ -3252,6 +3362,8 @@ export interface components {
             /** Format: int64 */
             id: number;
             name: string;
+            /** @description The account is linked to an OIDC provider's account (AUTH-6, S11-AC-26): later OIDC sign-ins match it by that link only. `unlinkAccountOidc` removes it. */
+            oidcLinked: boolean;
             /**
              * Format: date-time
              * @description When the profile photo last changed; null without a photo (`getPhoto`).
@@ -3267,6 +3379,8 @@ export interface components {
             /** @description Every cleanup job, in name order (S4B-AC-30). */
             cleanupJobs: components["schemas"]["CleanupJobStatus"][];
             mail: components["schemas"]["ChannelStatus"];
+            /** @description OIDC sign-in, counted since the app started (S11-AC-30). */
+            oidc: components["schemas"]["OidcStatus"];
             /** @description `POPDESK_SANDBOX=true`: the webhook and the outside copy of the audit log are off, and email goes to one address only or is off (S4B-AC-08). */
             sandbox: boolean;
             /** @description The sandbox has an address to send email to (`POPDESK_SANDBOX_MAIL_TO`). `false` outside a sandbox. The address itself is never given. */
@@ -3821,6 +3935,53 @@ export interface operations {
             };
         };
     };
+    unlinkAccountOidc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Unlinked. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description `NOT_FOUND`: no such account. Also an account without an OIDC link (S11-AC-28). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     countOpenAssignments: {
         parameters: {
             query?: never;
@@ -4113,7 +4274,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED" | "COMPANY_EXPORTED" | "COMPANY_EXPORT_DOWNLOADED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED" | "COMPANY_EXPORTED" | "COMPANY_EXPORT_DOWNLOADED" | "OIDC_LINKED" | "OIDC_UNLINKED" | "INVITATION_ACCEPTED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -4181,7 +4342,7 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED" | "COMPANY_EXPORTED" | "COMPANY_EXPORT_DOWNLOADED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED" | "COMPANY_EXPORTED" | "COMPANY_EXPORT_DOWNLOADED" | "OIDC_LINKED" | "OIDC_UNLINKED" | "INVITATION_ACCEPTED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -4261,7 +4422,7 @@ export interface operations {
                 /** @description The file format. */
                 format: "CSV" | "JSONL";
                 /** @description Only entries of these kinds. Repeat the parameter for several. */
-                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED" | "COMPANY_EXPORTED" | "COMPANY_EXPORT_DOWNLOADED")[];
+                action?: ("SIGN_IN_SUCCEEDED" | "SIGN_IN_FAILED" | "ACCOUNT_LOCKED" | "FIRST_ADMIN_CREATED" | "ACCOUNT_NAME_CHANGED" | "ACCOUNT_ROLE_CHANGED" | "ACCOUNT_SUSPENDED" | "ACCOUNT_REACTIVATED" | "ACCOUNT_PASSWORD_RESET" | "PASSWORD_CHANGED" | "PASSWORD_RESET_COMPLETED" | "INVITATION_CREATED" | "INVITATION_RESENT" | "INVITATION_CANCELLED" | "INVITATION_LINK_CREATED" | "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_STATUS_CHANGED" | "CUSTOMER_ADDED" | "CUSTOMER_REMOVED" | "AGENT_ASSIGNED" | "AGENT_UNASSIGNED" | "ADMIN_PASSWORD_RESET" | "BACKUP_CREATED" | "DATABASE_RESTORED" | "AUDIT_EXPORTED" | "MANAGER_MARKED" | "MANAGER_UNMARKED" | "MEMBERSHIP_REQUESTED" | "MEMBERSHIP_REQUEST_WITHDRAWN" | "MEMBERSHIP_REQUEST_APPROVED" | "MEMBERSHIP_REQUEST_REJECTED" | "DELIVERY_RESENT" | "TEST_MAIL_SENT" | "LABEL_CREATED" | "LABEL_UPDATED" | "LABEL_DELETED" | "ISSUE_DELETED" | "ISSUE_RESTORED" | "ISSUE_PURGED" | "SLA_POLICY_CHANGED" | "BRANDING_CHANGED" | "BRANDING_LOGO_CHANGED" | "ACCOUNT_EXPORTED" | "ACCOUNT_ANONYMIZED" | "AUDIT_RECHAINED" | "COMPANY_EXPORTED" | "COMPANY_EXPORT_DOWNLOADED" | "OIDC_LINKED" | "OIDC_UNLINKED" | "INVITATION_ACCEPTED")[];
                 /** @description Only entries done by this account. `0` is popdesk itself. */
                 actorAccountId?: number;
                 /** @description Only entries whose target has this `type`. */
@@ -9838,6 +9999,74 @@ export interface operations {
             };
         };
     };
+    finishOidcSignIn: {
+        parameters: {
+            query?: {
+                /** @description The authorization code. */
+                code?: string;
+                /** @description The `state` sent at the start. */
+                state?: string;
+                /** @description The provider's error code, for example `access_denied`. */
+                error?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Signed in: to the page the sign-in started with, or `/`; the session cookie is set (S11-AC-09). The provider sent `error` (the person cancelled): to `/login` without a query (S11-AC-12). Otherwise to the sign-in page of the host's app: `/login?oidc=failed` (the sign-in cannot go on, one value whatever the reason), `/login?oidc=unavailable` (the provider could not be reached or answered wrongly), `/login?oidc=busy` (too many sign-ins started) (S11-AC-11, S11-AC-13, S11-AC-17). */
+            302: {
+                headers: {
+                    /** @description Where the browser goes next. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `NOT_FOUND`: OIDC sign-in is not on for this host's app (S11-AC-06). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    startOidcSignIn: {
+        parameters: {
+            query?: {
+                /** @description The page to go to after signing in: a path in the same app that starts with one `/`, without control characters, at most 512 characters. Any other value is taken as `/` (S11-AC-05). */
+                next?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description To the provider's authorization endpoint with `response_type=code`, `client_id`, `redirect_uri`, `scope=openid email profile`, `state`, `nonce`, `code_challenge`, and `code_challenge_method=S256` (S11-AC-04). Otherwise to the sign-in page of the host's app: `/login?oidc=failed` (the sign-in cannot go on, one value whatever the reason), `/login?oidc=unavailable` (the provider could not be reached or answered wrongly), `/login?oidc=busy` (too many sign-ins started) (S11-AC-07, S11-AC-08). */
+            302: {
+                headers: {
+                    /** @description Where the browser goes next. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `NOT_FOUND`: OIDC sign-in is not on for this host's app (S11-AC-06). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     resetPassword: {
         parameters: {
             query?: never;
@@ -9981,6 +10210,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getSignInOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The options. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignInOptions"];
                 };
             };
         };

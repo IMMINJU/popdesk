@@ -562,6 +562,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/oidc/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Come back from the OIDC provider
+         * @description The `redirect_uri` the provider sends the browser back to; a page, not a call that reads JSON. Checks the cookie and `state` first, then exchanges the code and checks the ID token, matches the account, and starts a new session (S11-AC-09 to S11-AC-17). The sign-in request is deleted whatever happens. Takes no CSRF token: the cookie and `state` stop a forged sign-in.
+         */
+        get: operations["finishOidcSignIn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/oidc/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Start an OIDC sign-in
+         * @description A page the browser opens, not a call that reads JSON: the sign-in button moves the page here (S11-AC-31). Makes a sign-in request used once within 10 minutes and sets the cookie `__Host-POPDESK_OIDC` (https) or `POPDESK_OIDC` (http) that ties it to this browser (S11-AC-04). `no-store`. Takes no CSRF token.
+         */
+        get: operations["startOidcSignIn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/password-reset/confirm": {
         parameters: {
             query?: never;
@@ -616,6 +656,26 @@ export interface paths {
          * @description Signs in to the app of the host the request came to: customers on the portal host, agents and admins on the console host. Creates a new session (S0-AC-17, S0-AC-21).
          */
         post: operations["signIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/sign-in-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ways to sign in
+         * @description Whether the sign-in page offers OIDC sign-in on this host (S11-AC-03). Answers without a session. `no-store`.
+         */
+        get: operations["getSignInOptions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1049,6 +1109,10 @@ export interface components {
             password: string;
             /** @description The token from the reset link's fragment (after `#`). Sent only in the body. */
             token: string;
+        };
+        SignInOptions: {
+            /** @description OIDC sign-in is on for this host's app (`OIDC_APPS`): the sign-in page offers it. */
+            oidc: boolean;
         };
         SignInRequest: {
             /** @description Leading and trailing whitespace and case are ignored. */
@@ -3145,6 +3209,74 @@ export interface operations {
             };
         };
     };
+    finishOidcSignIn: {
+        parameters: {
+            query?: {
+                /** @description The authorization code. */
+                code?: string;
+                /** @description The `state` sent at the start. */
+                state?: string;
+                /** @description The provider's error code, for example `access_denied`. */
+                error?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Signed in: to the page the sign-in started with, or `/`; the session cookie is set (S11-AC-09). The provider sent `error` (the person cancelled): to `/login` without a query (S11-AC-12). Otherwise to the sign-in page of the host's app: `/login?oidc=failed` (the sign-in cannot go on, one value whatever the reason), `/login?oidc=unavailable` (the provider could not be reached or answered wrongly), `/login?oidc=busy` (too many sign-ins started) (S11-AC-11, S11-AC-13, S11-AC-17). */
+            302: {
+                headers: {
+                    /** @description Where the browser goes next. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `NOT_FOUND`: OIDC sign-in is not on for this host's app (S11-AC-06). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    startOidcSignIn: {
+        parameters: {
+            query?: {
+                /** @description The page to go to after signing in: a path in the same app that starts with one `/`, without control characters, at most 512 characters. Any other value is taken as `/` (S11-AC-05). */
+                next?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description To the provider's authorization endpoint with `response_type=code`, `client_id`, `redirect_uri`, `scope=openid email profile`, `state`, `nonce`, `code_challenge`, and `code_challenge_method=S256` (S11-AC-04). Otherwise to the sign-in page of the host's app: `/login?oidc=failed` (the sign-in cannot go on, one value whatever the reason), `/login?oidc=unavailable` (the provider could not be reached or answered wrongly), `/login?oidc=busy` (too many sign-ins started) (S11-AC-07, S11-AC-08). */
+            302: {
+                headers: {
+                    /** @description Where the browser goes next. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `NOT_FOUND`: OIDC sign-in is not on for this host's app (S11-AC-06). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     resetPassword: {
         parameters: {
             query?: never;
@@ -3288,6 +3420,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getSignInOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The options. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignInOptions"];
                 };
             };
         };

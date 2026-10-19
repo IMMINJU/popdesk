@@ -782,6 +782,16 @@
         "required" : [ "password", "token" ],
         "type" : "object"
       },
+      "SignInOptions" : {
+        "properties" : {
+          "oidc" : {
+            "description" : "OIDC sign-in is on for this host's app (`OIDC_APPS`): the sign-in page offers it.",
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "oidc" ],
+        "type" : "object"
+      },
       "SignInRequest" : {
         "properties" : {
           "email" : {
@@ -3417,6 +3427,104 @@
         "tags" : [ "Invitations" ]
       }
     },
+    "/api/public/oidc/callback" : {
+      "get" : {
+        "description" : "The `redirect_uri` the provider sends the browser back to; a page, not a call that reads JSON. Checks the cookie and `state` first, then exchanges the code and checks the ID token, matches the account, and starts a new session (S11-AC-09 to S11-AC-17). The sign-in request is deleted whatever happens. Takes no CSRF token: the cookie and `state` stop a forged sign-in.",
+        "operationId" : "finishOidcSignIn",
+        "parameters" : [ {
+          "description" : "The authorization code.",
+          "in" : "query",
+          "name" : "code",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "The `state` sent at the start.",
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "The provider's error code, for example `access_denied`.",
+          "in" : "query",
+          "name" : "error",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "302" : {
+            "description" : "Signed in: to the page the sign-in started with, or `/`; the session cookie is set (S11-AC-09). The provider sent `error` (the person cancelled): to `/login` without a query (S11-AC-12). Otherwise to the sign-in page of the host's app: `/login?oidc=failed` (the sign-in cannot go on, one value whatever the reason), `/login?oidc=unavailable` (the provider could not be reached or answered wrongly), `/login?oidc=busy` (too many sign-ins started) (S11-AC-11, S11-AC-13, S11-AC-17).",
+            "headers" : {
+              "Location" : {
+                "description" : "Where the browser goes next.",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              }
+            }
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: OIDC sign-in is not on for this host's app (S11-AC-06)."
+          }
+        },
+        "summary" : "Come back from the OIDC provider",
+        "tags" : [ "Session" ]
+      }
+    },
+    "/api/public/oidc/start" : {
+      "get" : {
+        "description" : "A page the browser opens, not a call that reads JSON: the sign-in button moves the page here (S11-AC-31). Makes a sign-in request used once within 10 minutes and sets the cookie `__Host-POPDESK_OIDC` (https) or `POPDESK_OIDC` (http) that ties it to this browser (S11-AC-04). `no-store`. Takes no CSRF token.",
+        "operationId" : "startOidcSignIn",
+        "parameters" : [ {
+          "description" : "The page to go to after signing in: a path in the same app that starts with one `/`, without control characters, at most 512 characters. Any other value is taken as `/` (S11-AC-05).",
+          "in" : "query",
+          "name" : "next",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "302" : {
+            "description" : "To the provider's authorization endpoint with `response_type=code`, `client_id`, `redirect_uri`, `scope=openid email profile`, `state`, `nonce`, `code_challenge`, and `code_challenge_method=S256` (S11-AC-04). Otherwise to the sign-in page of the host's app: `/login?oidc=failed` (the sign-in cannot go on, one value whatever the reason), `/login?oidc=unavailable` (the provider could not be reached or answered wrongly), `/login?oidc=busy` (too many sign-ins started) (S11-AC-07, S11-AC-08).",
+            "headers" : {
+              "Location" : {
+                "description" : "Where the browser goes next.",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              }
+            }
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "`NOT_FOUND`: OIDC sign-in is not on for this host's app (S11-AC-06)."
+          }
+        },
+        "summary" : "Start an OIDC sign-in",
+        "tags" : [ "Session" ]
+      }
+    },
     "/api/public/password-reset/confirm" : {
       "post" : {
         "description" : "Sets the password, lifts a sign-in lock, and ends every session of the account. It does not sign in (S1A-AC-09, S1A-AC-04). The response has `Cache-Control: no-store` (S1A-AC-14).",
@@ -3573,6 +3681,26 @@
           }
         },
         "summary" : "Sign in",
+        "tags" : [ "Session" ]
+      }
+    },
+    "/api/public/sign-in-options" : {
+      "get" : {
+        "description" : "Whether the sign-in page offers OIDC sign-in on this host (S11-AC-03). Answers without a session. `no-store`.",
+        "operationId" : "getSignInOptions",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SignInOptions"
+                }
+              }
+            },
+            "description" : "The options."
+          }
+        },
+        "summary" : "Ways to sign in",
         "tags" : [ "Session" ]
       }
     },
