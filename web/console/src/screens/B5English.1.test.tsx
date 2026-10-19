@@ -21,6 +21,7 @@ import {
 import { cleanupJob } from '../__tests__/console4b';
 import { RESET_LINK, region, rejected, route, settle, signInAs } from '../__tests__/console1a';
 import {
+  ADMIN_EN,
   AGENT_EN,
   ISSUE_TITLE_EN,
   browserLanguages,
@@ -302,6 +303,8 @@ describe('B5 언어 장치(콘솔)', () => {
 
   test('B5-AC-03 B5-AC-04 C-6에서 언어를 en으로 저장하면 새로고침 없이 머리, 옆 메뉴, 화면, html lang, document.title이 영어로 바뀐다', async () => {
     browserLanguages(['ko-KR']);
+    // A ko account with an English name: the name in the head is data, not screen text (B5-AC-05).
+    signInAs(ADMIN_EN, { locale: 'ko' });
     const { user } = renderAt('/me');
     expect(text(await heading1())).toBe('내 정보');
     const select = await found(() => document.querySelector('select'), '언어 칸');
@@ -319,7 +322,6 @@ describe('B5 언어 장치(콘솔)', () => {
       expectNoHangul('화면 제목', screen.getByRole('heading', { level: 1 }));
     });
     expectEnglishPage('C-6 저장 뒤');
-    expect(state.me.name, '견본 이름은 한글이라 이름 칸은 뺀다').toBe(ADMIN.name);
   });
 
   test('B5-AC-03 C-6에서 en 계정이 ko로 저장하면 화면이 한국어로 돌아온다', async () => {
@@ -373,7 +375,7 @@ describe('B5 언어 장치(콘솔)', () => {
     expect(text(box)).not.toContain('화면은 한국어로 보입니다');
   });
 
-  test('B5-AC-07 수와 날짜는 화면 언어를 따른다: en 시스템 상태의 날짜는 영어 달 이름이고, 수 1234는 1,234다', async () => {
+  test('B5-AC-07 수와 날짜는 화면 언어를 따른다: en 시스템 상태의 날짜(상대 시각의 title)는 영어 달 이름이고, 수 1234는 1,234다', async () => {
     openInEnglish();
     state.status = {
       ...state.status,
@@ -383,9 +385,11 @@ describe('B5 언어 장치(콘솔)', () => {
     await heading1();
 
     await found(() => screen.queryAllByText(/1,234/)[0], '수 1,234');
+    // C-18 draws the time as relative words; the absolute date is the title of its <time>.
+    const titles = () => [...document.querySelectorAll('time[title]')].map((el) => el.getAttribute('title') ?? '').join(' | ');
     await eventually(() => {
-      expect(text(document.body)).toMatch(/\b(Oct|October)\b/);
+      expect(titles()).toMatch(/\b(Oct|October)\b/);
     });
-    expect(text(document.body)).not.toMatch(/\d+년|\d+월|\d+일/);
+    expect(`${text(document.body)} ${titles()}`).not.toMatch(/\d+년|\d+월|\d+일/);
   });
 });
