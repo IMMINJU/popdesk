@@ -575,5 +575,16 @@ final class BoundaryList {
                     "privacy.CompanyExportBoundaryTest#zipHoldsNothingOfTheOtherCompany"),
             tested("HEAD", COMPANY_EXPORT_FILE,
                     COMPANY_EXPORT_ACCESS + "agentsAreForbidden",
-                    COMPANY_EXPORT_ACCESS + "customerHostGets404"));
+                    COMPANY_EXPORT_ACCESS + "customerHostGets404"),
+
+            // Slice 11 (S11-AC-03, S11-AC-28): OIDC sign-in. The three public paths come before sign-in and hold no
+            // customer data; removing an account's link is on the console for admins only.
+            none("GET", "/api/public/sign-in-options",
+                    "whether the host's app has OIDC sign-in on, for anyone before sign-in; no customer data"),
+            none("GET", "/api/public/oidc/start",
+                    "starts an OIDC sign-in before there is a session; no customer data"),
+            none("GET", "/api/public/oidc/callback",
+                    "named by the criterion as sign-in: the provider's redirect back; no customer data"),
+            tested("DELETE", "/api/console/accounts/{accountId}/oidc-link",
+                    "boundary.AdminOnlyContractTest#agentGets403OnEveryOperationTheContractMarksAdminsOnly"));
 }

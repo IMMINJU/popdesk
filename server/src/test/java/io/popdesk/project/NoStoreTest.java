@@ -67,6 +67,13 @@ class NoStoreTest extends BareAppTest {
     private static final String EXPORT_FILE_READ = "/api/console/company-exports/{id}/file";
 
     /**
+     * The two OIDC sign-in pages, left out of the reads that succeed: they answer a 302 (a page move,
+     * not a 2xx), and this context has OIDC sign-in off, so they are a 404, which the other checks hold
+     * to {@code no-store}. The OIDC tests of slice 11 check {@code no-store} on their 302 (design.md 3절).
+     */
+    private static final Set<String> OIDC_PAGES = Set.of("/api/public/oidc/start", "/api/public/oidc/callback");
+
+    /**
      * The query a read cannot be sent without: the audit log export answers 400 without its
      * {@code format} (S1B-AC-23), the accent preview of slice 9 without its {@code color}.
      */
@@ -185,7 +192,8 @@ class NoStoreTest extends BareAppTest {
             if (!op.method().equals("GET") && !op.method().equals("HEAD")) {
                 continue;
             }
-            if (PHOTO_READS.contains(op.path()) || op.path().equals(LOGO_READ) || op.path().equals(EXPORT_FILE_READ)) {
+            if (PHOTO_READS.contains(op.path()) || op.path().equals(LOGO_READ) || op.path().equals(EXPORT_FILE_READ)
+                    || OIDC_PAGES.contains(op.path())) {
                 continue;
             }
             String path = withValues(imageReads.getOrDefault(op.path(), op.path()), values)
