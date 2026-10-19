@@ -37,6 +37,9 @@ export const KIND_GROUPS: readonly { group: string; kinds: Readonly<Record<strin
       // Slice 10a (design.md 0절 12).
       ACCOUNT_ANONYMIZED: '익명화',
       AUDIT_RECHAINED: '감사 사슬 다시 계산',
+      // Slice 11 (design.md 2절).
+      OIDC_LINKED: 'OIDC 연결',
+      OIDC_UNLINKED: 'OIDC 연결 풀기',
     },
   },
   {
@@ -46,6 +49,8 @@ export const KIND_GROUPS: readonly { group: string; kinds: Readonly<Record<strin
       INVITATION_RESENT: '초대 다시 보내기',
       INVITATION_CANCELLED: '초대 취소',
       INVITATION_LINK_CREATED: '초대 링크 복사',
+      // Slice 11: accepting by OIDC (design.md 2절).
+      INVITATION_ACCEPTED: '초대 수락',
     },
   },
   {

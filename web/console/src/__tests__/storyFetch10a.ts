@@ -19,7 +19,7 @@ export const LONG_PERSON = '에이크미 글로벌 고객 지원 센터 서울 �
 export const LONG_EMAIL = 'customer.success.escalation.team.lead.for.payments@acme-global-enterprise-holdings.example.com';
 
 export function member(over: Partial<Account> = {}): Account {
-  return { id: 2, email: 'lee@popdesk.test', name: '이상담', role: 'AGENT', status: 'ACTIVE', createdAt: T0, photoUpdatedAt: null, anonymized: false, ...over };
+  return { id: 2, email: 'lee@popdesk.test', name: '이상담', role: 'AGENT', status: 'ACTIVE', createdAt: T0, photoUpdatedAt: null, anonymized: false, oidcLinked: false, ...over };
 }
 
 /** An anonymized account as the server gives it. */
@@ -86,7 +86,7 @@ globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Respo
   }
   if (get && url.pathname === '/api/console/system/status') {
     return Promise.resolve(
-      json({ mail: channel, webhook: channel, auditForward: { ...channel, enabled: false, lastSuccessAt: null }, sandbox: false, sandboxMailToSet: false, cleanupJobs: [] }),
+      json({ mail: channel, webhook: channel, auditForward: { ...channel, enabled: false, lastSuccessAt: null }, sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: { enabled: false, apps: [], lastSuccessAt: null, providerFailures: 0, lastFailure: null } }),
     );
   }
   if (get && /^\/api\/console\/accounts\/\d+\/open-assignments$/.test(url.pathname)) return Promise.resolve(json(current.open));

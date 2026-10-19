@@ -144,7 +144,7 @@ export function attachment(over: Partial<Attachment> = {}): Attachment {
 }
 
 export function account(over: Partial<Account> = {}): Account {
-  return { id: 1, email: ADMIN.email, name: ADMIN.name, role: 'ADMIN', status: 'ACTIVE', createdAt: T0, photoUpdatedAt: null, anonymized: false, ...over };
+  return { id: 1, email: ADMIN.email, name: ADMIN.name, role: 'ADMIN', status: 'ACTIVE', createdAt: T0, photoUpdatedAt: null, anonymized: false, oidcLinked: false, ...over };
 }
 
 export function member(over: Partial<CompanyMember> = {}): CompanyMember {
@@ -173,6 +173,11 @@ export function channel(over: Partial<ChannelStatus> = {}): ChannelStatus {
 /** The outside copy of the audit log, not configured (S1B-AC-33). */
 export function auditForwardOff(): ChannelStatus {
   return channel({ enabled: false, lastSuccessAt: null });
+}
+
+/** OIDC sign-in not configured (slice 11 S11-AC-30): what the server gives without the settings. */
+export function oidcOff(): SystemStatus['oidc'] {
+  return { enabled: false, apps: [], lastSuccessAt: null, providerFailures: 0, lastFailure: null };
 }
 
 export function failedDelivery(over: Partial<FailedDelivery> = {}): FailedDelivery {
@@ -273,7 +278,7 @@ export const state: {
   invitations: [],
   customers: [],
   agents: [],
-  status: { mail: channel(), webhook: channel(), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [] },
+  status: { mail: channel(), webhook: channel(), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: oidcOff() },
   failed: [],
 };
 
@@ -289,7 +294,7 @@ function resetState() {
   state.invitations = [];
   state.customers = [];
   state.agents = [];
-  state.status = { mail: channel(), webhook: channel(), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [] };
+  state.status = { mail: channel(), webhook: channel(), auditForward: auditForwardOff(), sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: oidcOff() };
   state.failed = [];
 }
 
@@ -385,6 +390,9 @@ const defaultHandlers = [
   http.get('*/api/public/branding', () =>
     HttpResponse.json<Schemas['PublicBranding']>({ displayName: 'popdesk', colors: null, logos: { light: null, dark: null } }),
   ),
+  // The sign-in screen asks whether OIDC is on (slice 11 S11-AC-31): off, so the earlier screen
+  // tests see the password form alone. console11.ts answers on.
+  http.get('*/api/public/sign-in-options', () => HttpResponse.json<Schemas['SignInOptions']>({ oidc: false })),
   http.post('*/api/public/sign-in', () => {
     state.signedIn = true;
     return new HttpResponse(null, { status: 204 });

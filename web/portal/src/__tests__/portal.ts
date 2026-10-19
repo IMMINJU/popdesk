@@ -283,6 +283,9 @@ const defaultHandlers = [
   http.get('*/api/public/branding', () =>
     HttpResponse.json<Schemas['PublicBranding']>({ displayName: 'popdesk', colors: null, logos: { light: null, dark: null } }),
   ),
+  // The sign-in screen asks whether OIDC is on (slice 11 S11-AC-31): off, so the earlier screen
+  // tests see the password form alone. portal11.ts answers on.
+  http.get('*/api/public/sign-in-options', () => HttpResponse.json<Schemas['SignInOptions']>({ oidc: false })),
   http.post('*/api/public/sign-in', () => {
     state.signedIn = true;
     return new HttpResponse(null, { status: 204 });
