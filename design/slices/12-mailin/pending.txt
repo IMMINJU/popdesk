@@ -28,8 +28,3 @@ server io/popdesk/start/MailInStartTest.java
 server io/popdesk/ops/CleanupStalledTest.java
 server io/popdesk/mailin/MailInSchemaTest.java
 server io/popdesk/deploy/MailInSampleTest.java
-web **/C18SystemStatus.12.test.tsx
-web **/C7Inbox.12.test.tsx
-web **/console12.ts
-web **/storyFetch12.ts
-web ../../../console/src/screens/Screens12.overflow.stories.tsx
