@@ -1,1 +1,6 @@
 # 처음부터 통과해도 되는 테스트 | 까닭
+io.popdesk.privacy.AnonymizedManagerTest.otherCompanyIsNotFound(boolean)[1] | 다른 고객사 고객의 지정은 지금도 404다. 익명 검사가 소속 검사 앞에 오는 틀린 구현을 잡는다(B2-AC-02 검사 차례)
+io.popdesk.privacy.AnonymizedManagerTest.otherCompanyIsNotFound(boolean)[2] | 같은 테스트의 익명 아닌 경우, 있던 동작(S2-AC-02)
+io.popdesk.privacy.CompanyExportQuietStartTest.noExportNoAlert | 바꾼 것이 없으면 알림이 없다. 뜰 때마다 알리는 틀린 구현을 잡는다
+io.popdesk.notify.MailLimitLogTest.refusedMailIsStillWarn | 다른 까닭의 실패 줄이 WARN으로 남는 것(바뀌지 않아야 할 것). 모든 줄을 INFO로 내리는 틀린 구현을 잡는다
+src/screens/C7Inbox.b2.test.tsx.C-7 자동 정리 켜짐 항목의 문장 (b2 묶음) > B2-AC-06 C-7 retentionCount 3: 10b 문장 그대로 "… 문의 3건을 휴지통으로 옮깁니다" | 1건 이상은 지금 문장 그대로(바뀌지 않아야 할 것)

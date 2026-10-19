@@ -24,7 +24,7 @@
 | B2-AC-04 | The 콘솔 C-9 소속 고객 표 shall 익명 고객의 상태 칸에 "익명화됨"(C-10과 같은 배지)을 보이고, 그 줄에 "담당자로 지정"을 두지 않는다. 이미 담당자인 익명 고객의 줄에는 "담당자 해제"를 둔다. 이름·이메일 칸은 받은 값 그대로다. |
 | B2-AC-05 | When 앱이 뜰 때 `RUNNING`이던 고객사 내보내기를 `FAILED`(`INTERRUPTED`)로 바꾸면, the system shall 그 내보내기마다 모든 활성 관리자에게 `COMPANY_EXPORT_FAILED`(`companyCode`는 그 고객사)를 남긴다. 메일과 웹훅은 없다(지금 그대로). 바꾼 것이 없으면 아무것도 남기지 않는다. |
 | B2-AC-06 | While `ISSUE_RETENTION_ARMED`의 `retentionCount`가 0이면, the 콘솔 C-7 shall "문의 자동 정리가 켜졌습니다. 지금은 종료된 지 {days}일이 지난 문의가 없습니다."(영어 "Automatic issue cleanup is on. No issue has been closed for over {days} days yet.")를 보인다. 1 이상이면 지금 문장 그대로다. |
-| B2-AC-07 | When 받는 사람 한도로 메일을 보내지 못하면(`RATE_LIMITED`), the system shall 그 메일마다 WARN을 남기지 않는다. 한도에 걸린 메일 하나하나는 INFO 줄("Outbox row {id} (mail) was not sent: RATE_LIMITED. It is left as failed.")로 남고, WARN은 운영 경보 `DELIVERY_FAILED`가 올라갈 때의 한 줄뿐이다. 다른 까닭으로 멈춘 것(`STOPPED`의 다른 종류)은 지금처럼 WARN이다. |
+| B2-AC-07 | When 받는 사람 한도로 메일을 보내지 못하면(`RATE_LIMITED`), the system shall 그 메일마다 WARN을 남기지 않는다. 한도에 걸린 메일 하나하나는 INFO 줄("Outbox row {id} (MAIL) was not sent: RATE_LIMITED. It is left as failed.", 문장은 지금 코드 그대로)로 남고, WARN은 운영 경보 `DELIVERY_FAILED`가 올라갈 때의 한 줄뿐이다. 다른 까닭으로 멈춘 것(`STOPPED`의 다른 종류)은 지금처럼 WARN이다. |
 
 ## 3. 메인이 정한 것
 
