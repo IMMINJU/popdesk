@@ -4,8 +4,8 @@ import type { StorybookConfig } from '@storybook/react-vite';
 // Run with `-c src/storybook` (see package.json).
 const config: StorybookConfig = {
   framework: '@storybook/react-vite',
-  // The console keeps the states of a screen's parts next to the screen.
-  stories: ['../components/*.stories.tsx', '../../../../console/src/screens/*.stories.tsx'],
+  // The console and the portal keep the states of a screen's parts next to the screen.
+  stories: ['../components/*.stories.tsx', '../../../../console/src/screens/*.stories.tsx', '../../../../portal/src/screens/*.stories.tsx'],
   addons: ['@storybook/addon-vitest'],
   core: { disableTelemetry: true },
 };
