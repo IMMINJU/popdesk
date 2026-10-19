@@ -1,1 +1,2 @@
 # 처음부터 통과해도 되는 테스트 | 까닭
+components/ButtonB1.overflow.stories.tsx.Pending Stays | pending 단추가 지금처럼 커서 progress로 남는지 본다(B1-AC-05 끝, 바뀌지 않아야 할 것)

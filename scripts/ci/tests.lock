@@ -891,6 +891,7 @@ c07046c37ae83e713286571a57d40603b8aa8ef24f5e9eb2f5a82f36506498b9  web/console/sr
 e8c530a1ed95bb264b6b69228e9a61af325480ee8a986c8f64dc0d08207bac78  web/console/src/screens/C4IssueDetail.7a.test.tsx
 356de3b457634399e9f2d76395b56de6ffce1995eb13026b133672bd537c9c84  web/console/src/screens/C4IssueDetail.8a.test.tsx
 bc97091ae8cff5c674076bb77931680ba2f69740ac5301c6d0c6fbb1a25d6754  web/console/src/screens/C4IssueDetail.actions.test.tsx
+2a755eaa28621b6d5204b0917e10757873f7bf9b27dbcb5dd267029c334f7798  web/console/src/screens/C4IssueDetail.b1.test.tsx
 51b8cb6fb5de95bfa6f1695fe2352f1c60a1f9112a5f16603a0c14dc7f4bf7b1  web/console/src/screens/C4IssueDetail.comments4.test.tsx
 3448cf48e0824b124ffd9aac2a8f01f95e9b29317ad512210e63929ddc5b6023  web/console/src/screens/C4IssueDetail.edit.test.tsx
 af0d30ef2b2069bf404899bceb39022830408017b3a4815514c9a385d8eed68e  web/console/src/screens/C4IssueDetail.mentions.test.tsx
@@ -898,6 +899,7 @@ af0d30ef2b2069bf404899bceb39022830408017b3a4815514c9a385d8eed68e  web/console/sr
 b22e6fdb070add4c277d8afbdcd224a35275e27b508da5f1d469d1c6eecf7b2e  web/console/src/screens/C5Stats.7b.test.tsx
 181dee5ffb6073e2ac1b83aee4a9a62dd2a4c7394cf7cd2c80b495a24907cc74  web/console/src/screens/C5Stats.8b-c10.test.tsx
 fc629cd2853967a8a7b0bc8192a7f45107f7999043a53746f3366155090890b7  web/console/src/screens/C5Stats.8b.test.tsx
+eb09674c50c9579b8e35daf09202b509141be41f72fd831942fdaf222ccfc471  web/console/src/screens/C5Stats.b1.test.tsx
 c81ca8e02f07ea77a386d4aed1f2fb96fe4c4639ea60f830a1df6f0a39606b69  web/console/src/screens/C6MyInfo.test.tsx
 5d989a265c2f080d31001c1251240556967c9b4c6d6a91da5a7b707943ad65b0  web/console/src/screens/C7Inbox.10b.test.tsx
 507affbf8d15fe1ffcece75990ba209b5b3f443dc5341169b1be99874c207de8  web/console/src/screens/C7Inbox.12.test.tsx
@@ -907,7 +909,8 @@ ae0712d3783e043b00597c8187db27641abe75d07cf52cca7ae8d6bcb4a61522  web/console/sr
 56c733ce2d2f3e939e2488ebe034946bb713aeb0bf8faba60acf02625c0b8fc5  web/console/src/screens/C7Inbox.7a.test.tsx
 c46f1761ba5dbc5885a3a1081432152481262ee2c1377ad5e2f68a7aedc50467  web/console/src/screens/C7Inbox.7b.test.tsx
 7dad19f067d61c955090c3ab0cb32de2a657dd077c8453ad81d5e1f7c1fc7b0b  web/console/src/screens/C7Inbox.8b.test.tsx
-c168c438741f229bbb949d530ddb56d460406f3d9ff82d4cfb60fe3492f89691  web/console/src/screens/C7Inbox.test.tsx
+c996cff47805e0053105ca36a0e3656b8237b6a0d7b208c5e538e4eb97b64415  web/console/src/screens/C7Inbox.b1.test.tsx
+0cba65e4cba24e2a77e7e009eb3308f821a7906663e98b55942e423586ea498d  web/console/src/screens/C7Inbox.test.tsx
 52b39e880af8be3fb1eef08b5f4593b99806dd1a9a67caf60a9328e8cbadfbd8  web/console/src/screens/C8CompanyList.requests.test.tsx
 9b21ea6bdb472df3f877f6317f67a7647f2cae163fca98d69a7d031a4a4d711b  web/console/src/screens/C8CompanyList.test.tsx
 637e13437cd2e1e84d4f48fbf61a3db9a3461193cfe1c7a9874f6847a74cc368  web/console/src/screens/C9CompanyDetail.10a.test.tsx
@@ -932,6 +935,7 @@ ed236236649b4ba767a52d76ff87dca516524f8080184bd6ec915139e20dec43  web/console/sr
 9ea978ff290c7a8c0dcea3830b3a7ac0807b66bf5152c76a842d96ebb19bed0a  web/console/src/screens/Screens8a.overflow.stories.tsx
 c265f85e09b226138a88efd60e7052abb95f2ec6f25fb9e7c9696301e20fcb47  web/console/src/screens/Screens8b.overflow.stories.tsx
 39ee9c61bbb4a8d9335b8af6eed11b45557e040dc1d0c438675c1613af329035  web/console/src/screens/Screens9.overflow.stories.tsx
+799fd088e0c131b1f69e298e792bfac511987c982a546dba63d5e8e1fa97e24e  web/console/src/screens/ScreensB1.overflow.stories.tsx
 48ee68acbc908367251d13b8e6b45c1f72a878f7ee0d01f55a24333345d6a160  web/console/src/screens/adminOnly.1b.test.tsx
 99b4f99c0db00dff5f3e415974e0b5a59fc156ce5c0c0d80ad8785d621432302  web/console/src/screens/adminOnly.test.tsx
 f8f398c3919d419dac2bc51354f19a09049e600a49eb97defacb8a2781a68140  web/console/src/screens/common.test.tsx
@@ -983,6 +987,7 @@ d1e48e84392df9c60d16ff1b6b98620015d88e1c32dcf62f5da4a1612e3d1f84  web/packages/u
 f499cea6908aa6ee59230bfcc4c14994da7c5f1bd9681f0acd7997796fa00a00  web/packages/ui/src/components/Badge.test.tsx
 ac05c78c40f19d023ecbf4c5eda058d305a6acec805af766181e887ec2c2ee2c  web/packages/ui/src/components/Button.behavior.test.tsx
 5a5c22c0a850ac97995fd22e5a29f6be57b19f2bb436f43264ca9928d8df96dc  web/packages/ui/src/components/Button.test.tsx
+21dfa76a0982b9bd9dfe7a29245c444de5a7ac8a1e7d04bfbea5d132cb1bbd94  web/packages/ui/src/components/ButtonB1.overflow.stories.tsx
 e2ea5379a7e681e77ab0f7fd7ca3388cd87393ccb5965ec387ab6f5df8044a63  web/packages/ui/src/components/Checkbox.test.tsx
 4a07c96482d0ecf5bf632658aace7bb7261b55f7c8cc1a3db677fb0da20079b2  web/packages/ui/src/components/CheckboxGroup.behavior.test.tsx
 02ce56069a124cd89ade81698a6ed11508c3d5c6c9eaf1abab48a3037a1a0562  web/packages/ui/src/components/CheckboxGroup.test.tsx
@@ -1088,7 +1093,8 @@ dbee2859d6dac4f4013b23e2c1180c858b9698739ec144c70a5b2ff591a54f88  web/portal/src
 d846eea4430e8160c89c8b66e4afef264c3166fda1f53fa47a02f6e205d7cbd8  web/portal/src/screens/P5IssueDetail.test.tsx
 c6c8b04ff7d6e48c048b08a38c5a46ea9da076eb59551da92680dd099a747921  web/portal/src/screens/P6MyInfo.manager.test.tsx
 4f5b8044dd84a6f342eeb89faaaa0db232f77d7530143d4f87e1746334b549c1  web/portal/src/screens/P6MyInfo.test.tsx
-d24c1f6571409fdc34913e116a63917065db798d6eebc4c12081f313d4ebadee  web/portal/src/screens/P7Inbox.test.tsx
+75cde9472e3b100415cf2b4b0d6724dfa9cf965c5faae28011967472f41d9924  web/portal/src/screens/P7Inbox.b1.test.tsx
+9aa4bc6cf89dbce2fc64da3d648116aa7ff33a4fa9e84dbe3f3a261a286c01ea  web/portal/src/screens/P7Inbox.test.tsx
 bd494d0a77e8c942746047d4d08ce05e3428fd0af0d897d5332e65fd2e235f1a  web/portal/src/screens/P8Members.actions.test.tsx
 68e9d6a501e7e27d706cd913dc3017b71fdc8e379a374c96d21d60c4c327e473  web/portal/src/screens/P8Members.fresh.test.tsx
 6c102b50ab6f61173621d4c7d7c634a25faa63b60f51e3e7d4d195d54c72af4c  web/portal/src/screens/P8Members.late.test.tsx
