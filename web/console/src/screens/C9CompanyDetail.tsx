@@ -73,7 +73,9 @@ function memberCell(m: Member) {
   return (
     <span className="pd-person">
       <Avatar name={m.name} photoUrl={photoUrl(m.accountId, m.photoUpdatedAt)} size="sm" decorative />
-      <span id={`member-${String(m.accountId)}`}>{m.name}</span>
+      <span id={`member-${String(m.accountId)}`} title={m.name}>
+        {m.name}
+      </span>
     </span>
   );
 }
@@ -948,7 +950,7 @@ function CompanyDetail(props: { code: string }) {
         </dl>
       )}
 
-      <section className="pd-section" aria-labelledby="customers-title">
+      <section className="pd-section pd-company-members" aria-labelledby="customers-title">
         <div className="pd-section-head">
           <h2 id="customers-title" className="pd-section-title">
             {t('companyDetail.customers')}
@@ -988,7 +990,7 @@ function CompanyDetail(props: { code: string }) {
 
       {/* Drawn only while a request is open (2-manager screens.md C-9). */}
       {detail.requests.length > 0 && (
-        <section className="pd-section" aria-labelledby="membership-requests-title">
+        <section className="pd-section pd-company-requests" aria-labelledby="membership-requests-title">
           <h2 id="membership-requests-title" ref={requestsHeading} className="pd-section-title" tabIndex={-1}>
             {t('companyDetail.requests')}
           </h2>
@@ -1002,7 +1004,7 @@ function CompanyDetail(props: { code: string }) {
         </section>
       )}
 
-      <section className="pd-section" aria-labelledby="agents-title">
+      <section className="pd-section pd-company-members" aria-labelledby="agents-title">
         <div className="pd-section-head">
           <h2 id="agents-title" ref={agentsHeading} className="pd-section-title" tabIndex={-1}>
             {t('companyDetail.agents')}
