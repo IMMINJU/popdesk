@@ -16,7 +16,7 @@ popdesk is not released yet. Values here are the planned contract and may change
 | Membership requests | A copy of the requesting customer's email and name |
 | Email queue and inbox | Which account a queued email or an inbox item is for, and what it is about. The address is read when the email is sent |
 | Audit log | The person who acted (account ID, name, email) and the values that changed, often the name and email of the account it was done to |
-| Received email | The sender's address and the `Message-ID` of email turned into issues and comments |
+| Received email | A record of each received email: a hash of its sender and `Message-ID` (or of the whole email), what became of it, and, for email turned into an issue, a comment, or a notice, the sender's account and address. A discarded email (unknown sender, automated, failed DMARC) keeps no address. The mailbox keeps the email itself in the processed and quarantine folders |
 | Company exports | The ZIP files of [company exports](#exporting-a-companys-data), in `POPDESK_EXPORT_DIR`, for 24 hours |
 
 popdesk does not keep IP addresses: sign-in limits are counted in memory only. Its log masks every email address after the first character and holds no password, token, invitation link, or issue content.
@@ -32,7 +32,8 @@ popdesk does not keep IP addresses: sign-in limits are counted in memory only. I
 | Emails and webhook messages that failed | 7 days |
 | Images uploaded for content and not used | 24 hours |
 | Sessions | 8 hours after the sign-in |
-| `Message-ID` (or a hash of the message) of received email | 90 days |
+| Records of received email (hash, outcome, sender address) | 90 days, also while receiving email is off |
+| Received email in the processed and quarantine folders of the mailbox | 90 days from the day the mail server received it; popdesk deletes it once a day while receiving email is on. Mail left in the incoming folder is not deleted |
 | `Message-ID` of sent notification email | 90 days; a reply after that is found by the `[issue key]` in its subject only |
 | Password reset tokens | Until used or expired (1 hour) |
 | `Idempotency-Key` of a filing | 24 hours |
@@ -85,7 +86,7 @@ Off by default. With `POPDESK_ISSUE_RETENTION` set, popdesk moves to the trash, 
 ## What an anonymization changes
 
 - The name becomes `Deleted user` or `삭제된 사용자`, in the installation's language at that moment (`POPDESK_LOCALE`), and the email `deleted-{id}@invalid`. The account becomes `SUSPENDED` and is marked as anonymized in the member list.
-- Removed in the same step: every session (the person is signed out at once), the profile photo, the password, a sign-in lock, open invitation and password reset tokens, the OIDC link (so a person invited again with the same email does not reach the old account by OIDC), emails queued to the person, and the person's inbox items.
+- Removed in the same step: every session (the person is signed out at once), the profile photo, the password, a sign-in lock, open invitation and password reset tokens, the OIDC link (so a person invited again with the same email does not reach the old account by OIDC), emails queued to the person, the person's inbox items, and the sender address in the records of the email the person sent.
 - The copies of the name and email in the person's membership requests and audit entries get the anonymous values. The audit log's hash chain is computed again from the first changed entry and the change is recorded ([audit-log.md](audit-log.md#after-an-anonymization)).
 - Optionally, the person is taken off as assignee of every open issue and task, as for a suspension.
 - Nothing brings the account back: lifting the suspension, renaming it, changing its role, resetting its password, sending its invitation again, adding it to a company, and approving its membership request are refused.
@@ -97,4 +98,5 @@ Off by default. With `POPDESK_ISSUE_RETENTION` set, popdesk moves to the trash, 
 - Other people's text that names the person (see step 3 above).
 - An outside copy of the audit log that was being sent at the moment of the anonymization can go out with the old values: popdesk reads the entry when it sends it. Treat it like a copy already sent.
 - Company export files made before the anonymization, for at most 24 hours: they keep the person's old name and email as a member customer and as an author. Wait for them to expire, or delete them in `POPDESK_EXPORT_DIR`.
+- Email the person sent to the inbound address, in the processed and quarantine folders of the mailbox: it keeps the old address until popdesk deletes it 90 days after it came in. Delete it in the mailbox sooner if you must.
 - Data outside the database: audit entries already sent to the outside copy, audit log exports, account exports, and company exports already downloaded, emails already sent, and backups taken before. They keep the old name and email. Remove them under your own rules, or keep backups only as long as you need them.
