@@ -371,6 +371,20 @@ def fill(project):
                 "next_path, created_at) values (1, encode(sha256('sample-state'), 'hex'), "
                 "encode(sha256('sample-browser'), 'hex'), encode(sha256('sample-nonce'), 'hex'), "
                 "'sample-code-verifier-of-43-characters-000000', 'PORTAL', '/', now())")
+    # What slice 12 added (S12-AC-41, design.md 1절): the API reads no mailbox without IMAP. A received email that
+    # became the customer's comment on the first issue, a discarded one that keeps no sender, and the Message-ID of
+    # an email sent about that issue.
+    project.sql("insert into mail_received (tenant_id, message_key, key_source, sender_account_id, sender_address, "
+                "attempts, outcome, reason, issue_id, comment_id, first_seen_at, decided_at) "
+                "select 1, encode(sha256('sample-reply'), 'hex'), 'MESSAGE_ID', c.author_id, "
+                "'customer@sample.popdesk.test', 1, 'COMMENT', null, c.issue_id, c.id, now(), now() "
+                f"from comment c where c.id = {question['id']}")
+    project.sql("insert into mail_received (tenant_id, message_key, key_source, attempts, outcome, reason, "
+                "first_seen_at, decided_at) values (1, encode(sha256('sample-unknown'), 'hex'), 'CONTENT', 1, "
+                "'DISCARDED', 'UNKNOWN_SENDER', now(), now())")
+    project.sql("insert into mail_sent (tenant_id, message_id, issue_id, sent_at) "
+                "select 1, md5('sample-sent') || md5('sample-sent-2') || '@sample.popdesk.test', i.id, now() "
+                f"from issue i join company co on co.id = i.company_id where co.code || '-' || i.number = '{first}'")
     # A send queue row in state failed: an email given up after 24 hours of failures.
     project.sql(
         "insert into outbox (tenant_id, channel, kind, recipient_account_id, issue_id, comment_id, state, attempts, "
