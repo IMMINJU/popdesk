@@ -1,4 +1,4 @@
-// b1 묶음 screens.md 4절 막힌 단추(B1-AC-05). 다섯 변형마다 `blocked` 단추와 `disabled` 단추를 나란히 두고, play에서 계산된
+// b1 묶음 screens.md 4절 막힌 단추(B1-AC-05). 이름의 .overflow는 테스트 쪽이 쓰는 story의 꼴이다(scripts/ci/lockrules.py). 다섯 변형마다 `blocked` 단추와 `disabled` 단추를 나란히 두고, play에서 계산된
 // cursor, opacity, background-color, color가 같은지(커서 not-allowed, 불투명도 1), `blocked` 단추가 aria-disabled="true"이고
 // Tab으로 초점을 받는지 본다. 마우스를 올려도 `blocked` 단추의 바탕이 바뀌지 않는지는 story 실행기의 실제 마우스(vitest/browser)로
 // 본다. `pending` 단추는 커서 progress로 남는지 본다.
