@@ -129,7 +129,7 @@
 
 | ID | 기준 |
 |---|---|
-| S12-AC-38 | When 관리자가 C-18 시스템 상태를 열면, the system shall 채널 표 뒤, OIDC 구역 앞에 "메일 받기" 구역을 보인다: 켜짐·꺼짐(까닭), 마지막 성공 회차, 실패한 회차 수와 마지막 실패(종류 문장, 시각), 다시 시도할 메일 수, 90일 안에 격리한 메일 수(`screens.md`). (OPS-3) |
+| S12-AC-38 | When 관리자가 C-18 시스템 상태를 열면, the system shall OIDC 구역 바로 뒤에 "메일 받기" 구역을 보인다: 켜짐·꺼짐(까닭), 마지막 성공 회차, 실패한 회차 수와 마지막 실패(종류 문장, 시각), 다시 시도할 메일 수, 90일 안에 격리한 메일 수(`screens.md`). (OPS-3) |
 | S12-AC-39 | When 알림함(C-7)에 `MAIL_IN_STALLED`·`MAIL_IN_QUARANTINED`가 있으면, the system shall `screens.md`의 문장을 보이고 누르면 `/system`으로 간다. (OPS-1) |
 
 ### 2.13 마이그레이션, 견본, 문서

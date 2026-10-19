@@ -11,8 +11,8 @@ server io/popdesk/mailin/NewIssueMailTest.java
 server io/popdesk/mailin/MailBodyTest.java
 server io/popdesk/mailin/MailAttachmentTest.java
 server io/popdesk/mailin/NoticeMailTest.java
-web console/src/screens/C18SystemStatus.12.test.tsx
-web console/src/screens/C7Inbox.12.test.tsx
-web console/src/__tests__/console12.ts
-web console/src/__tests__/storyFetch12.ts
+web **/C18SystemStatus.12.test.tsx
+web **/C7Inbox.12.test.tsx
+web **/console12.ts
+web **/storyFetch12.ts
 web ../../../console/src/screens/Screens12.overflow.stories.tsx
