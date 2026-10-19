@@ -26,9 +26,18 @@ function channel(over: Partial<ChannelStatus> = {}): ChannelStatus {
 
 const OFF = channel({ enabled: false, lastSuccessAt: null });
 const OIDC_OFF: SystemStatus['oidc'] = { enabled: false, apps: [], lastSuccessAt: null, providerFailures: 0, lastFailure: null };
+const MAIL_IN_OFF: SystemStatus['mailIn'] = {
+  enabled: false,
+  offReason: 'NOT_SET',
+  lastSuccessAt: null,
+  roundFailures: 0,
+  lastFailure: null,
+  retrying: 0,
+  quarantined90d: 0,
+};
 
 function status(over: Partial<SystemStatus> = {}): SystemStatus {
-  return { mail: channel(), webhook: channel(), auditForward: OFF, sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: OIDC_OFF, ...over };
+  return { mail: channel(), webhook: channel(), auditForward: OFF, sandbox: false, sandboxMailToSet: false, cleanupJobs: [], oidc: OIDC_OFF, mailIn: MAIL_IN_OFF, ...over };
 }
 
 function sandboxed(mailToSet: boolean): SystemStatus {
