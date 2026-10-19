@@ -807,6 +807,7 @@ b0a5a385ba768a61382f1d8f4afc867029f2c086cbc10f551669cffac237d7f7  web/console/sr
 c624b9018a08be1a1dd6e7691d7aaed575165279ae9d409de34cd59af2bb23b6  web/console/src/__tests__/console8a.ts
 73f01547559de256e0b015b6949fedfeefcfb63e694401e94794740da4cfc9fb  web/console/src/__tests__/console8b.ts
 6f3a66df5b35889bf5d3733a793fd3670b443577231d5559bfbcb556ad837056  web/console/src/__tests__/console9.ts
+9c542f742c4991efc54af20ad169eecd5f8c553b41919540e6de050564b040cc  web/console/src/__tests__/consoleB5.ts
 b5352806a8d41fba40d6459074ac0b508d4bd435501b8bfca6b59d0b291af1cf  web/console/src/__tests__/network.ts
 4e5132d97ff354411bba7c8b53c6cb750337bd70dcbbe702be22d26b68cd1d23  web/console/src/__tests__/storyFetch.ts
 a759531d1a9988238b07e08d4173918bfb7d0c613bde5ec5a6664eb16bc2bd45  web/console/src/__tests__/storyFetch10a.ts
@@ -820,6 +821,7 @@ a01904901aa224d2d709ee6c0ec0c1b0585b21a29539fef57de13aec425fd490  web/console/sr
 f2dd9828e70a6de19a23f8a9e208d31b342ea1a745997718b73e294407dffe12  web/console/src/__tests__/storyFetch8a.ts
 efcc8f22e6f83bf958d65d29bf29b0e3ee518277dac59b3b063c097654c24ad6  web/console/src/__tests__/storyFetch8b.ts
 66d5b3dbd1edbbbde13a5fd60c4848d3f0b09c0fec78030d2b6ddc28108a8409  web/console/src/__tests__/storyFetch9.ts
+a04edddc739a0fa04b4bf74923a85ff414f290f1ba2eed7645e647ed8f211798  web/console/src/__tests__/storyFetchB5.ts
 0e60ee6203ff85161e9d1821b3f7ca74b48a2c9045a35fe8f2b830bf39afe754  web/console/src/app/RowMenu.behavior.test.tsx
 54d4a8a6616ba77e0b47f37ed1357cb2b53e8d810c3973bad768c8db9f65b907  web/console/src/app/auditWords.sla.test.ts
 71244d47a686d1d5c12e25eebe04832641829d14c1bd45a7129a4310f9653d95  web/console/src/app/auditWords.survivors.test.ts
@@ -843,6 +845,9 @@ b15d97f615ddb3e132710e0c7567bccfd9fb735e4936646541f3696a56a53606  web/console/sr
 6e9e691082adb06a9c9dd52196b2d935058a4936f27211b8eb0722de9e5b4ca9  web/console/src/app/slaGoals.test.ts
 6d64d9add5486c40e6649deee844c117909f2c1e324b8dde14b16f9da336083a  web/console/src/app/taskWords.test.ts
 ca77461ffb4d05d1888b66aa4509c0e131f404bec0761b94142cebb8e18d7671  web/console/src/app/trashWords.test.ts
+0796d0c5de35928504c5147093bf38968f3d92056f6fea470a615ba232416e52  web/console/src/screens/B5English.1.test.tsx
+126027053ab09adc7776509ef69f189dd93a1bdf8f98de455dfc5148ed83cb7c  web/console/src/screens/B5English.3.test.tsx
+cc376125c5e5f876f9a114966659893d74f11dfd9792976713a531a8835a4c80  web/console/src/screens/B5English.4.test.tsx
 4e4ecbba910e9481c8cee0be7e6f03f40186c893ac3f6ac5a1617573645cb432  web/console/src/screens/C10MemberList.10a-broken.test.tsx
 9039a7500b632be245ffa4e81393feeca05ae7ffd2e027c44b5fb853871ff5c8  web/console/src/screens/C10MemberList.10a.test.tsx
 48308009106fb3f78426b56123425b181c2e282e8d51e6f23a94029f562952b5  web/console/src/screens/C10MemberList.11.test.tsx
@@ -906,7 +911,7 @@ b22e6fdb070add4c277d8afbdcd224a35275e27b508da5f1d469d1c6eecf7b2e  web/console/sr
 181dee5ffb6073e2ac1b83aee4a9a62dd2a4c7394cf7cd2c80b495a24907cc74  web/console/src/screens/C5Stats.8b-c10.test.tsx
 fc629cd2853967a8a7b0bc8192a7f45107f7999043a53746f3366155090890b7  web/console/src/screens/C5Stats.8b.test.tsx
 eb09674c50c9579b8e35daf09202b509141be41f72fd831942fdaf222ccfc471  web/console/src/screens/C5Stats.b1.test.tsx
-c81ca8e02f07ea77a386d4aed1f2fb96fe4c4639ea60f830a1df6f0a39606b69  web/console/src/screens/C6MyInfo.test.tsx
+cbf8a89666cda2c54088a52db9979d7471562de62140fa1f95bfb784a9154a20  web/console/src/screens/C6MyInfo.test.tsx
 5d989a265c2f080d31001c1251240556967c9b4c6d6a91da5a7b707943ad65b0  web/console/src/screens/C7Inbox.10b.test.tsx
 507affbf8d15fe1ffcece75990ba209b5b3f443dc5341169b1be99874c207de8  web/console/src/screens/C7Inbox.12.test.tsx
 5f4aac894965c30590b6170e2706c56588ee5bcaa278e05d0f20a0912fc1f289  web/console/src/screens/C7Inbox.4b.test.tsx
@@ -944,6 +949,7 @@ ed236236649b4ba767a52d76ff87dca516524f8080184bd6ec915139e20dec43  web/console/sr
 c265f85e09b226138a88efd60e7052abb95f2ec6f25fb9e7c9696301e20fcb47  web/console/src/screens/Screens8b.overflow.stories.tsx
 39ee9c61bbb4a8d9335b8af6eed11b45557e040dc1d0c438675c1613af329035  web/console/src/screens/Screens9.overflow.stories.tsx
 799fd088e0c131b1f69e298e792bfac511987c982a546dba63d5e8e1fa97e24e  web/console/src/screens/ScreensB1.overflow.stories.tsx
+7bad48b6c3613b185cccfaea6d963874c68b034cfd5cec6287e39999f949bdc3  web/console/src/screens/ScreensB5.overflow.stories.tsx
 48ee68acbc908367251d13b8e6b45c1f72a878f7ee0d01f55a24333345d6a160  web/console/src/screens/adminOnly.1b.test.tsx
 99b4f99c0db00dff5f3e415974e0b5a59fc156ce5c0c0d80ad8785d621432302  web/console/src/screens/adminOnly.test.tsx
 f8f398c3919d419dac2bc51354f19a09049e600a49eb97defacb8a2781a68140  web/console/src/screens/common.test.tsx
@@ -967,7 +973,8 @@ a6d5d4c43be4d400311ce52e5fbf22bd66a9da6e7176573d5804e9782749ad3b  web/packages/a
 56adb64244cf96fea75f97ee0025e8ddbeed841dd05ae33549f276e7f5b6d283  web/packages/app/src/busy.test.tsx
 b48292272f8537cd82f56d9020063e63fa0e9282d08c53137bb97675c99aea32  web/packages/app/src/csrf.test.ts
 e9d81640b7c19c69682e72f7ece87153bcfa624194808502ed143599520b8509  web/packages/app/src/hooks.test.tsx
-c0403623f107d544aeb2df6540427f56e1f05ac3170ecd62c92aa64bde454ad6  web/packages/app/src/locale.test.ts
+eb312d6302e3e9c8ab6fc58dddbe5b7ca8336e2020dffc794ec186a4b8da3bfb  web/packages/app/src/locale.b5.test.tsx
+27bac5f45243c127f2c00730ee75195a06c81a0345eca0cbb670500b50c2500f  web/packages/app/src/locale.test.ts
 6e2b89b8ee4ecf0e4028235105d23bf916d93fa9c97977d7654e678d55288ca9  web/packages/app/src/navigate.test.tsx
 663392ef8d3c280c5fd601e1abedddbdf5725719167a11e59b654ba343a76dbb  web/packages/app/src/oidc.test.tsx
 51707194d7d3da692b68decd0a841b374e327f9d1e5599a4f66a27eb187ccc8a  web/packages/app/src/paging.test.tsx
@@ -981,6 +988,7 @@ a5cefe8cb940e95317c9ca88bdc524177d891adc704bd24cc445ff9d7e9edfa2  web/packages/a
 b68435f98076b4919d80cd6dc4d47b948b4482f72daa7ea1ab6be357c40e462c  web/packages/app/src/toast.test.tsx
 3281a215888795fc9d94e3e3d9fdb4e1f6737723fbf218c6414bd35af086b03e  web/packages/app/src/toastContext.test.tsx
 5e225dd9ad539e8c7dc9e4842f41caa03c131d566eac1e6e5408279bd68f46b6  web/packages/app/src/unread.test.tsx
+7cfb7b41a1bced1e42dc99db6827855148cdde8da3120f93e8e2f571639d0da4  web/packages/i18n/src/messages.b5.test.ts
 8c1427266206ff87d92d23532c1c9935180e55f8be52e70605e3151793fca939  web/packages/i18n/src/retention.b2.test.ts
 8aa11ecd0cb40d1f4363e31e8d4697e56c61f65865d7f302ef6c394af1b43df7  web/packages/ui/src/__tests__/overflow.ts
 597adae3e8925481fba27841a08259db59f3b9af4031146089ee541dc744cdbf  web/packages/ui/src/__tests__/support.ts
@@ -1019,6 +1027,7 @@ b9e640c6a035b4171e631e14329f69df795bc6effb03c74719b87bed07900b6d  web/packages/u
 bb35a6a4aca6c37b901c0a36c04e1d651b78387f1215a12d1affd0152513ff34  web/packages/ui/src/components/DueDatePicker.test.tsx
 54dec0afad5bf58d81068fddb0ea26f5932c40c82675236f3399967de19efdfd  web/packages/ui/src/components/EmptyState.behavior.test.tsx
 2872d63f0e4a9760421fbd974794d38e7eb6c6a439c566443c640ca2136b459d  web/packages/ui/src/components/EmptyState.test.tsx
+8428f7acb550e9beec225730954ece319ec2f0850a2f6571a63d1ff782efcf13  web/packages/ui/src/components/English.b5.test.tsx
 d034a9e2f0e19907326f96e2856b2aeeb56447e4c6216810d2efba7d0714a2b3  web/packages/ui/src/components/FileUpload.behavior.test.tsx
 30f75d1c2524894ab8b4f4b646673d112dd760fb53e6e19adbd8d2a4e35b8dde  web/packages/ui/src/components/FileUpload.test.tsx
 6db4227aff81bc7eab2d39f962cda433a73281aa2f37df192824ccb8ce7fb819  web/packages/ui/src/components/FormErrorSummary.test.tsx
@@ -1076,6 +1085,8 @@ c88e8ce7650aa5b0380083119251f5531c75465570201835d512ce5ec80ebb6c  web/portal/src
 e0ab06727eee861b68def2ac3a7f3f4378e43a63595d295568cb25548d561aae  web/portal/src/__tests__/portal3.ts
 fae3c91b95fecc435b91c7990079b40a43451eba0640a002701c7ad26ae24609  web/portal/src/__tests__/portal4.ts
 c736c51d07fe60e48be0d9eda4c825d6138cf916fbb0d51e840c7e459175b3e4  web/portal/src/__tests__/portal5.ts
+634b8cb1095948148832597486e9a80ce2b619c755f25d22d2aa544faca82578  web/portal/src/__tests__/portalB5.ts
+0bf7ea4f792a6f51271945cfbc3b5a611d345e8298ad6b8aa4b53c1c6100a908  web/portal/src/__tests__/storyFetchB5.ts
 5924b8465b0f03392271df24228d8439766daef51c20bcc397c03e2598ef721e  web/portal/src/app/branding.9.test.tsx
 5f465c8e0ea9c8531a3dbe2375e3d102193d703d3f321b2f140cd673e792fd36  web/portal/src/app/csrfRetry.1a.test.tsx
 4d3ea10191eae268e7ffed9b70620b658b18590fa3eabd22754878f9db089f91  web/portal/src/app/header.1a.test.tsx
@@ -1087,6 +1098,8 @@ cf33faf6d378817ddd315659d246566c7dde31e1506eccd77e02e4a5962ac858  web/portal/src
 4aa2721982ebd842b19bfb0d7e42967ade5e6d1e267cb4e85b0a96f6fb90d526  web/portal/src/app/safeNext.1a.test.ts
 19aee3565b0510a4425fea2dd4d277705ec4721b56dfe12b37126d46f0a431bd  web/portal/src/app/safeNext.behavior.test.ts
 ffd7e79d83e3131f8f2f7c04211a1698d7a03e3e1fc84dbfb42f5e812dfe490f  web/portal/src/app/sessionEnd.test.tsx
+6f2c30dbc2107aee8e4a4d1bda79535ed90bedfb74461a467de0c7ee67d9d666  web/portal/src/screens/B5English.1.test.tsx
+b3f29cde443cb80830855abf0bf77605a6b749f83208698609c5e401b51a1c07  web/portal/src/screens/B5English.2.test.tsx
 5689792229381350106cc561c46c5dfcc3780b57569d9dc9a7db81a80a021880  web/portal/src/screens/P10PasswordReset.test.tsx
 ebc87cfe39aaa4a1d0f956fd5d3f00f5c4c56d8d1e8980a655ce4b45cd6b351e  web/portal/src/screens/P1Login.11.test.tsx
 f7589d4e466ed93f39b269cad4db0c7475b7d21eb254e5a0d72049bd4a110607  web/portal/src/screens/P1Login.1a.test.tsx
@@ -1105,7 +1118,7 @@ dbee2859d6dac4f4013b23e2c1180c858b9698739ec144c70a5b2ff591a54f88  web/portal/src
 344f0b1a1355989ce21e7f4f2279abf6d26498aa940d4f53398aece811a8253f  web/portal/src/screens/P5IssueDetail.edit.test.tsx
 d846eea4430e8160c89c8b66e4afef264c3166fda1f53fa47a02f6e205d7cbd8  web/portal/src/screens/P5IssueDetail.test.tsx
 c6c8b04ff7d6e48c048b08a38c5a46ea9da076eb59551da92680dd099a747921  web/portal/src/screens/P6MyInfo.manager.test.tsx
-4f5b8044dd84a6f342eeb89faaaa0db232f77d7530143d4f87e1746334b549c1  web/portal/src/screens/P6MyInfo.test.tsx
+5889b108c471836a4e397544ea3b01aa81d95ba3cb7a586a82caed1017bb2cd0  web/portal/src/screens/P6MyInfo.test.tsx
 75cde9472e3b100415cf2b4b0d6724dfa9cf965c5faae28011967472f41d9924  web/portal/src/screens/P7Inbox.b1.test.tsx
 9aa4bc6cf89dbce2fc64da3d648116aa7ff33a4fa9e84dbe3f3a261a286c01ea  web/portal/src/screens/P7Inbox.test.tsx
 bd494d0a77e8c942746047d4d08ce05e3428fd0af0d897d5332e65fd2e235f1a  web/portal/src/screens/P8Members.actions.test.tsx
@@ -1113,5 +1126,6 @@ bd494d0a77e8c942746047d4d08ce05e3428fd0af0d897d5332e65fd2e235f1a  web/portal/src
 6c102b50ab6f61173621d4c7d7c634a25faa63b60f51e3e7d4d195d54c72af4c  web/portal/src/screens/P8Members.late.test.tsx
 e85e11e6fb9e35a36ed48deb44ba00b378f65d0c1e39f4f4251e90c2c2ba22f7  web/portal/src/screens/P8Members.test.tsx
 cfc9cc0ead9f5c6a7d33e84f1745cb493d85f4544f341f3a3b6f8c484d4c85e3  web/portal/src/screens/P9PasswordForgot.test.tsx
+d22dd775e38d22f50d06a9cd81f6e5335c7e82c078174a450000494ec2d75411  web/portal/src/screens/ScreensB5.overflow.stories.tsx
 b102f8c38aff717ef3550111b5a48e606535938a27b86ad989f9bca0ffe2ad57  web/portal/src/screens/common.test.tsx
 a5cefe8cb940e95317c9ca88bdc524177d891adc704bd24cc445ff9d7e9edfa2  web/portal/src/test-setup.ts

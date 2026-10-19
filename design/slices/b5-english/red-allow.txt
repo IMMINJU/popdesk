@@ -1,1 +1,9 @@
-# 처음부터 통과해도 되는 테스트 | 까닭
+src/screens/B5English.1.test.tsx.B5 언어 장치(콘솔) > B5-AC-01 B5-AC-06 ko 계정은 브라우저가 en-US여도 한국어 그대로다: html lang은 ko, 머리와 메뉴는 지금 글이다 | 지금 화면이 늘 한국어라 계정 ko의 한국어 그대로(B5-AC-06)는 지금도 맞다
+src/screens/B5English.1.test.tsx.B5 언어 장치(콘솔) > B5-AC-02 로그인 전 브라우저 언어 ["ko-KR","en-US"] → ko | 로그인 전 ko 브라우저의 한국어는 지금 동작 그대로다(B5-AC-02의 ko 쪽, B5-AC-06)
+src/screens/B5English.1.test.tsx.B5 언어 장치(콘솔) > B5-AC-02 로그인 전 브라우저 언어 ["ko"] → ko | 로그인 전 ko 브라우저의 한국어는 지금 동작 그대로다(B5-AC-02의 ko 쪽, B5-AC-06)
+src/messages.b5.test.ts.@popdesk/i18n 두 언어 (b5 묶음) > B5-AC-08 키 집합: en은 ko와 같은 키를 모두 가지고 더 가지지 않는다 | en.ts의 타입이 이미 같은 키를 막는다. 옮겨 온 키가 늘어도 지켜야 하는 것
+src/messages.b5.test.ts.@popdesk/i18n 두 언어 (b5 묶음) > B5-AC-08 자리 표시: 모든 키에서 {name}의 이름과 수가 두 언어에서 같다 | 지금 196 키의 자리 표시는 이미 맞다. 옮겨 오는 키를 지킨다
+src/messages.b5.test.ts.@popdesk/i18n 두 언어 (b5 묶음) > B5-AC-08 ko 값과 en 값은 비지 않는다 | 지금 196 키는 비지 않는다. 옮겨 오는 키를 지킨다
+src/screens/B5English.1.test.tsx.B5 언어 장치(포털) > B5-AC-01 B5-AC-06 ko 계정은 브라우저가 en-US여도 한국어 그대로다: html lang은 ko, 화면 제목과 document.title은 지금 글이다 | 지금 화면이 늘 한국어라 계정 ko의 한국어 그대로(B5-AC-06)는 지금도 맞다
+src/screens/B5English.1.test.tsx.B5 언어 장치(포털) > B5-AC-02 로그인 전 브라우저 언어 ["ko-KR","en-US"] → ko | 로그인 전 ko 브라우저의 한국어는 지금 동작 그대로다(B5-AC-02의 ko 쪽, B5-AC-06)
+src/screens/B5English.1.test.tsx.B5 언어 장치(포털) > B5-AC-02 로그인 전 브라우저 언어 ["ko"] → ko | 로그인 전 ko 브라우저의 한국어는 지금 동작 그대로다(B5-AC-02의 ko 쪽, B5-AC-06)
