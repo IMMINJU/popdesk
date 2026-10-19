@@ -32,3 +32,27 @@ index 56cc786f30c524ae18ce87eef1a67fdf26b703c5..d7a4b968e42741296efd96f7e438aeef
      const nameParts = [name];
      let currentSuite = suite;
      while (currentSuite) {
+diff --git a/dist/src/vitest-test-runner.js b/dist/src/vitest-test-runner.js
+index 84f1ca026503b8e92b7adc952ec6c6a401943656..df55c753445cb72ab9eaf46bb37af4d77570b8c5 100644
+--- a/dist/src/vitest-test-runner.js
++++ b/dist/src/vitest-test-runner.js
+@@ -92,7 +92,18 @@ export class VitestTestRunner {
+             project.config.browser.screenshotFailures = false;
+         });
+         if (this.log.isDebugEnabled()) {
+-            this.log.debug(`vitest final config: ${JSON.stringify(this.ctx.config, null, 2)}`);
++            // Vitest 5's resolved config refers back to itself, so print a repeated object once.
++            const seen = new WeakSet();
++            const once = (_key, value) => {
++                if (typeof value === 'object' && value !== null) {
++                    if (seen.has(value)) {
++                        return '[seen]';
++                    }
++                    seen.add(value);
++                }
++                return value;
++            };
++            this.log.debug(`vitest final config: ${JSON.stringify(this.ctx.config, once, 2)}`);
+         }
+     }
+     async dryRun(options) {

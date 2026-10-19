@@ -48,6 +48,10 @@ allowBuilds:
   esbuild: false
 
 # The Stryker vitest runner names tests with spaces; Vitest 5 matches names joined
-# with ' > ', so every mutant run skipped all tests. Remove when upstream fixes it.
+# with ' > ', so every mutant run skipped all tests. The runner's debug log printed a
+# config that refers to itself and stopped. Stryker core gave static mutants runtime
+# activation when --testFiles was given, so a changed top-level constant never took
+# effect and the mutant "survived". Remove each when upstream fixes it.
 patchedDependencies:
+  '@stryker-mutator/core@10.0.0': patches/@stryker-mutator__core@10.0.0.patch
   '@stryker-mutator/vitest-runner@10.0.0': patches/@stryker-mutator__vitest-runner@10.0.0.patch
