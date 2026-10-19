@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, type ChangeEvent } from 'react';
 import { Spinner } from '../icons';
 import { Button } from './Button';
 import { FieldError, FieldHelp } from './fieldParts';
+import { logoFallbackText, uiText } from '../language';
 
 export interface LogoFieldProps {
   /** The theme this field holds the logo of. The preview sits on that theme's `bg` (`#FFFFFF`, `#191817`). */
@@ -35,8 +36,6 @@ export interface LogoFieldProps {
   /** e.g. "지우기". Shown only with a logo; focus goes to the upload label after it. */
   removeLabel: string;
 }
-
-const THEME_WORDS: Readonly<Record<'light' | 'dark', string>> = { light: '밝은', dark: '어두운' };
 
 /**
  * One theme's logo on C-14 (slice 9 screens.md 2.2): 없음, 다른 테마 것을 씀, 있음, 올리는 중, 실패.
@@ -88,7 +87,7 @@ export function LogoField(props: LogoFieldProps) {
         ) : fallback ? (
           <img className="pd-logo-image" data-fallback="true" src={fallback.url} alt="" />
         ) : (
-          <span className="pd-logo-none">로고 없음</span>
+          <span className="pd-logo-none">{uiText('noLogo')}</span>
         )}
       </div>
       {props.logo && (
@@ -96,7 +95,7 @@ export function LogoField(props: LogoFieldProps) {
           {props.logo.width} × {props.logo.height} px
         </p>
       )}
-      {fallback && <p className="pd-logo-size">없음. {THEME_WORDS[fallback.from]} 테마 로고를 같이 씁니다</p>}
+      {fallback && <p className="pd-logo-size">{logoFallbackText(fallback.from)}</p>}
       <div className="pd-logo-actions">
         <input
           ref={input}
@@ -123,7 +122,7 @@ export function LogoField(props: LogoFieldProps) {
         {uploading && (
           <span className="pd-logo-busy">
             <Spinner />
-            올리는 중…
+            {uiText('uploading')}
           </span>
         )}
       </div>

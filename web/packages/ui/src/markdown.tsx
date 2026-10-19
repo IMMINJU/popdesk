@@ -9,6 +9,7 @@
 // `![alt](attachment:{uuid})`, drawn only when the caller gives an address for the id (D-59).
 import { Fragment, type ReactNode } from 'react';
 import { MarkdownImage } from './components/MarkdownImage';
+import { uiText } from './language';
 
 export interface MarkdownOptions {
   /**
@@ -153,7 +154,7 @@ function inline(text: string, key: string, options: MarkdownOptions, inLink = fa
       const src = id === undefined ? null : options.imageSrc(id);
       if (src !== null) {
         const alt = altText(text.slice(i + 2, close));
-        push(<MarkdownImage key={k()} src={src} alt={alt} unreadableText={options.unreadableImageText ?? '이미지를 볼 수 없습니다'} />);
+        push(<MarkdownImage key={k()} src={src} alt={alt} unreadableText={options.unreadableImageText ?? uiText('imageUnreadable')} />);
         i = end + 1;
         continue;
       }

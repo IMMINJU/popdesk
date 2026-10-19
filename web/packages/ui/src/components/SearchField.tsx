@@ -3,6 +3,7 @@ import { describedBy } from '../aria';
 import { CloseIcon } from '../icons';
 import { FieldHelp } from './fieldParts';
 import { IconButton } from './IconButton';
+import { uiText } from '../language';
 
 export interface SearchFieldProps {
   /** Names the box, e.g. "문의 검색". */
@@ -95,7 +96,7 @@ export function SearchField({ ref, ...props }: SearchFieldProps) {
         {text !== '' && (
           <span className="pd-input-end">
             <IconButton
-              label="검색어 지우기"
+              label={uiText('clearSearch')}
               icon={<CloseIcon />}
               size="sm"
               tooltip={false}

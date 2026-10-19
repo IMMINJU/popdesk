@@ -5,6 +5,7 @@ import { Avatar } from './Avatar';
 import { Badge } from './Badge';
 import { Button } from './Button';
 import { RelativeTime } from './RelativeTime';
+import { uiText } from '../language';
 
 export interface AttachmentItem {
   id: string;
@@ -104,7 +105,7 @@ export function AttachmentList(props: AttachmentListProps) {
                   </span>
                   <span className="pd-attachment-meta">
                     {item.internal && <Badge tone="internal">{props.internalLabel ?? 'Internal'}</Badge>}
-                    {item.inline && <Badge tone="neutral">{props.inlineLabel ?? '본문 이미지'}</Badge>}
+                    {item.inline && <Badge tone="neutral">{props.inlineLabel ?? uiText('inlineImage')}</Badge>}
                     <span>{formatBytes(item.size)}</span>
                     {item.uploaderAvatar ? (
                       <span className="pd-attachment-uploader">

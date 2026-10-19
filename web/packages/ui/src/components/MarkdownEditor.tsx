@@ -15,6 +15,7 @@ import { describedBy } from '../aria';
 import { WarningIcon } from '../icons';
 import { FieldError, FieldHelp } from './fieldParts';
 import { MarkdownView } from './MarkdownView';
+import { imageUploadingText, uiText } from '../language';
 
 /** What an image upload ends with. The text of a failure is made by the app. */
 export type ImageUploadResult = { ok: true; id: string } | { ok: false; message: string };
@@ -138,17 +139,10 @@ function carriesFiles(transfer: DataTransfer): boolean {
 
 const ALL_TOOLS: readonly MarkdownTool[] = ['bold', 'italic', 'strikethrough', 'heading', 'bulletList', 'orderedList', 'quote', 'code', 'link'];
 
-const TOOL_LABELS: Record<MarkdownTool, string> = {
-  bold: '굵게',
-  italic: '기울임',
-  strikethrough: '취소선',
-  heading: '제목',
-  bulletList: '글머리 목록',
-  orderedList: '번호 목록',
-  quote: '인용',
-  code: '코드',
-  link: '링크',
-};
+/** The tool names in the screen language. */
+function toolLabels(): Record<MarkdownTool, string> {
+  return Object.fromEntries(ALL_TOOLS.map((tool) => [tool, uiText(tool)])) as Record<MarkdownTool, string>;
+}
 
 /** Glyphs drawn on the tool buttons. Decorative; the name is the label. */
 const TOOL_GLYPHS: Record<MarkdownTool, ReactNode> = {
@@ -441,7 +435,7 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
   };
 
   const count = props.showCount === true && props.maxLength !== undefined;
-  const labels = { ...TOOL_LABELS, ...props.toolLabels };
+  const labels = { ...toolLabels(), ...props.toolLabels };
 
   return (
     <div
@@ -485,12 +479,12 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
                   onTabKey(e, index);
                 }}
               >
-                {m === 'write' ? (props.writeLabel ?? '쓰기') : (props.previewLabel ?? '미리 보기')}
+                {m === 'write' ? (props.writeLabel ?? uiText('write')) : (props.previewLabel ?? uiText('preview'))}
               </button>
             ))}
           </div>
           {mode === 'write' && tools.length > 0 && (
-            <div className="pd-editor-tools" role="toolbar" aria-label={props.toolbarLabel ?? '서식'} aria-controls={id}>
+            <div className="pd-editor-tools" role="toolbar" aria-label={props.toolbarLabel ?? uiText('toolbar')} aria-controls={id}>
               {tools.map((tool, index) => (
                 <button
                   key={tool}
@@ -525,8 +519,8 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
                   }}
                   type="button"
                   className="pd-editor-tool"
-                  aria-label={props.imageLabel ?? '이미지'}
-                  title={props.imageLabel ?? '이미지'}
+                  aria-label={props.imageLabel ?? uiText('image')}
+                  title={props.imageLabel ?? uiText('image')}
                   tabIndex={Math.min(activeTool, buttonCount - 1) === tools.length ? 0 : -1}
                   disabled={props.disabled}
                   onMouseDown={(e) => {
@@ -554,7 +548,7 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
               accept={IMAGE_ACCEPT}
               multiple
               disabled={props.disabled}
-              aria-label={props.imageLabel ?? '이미지'}
+              aria-label={props.imageLabel ?? uiText('image')}
               onChange={(e) => {
                 takeImages(Array.from(e.target.files ?? []));
                 // Lets the same file be picked again.
@@ -599,17 +593,17 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
             style={{ minHeight: props.minHeight }}
           >
             {props.value.trim() === '' ? (
-              <p className="pd-editor-empty">{props.emptyPreviewText ?? '미리 볼 내용이 없습니다'}</p>
+              <p className="pd-editor-empty">{props.emptyPreviewText ?? uiText('emptyPreview')}</p>
             ) : (
               <MarkdownView source={props.value} imageSrc={props.imageSrc} unreadableImageText={props.unreadableImageText} />
             )}
           </div>
         )}
       </div>
-      {dragging && <p className="pd-editor-note">{props.imageDropText ?? '여기에 놓으면 이미지를 넣습니다'}</p>}
+      {dragging && <p className="pd-editor-note">{props.imageDropText ?? uiText('imageDrop')}</p>}
       {uploading !== null && (
         <p className="pd-editor-note" role="status">
-          {props.imageUploadingText ? props.imageUploadingText(uploading) : `이미지 올리는 중… (${uploading})`}
+          {props.imageUploadingText ? props.imageUploadingText(uploading) : imageUploadingText(uploading)}
         </p>
       )}
       {(failures.length > 0 || notImage) && (
@@ -617,7 +611,7 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
           {notImage && (
             <p className="pd-field-error">
               <WarningIcon size={14} />
-              <span>{props.imageOnlyText ?? '이미지 파일만 본문에 넣을 수 있습니다. 다른 파일은 첨부로 올리세요'}</span>
+              <span>{props.imageOnlyText ?? uiText('imageOnly')}</span>
             </p>
           )}
           {failures.map((failure, index) => (
