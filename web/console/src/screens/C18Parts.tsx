@@ -5,6 +5,7 @@ import { Alert, Badge, Button, DataTable, RelativeTime, type DataTableColumn } f
 import type { ReactNode } from 'react';
 import type { Schemas } from '../api';
 import { TEXT } from '../app/messages';
+import { screenLocale } from '../app/locale';
 
 type SystemStatus = Schemas['SystemStatus'];
 type ChannelStatus = Schemas['ChannelStatus'];
@@ -71,8 +72,8 @@ const channelColumns: DataTableColumn<ChannelRow>[] = [
     header: '마지막 성공',
     cell: (c) => (c.status.lastSuccessAt ? <RelativeTime dateTime={c.status.lastSuccessAt} focusable={false} /> : <span className="pd-muted">없음</span>),
   },
-  { key: 'queued', header: '보낼 차례', cell: (c) => c.status.queued.toLocaleString('ko'), align: 'end' },
-  { key: 'failed', header: '실패 수', cell: (c) => c.status.failed.toLocaleString('ko'), align: 'end' },
+  { key: 'queued', header: '보낼 차례', cell: (c) => c.status.queued.toLocaleString(screenLocale()), align: 'end' },
+  { key: 'failed', header: '실패 수', cell: (c) => c.status.failed.toLocaleString(screenLocale()), align: 'end' },
 ];
 
 /** The three channels. Without `status` (the first load) only the column heads, or the skeleton rows. */
@@ -121,7 +122,7 @@ export function OidcPart(props: { oidc: OidcStatus }) {
             <li>
               마지막 성공: {oidc.lastSuccessAt === null ? <span className="pd-muted">앱이 뜬 뒤 없음</span> : <RelativeTime dateTime={oidc.lastSuccessAt} />}
             </li>
-            <li>제공자 실패: {oidc.providerFailures.toLocaleString('ko')}건</li>
+            <li>제공자 실패: {oidc.providerFailures.toLocaleString(screenLocale())}건</li>
             {oidc.lastFailure !== null && (
               <li>
                 마지막 실패: {OIDC_FAILURE_WORDS[oidc.lastFailure.kind]}, <RelativeTime dateTime={oidc.lastFailure.at} />
@@ -166,16 +167,16 @@ export function MailInPart(props: { mailIn: MailInStatus }) {
             <li>
               마지막 성공: {mailIn.lastSuccessAt === null ? <span className="pd-muted">{NEVER}</span> : <RelativeTime dateTime={mailIn.lastSuccessAt} />}
             </li>
-            <li>실패한 회차: {mailIn.roundFailures.toLocaleString('ko')}회</li>
+            <li>실패한 회차: {mailIn.roundFailures.toLocaleString(screenLocale())}회</li>
             {mailIn.lastFailure !== null && (
               <li>
                 마지막 실패: {MAIL_IN_FAILURE_WORDS[mailIn.lastFailure.kind]}, <RelativeTime dateTime={mailIn.lastFailure.at} />
               </li>
             )}
-            {mailIn.retrying > 0 && <li>다시 시도할 메일: {mailIn.retrying.toLocaleString('ko')}통</li>}
+            {mailIn.retrying > 0 && <li>다시 시도할 메일: {mailIn.retrying.toLocaleString(screenLocale())}통</li>}
             {mailIn.quarantined90d > 0 && (
               <li>
-                격리한 메일(90일): {mailIn.quarantined90d.toLocaleString('ko')}통
+                격리한 메일(90일): {mailIn.quarantined90d.toLocaleString(screenLocale())}통
                 <span className="pd-muted pd-status-note">
                   메일함의 격리 폴더(설정 <code className="pd-code">IMAP_QUARANTINE_FOLDER</code>)에서 확인하세요.
                 </span>
@@ -344,7 +345,7 @@ const jobColumns: DataTableColumn<CleanupJobStatus>[] = [
     header: '마지막으로 돈 시각',
     cell: (j) => (j.lastRunAt === null ? <span className="pd-muted">{NEVER}</span> : <RelativeTime dateTime={j.lastRunAt} focusable={false} />),
   },
-  { key: 'deleted', header: '지운 수', cell: (j) => (j.deleted === null ? <span className="pd-muted">{NEVER}</span> : j.deleted.toLocaleString('ko')), align: 'end' },
+  { key: 'deleted', header: '지운 수', cell: (j) => (j.deleted === null ? <span className="pd-muted">{NEVER}</span> : j.deleted.toLocaleString(screenLocale())), align: 'end' },
 ];
 
 /** The cleanup jobs by name. Nothing when there is none. */

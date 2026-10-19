@@ -3,6 +3,7 @@
 // screen does not know shows as the server gave it.
 import { ACCOUNT_STATUS_WORDS, PRIORITY_WORDS, PROJECT_STATUS_WORDS } from '@popdesk/ui';
 import { slaLength } from './messages';
+import { screenLocale } from './locale';
 
 export interface KindGroup {
   /** The value of the group's choice in the 종류 filter. No kind has this name. */
@@ -248,7 +249,7 @@ function timeWord(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const at = new Date(value);
   if (Number.isNaN(at.getTime())) return null;
-  return new Intl.DateTimeFormat(document.documentElement.lang || 'ko', { dateStyle: 'long', timeStyle: 'short' }).format(at);
+  return new Intl.DateTimeFormat(screenLocale(), { dateStyle: 'long', timeStyle: 'short' }).format(at);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

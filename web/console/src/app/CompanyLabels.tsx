@@ -25,6 +25,7 @@ import { TEXT } from './messages';
 import { byName } from './labelItems';
 import { call, type Failure } from './result';
 import { useToast } from './toastContext';
+import { screenLocale } from './locale';
 
 type Label = Schemas['Label'];
 
@@ -204,7 +205,7 @@ function DeleteLabelDialog(props: { code: string; label: Label; onClose: () => v
       message={
         <>
           <p>
-            라벨 &apos;{label.name}&apos;을 지웁니다. 붙어 있는 문의 {label.issueCount.toLocaleString('ko-KR')}건에서도 떨어집니다. 이력에는 남지 않습니다.
+            라벨 &apos;{label.name}&apos;을 지웁니다. 붙어 있는 문의 {label.issueCount.toLocaleString(screenLocale())}건에서도 떨어집니다. 이력에는 남지 않습니다.
           </p>
           <SaveFailure failure={failure} known={LABEL_ERRORS} />
         </>
@@ -248,7 +249,7 @@ export function CompanyLabels(props: { code: string; archived: boolean }) {
 
   const columns: DataTableColumn<Label>[] = [
     { key: 'name', header: '라벨', cell: (l) => <LabelChip name={l.name} color={l.color} /> },
-    { key: 'issues', header: '붙은 문의', cell: (l) => `문의 ${l.issueCount.toLocaleString('ko-KR')}건` },
+    { key: 'issues', header: '붙은 문의', cell: (l) => `문의 ${l.issueCount.toLocaleString(screenLocale())}건` },
     {
       key: 'actions',
       header: <span className="pd-sr-only">동작</span>,

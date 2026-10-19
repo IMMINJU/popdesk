@@ -12,6 +12,7 @@ import { LoadFailed, PageTitle } from '../app/layout';
 import { slaLength } from '../app/messages';
 import { call } from '../app/result';
 import { useSession } from '../app/sessionContext';
+import { screenLocale } from '../app/locale';
 
 type CompanyStat = Schemas['CompanyStat'];
 type SlaGoalStat = Schemas['SlaGoalStat'];
@@ -20,7 +21,7 @@ const READ_FAILED = '통계를 읽지 못했습니다. 다시 해 보세요.';
 
 /** A count, with a link to the issues it counts unless it is 0. 전체 filters by the company alone. */
 function count(s: CompanyStat, n: number, status: IssueStatus[]) {
-  const shown = n.toLocaleString('ko');
+  const shown = n.toLocaleString(screenLocale());
   if (n === 0) return shown;
   return <Link to={issuesHref({ companyCode: s.companyCode, status })}>{shown}</Link>;
 }
@@ -33,7 +34,7 @@ function goalCell(g: SlaGoalStat) {
   return (
     <span className="pd-two-lines pd-stats-sla">
       <span>{g.medianMinutes === null ? '중앙값 없음' : `중앙값 ${slaLength(g.medianMinutes)}`}</span>
-      <span>{`지킴 ${String(share)}% (${g.met.toLocaleString('ko')}/${counted.toLocaleString('ko')})`}</span>
+      <span>{`지킴 ${String(share)}% (${g.met.toLocaleString(screenLocale())}/${counted.toLocaleString(screenLocale())})`}</span>
     </span>
   );
 }

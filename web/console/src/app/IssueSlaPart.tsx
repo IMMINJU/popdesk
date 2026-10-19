@@ -4,6 +4,7 @@ import type { Schemas } from '../api';
 import { slaWords } from './messages';
 import { SlaBadge } from './SlaBadge';
 import { runs, type GoalName } from './slaGoals';
+import { screenLocale } from './locale';
 
 type SlaGoal = Schemas['SlaGoal'];
 
@@ -11,7 +12,7 @@ type SlaGoal = Schemas['SlaGoal'];
 function dueText(iso: string): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return iso;
-  return new Intl.DateTimeFormat(document.documentElement.lang || 'ko', {
+  return new Intl.DateTimeFormat(screenLocale(), {
     month: 'long',
     day: 'numeric',
     weekday: 'short',

@@ -27,7 +27,7 @@ import { useMainBusy } from '../app/busy';
 import { startExport } from '../app/exportDownload';
 import { useLive, useLoad } from '../app/hooks';
 import { LoadFailed, NoPermission, PageTitle } from '../app/layout';
-import { t } from '../app/locale';
+import { screenLocale, t } from '../app/locale';
 import { TEXT } from '../app/messages';
 import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, pageHref, usePageMove, usePageParam } from '../app/paging';
@@ -165,7 +165,7 @@ function minuteText(iso: string): string {
 function secondText(iso: string): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return iso;
-  return new Intl.DateTimeFormat(document.documentElement.lang || 'ko', { dateStyle: 'long', timeStyle: 'medium' }).format(at);
+  return new Intl.DateTimeFormat(screenLocale(), { dateStyle: 'long', timeStyle: 'medium' }).format(at);
 }
 
 const ACTOR_FORM_ID = 'audit-actor';
@@ -247,7 +247,7 @@ function VerifyResult(props: { verify: Verify; onShow: (occurredAt: string) => v
   if (result.valid) {
     return (
       <Alert tone="success">
-        <p>모두 맞습니다. 항목 {result.checkedCount.toLocaleString('ko')}건을 확인했습니다.</p>
+        <p>모두 맞습니다. 항목 {result.checkedCount.toLocaleString(screenLocale())}건을 확인했습니다.</p>
         <p className="pd-audit-help">DB를 직접 고칠 수 있는 사람이 사슬 전체를 다시 쓴 것은 찾지 못합니다. 바깥 사본과 함께 쓰세요.</p>
       </Alert>
     );

@@ -8,7 +8,7 @@ import { SaveFailure } from '../app/bands';
 import { useMainBusy } from '../app/busy';
 import { useLive, useLoad } from '../app/hooks';
 import { LoadFailed, PageTitle } from '../app/layout';
-import { t, tf } from '../app/locale';
+import { screenLocale, t, tf } from '../app/locale';
 import { rateLimitedText, TEXT } from '../app/messages';
 import { linkedIssueText } from '../app/linkWords';
 import { PageNav } from '../app/PageNav';
@@ -79,8 +79,8 @@ function sentence(n: Notification): string {
       return tf('inbox.companyExportFailed', { code: n.companyCode ?? '' });
     case 'ISSUE_RETENTION_ARMED':
       // No issue to move yet has words of its own: "0건을 옮깁니다" reads as if something moved (B2-AC-06).
-      if ((n.retentionCount ?? 0) === 0) return tf('inbox.retentionArmedNone', { days: (n.retentionDays ?? 0).toLocaleString('ko') });
-      return tf('inbox.retentionArmed', { days: (n.retentionDays ?? 0).toLocaleString('ko'), count: (n.retentionCount ?? 0).toLocaleString('ko') });
+      if ((n.retentionCount ?? 0) === 0) return tf('inbox.retentionArmedNone', { days: (n.retentionDays ?? 0).toLocaleString(screenLocale()) });
+      return tf('inbox.retentionArmed', { days: (n.retentionDays ?? 0).toLocaleString(screenLocale()), count: (n.retentionCount ?? 0).toLocaleString(screenLocale()) });
     default:
       return t('inbox.other');
   }
@@ -93,7 +93,7 @@ function recalculated(summary: SlaSummary | null): string {
     { n: summary?.becameWarning ?? 0, key: 'inbox.slaBecameWarning' },
     { n: summary?.released ?? 0, key: 'inbox.slaReleased' },
   ] as const;
-  const said = parts.filter((p) => p.n > 0).map((p) => tf(p.key, { n: p.n.toLocaleString('ko') }));
+  const said = parts.filter((p) => p.n > 0).map((p) => tf(p.key, { n: p.n.toLocaleString(screenLocale()) }));
   return tf('inbox.slaRecalculated', { parts: said.join(', ') });
 }
 
