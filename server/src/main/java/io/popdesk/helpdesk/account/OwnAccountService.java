@@ -9,8 +9,6 @@ import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.account.AccountRepository.AccountRow;
 import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
-import io.popdesk.helpdesk.company.CompanyRepository;
-import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -46,17 +44,17 @@ public class OwnAccountService {
      * in code order; none for an admin. {@code managed}: the codes of the companies where a customer is a
      * manager (S2-AC-07).
      */
-    public record Own(AccountRow account, List<CompanyRow> companies, Set<String> managed) {}
+    public record Own(AccountRow account, List<? extends AccountCompanies.Company> companies, Set<String> managed) {}
 
     private final AccountRepository accounts;
-    private final CompanyRepository companies;
+    private final AccountCompanies companies;
     private final Sessions sessions;
     private final PasswordEncoder passwords;
     private final AuditLog audit;
     private final Transactions transactions;
     private final Clock clock;
 
-    OwnAccountService(AccountRepository accounts, CompanyRepository companies, Sessions sessions,
+    OwnAccountService(AccountRepository accounts, AccountCompanies companies, Sessions sessions,
             PasswordEncoder passwords, AuditLog audit, Transactions transactions, Clock clock) {
         this.accounts = accounts;
         this.companies = companies;

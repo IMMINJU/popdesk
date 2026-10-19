@@ -13,13 +13,12 @@ import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.CompanyStatus;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
+import io.popdesk.helpdesk.account.AccountCompanies.Company;
+import io.popdesk.helpdesk.account.AccountCompanies.Membership;
 import io.popdesk.helpdesk.account.AccountRepository.InvitationState;
 import io.popdesk.helpdesk.account.AccountRepository.PendingRow;
 import io.popdesk.helpdesk.audit.AuditAction;
 import io.popdesk.helpdesk.audit.AuditLog;
-import io.popdesk.helpdesk.company.CompanyRepository;
-import io.popdesk.helpdesk.company.CompanyRepository.CompanyRow;
-import io.popdesk.helpdesk.company.CompanyRepository.MembershipRow;
 import io.popdesk.notification.InvitationLinks;
 import io.popdesk.notification.MailKind;
 import io.popdesk.notification.MailQueue;
@@ -65,10 +64,10 @@ public class InvitationService implements InvitationLinks {
     public record Invited(long accountId, String inviteLink) {}
 
     /** An entry of the pending list (S0-AC-40). */
-    public record Pending(PendingRow row, List<MembershipRow> companies, boolean expired) {}
+    public record Pending(PendingRow row, List<? extends Membership> companies, boolean expired) {}
 
     private final AccountRepository accounts;
-    private final CompanyRepository companies;
+    private final AccountCompanies companies;
     private final MailQueue mail;
     private final AuditLog audit;
     private final PasswordEncoder passwords;
@@ -77,7 +76,7 @@ public class InvitationService implements InvitationLinks {
     private final Clock clock;
     private final String locale;
 
-    InvitationService(AccountRepository accounts, CompanyRepository companies, MailQueue mail, AuditLog audit,
+    InvitationService(AccountRepository accounts, AccountCompanies companies, MailQueue mail, AuditLog audit,
             PasswordEncoder passwords, PublicAddress address, Transactions transactions, Clock clock,
             InstallationLocale locale) {
         this.accounts = accounts;
@@ -115,7 +114,7 @@ public class InvitationService implements InvitationLinks {
         String token = Tokens.create();
         Invited invited = transactions.run(() -> {
             Viewer viewer = admin.viewer();
-            List<CompanyRow> found = companies.findByCodes(viewer, wanted);
+            List<? extends Company> found = companies.findByCodes(viewer, wanted);
             if (found.size() != wanted.size() || found.stream().anyMatch(c -> c.status() != CompanyStatus.ACTIVE)) {
                 throw ApiException.invalid("companyCodes", "UNKNOWN_VALUE");
             }
@@ -138,20 +137,20 @@ public class InvitationService implements InvitationLinks {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public Optional<Long> inviteCustomer(AuditLog.Actor manager, String cleanEmail, String cleanName,
-            CompanyRow company) {
+            Company company) {
         return create(manager, cleanEmail, cleanName, Role.CUSTOMER, List.of(company), Tokens.create());
     }
 
     /** The rows of an invitation; empty, with nothing written, when an account has the email. */
     private Optional<Long> create(AuditLog.Actor actor, String cleanEmail, String cleanName, Role role,
-            List<CompanyRow> found, String token) {
+            List<? extends Company> found, String token) {
         Instant now = now();
         Long accountId = accounts.insertInvited(cleanEmail, cleanName, role, locale, now).orElse(null);
         if (accountId == null) {
             return Optional.empty();
         }
         accounts.insertInvitation(accountId, Tokens.hash(token), now, now.plus(VALIDITY));
-        for (CompanyRow company : found) {
+        for (Company company : found) {
             companies.insertMember(company.id(), accountId, now);
         }
         mail.queue(MailKind.INVITATION, accountId, null, null);
@@ -159,7 +158,7 @@ public class InvitationService implements InvitationLinks {
         changes.put("email", cleanEmail);
         changes.put("name", cleanName);
         changes.put("role", role.name());
-        changes.put("companyCodes", found.stream().map(CompanyRow::code).sorted().toList());
+        changes.put("companyCodes", found.stream().map(Company::code).sorted().toList());
         audit.record(actor, AuditAction.INVITATION_CREATED, accountTarget(accountId), changes);
         return Optional.of(accountId);
     }
@@ -378,7 +377,7 @@ public class InvitationService implements InvitationLinks {
     public Paged<Pending> pending(CurrentAccount admin, int page, int size) {
         PageRequest request = PageRequest.of(page, size);
         List<PendingRow> rows = accounts.listPending(request.offset(), request.size());
-        List<MembershipRow> memberships = companies.listMemberships(admin.viewer(),
+        List<? extends Membership> memberships = companies.listMemberships(admin.viewer(),
                 rows.stream().map(PendingRow::accountId).toList());
         Instant now = clock.instant();
         return request.map(rows, accounts.countPending(), row -> new Pending(row,

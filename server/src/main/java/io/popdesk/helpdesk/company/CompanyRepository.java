@@ -4,6 +4,7 @@ import io.popdesk.helpdesk.AccountStatus;
 import io.popdesk.helpdesk.CompanyStatus;
 import io.popdesk.helpdesk.Role;
 import io.popdesk.helpdesk.Viewer;
+import io.popdesk.helpdesk.account.AccountCompanies;
 import io.popdesk.helpdesk.account.AccountRepository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -24,11 +25,11 @@ import org.springframework.stereotype.Repository;
  * in the session (S0-AC-26).
  */
 @Repository
-public class CompanyRepository {
+public class CompanyRepository implements AccountCompanies {
 
     /** One company row. */
     public record CompanyRow(long id, String code, String name, String legalName, CompanyStatus status,
-            Instant createdAt) {}
+            Instant createdAt) implements AccountCompanies.Company {}
 
     /**
      * A customer or agent of a company; {@code photoUpdatedAt} is null without a profile photo.
@@ -51,7 +52,7 @@ public class CompanyRepository {
     record MemberRef(long accountId, boolean manager) {}
 
     /** A company someone belongs to, by account. */
-    public record MembershipRow(long accountId, String code, String name) {}
+    public record MembershipRow(long accountId, String code, String name) implements AccountCompanies.Membership {}
 
     private static final String COLUMNS = "c.id, c.code, c.name, c.legal_name, c.status, c.created_at";
 
