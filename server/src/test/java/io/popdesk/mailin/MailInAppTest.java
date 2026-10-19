@@ -191,6 +191,11 @@ public abstract class MailInAppTest extends ConnectedAppTest {
                 m -> m.isTo(person.email()) && subject.equals(m.subject()));
     }
 
+    /** Subject and text of a mail to the person, their name and email replaced by {@code {name}} and {@code {email}}. */
+    protected static String withoutRecipient(ReceivedMail mail, Session person) {
+        return (mail.subject() + "\n" + mail.text()).replace(person.email(), "{email}").replace(person.name(), "{name}");
+    }
+
     /** The mail sent to the person with exactly this subject. */
     protected List<ReceivedMail> mailTo(Session person, String subject) {
         return mailTo(person).stream().filter(m -> subject.equals(m.subject())).toList();

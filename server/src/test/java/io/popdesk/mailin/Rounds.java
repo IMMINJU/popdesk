@@ -11,7 +11,7 @@ import java.time.OffsetDateTime;
 import tools.jackson.databind.JsonNode;
 
 /**
- * Mail-in rounds (S12-AC-06): the app reads the mailbox right after it starts and then once a minute by its clock. A
+ * Mail-in rounds: the app reads the mailbox right after it starts and then once a minute by its clock. A
  * round here is "move the shared clock a minute, then wait until {@code mailIn} of the system status says a round
  * ended at or after that time" (never a fixed wait). Mail put in the mailbox before {@link #next()} is read in that
  * round.
