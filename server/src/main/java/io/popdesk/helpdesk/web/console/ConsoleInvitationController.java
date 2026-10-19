@@ -106,7 +106,7 @@ class ConsoleInvitationController {
                     + "link once (S0-AC-38). The response has `Cache-Control: no-store` (S0-AC-101).")
     @ApiResponse(responseCode = "200", description = "The new link.")
     @ApiResponse(responseCode = "400", description = "`ACCOUNT_ANONYMIZED`: the account is anonymized; checked "
-            + "before the 404 for an account that is not `INVITED` (S10A-AC-13).")
+            + "before either 404, so also when SMTP is configured (S10A-AC-13).")
     @ApiResponse(responseCode = "401", description = "`UNAUTHENTICATED`.")
     @ApiResponse(responseCode = "403", description = "`FORBIDDEN`: admins only. `CSRF_TOKEN_INVALID`.")
     @ApiResponse(responseCode = "404", description = "`NOT_FOUND`: SMTP is configured (S0-AC-39), or no `INVITED` "

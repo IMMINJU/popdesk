@@ -137,7 +137,9 @@ final class AutomatedMail {
 
     /**
      * The value without its comments: text in parentheses, which may nest and may hold {@code \}-quoted characters,
-     * outside quoted strings. An unclosed comment runs to the end.
+     * outside quoted strings. An unclosed comment runs to the end. A comment counts as a space (RFC 5322 CFWS), so it
+     * splits a word: {@code dmarc=fa(x)il} reads as the result {@code fa}, which is neither {@code fail} nor
+     * {@code pass}.
      */
     static String withoutComments(String value) {
         StringBuilder out = new StringBuilder(value.length());

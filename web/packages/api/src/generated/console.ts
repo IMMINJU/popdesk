@@ -549,7 +549,7 @@ export interface paths {
         put?: never;
         /**
          * Export a company's data
-         * @description Starts writing one ZIP in the background with the company's issues, public comments, attachments, and member customers (email and name), and answers at once with the export as `RUNNING` (S10B-AC-01, S10B-AC-11 to S10B-AC-17). An `ARCHIVED` or `SUSPENDED` company can be exported too. One export runs at a time in the whole installation (S10B-AC-02). When the ZIP is ready the export becomes `DONE` and the admin who asked gets `COMPANY_EXPORT_READY` (S10B-AC-04); when it fails it becomes `FAILED` and every admin gets `COMPANY_EXPORT_FAILED` (S10B-AC-05). Recorded as `COMPANY_EXPORTED` (S10B-AC-09). Checks, in this order: role (403), the company (404), the body (400), another export running (409).
+         * @description Starts writing one ZIP in the background with the company's issues, public comments, attachments, and member customers (email and name), and answers at once with the export as `RUNNING` (S10B-AC-01, S10B-AC-11 to S10B-AC-17). An `ARCHIVED` or `SUSPENDED` company can be exported too. One export runs at a time in the whole installation (S10B-AC-02). When the ZIP is ready the export becomes `DONE` and the admin who asked gets `COMPANY_EXPORT_READY` (S10B-AC-04); when it fails it becomes `FAILED` and every admin gets `COMPANY_EXPORT_FAILED` (S10B-AC-05). Recorded as `COMPANY_EXPORTED` (S10B-AC-09). Checks, in this order: role (403), the company (404), the body (400), the single-instance lock (503), another export running (409).
          */
         post: operations["createCompanyExport"];
         delete?: never;
@@ -6573,7 +6573,7 @@ export interface operations {
                     "application/json": components["schemas"]["InvitationLink"];
                 };
             };
-            /** @description `ACCOUNT_ANONYMIZED`: the account is anonymized; checked before the 404 for an account that is not `INVITED` (S10A-AC-13). */
+            /** @description `ACCOUNT_ANONYMIZED`: the account is anonymized; checked before either 404, so also when SMTP is configured (S10A-AC-13). */
             400: {
                 headers: {
                     [name: string]: unknown;

@@ -61,8 +61,8 @@ class ConsoleCompanyExportController {
                     + "When the ZIP is ready the export becomes `DONE` and the admin who asked gets "
                     + "`COMPANY_EXPORT_READY` (S10B-AC-04); when it fails it becomes `FAILED` and every admin "
                     + "gets `COMPANY_EXPORT_FAILED` (S10B-AC-05). Recorded as `COMPANY_EXPORTED` (S10B-AC-09). "
-                    + "Checks, in this order: role (403), the company (404), the body (400), another export "
-                    + "running (409).")
+                    + "Checks, in this order: role (403), the company (404), the body (400), the single-instance "
+                    + "lock (503), another export running (409).")
     @ApiResponse(responseCode = "202", description = "Started.")
     @ApiResponse(responseCode = "400", description = "`INVALID_INPUT`: `includeInternal` or `includePrivate` "
             + "missing or `null` (`REQUIRED`).")
