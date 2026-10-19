@@ -12,6 +12,7 @@ import io.popdesk.helpdesk.account.CurrentAccount;
 import io.popdesk.helpdesk.audit.AuditRechain;
 import io.popdesk.helpdesk.audit.AuditRechain.Recalculation;
 import io.popdesk.helpdesk.company.MembershipRequestService;
+import io.popdesk.helpdesk.mailin.MailReceivedRepository;
 import io.popdesk.helpdesk.photo.PhotoRepository;
 import io.popdesk.notification.IssueInbox;
 import io.popdesk.notification.MailQueue;
@@ -41,12 +42,13 @@ public class AnonymizationService {
     private final MailQueue mail;
     private final IssueInbox inbox;
     private final MembershipRequestService requests;
+    private final MailReceivedRepository receivedMail;
     private final Transactions transactions;
     private final InstallationLocale locale;
 
     AnonymizationService(AccountRepository accounts, AccountService accountService, AuditRechain rechain,
             PhotoRepository photos, MailQueue mail, IssueInbox inbox, MembershipRequestService requests,
-            Transactions transactions, InstallationLocale locale) {
+            MailReceivedRepository receivedMail, Transactions transactions, InstallationLocale locale) {
         this.accounts = accounts;
         this.accountService = accountService;
         this.rechain = rechain;
@@ -54,6 +56,7 @@ public class AnonymizationService {
         this.mail = mail;
         this.inbox = inbox;
         this.requests = requests;
+        this.receivedMail = receivedMail;
         this.transactions = transactions;
         this.locale = locale;
     }
@@ -69,8 +72,8 @@ public class AnonymizationService {
      *       {@code ACCOUNT_ANONYMIZED}, {@code OWN_ACCOUNT}, and {@code LAST_ADMIN}, which roll the first
      *       part back too, the account row, its invitation and reset link, the cleared assignments with
      *       {@code clearAssignments}, {@code ACCOUNT_ANONYMIZED}, and its sessions;
-     *   <li>the profile photo, the emails queued to it, its inbox, and the copies of its email and name in
-     *       membership requests;
+     *   <li>the profile photo, the emails queued to it, its inbox, the copies of its email and name in
+     *       membership requests, and its address in the records of the email it sent (S12-AC-31);
      *   <li>the second part of the recalculation, last, which holds the chain's head until the commit and
      *       appends {@code AUDIT_RECHAINED} before {@code ACCOUNT_ANONYMIZED}. When either part met an entry or
      *       a head that does not hold, it is 409 {@code AUDIT_CHAIN_BROKEN} and everything rolls back
@@ -92,6 +95,7 @@ public class AnonymizationService {
                 mail.dropTo(accountId);
                 inbox.deleteOfAccount(accountId);
                 requests.anonymize(accountId, anonymous.email(), anonymous.name());
+                receivedMail.clearSender(accountId);
                 rechain.finish(recalculation, admin.actor());
                 AccountRow now = accounts.findById(accountId).orElseThrow();
                 return new Suspension(now, suspension.clearedIssues());
