@@ -1,6 +1,7 @@
 package io.popdesk.notification.web.console;
 
 import io.popdesk.Paged;
+import io.popdesk.notification.MailInState;
 import io.popdesk.notification.OidcSignInState;
 import io.popdesk.notification.ops.CleanupJobs;
 import io.popdesk.notification.outbox.DeliveryStatus;
@@ -35,14 +36,16 @@ class ConsoleSystemController {
     private final Resend resend;
     private final TestMail testMail;
     private final OidcSignInState oidc;
+    private final MailInState mailIn;
 
     ConsoleSystemController(DeliveryStatus status, CleanupJobs cleanupJobs, Resend resend, TestMail testMail,
-            OidcSignInState oidc) {
+            OidcSignInState oidc, MailInState mailIn) {
         this.status = status;
         this.cleanupJobs = cleanupJobs;
         this.resend = resend;
         this.testMail = testMail;
         this.oidc = oidc;
+        this.mailIn = mailIn;
     }
 
     @Operation(operationId = "getSystemStatus", summary = "Outgoing channels, the sandbox, and cleanup jobs",
@@ -64,13 +67,21 @@ class ConsoleSystemController {
         return new SystemStatus(channel(status.mail()), channel(status.webhook()), channel(status.auditForward()),
                 status.sandbox(), status.sandboxMailToSet(), cleanupJobs.list().stream()
                         .map(job -> new CleanupJobStatus(job.name(), utc(job.lastRunAt()), job.deleted())).toList(),
-                oidc(oidc.snapshot()), new MailInStatus(false, MailInOffReason.NOT_SET, null, 0, null, 0, 0));
+                oidc(oidc.snapshot()), mailIn(mailIn.snapshot()));
     }
 
     private static OidcStatus oidc(OidcSignInState.Snapshot s) {
         return new OidcStatus(s.enabled(), s.apps().stream().map(OidcApp::valueOf).toList(), utc(s.lastSuccessAt()),
                 s.providerFailures(), s.lastFailureKind() == null ? null
                         : new OidcFailure(OidcFailureKind.valueOf(s.lastFailureKind().name()), utc(s.lastFailureAt())));
+    }
+
+    private static MailInStatus mailIn(MailInState.Snapshot s) {
+        MailInFailure lastFailure = s.lastFailureKind() == null ? null
+                : new MailInFailure(MailInFailureKind.valueOf(s.lastFailureKind().name()), utc(s.lastFailureAt()));
+        return new MailInStatus(s.enabled(),
+                s.offReason() == null ? null : MailInOffReason.valueOf(s.offReason().name()), utc(s.lastSuccessAt()),
+                s.roundFailures(), lastFailure, s.retrying(), s.quarantined90d());
     }
 
     @Operation(operationId = "listFailedDeliveries", summary = "Outbox rows that stopped retrying",
