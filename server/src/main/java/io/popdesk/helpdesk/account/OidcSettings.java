@@ -143,7 +143,7 @@ final class OidcSettings {
 
     /** The apps OIDC sign-in is on for, {@code CONSOLE} before {@code PORTAL}; empty when off. */
     List<App> apps() {
-        return List.copyOf(apps);
+        return List.of(App.CONSOLE, App.PORTAL).stream().filter(apps::contains).toList();
     }
 
     /** {@code OIDC_ISSUER} as written; null when off. */

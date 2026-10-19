@@ -1,6 +1,6 @@
 package io.popdesk.helpdesk.web.publicapi;
 
-import io.popdesk.NotImplementedException;
+import io.popdesk.helpdesk.account.SignInFlow;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,13 +27,19 @@ class PublicOidcController {
             + "could not be reached or answered wrongly), `/login?oidc=busy` (too many sign-ins started)";
     static final String OFF = "`NOT_FOUND`: OIDC sign-in is not on for this host's app (S11-AC-06).";
 
+    private final SignInFlow flow;
+
+    PublicOidcController(SignInFlow flow) {
+        this.flow = flow;
+    }
+
     @Operation(operationId = "getSignInOptions", summary = "Ways to sign in",
             description = "Whether the sign-in page offers OIDC sign-in on this host (S11-AC-03). Answers without a "
                     + "session. `no-store`.")
     @ApiResponse(responseCode = "200", description = "The options.")
     @GetMapping("/sign-in-options")
-    SignInOptions getSignInOptions() {
-        return new SignInOptions(false);
+    SignInOptions getSignInOptions(HttpServletRequest request) {
+        return new SignInOptions(flow.oidcOffered(request));
     }
 
     @Operation(operationId = "startOidcSignIn", summary = "Start an OIDC sign-in",
@@ -51,8 +59,9 @@ class PublicOidcController {
     void startOidcSignIn(
             @Parameter(description = "The page to go to after signing in: a path in the same app that starts with "
                     + "one `/`, without control characters, at most 512 characters. Any other value is taken as `/` "
-                    + "(S11-AC-05).") @RequestParam(required = false) @Nullable String next) {
-        throw new NotImplementedException();
+                    + "(S11-AC-05).") @RequestParam(required = false) @Nullable String next,
+            HttpServletRequest request, HttpServletResponse response) {
+        flow.oidcStart(next, request, response);
     }
 
     @Operation(operationId = "finishOidcSignIn", summary = "Come back from the OIDC provider",
@@ -75,7 +84,8 @@ class PublicOidcController {
             @Parameter(description = "The `state` sent at the start.") @RequestParam(required = false) @Nullable
                     String state,
             @Parameter(description = "The provider's error code, for example `access_denied`.")
-                    @RequestParam(required = false) @Nullable String error) {
-        throw new NotImplementedException();
+                    @RequestParam(required = false) @Nullable String error,
+            HttpServletRequest request, HttpServletResponse response) {
+        flow.oidcCallback(code, state, error, request, response);
     }
 }
