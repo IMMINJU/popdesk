@@ -1,5 +1,5 @@
 // The parts of C-18 시스템 상태 (4b screens.md 1~4절): the sandbox band, the channel table,
-// the `failed` rows with 다시 보내기, 시험 메일 and the cleanup jobs. They draw what they are
+// OIDC sign-in (11 screens.md C-18), the `failed` rows with 다시 보내기, 시험 메일 and the cleanup jobs. They draw what they are
 // given; the screen asks the server and keeps the states. No secret values.
 import { Alert, Badge, Button, DataTable, RelativeTime, type DataTableColumn } from '@popdesk/ui';
 import type { ReactNode } from 'react';
@@ -11,6 +11,7 @@ type ChannelStatus = Schemas['ChannelStatus'];
 type FailedDelivery = Schemas['FailedDelivery'];
 type CleanupJobStatus = Schemas['CleanupJobStatus'];
 type TestMailResult = Schemas['TestMailResult'];
+type OidcStatus = Schemas['OidcStatus'];
 
 const DOCS = 'https://github.com/IMMINJU/popdesk/blob/main/docs/operate/configuration.md';
 /** Where an operator reads which environment variables turn a channel on. */
@@ -92,6 +93,46 @@ export function ChannelTable(props: { status: SystemStatus | undefined; loading?
       skeletonRows={props.skeletonRows ?? 0}
       density="compact"
     />
+  );
+}
+
+const OIDC_APPS_WORDS: Record<OidcStatus['apps'][number], string> = { CONSOLE: '콘솔', PORTAL: '포털' };
+const OIDC_FAILURE_WORDS: Record<NonNullable<OidcStatus['lastFailure']>['kind'], string> = {
+  DISCOVERY: '제공자 정보를 받지 못함',
+  TOKEN: '토큰을 받지 못함',
+  ID_TOKEN: 'ID 토큰이 맞지 않음',
+};
+
+/** OIDC sign-in, right after the channels: off, or the apps it is on for and what the app counted since it started. */
+export function OidcPart(props: { oidc: OidcStatus }) {
+  const { oidc } = props;
+  return (
+    <section className="pd-section" aria-labelledby="oidc-title">
+      <h2 id="oidc-title" className="pd-section-title">
+        OIDC 로그인
+      </h2>
+      {oidc.enabled ? (
+        <>
+          <ul className="pd-oidc-status">
+            <li>켜짐: {oidc.apps.map((app) => OIDC_APPS_WORDS[app]).join('과 ')}</li>
+            <li>
+              마지막 성공: {oidc.lastSuccessAt === null ? <span className="pd-muted">앱이 뜬 뒤 없음</span> : <RelativeTime dateTime={oidc.lastSuccessAt} />}
+            </li>
+            <li>제공자 실패: {oidc.providerFailures.toLocaleString('ko')}건</li>
+            {oidc.lastFailure !== null && (
+              <li>
+                마지막 실패: {OIDC_FAILURE_WORDS[oidc.lastFailure.kind]}, <RelativeTime dateTime={oidc.lastFailure.at} />
+              </li>
+            )}
+          </ul>
+          <p className="pd-muted pd-section-note">수는 앱이 다시 시작하면 0부터 셉니다.</p>
+        </>
+      ) : (
+        <p>
+          <Badge tone="neutral">꺼짐</Badge>
+        </p>
+      )}
+    </section>
   );
 }
 

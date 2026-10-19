@@ -13,7 +13,7 @@ import { PageNav } from '../app/PageNav';
 import { PAGE_SIZE, usePageMove, usePageParam } from '../app/paging';
 import { call, type Failure, type Result } from '../app/result';
 import { useToast } from '../app/toastContext';
-import { ChannelTable, CleanupJobs, FailedTable, SandboxBand, TestMail, type TestMailState } from './C18Parts';
+import { ChannelTable, CleanupJobs, FailedTable, OidcPart, SandboxBand, TestMail, type TestMailState } from './C18Parts';
 
 type FailedDelivery = Schemas['FailedDelivery'];
 
@@ -128,6 +128,7 @@ export function C18SystemStatus() {
         </h2>
         {(load.status !== 'failed' || data) && <ChannelTable status={data?.status} loading={firstLoad} skeletonRows={load.slow ? 3 : 0} />}
       </section>
+      {data && <OidcPart oidc={data.status.oidc} />}
       {data && (
         <TestMail
           enabled={data.status.mail.enabled}

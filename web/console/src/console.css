@@ -418,6 +418,19 @@
 
 /* C-18 system status */
 
+/* OIDC sign-in (slice 11): one line for each count, without bullets. */
+.pd-oidc-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 /* One line under a section title, or beside its button. */
 .pd-section-note {
   font-size: var(--text-sm);
