@@ -48,7 +48,7 @@ import {
   type IssueSort,
 } from '../app/issueFilters';
 import { LoadFailed, PageTitle } from '../app/layout';
-import { t } from '../app/locale';
+import { t, texts, tf } from '../app/locale';
 import { rateLimitedText, slaWords } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { PageNav } from '../app/PageNav';
@@ -56,29 +56,55 @@ import { PAGE_SIZE, usePageMove, usePageParam } from '../app/paging';
 import { call } from '../app/result';
 import { useSession } from '../app/sessionContext';
 import { SlaBadge } from '../app/SlaBadge';
-import { worseGoal } from '../app/slaGoals';
+import { goalText, worseGoal } from '../app/slaGoals';
 
 type IssueSummary = Schemas['IssueSummary'];
 type Person = Schemas['Person'];
 
-const STATUS_OPTIONS = ISSUE_STATUSES.map((value) => ({ value, label: ISSUE_STATUS_WORDS[value].agent }));
-const ASSIGNEE_OPTIONS: SelectOption[] = [
-  { value: 'me', label: '나' },
-  { value: 'none', label: '담당 없음' },
-  { value: 'unavailable', label: '담당자가 볼 수 없음' },
+// Read while drawing, so the words follow the screen language.
+const WORDS = texts({
+  me: 'issueList.assigneeMe',
+  unassigned: 'issueList.unassigned',
+  unavailable: 'issueList.assigneeUnavailable',
+  sortCreated: 'issueList.sortCreated',
+  sortDue: 'issueList.sortDue',
+  sortSla: 'issueList.sortSla',
+  slaWarning: 'issueList.slaWarning',
+  slaBreached: 'issueList.slaBreached',
+  key: 'issueList.key',
+  title: 'issueList.issueTitle',
+  company: 'issueList.company',
+  status: 'issueList.status',
+  priority: 'issueList.priority',
+  reporter: 'issueList.reporter',
+  assignee: 'issueList.assignee',
+  labels: 'issueList.labels',
+  due: 'issueList.due',
+  created: 'issueList.created',
+  private: 'issueList.private',
+  filedOnBehalf: 'issueList.filedOnBehalf',
+  overdue: 'issueList.overdue',
+  all: 'issueList.viewAll',
+});
+
+const statusOptions = () => ISSUE_STATUSES.map((value) => ({ value, label: ISSUE_STATUS_WORDS[value].agent }));
+const fixedAssigneeOptions = (): SelectOption[] => [
+  { value: 'me', label: WORDS.me },
+  { value: 'none', label: WORDS.unassigned },
+  { value: 'unavailable', label: WORDS.unavailable },
 ];
 
-const SORT_OPTIONS: SelectOption[] = [
-  { value: 'createdAt', label: '올린 시각순' },
-  { value: 'dueDate', label: '마감일순' },
-  { value: 'slaDue', label: 'SLA 기한순' },
+const sortOptions = (): SelectOption[] => [
+  { value: 'createdAt', label: WORDS.sortCreated },
+  { value: 'dueDate', label: WORDS.sortDue },
+  { value: 'slaDue', label: WORDS.sortSla },
 ];
 
 const SORTS: readonly IssueSort[] = ['createdAt', 'dueDate', 'slaDue'];
 
-const SLA_OPTIONS: SelectOption[] = [
-  { value: 'warning', label: '곧 넘김' },
-  { value: 'breached', label: '넘김' },
+const slaOptions = (): SelectOption[] => [
+  { value: 'warning', label: WORDS.slaWarning },
+  { value: 'breached', label: WORDS.slaBreached },
 ];
 
 /** The worse running goal: its badge, then the time left; the goal's name is read, not shown. */
@@ -89,18 +115,18 @@ function SlaCell(props: { issue: IssueSummary }) {
     <span className="pd-inline pd-sla-cell">
       <SlaBadge state={worse.goal.state} />
       <span>
-        <span className="pd-sr-only">{worse.name} </span>
+        <span className="pd-sr-only">{goalText(worse.name)} </span>
         {slaWords(worse.goal.remainingMinutes)}
       </span>
     </span>
   );
 }
 
-const columns: DataTableColumn<IssueSummary>[] = [
-  { key: 'key', header: '키', cell: (i) => <span className="pd-key">{i.key}</span>, sticky: true, width: '6.5rem' },
+const columns = (): DataTableColumn<IssueSummary>[] => [
+  { key: 'key', header: WORDS.key, cell: (i) => <span className="pd-key">{i.key}</span>, sticky: true, width: '6.5rem' },
   {
     key: 'title',
-    header: '제목',
+    header: WORDS.title,
     sticky: true,
     width: '14rem',
     cell: (i) => (
@@ -108,32 +134,32 @@ const columns: DataTableColumn<IssueSummary>[] = [
         <Link to={`/issues/${encodeURIComponent(i.key)}`}>{i.title}</Link>
         {i.private && (
           <Badge tone="neutral" icon={<LockIcon size={12} />}>
-            비공개
+            {WORDS.private}
           </Badge>
         )}
-        {i.filedOnBehalf && <Badge tone="neutral">대리 등록</Badge>}
-        {i.openTaskCount > 0 && <Badge tone="neutral">{`작업 ${String(i.openTaskCount)}`}</Badge>}
+        {i.filedOnBehalf && <Badge tone="neutral">{WORDS.filedOnBehalf}</Badge>}
+        {i.openTaskCount > 0 && <Badge tone="neutral">{tf('issueList.openTasks', { count: i.openTaskCount })}</Badge>}
       </span>
     ),
   },
-  { key: 'company', header: '고객사', cell: (i) => i.companyName },
-  { key: 'status', header: '상태', cell: (i) => <StatusBadge kind="issue" status={i.status} audience="agent" /> },
-  { key: 'priority', header: '우선순위', cell: (i) => <PriorityLabel priority={i.priority} /> },
-  { key: 'reporter', header: '올린 사람', cell: (i) => i.reporter.name },
-  { key: 'assignee', header: '담당자', cell: (i) => <AssigneeName person={i.assignee} unavailable={i.assigneeUnavailable} /> },
-  { key: 'labels', header: '라벨', cell: (i) => <LabelChips labels={byName(i.labels).map(labelItem)} moreText={moreLabelsText} /> },
+  { key: 'company', header: WORDS.company, cell: (i) => i.companyName },
+  { key: 'status', header: WORDS.status, cell: (i) => <StatusBadge kind="issue" status={i.status} audience="agent" /> },
+  { key: 'priority', header: WORDS.priority, cell: (i) => <PriorityLabel priority={i.priority} /> },
+  { key: 'reporter', header: WORDS.reporter, cell: (i) => i.reporter.name },
+  { key: 'assignee', header: WORDS.assignee, cell: (i) => <AssigneeName person={i.assignee} unavailable={i.assigneeUnavailable} /> },
+  { key: 'labels', header: WORDS.labels, cell: (i) => <LabelChips labels={byName(i.labels).map(labelItem)} moreText={moreLabelsText} /> },
   {
     key: 'due',
-    header: '마감일',
+    header: WORDS.due,
     cell: (i) =>
       i.dueDate === null ? null : (
         <span className="pd-inline pd-due-cell">
           <time dateTime={i.dueDate}>{shortDate(i.dueDate)}</time>
-          {i.overdue && <Badge tone="warning">지남</Badge>}
+          {i.overdue && <Badge tone="warning">{WORDS.overdue}</Badge>}
         </span>
       ),
   },
-  { key: 'created', header: '올린 시각', cell: (i) => <RelativeTime dateTime={i.createdAt} focusable={false} />, align: 'end' },
+  { key: 'created', header: WORDS.created, cell: (i) => <RelativeTime dateTime={i.createdAt} focusable={false} />, align: 'end' },
   { key: 'sla', header: 'SLA', cell: (i) => <SlaCell issue={i} /> },
 ];
 
@@ -182,7 +208,7 @@ export function C3IssueList() {
   const sort = readIssueSort(params);
   const key = filterKey(filters);
   const filtered = key !== '';
-  const view = ISSUE_VIEWS.find((v) => filterKey(v.filters) === key)?.name ?? null;
+  const view = ISSUE_VIEWS.find((v) => filterKey(v.filters) === key)?.id ?? null;
 
   const load = useLoad(
     () =>
@@ -247,24 +273,24 @@ export function C3IssueList() {
   }
 
   const people = candidates.filter((p) => p.accountId !== me?.id);
-  const assigneeOptions: SelectOption[] = [...ASSIGNEE_OPTIONS, ...people.map((p) => ({ value: String(p.accountId), label: p.name }))];
+  const assigneeOptions: SelectOption[] = [...fixedAssigneeOptions(), ...people.map((p) => ({ value: String(p.accountId), label: p.name }))];
   if (isPerson(filters.assignee) && !assigneeOptions.some((o) => o.value === filters.assignee)) {
     // A person who is not a choice now: no company chosen, or no longer a candidate. The name comes with the rows.
     const id = Number(filters.assignee);
     const name = id === me?.id ? me.name : rows.find((i) => i.assignee?.accountId === id)?.assignee?.name;
-    assigneeOptions.push({ value: filters.assignee, label: name ?? '다른 사람' });
+    assigneeOptions.push({ value: filters.assignee, label: name ?? t('issueList.otherPerson') });
   }
-  const reporterName = filters.reporter === null ? null : (rows.find((i) => i.reporter.accountId === filters.reporter)?.reporter.name ?? '한 명');
+  const reporterName = filters.reporter === null ? null : (rows.find((i) => i.reporter.accountId === filters.reporter)?.reporter.name ?? t('issueList.onePerson'));
 
   let empty: ReactNode;
   if (outOfRange) {
-    empty = <EmptyState title="이 쪽에는 문의가 없습니다" action={<Link to={issuesHref(filters, sort)}>1쪽으로</Link>} />;
-  } else if (view === '내 담당') {
+    empty = <EmptyState title={t('issueList.pageEmpty')} action={<Link to={issuesHref(filters, sort)}>{t('issueList.firstPage')}</Link>} />;
+  } else if (view === 'mine') {
     empty = (
       <EmptyState
         icon={<InboxIcon size={20} />}
-        title="담당인 열린 문의가 없습니다"
-        action={<Link to={issuesHref(ISSUE_VIEWS[1].filters)}>담당 없음 보기</Link>}
+        title={t('issueList.mineEmpty')}
+        action={<Link to={issuesHref(ISSUE_VIEWS[1].filters)}>{t('issueList.showUnassigned')}</Link>}
       />
     );
   } else if (filtered) {
@@ -273,14 +299,14 @@ export function C3IssueList() {
     empty = (
       <EmptyState
         icon={<InboxIcon size={20} />}
-        title="아직 문의가 없습니다. 고객사를 만들고 고객을 초대하면 고객이 포털에서 문의를 올립니다."
-        action={<Link to="/companies">고객사 목록</Link>}
+        title={t('issueList.adminEmpty')}
+        action={<Link to="/companies">{t('issueList.toCompanies')}</Link>}
       />
     );
   } else if (hasCompanies === false) {
-    empty = <EmptyState icon={<InboxIcon size={20} />} title="배정된 고객사가 없습니다. 관리자에게 배정을 요청하세요." />;
+    empty = <EmptyState icon={<InboxIcon size={20} />} title={t('issueOnBehalf.noCompaniesAgent')} />;
   } else {
-    empty = <EmptyState icon={<InboxIcon size={20} />} title="배정된 고객사에 문의가 없습니다." />;
+    empty = <EmptyState icon={<InboxIcon size={20} />} title={t('issueList.assignedEmpty')} />;
   }
 
   return (
@@ -294,12 +320,12 @@ export function C3IssueList() {
             void navigate(filters.companyCode === '' ? '/issues/new' : `/issues/new?${new URLSearchParams({ companyCode: filters.companyCode }).toString()}`);
           }}
         >
-          대리 등록
+          {t('issueOnBehalf.title')}
         </Button>
       </div>
-      <nav className="pd-views" aria-label="보기">
+      <nav className="pd-views" aria-label={t('issueList.views')}>
         {ISSUE_VIEWS.map((v) => (
-          <Link key={v.name} to={issuesHref(v.filters)} aria-current={v.name === view ? 'page' : undefined}>
+          <Link key={v.id} to={issuesHref(v.filters)} aria-current={v.id === view ? 'page' : undefined}>
             {v.name}
           </Link>
         ))}
@@ -316,16 +342,16 @@ export function C3IssueList() {
           }}
         />
         <CheckboxGroup
-          legend="상태"
-          options={STATUS_OPTIONS}
+          legend={WORDS.status}
+          options={statusOptions()}
           value={filters.status}
           onChange={(status) => {
             change({ ...filters, status: ISSUE_STATUSES.filter((s) => status.includes(s)) });
           }}
         />
         <Select
-          label="고객사"
-          placeholder="전체"
+          label={WORDS.company}
+          placeholder={WORDS.all}
           options={companyOptions}
           value={filters.companyCode}
           onChange={(companyCode) => {
@@ -336,7 +362,7 @@ export function C3IssueList() {
         />
         {labelOptions.length > 0 && (
           <CheckboxGroup
-            legend="라벨"
+            legend={WORDS.labels}
             options={labelOptions}
             value={filters.label.map(String)}
             onChange={(label) => {
@@ -345,8 +371,8 @@ export function C3IssueList() {
           />
         )}
         <Select
-          label="담당자"
-          placeholder="전체"
+          label={WORDS.assignee}
+          placeholder={WORDS.all}
           options={assigneeOptions}
           value={filters.assignee}
           onChange={(assignee) => {
@@ -355,8 +381,8 @@ export function C3IssueList() {
         />
         <Select
           label="SLA"
-          placeholder="전체"
-          options={SLA_OPTIONS}
+          placeholder={WORDS.all}
+          options={slaOptions()}
           value={filters.sla}
           onChange={(sla) => {
             change({ ...filters, sla: sla === 'warning' || sla === 'breached' ? sla : '' });
@@ -364,9 +390,9 @@ export function C3IssueList() {
         />
         {reporterName !== null && (
           <span className="pd-filter-chip">
-            <span>올린 사람: {reporterName}</span>
+            <span>{tf('issueList.reporterChip', { name: reporterName })}</span>
             <IconButton
-              label="올린 사람 필터 지우기"
+              label={t('issueList.clearReporter')}
               icon={<CloseIcon size={14} />}
               size="sm"
               onClick={() => {
@@ -376,8 +402,8 @@ export function C3IssueList() {
           </span>
         )}
         <Select
-          label="정렬"
-          options={SORT_OPTIONS}
+          label={t('issueList.sort')}
+          options={sortOptions()}
           value={sort}
           onChange={(next) => {
             setParams(writeIssueFilters(filters, SORTS.find((o) => o === next)));
@@ -404,8 +430,8 @@ export function C3IssueList() {
       )}
       {load.status !== 'failed' || data ? (
         <DataTable
-          caption={`문의 목록, ${String(data?.totalElements ?? 0)}건`}
-          columns={columns}
+          caption={tf('issueList.caption', { count: data?.totalElements ?? 0 })}
+          columns={columns()}
           rows={rows}
           rowKey={(i) => i.key}
           status={firstLoad ? 'loading' : 'ready'}

@@ -2,6 +2,7 @@
 // draws what this returns.
 import type { Schemas } from '../api';
 import { longDate } from './dueDates';
+import { screenLocale, tf } from './locale';
 import { toward } from './particles';
 
 type TaskNote = Schemas['TaskNote'];
@@ -28,24 +29,27 @@ export interface TaskChangeText {
  * 제목을 고쳤습니다 with `titles`, and 작업을 바꿨습니다 for a field or status it does not know.
  */
 export function taskChangeText(entry: TaskChange): TaskChangeText {
-  const who = `${entry.author.name} 님이`;
+  const who = tf('inbox.who', { name: entry.author.name });
+  // Korean puts its particle after the new value; English says the value as it is.
+  const to = (word: string) => (screenLocale() === 'ko' ? toward(word) : word);
+  const person = (name: string) => tf('history.person', { name });
   switch (entry.field) {
     case 'STATUS':
-      if (entry.newValue === 'DONE') return { text: `${who} 작업을 완료했습니다` };
-      if (entry.newValue === 'OPEN') return { text: `${who} 작업을 다시 열었습니다` };
+      if (entry.newValue === 'DONE') return { text: tf('issueTasks.changeDone', { who }) };
+      if (entry.newValue === 'OPEN') return { text: tf('issueTasks.changeReopened', { who }) };
       break;
     case 'ASSIGNEE':
-      if (entry.newPerson === null) return { text: `${who} 담당자를 비웠습니다` };
-      if (entry.oldPerson === null) return { text: `${who} 담당자를 ${toward(`${entry.newPerson.name} 님`)} 정했습니다` };
-      return { text: `${who} 담당자를 ${entry.oldPerson.name} 님에서 ${toward(`${entry.newPerson.name} 님`)} 바꿨습니다` };
+      if (entry.newPerson === null) return { text: tf('history.assigneeCleared', { who }) };
+      if (entry.oldPerson === null) return { text: tf('history.assigneeSet', { who, to: to(person(entry.newPerson.name)) }) };
+      return { text: tf('history.assigneeChanged', { who, from: person(entry.oldPerson.name), to: to(person(entry.newPerson.name)) }) };
     case 'DUE_DATE':
-      if (entry.newValue === null) return { text: `${who} 마감일을 지웠습니다` };
-      if (entry.oldValue === null) return { text: `${who} 마감일을 ${toward(longDate(entry.newValue))} 정했습니다` };
-      return { text: `${who} 마감일을 ${longDate(entry.oldValue)}에서 ${toward(longDate(entry.newValue))} 바꿨습니다` };
+      if (entry.newValue === null) return { text: tf('history.dueCleared', { who }) };
+      if (entry.oldValue === null) return { text: tf('history.dueSet', { who, to: to(longDate(entry.newValue)) }) };
+      return { text: tf('history.dueChanged', { who, from: longDate(entry.oldValue), to: to(longDate(entry.newValue)) }) };
     case 'TITLE':
-      return { text: `${who} 제목을 고쳤습니다`, titles: { before: entry.oldValue ?? '', after: entry.newValue ?? '' } };
+      return { text: tf('history.titleEdited', { who }), titles: { before: entry.oldValue ?? '', after: entry.newValue ?? '' } };
     default:
       break;
   }
-  return { text: `${who} 작업을 바꿨습니다` };
+  return { text: tf('issueTasks.changeOther', { who }) };
 }

@@ -1,21 +1,27 @@
 // How the console writes a due date (6a-labels screens.md 1·2·3절). A due date is a day, `YYYY-MM-DD`,
-// with no time and no time zone: it is written as it is, never moved through a `Date` in UTC.
+// with no time and no time zone: it is written as it is, never moved by the browser's time zone.
+import { screenLocale } from './locale';
 
 function parts(iso: string): [number, number, number] {
   const [y, m, d] = iso.split('-').map(Number);
   return [y ?? 0, m ?? 0, d ?? 0];
 }
 
-/** `2026년 10월 20일`: C-4 and the history. */
-export function longDate(iso: string): string {
+/** The day of `iso` in the screen language. The day is put at UTC midnight and written in UTC, so it never moves. */
+function dayIn(iso: string, withYear: boolean): string {
   const [y, m, d] = parts(iso);
-  return `${String(y)}년 ${String(m)}월 ${String(d)}일`;
+  const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', timeZone: 'UTC', ...(withYear ? { year: 'numeric' } : {}) };
+  return new Intl.DateTimeFormat(screenLocale(), options).format(Date.UTC(y, m - 1, d));
+}
+
+/** `2026년 10월 20일`, `Oct 20, 2026`: C-4 and the history. */
+export function longDate(iso: string): string {
+  return dayIn(iso, true);
 }
 
 /** `10월 20일`, or `2027년 1월 5일` outside the browser's year: C-3. */
 export function shortDate(iso: string, now: Date = new Date()): string {
-  const [y, m, d] = parts(iso);
-  return y === now.getFullYear() ? `${String(m)}월 ${String(d)}일` : longDate(iso);
+  return dayIn(iso, parts(iso)[0] !== now.getFullYear());
 }
 
 /**

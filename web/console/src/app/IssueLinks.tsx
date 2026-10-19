@@ -11,6 +11,7 @@ import { api, type Schemas } from '../api';
 import { useLive, useLoad } from './hooks';
 import { LoadFailed } from './layout';
 import { LINK_KIND_WORDS, LINK_TYPE_CHOICES, type LinkType } from './linkWords';
+import { t, texts, tf } from './locale';
 import { failureText, rateLimitedText, TEXT } from './messages';
 import { call, type Failure, type Result } from './result';
 import { useToLogin } from './sessionContext';
@@ -18,25 +19,27 @@ import { useToLogin } from './sessionContext';
 type Issue = Schemas['Issue'];
 type IssueLink = Schemas['IssueLink'];
 
-const EMPTY_TEXT = '연결된 문의가 없습니다.';
-const UNLINK_FAILED_TEXT = '연결을 바꾸지 못했습니다. 다시 해 보세요.';
-const LINK_FAILED_TEXT = '연결하지 못했습니다. 다시 해 보세요.';
-const NOT_FOUND_TEXT = '찾을 수 없는 문의입니다.';
-const SELF_TEXT = '이 문의와는 이을 수 없습니다.';
+const LINK_TEXT = texts({
+  empty: 'issueLinks.empty',
+  unlinkFailed: 'issueLinks.unlinkFailed',
+  linkFailed: 'issueLinks.linkFailed',
+  notFound: 'issueLinks.notFound',
+  self: 'issueLinks.self',
+});
 
 /** What the server's refusals of a new link say in the dialog (screens.md 1절). */
-const LINK_REFUSALS: Readonly<Record<string, string>> = {
-  LINK_TO_SELF: SELF_TEXT,
-  LINK_EXISTS: '이미 이어진 문의입니다.',
-  LINK_DUPLICATE_CHAIN: '중복은 한 단계만 이을 수 있습니다. 원본이 이미 다른 문의의 중복이거나, 중복이 될 문의가 이미 원본이거나 다른 원본이 있습니다.',
-  LINK_LIMIT_EXCEEDED: '연결은 문의마다 50개까지입니다.',
-};
+const LINK_REFUSALS: Readonly<Record<string, string>> = texts({
+  LINK_TO_SELF: 'issueLinks.self',
+  LINK_EXISTS: 'issueLinks.exists',
+  LINK_DUPLICATE_CHAIN: 'issueLinks.chain',
+  LINK_LIMIT_EXCEEDED: 'issueLinks.limit',
+});
 
 function linkFailureText(failure: Failure): string {
-  if (failure.kind === 'rejected') return LINK_REFUSALS[failure.code] ?? LINK_FAILED_TEXT;
-  if (failure.kind === 'notFound') return NOT_FOUND_TEXT;
+  if (failure.kind === 'rejected') return LINK_REFUSALS[failure.code] ?? LINK_TEXT.linkFailed;
+  if (failure.kind === 'notFound') return LINK_TEXT.notFound;
   if (failure.kind === 'rateLimited') return rateLimitedText(failure.seconds);
-  return LINK_FAILED_TEXT;
+  return LINK_TEXT.linkFailed;
 }
 
 function isClosedRefusal(failure: Failure): boolean {
@@ -119,14 +122,14 @@ export function IssueLinks(props: IssueLinksProps) {
     } else if (isClosedRefusal(result.failure)) {
       await stale();
     } else {
-      setUnlinkError({ key: otherKey, text: result.failure.kind === 'rateLimited' ? rateLimitedText(result.failure.seconds) : UNLINK_FAILED_TEXT });
+      setUnlinkError({ key: otherKey, text: result.failure.kind === 'rateLimited' ? rateLimitedText(result.failure.seconds) : LINK_TEXT.unlinkFailed });
     }
   };
 
   return (
     <section className="pd-detail-links" aria-labelledby={headingId}>
       <h2 id={headingId} className="pd-section-title" tabIndex={-1}>
-        {items !== undefined && items.length > 0 ? `연결된 문의 ${String(items.length)}` : '연결된 문의'}
+        {items !== undefined && items.length > 0 ? tf('issueLinks.headingCount', { count: items.length }) : t('issueLinks.heading')}
       </h2>
       {items === undefined && load.status === 'failed' && (
         <LoadFailed
@@ -137,7 +140,7 @@ export function IssueLinks(props: IssueLinksProps) {
       )}
       {items !== undefined &&
         (items.length === 0 ? (
-          <p className="pd-muted">{EMPTY_TEXT}</p>
+          <p className="pd-muted">{LINK_TEXT.empty}</p>
         ) : (
           <ul className="pd-link-list">
             {items.map((l) => (
@@ -164,7 +167,7 @@ export function IssueLinks(props: IssueLinksProps) {
               setLinking(openings.current);
             }}
           >
-            문의 잇기
+            {t('issueLinks.link')}
           </Button>
         </div>
       )}
@@ -203,13 +206,13 @@ function LinkLine(props: { link: IssueLink; canUnlink: boolean; pending: boolean
             className="pd-button"
             data-variant="quiet"
             data-size="sm"
-            aria-label={`${other.key} 연결 끊기`}
+            aria-label={tf('issueLinks.unlinkOf', { key: other.key })}
             aria-disabled={props.pending ? true : undefined}
             onClick={() => {
               if (!props.pending) props.onUnlink();
             }}
           >
-            <span className="pd-button-text">끊기</span>
+            <span className="pd-button-text">{t('issueLinks.unlink')}</span>
           </button>
         )}
       </div>
@@ -250,18 +253,18 @@ function LinkDialog(props: { issueKey: string; create: (issueKey: string, type: 
     setError(null);
     if (key === '') return;
     if (key === props.issueKey) {
-      setMiss(SELF_TEXT);
+      setMiss(LINK_TEXT.self);
       return;
     }
     const result = await call(api.GET('/api/console/issues/{key}', { params: { path: { key } } }));
     if (!live() || mine !== asking.current) return;
     if (result.ok) {
-      if (result.data.key === props.issueKey) setMiss(SELF_TEXT);
+      if (result.data.key === props.issueKey) setMiss(LINK_TEXT.self);
       else setFound(result.data);
     } else if (result.failure.kind === 'unauthenticated') {
       toLogin();
     } else {
-      setMiss(result.failure.kind === 'notFound' ? NOT_FOUND_TEXT : failureText(result.failure));
+      setMiss(result.failure.kind === 'notFound' ? LINK_TEXT.notFound : failureText(result.failure));
     }
   };
 
@@ -278,14 +281,14 @@ function LinkDialog(props: { issueKey: string; create: (issueKey: string, type: 
   return (
     <Dialog
       open
-      title="문의 잇기"
+      title={t('issueLinks.link')}
       closeLabel={TEXT.close}
       pending={pending}
       onClose={props.onClose}
       footer={
         <>
           <Button variant="secondary" onClick={props.onClose}>
-            그만두기
+            {t('comment.keep')}
           </Button>
           <Button
             disabled={found === null}
@@ -295,7 +298,7 @@ function LinkDialog(props: { issueKey: string; create: (issueKey: string, type: 
               void send();
             }}
           >
-            잇기
+            {t('issueLinks.linkSubmit')}
           </Button>
         </>
       }
@@ -310,9 +313,9 @@ function LinkDialog(props: { issueKey: string; create: (issueKey: string, type: 
             void find();
           }}
         >
-          <TextField label="문의 키" value={draft} onChange={changeKey} placeholder="ACME-12" autoComplete="off" autoCapitalize="characters" spellCheck={false} />
+          <TextField label={t('issueLinks.issueKey')} value={draft} onChange={changeKey} placeholder="ACME-12" autoComplete="off" autoCapitalize="characters" spellCheck={false} />
           <Button type="submit" variant="secondary">
-            찾기
+            {t('issueLinks.find')}
           </Button>
         </form>
         {miss !== null && (
@@ -331,7 +334,7 @@ function LinkDialog(props: { issueKey: string; create: (issueKey: string, type: 
             <p className="pd-link-company pd-muted">{companyOf(found)}</p>
           </div>
         )}
-        <RadioGroup legend="종류" options={LINK_TYPE_CHOICES} value={type} onChange={setType} />
+        <RadioGroup legend={t('issueLinks.kind')} options={LINK_TYPE_CHOICES} value={type} onChange={setType} />
       </div>
     </Dialog>
   );

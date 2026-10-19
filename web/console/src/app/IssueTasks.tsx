@@ -15,7 +15,8 @@ import { useLive } from './hooks';
 import { AssigneeDialog } from './IssueAssigneeDialog';
 import type { IssueTasksState } from './taskList';
 import { LoadFailed } from './layout';
-import { failureText, rateLimitedText } from './messages';
+import { t, texts, tf } from './locale';
+import { failureText, rateLimitedText, TEXT } from './messages';
 import { call, type Failure, type Result } from './result';
 import { useSession, useToLogin } from './sessionContext';
 import { taskChangeText } from './taskWords';
@@ -25,11 +26,13 @@ type Task = Schemas['Task'];
 type TaskNote = Schemas['TaskNote'];
 type Person = Schemas['Person'];
 
-const FAILED_TEXT = '작업을 바꾸지 못했습니다. 다시 해 보세요.';
-const NOTE_FAILED_TEXT = '기록을 남기지 못했습니다. 다시 해 보세요.';
-const TASK_LIMIT_TEXT = '작업은 문의마다 30개까지 만듭니다.';
-const NOTE_LIMIT_TEXT = '기록은 작업마다 100개까지 남깁니다.';
-const PAST_TEXT = '오늘이나 그 뒤의 날짜를 고르세요.';
+const TASK_TEXT = texts({
+  failed: 'issueTasks.failed',
+  noteFailed: 'issueTasks.noteFailed',
+  taskLimit: 'issueTasks.taskLimit',
+  noteLimit: 'issueTasks.noteLimit',
+  past: 'issueTasks.pastDate',
+});
 /** Tasks of an issue that are not deleted, and all of them with the deleted ones (S6B-AC-08). */
 const LIVE_TASK_LIMIT = 30;
 const ALL_TASK_LIMIT = 100;
@@ -41,19 +44,19 @@ function noteCount(task: Task): number {
 }
 
 function taskFailureText(failure: Failure): string {
-  if (failure.kind === 'rejected' && failure.code === 'TASK_LIMIT_EXCEEDED') return TASK_LIMIT_TEXT;
+  if (failure.kind === 'rejected' && failure.code === 'TASK_LIMIT_EXCEEDED') return TASK_TEXT.taskLimit;
   if (failure.kind === 'rateLimited') return rateLimitedText(failure.seconds);
-  return FAILED_TEXT;
+  return TASK_TEXT.failed;
 }
 
 function noteFailureText(failure: Failure): string {
-  if (failure.kind === 'rejected' && failure.code === 'TASK_NOTE_LIMIT_EXCEEDED') return NOTE_LIMIT_TEXT;
+  if (failure.kind === 'rejected' && failure.code === 'TASK_NOTE_LIMIT_EXCEEDED') return TASK_TEXT.noteLimit;
   if (failure.kind === 'rateLimited') return rateLimitedText(failure.seconds);
-  return NOTE_FAILED_TEXT;
+  return TASK_TEXT.noteFailed;
 }
 
 function dueFailureText(failure: Failure): string {
-  if (failure.kind === 'invalid' && failure.fields.some((f) => f.field === 'dueDate')) return PAST_TEXT;
+  if (failure.kind === 'invalid' && failure.fields.some((f) => f.field === 'dueDate')) return TASK_TEXT.past;
   return taskFailureText(failure);
 }
 
@@ -155,7 +158,7 @@ export function IssueTasks(props: IssueTasksProps) {
     <>
       <section className="pd-detail-tasks" aria-labelledby={headingId}>
         <h2 id={headingId} className="pd-section-title" tabIndex={-1}>
-          {openCount > 0 ? `작업 ${String(openCount)}/${String(live30)}` : '작업'}
+          {openCount > 0 ? tf('issueTasks.headingCount', { open: openCount, all: live30 }) : t('issueTasks.title')}
         </h2>
         {tasks.list === null && tasks.failed && (
           <LoadFailed
@@ -166,7 +169,7 @@ export function IssueTasks(props: IssueTasksProps) {
         )}
         {tasks.list !== null &&
           (items.length === 0 ? (
-            <p className="pd-muted">아직 작업이 없습니다.</p>
+            <p className="pd-muted">{t('issueTasks.empty')}</p>
           ) : (
             <ul className="pd-task-list">
               {items.map((t) => (
@@ -221,7 +224,7 @@ export function IssueTasks(props: IssueTasksProps) {
       {assigning !== null && (
         <AssigneeDialog
           key={assigning.opening}
-          title="작업 담당자 바꾸기"
+          title={t('issueTasks.changeAssignee')}
           companyCode={issue.companyCode}
           assignee={assigning.task.assignee}
           save={(person: Person | null) => update(assigning.task, { assigneeId: person?.accountId ?? null })}
@@ -236,12 +239,12 @@ export function IssueTasks(props: IssueTasksProps) {
       <ConfirmDialog
         open={removing !== null}
         tone="danger"
-        title="작업 지우기"
-        message={`이 작업을 지울까요? 기록 ${String(removing ? noteCount(removing) : 0)}개도 함께 지웁니다. 지운 작업은 되돌릴 수 없습니다.`}
-        confirmLabel="지우기"
-        cancelLabel="그만두기"
+        title={t('issueTasks.deleteTitle')}
+        message={tf('issueTasks.deleteMessage', { count: removing ? noteCount(removing) : 0 })}
+        confirmLabel={t('issueTasks.delete')}
+        cancelLabel={t('comment.keep')}
         pending={removePending}
-        pendingLabel="지우는 중…"
+        pendingLabel={t('comment.deleting')}
         {...(removeError === undefined ? {} : { error: removeError })}
         onConfirm={() => {
           void confirmRemove();
@@ -251,12 +254,12 @@ export function IssueTasks(props: IssueTasksProps) {
       <ConfirmDialog
         open={removingNote !== null}
         tone="danger"
-        title="기록 지우기"
-        message="지운 기록은 되돌릴 수 없습니다."
-        confirmLabel="지우기"
-        cancelLabel="그만두기"
+        title={t('issueTasks.deleteNoteTitle')}
+        message={t('issueTasks.deleteNoteMessage')}
+        confirmLabel={t('issueTasks.delete')}
+        cancelLabel={t('comment.keep')}
         pending={removePending}
-        pendingLabel="지우는 중…"
+        pendingLabel={t('comment.deleting')}
         {...(removeError === undefined ? {} : { error: removeError })}
         onConfirm={() => {
           void confirmRemove();
@@ -304,18 +307,18 @@ function TaskAdd(props: {
     return (
       <form
         className="pd-task-add"
-        aria-label="작업 더하기"
+        aria-label={t('issueTasks.add')}
         noValidate
         onSubmit={(e: SubmitEvent) => {
           e.preventDefault();
           void send();
         }}
       >
-        <TextField ref={input} label="작업 제목" value={draft} onChange={setDraft} maxLength={100} />
+        <TextField ref={input} label={t('issueTasks.taskTitle')} value={draft} onChange={setDraft} maxLength={100} />
         {error !== null && <Alert tone="error">{error}</Alert>}
         <div className="pd-form-actions">
           <Button type="submit" size="sm" pending={pending}>
-            더하기
+            {t('issueTasks.addSubmit')}
           </Button>
           <Button
             variant="secondary"
@@ -326,7 +329,7 @@ function TaskAdd(props: {
               props.onAdding(false);
             }}
           >
-            취소
+            {TEXT.cancel}
           </Button>
         </div>
       </form>
@@ -334,7 +337,7 @@ function TaskAdd(props: {
   }
   return (
     <div className="pd-task-add">
-      {props.full && <p className="pd-muted">{TASK_LIMIT_TEXT}</p>}
+      {props.full && <p className="pd-muted">{TASK_TEXT.taskLimit}</p>}
       <div>
         <Button
           variant="secondary"
@@ -344,7 +347,7 @@ function TaskAdd(props: {
             if (!props.full) props.onAdding(true);
           }}
         >
-          작업 더하기
+          {t('issueTasks.add')}
         </Button>
       </div>
     </div>
@@ -383,8 +386,8 @@ function TaskLine(props: TaskLineProps) {
     return (
       <li className="pd-task" data-deleted="true">
         <p className="pd-task-trace">
-          <span>지워진 작업</span>
-          {task.deletedBy && <span>{task.deletedBy.name} 님이 지움</span>}
+          <span>{t('issueTasks.deletedTask')}</span>
+          {task.deletedBy && <span>{tf('issueTasks.deletedBy', { name: task.deletedBy.name })}</span>}
           {task.deletedAt && <RelativeTime dateTime={task.deletedAt} />}
         </p>
       </li>
@@ -408,7 +411,7 @@ function TaskLine(props: TaskLineProps) {
     ...(props.canWrite
       ? [
           {
-            label: '고치기',
+            label: t('issueTasks.edit'),
             onSelect: () => {
               setError(null);
               props.onRename(true);
@@ -416,7 +419,7 @@ function TaskLine(props: TaskLineProps) {
           },
         ]
       : []),
-    ...(props.canRemove ? [{ label: '지우기', tone: 'danger' as const, onSelect: props.onRemove }] : []),
+    ...(props.canRemove ? [{ label: t('issueTasks.delete'), tone: 'danger' as const, onSelect: props.onRemove }] : []),
   ];
 
   return (
@@ -426,7 +429,7 @@ function TaskLine(props: TaskLineProps) {
         <span className="pd-task-status" data-done={done ? 'true' : undefined}>
           {props.canWrite ? (
             <IconButton
-              label={`${task.title} ${done ? '다시 열기' : '완료'}`}
+              label={tf(done ? 'issueTasks.reopenOf' : 'issueTasks.doneOf', { title: task.title })}
               icon={<CheckIcon size={14} />}
               size="sm"
               pending={statusPending}
@@ -455,16 +458,16 @@ function TaskLine(props: TaskLineProps) {
           <div className="pd-task-meta">
             {done && (
               <span className="pd-inline">
-                <Badge tone="neutral">완료</Badge>
+                <Badge tone="neutral">{t('issueTasks.done')}</Badge>
                 {task.doneBy && <span>{task.doneBy.name}</span>}
                 {task.doneAt && <RelativeTime dateTime={task.doneAt} />}
               </span>
             )}
-            {task.assignee ? <span>{task.assignee.name}</span> : <span className="pd-muted">담당 없음</span>}
+            {task.assignee ? <span>{task.assignee.name}</span> : <span className="pd-muted">{t('issueTasks.unassigned')}</span>}
             {task.dueDate !== null && (
               <span className="pd-inline">
                 <time dateTime={task.dueDate}>{longDate(task.dueDate)}</time>
-                {task.overdue && <Badge tone="warning">지남</Badge>}
+                {task.overdue && <Badge tone="warning">{t('issueTasks.overdue')}</Badge>}
               </span>
             )}
             <button
@@ -476,11 +479,11 @@ function TaskLine(props: TaskLineProps) {
               aria-controls={props.open ? panelId : undefined}
               onClick={props.onToggle}
             >
-              <span className="pd-button-text">기록 {count}</span>
+              <span className="pd-button-text">{tf('issueTasks.notes', { count })}</span>
             </button>
           </div>
         </div>
-        {menu.length > 0 && <RowMenu label={`${task.title} 동작`} items={menu} />}
+        {menu.length > 0 && <RowMenu label={tf('issueTasks.actions', { title: task.title })} items={menu} />}
       </div>
       {error !== null && <Alert tone="error">{error}</Alert>}
       {props.open && (
@@ -548,14 +551,14 @@ function TaskRename(props: { task: Task; update: TaskLineProps['update']; onDone
         void send();
       }}
     >
-      <TextField ref={input} label="작업 제목" value={draft} onChange={setDraft} maxLength={100} />
+      <TextField ref={input} label={t('issueTasks.taskTitle')} value={draft} onChange={setDraft} maxLength={100} />
       {error !== null && <Alert tone="error">{error}</Alert>}
       <div className="pd-form-actions">
         <Button type="submit" size="sm" pending={pending}>
-          저장
+          {t('issueTasks.save')}
         </Button>
         <Button variant="secondary" size="sm" onClick={props.onDone}>
-          취소
+          {TEXT.cancel}
         </Button>
       </div>
     </form>
@@ -598,19 +601,19 @@ function TaskTools(props: { task: Task; update: TaskLineProps['update']; onAssig
   return (
     <div className="pd-task-tools">
       <span className="pd-inline">
-        <span className="pd-label">담당자</span>
+        <span className="pd-label">{t('issueTasks.assignee')}</span>
         {/* Named apart from the issue's own "바꾸기" (S6B-AC-85). */}
-        <button type="button" className="pd-button" data-variant="secondary" data-size="sm" aria-label="작업 담당자 바꾸기" onClick={props.onAssign}>
-          <span className="pd-button-text">바꾸기</span>
+        <button type="button" className="pd-button" data-variant="secondary" data-size="sm" aria-label={t('issueTasks.changeAssignee')} onClick={props.onAssign}>
+          <span className="pd-button-text">{t('issueTasks.change')}</span>
         </button>
       </span>
       <span className="pd-inline">
-        <span className="pd-label">마감일</span>
+        <span className="pd-label">{t('issueTasks.dueDate')}</span>
         <DueDatePicker
           id={toggleId}
-          label="마감일"
-          toggleLabel="바꾸기"
-          toggleName="작업 마감일 바꾸기"
+          label={t('issueTasks.dueDate')}
+          toggleLabel={t('issueTasks.change')}
+          toggleName={t('issueTasks.changeDue')}
           value={task.dueDate}
           min={todayInBrowser()}
           onSubmit={(date) => {
@@ -621,8 +624,8 @@ function TaskTools(props: { task: Task; update: TaskLineProps['update']; onAssig
           }}
           busy={busy}
           {...(error === undefined ? {} : { error })}
-          submitLabel="정하기"
-          clearLabel="지우기"
+          submitLabel={t('issueTasks.setDue')}
+          clearLabel={t('issueTasks.delete')}
           open={open}
           onOpenChange={setOpen}
         />
@@ -688,11 +691,11 @@ function NoteForm(props: { task: Task; issueKey: string; onFailure: (failure: Fa
         void send();
       }}
     >
-      <NoteBox label="기록 남기기" value={draft} onChange={setDraft} />
+      <NoteBox label={t('issueTasks.addNote')} value={draft} onChange={setDraft} />
       {error !== null && <Alert tone="error">{error}</Alert>}
       <div className="pd-form-actions">
         <Button type="submit" variant="secondary" size="sm" pending={pending}>
-          남기기
+          {t('issueTasks.addNoteSubmit')}
         </Button>
       </div>
     </form>
@@ -734,8 +737,8 @@ function NoteLine(props: {
     return (
       <li className="pd-task-note" data-deleted="true">
         <p className="pd-task-trace">
-          <span>지워진 기록</span>
-          {note.deletedBy && <span>{note.deletedBy.name} 님이 지움</span>}
+          <span>{t('issueTasks.deletedNote')}</span>
+          {note.deletedBy && <span>{tf('issueTasks.deletedBy', { name: note.deletedBy.name })}</span>}
         </p>
       </li>
     );
@@ -764,7 +767,7 @@ function NoteLine(props: {
       <p className="pd-task-note-head">
         <span className="pd-task-note-author">{note.author.name}</span>
         <RelativeTime dateTime={note.createdAt} />
-        {note.editedAt !== null && <span className="pd-muted">고침</span>}
+        {note.editedAt !== null && <span className="pd-muted">{t('issueTasks.edited')}</span>}
       </p>
       {editing ? (
         <form
@@ -775,11 +778,11 @@ function NoteLine(props: {
             void save();
           }}
         >
-          <NoteBox label="기록 고치기" value={draft} onChange={setDraft} />
+          <NoteBox label={t('issueTasks.editNote')} value={draft} onChange={setDraft} />
           {error !== null && <Alert tone="error">{error}</Alert>}
           <div className="pd-form-actions">
             <Button type="submit" size="sm" pending={pending}>
-              저장
+              {t('issueTasks.save')}
             </Button>
             <Button
               variant="secondary"
@@ -789,7 +792,7 @@ function NoteLine(props: {
                 setError(null);
               }}
             >
-              취소
+              {TEXT.cancel}
             </Button>
           </div>
         </form>
@@ -807,12 +810,12 @@ function NoteLine(props: {
                 setEditing(true);
               }}
             >
-              고치기
+              {t('issueTasks.edit')}
             </Button>
           )}
           {props.canRemove && (
             <Button variant="quiet" size="sm" onClick={props.onRemove}>
-              지우기
+              {t('issueTasks.delete')}
             </Button>
           )}
         </div>

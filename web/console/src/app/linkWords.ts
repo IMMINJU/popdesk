@@ -3,25 +3,32 @@
 // of a linked issue that was resolved or closed. Pure: the same input gives the same words (the
 // inbox sentence also reads the console's language).
 import type { Schemas } from '../api';
-import { tf } from './locale';
+import { t, texts, tf } from './locale';
 
 export type LinkType = Schemas['IssueLink']['type'];
 type HistoryLink = Schemas['IssueHistoryLink'];
 type NotificationIssue = Schemas['NotificationIssue'];
 
 /** How the 연결 구역 names the kind of a link, seen from the issue shown. */
-export const LINK_KIND_WORDS: Readonly<Record<LinkType, string>> = {
-  DUPLICATE_OF: '이 문의의 원본',
-  DUPLICATED_BY: '이 문의의 중복',
-  RELATED: '관련',
-};
+export const LINK_KIND_WORDS: Readonly<Record<LinkType, string>> = texts({
+  DUPLICATE_OF: 'issueLinks.kindDuplicateOf',
+  DUPLICATED_BY: 'issueLinks.kindDuplicatedBy',
+  RELATED: 'issueLinks.related',
+});
+
+const CHOICE_WORDS = texts({
+  RELATED: 'issueLinks.related',
+  DUPLICATE_OF: 'issueLinks.choiceDuplicateOf',
+  DUPLICATED_BY: 'issueLinks.choiceDuplicatedBy',
+});
 
 /** The radios of "문의 잇기", in the order they are drawn; the first is the default. */
-export const LINK_TYPE_CHOICES: readonly { value: LinkType; label: string }[] = [
-  { value: 'RELATED', label: '관련' },
-  { value: 'DUPLICATE_OF', label: '이 문의가 찾은 문의의 중복' },
-  { value: 'DUPLICATED_BY', label: '찾은 문의가 이 문의의 중복' },
-];
+export const LINK_TYPE_CHOICES: readonly { value: LinkType; readonly label: string }[] = (['RELATED', 'DUPLICATE_OF', 'DUPLICATED_BY'] as const).map((value) => ({
+  value,
+  get label() {
+    return CHOICE_WORDS[value];
+  },
+}));
 
 /**
  * The history sentence of a `LINK` entry: either plain text, or the text around the other
@@ -47,22 +54,26 @@ function known(type: string): type is LinkType {
  * particles after the key are fixed ("를", "와"): how a key ending in a number is read varies.
  */
 export function linkChangeText(who: string, oldLink: HistoryLink | null, newLink: HistoryLink | null): LinkChangeText {
-  const plain = { text: `${who} 연결을 바꿨습니다` };
+  /** The sentence of `key` split at the other issue's key, `who` filled in. */
+  const around = (key: Parameters<typeof t>[0], issue: { key: string; title: string }): LinkChangeText => {
+    const [before = '', after = ''] = t(key).split('{key}');
+    const fill = (part: string) => part.replace('{who}', () => who);
+    return { before: fill(before), key: issue.key, after: fill(after), title: issue.title };
+  };
   if (newLink !== null && oldLink === null && known(newLink.type)) {
-    const { key, title } = newLink.issue;
     switch (newLink.type) {
       case 'DUPLICATE_OF':
-        return { before: `${who} 이 문의를 `, key, after: '의 중복으로 이었습니다', title };
+        return around('issueLinks.madeDuplicateOf', newLink.issue);
       case 'DUPLICATED_BY':
-        return { before: `${who} `, key, after: '를 이 문의의 중복으로 이었습니다', title };
+        return around('issueLinks.madeDuplicatedBy', newLink.issue);
       case 'RELATED':
-        return { before: `${who} `, key, after: '와 관련 문의로 이었습니다', title };
+        return around('issueLinks.madeRelated', newLink.issue);
     }
   }
   if (oldLink !== null && newLink === null && known(oldLink.type)) {
-    return { before: `${who} `, key: oldLink.issue.key, after: '와의 연결을 끊었습니다', title: oldLink.issue.title };
+    return around('issueLinks.removed', oldLink.issue);
   }
-  return plain;
+  return { text: tf('issueLinks.changed', { who }) };
 }
 
 /**

@@ -24,7 +24,7 @@ import { useMainBusy } from '../app/busy';
 import { useCooldown, useFieldErrors, useLeaveGuard, useLive, useLoad } from '../app/hooks';
 import { MY_ISSUES_HREF } from '../app/issueFilters';
 import { LoadFailed, PageTitle } from '../app/layout';
-import { t } from '../app/locale';
+import { t, tf } from '../app/locale';
 import { TEXT } from '../app/messages';
 import { useLiveNavigate } from '../app/navigate';
 import { ReporterFinder, type Reporter } from '../app/ReporterFinder';
@@ -181,7 +181,7 @@ export function C19IssueCreate() {
       <EmptyState
         icon={<InboxIcon size={20} />}
         title={me?.role === 'AGENT' && companies.length === 0 ? t('issueOnBehalf.noCompaniesAgent') : t('issueOnBehalf.noActiveCompanies')}
-        action={<Link to={MY_ISSUES_HREF}>문의 목록으로</Link>}
+        action={<Link to={MY_ISSUES_HREF}>{TEXT.toIssueList}</Link>}
       />
     );
   } else {
@@ -193,7 +193,7 @@ export function C19IssueCreate() {
         <RateLimitBand {...cooldown} />
         <Select
           id={COMPANY_ID}
-          label="고객사"
+          label={t('issueList.company')}
           placeholder={t('issueOnBehalf.companyPlaceholder')}
           options={open.map((c) => ({ value: c.code, label: c.name }))}
           value={companyCode}
@@ -230,7 +230,7 @@ export function C19IssueCreate() {
         />
         <TextField
           id="issue-title"
-          label="제목"
+          label={t('issueList.issueTitle')}
           value={title}
           onChange={setTitle}
           maxLength={200}
@@ -238,27 +238,27 @@ export function C19IssueCreate() {
         />
         <MarkdownEditor
           id="issue-content"
-          label="내용"
+          label={t('issueCreate.content')}
           value={content}
           onChange={setContent}
           minHeight={240}
           maxLength={10000}
           showCount
-          placeholder="무엇이 어떻게 안 되는지, 언제부터인지 적어 주세요."
+          placeholder={t('issueCreate.contentPlaceholder')}
           helpText={t('issueOnBehalf.noFiles')}
           {...images.editor}
           {...(fields.errors.content ? { error: fields.errors.content } : {})}
         />
         <div id="issue-priority">
           <PriorityPicker
-            legend="우선순위"
+            legend={t('issueList.priority')}
             value={priority}
             onChange={setPriority}
             {...(fields.errors.priority ? { error: fields.errors.priority } : {})}
           />
         </div>
-        <Checkbox label="비공개" description="같은 회사 동료에게 보이지 않습니다" checked={isPrivate} onChange={setPrivate} />
-        {reporter && <p className="pd-muted">{`${reporter.name} 님(${reporter.email})의 이름으로 올립니다. 이 고객에게 메일로 알립니다.`}</p>}
+        <Checkbox label={t('issueList.private')} description={t('issueCreate.privateHelp')} checked={isPrivate} onChange={setPrivate} />
+        {reporter && <p className="pd-muted">{tf('issueCreate.filedFor', { name: reporter.name, email: reporter.email })}</p>}
         <div className="pd-form-actions">
           <Button
             variant="secondary"

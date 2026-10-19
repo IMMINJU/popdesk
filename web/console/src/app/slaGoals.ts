@@ -1,10 +1,16 @@
 // The SLA goals of an issue as C-3 and C-4 show them (8a-sla screens.md 2·3절). The state and the
 // minutes left are the server's; the screen only picks which goal to show and its badge.
 import type { Schemas } from '../api';
+import { t } from './locale';
 
 type IssueSla = Schemas['IssueSla'];
 type SlaGoal = Schemas['SlaGoal'];
 export type GoalName = '첫 응답' | '해결';
+
+/** The words of a goal in the screen language. */
+export function goalText(name: GoalName): string {
+  return t(name === '첫 응답' ? 'sla.firstResponse' : 'sla.resolution');
+}
 
 const RANK: Readonly<Record<string, number>> = { BREACHED: 0, WARNING: 1, OK: 2 };
 

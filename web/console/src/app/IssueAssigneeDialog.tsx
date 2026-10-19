@@ -8,6 +8,7 @@ import { api, type Schemas } from '../api';
 import { SaveFailure } from './bands';
 import { useLive } from './hooks';
 import { LoadFailed } from './layout';
+import { t, texts } from './locale';
 import { rateLimitedText, TEXT } from './messages';
 import { call, type Failure, type Result } from './result';
 import { useSession, useToLogin } from './sessionContext';
@@ -16,7 +17,7 @@ type Issue = Schemas['Issue'];
 type Person = Schemas['Person'];
 
 const NONE = 'none';
-const ROLE_WORDS: Record<Person['role'], string> = { CUSTOMER: '고객', AGENT: '상담원', ADMIN: '관리자' };
+const ROLE_WORDS = texts({ CUSTOMER: 'assignee.roleCustomer', AGENT: 'assignee.roleAgent', ADMIN: 'assignee.roleAdmin' }) satisfies Readonly<Record<Person['role'], string>>;
 
 export interface IssueAssigneeDialogProps {
   issue: Issue;
@@ -33,7 +34,7 @@ export function IssueAssigneeDialog(props: IssueAssigneeDialogProps) {
       ? call(api.DELETE('/api/console/issues/{key}/assignee', path))
       : call(api.PUT('/api/console/issues/{key}/assignee', { ...path, body: { accountId: person.accountId } }));
   };
-  return <AssigneeDialog title="담당자" companyCode={issue.companyCode} assignee={issue.assignee} save={save} onClose={props.onClose} onChanged={props.onChanged} />;
+  return <AssigneeDialog title={t('assignee.title')} companyCode={issue.companyCode} assignee={issue.assignee} save={save} onClose={props.onClose} onChanged={props.onChanged} />;
 }
 
 export interface AssigneeDialogProps {
@@ -102,7 +103,7 @@ export function AssigneeDialog(props: AssigneeDialogProps) {
   };
 
   const options: Option[] = [
-    { value: NONE, label: '담당 없음' },
+    { value: NONE, label: t('assignee.none') },
     ...(candidates?.items ?? []).map((p) => ({ value: String(p.accountId), label: p.name, description: ROLE_WORDS[p.role] })),
   ];
   const mine = candidates?.items.find((p) => p.accountId === me?.id);
@@ -127,15 +128,15 @@ export function AssigneeDialog(props: AssigneeDialogProps) {
               void save(picked);
             }}
           >
-            저장
+            {t('assignee.save')}
           </Button>
         </>
       }
     >
       <div className="pd-form">
-        {notEligible && <Alert tone="error">이 사람은 지금 담당자가 될 수 없습니다</Alert>}
+        {notEligible && <Alert tone="error">{t('assignee.notEligible')}</Alert>}
         {failure?.kind === 'rateLimited' ? <Alert tone="error">{rateLimitedText(failure.seconds)}</Alert> : <SaveFailure failure={failure} />}
-        {candidates === null && <p className="pd-muted">후보를 불러오는 중…</p>}
+        {candidates === null && <p className="pd-muted">{t('assignee.loading')}</p>}
         {candidates?.ok === false && (
           <LoadFailed
             onRetry={() => {
@@ -156,11 +157,11 @@ export function AssigneeDialog(props: AssigneeDialogProps) {
                     void save(String(mine.accountId));
                   }}
                 >
-                  나에게 맡기기
+                  {t('assignee.assignMe')}
                 </Button>
               </div>
             )}
-            <RadioGroup legend="담당자 고르기" legendHidden options={options} value={picked} onChange={setPicked} />
+            <RadioGroup legend={t('assignee.pick')} legendHidden options={options} value={picked} onChange={setPicked} />
           </>
         )}
       </div>
