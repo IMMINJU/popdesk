@@ -125,8 +125,15 @@ class SendLoops implements SmartLifecycle {
                     }
                     case STOPPED -> {
                         delivery.stopped(row, attempt.errorKind());
-                        log.warn("Outbox row {} ({}) was not sent: {}. It is left as failed.", row.id(),
-                                sender.channel(), attempt.errorKind());
+                        // A mail the limit of one address stopped is INFO: the alert DELIVERY_FAILED is the one
+                        // WARN of that cause (B2-AC-07). Every other stop stays a WARN.
+                        if (MailLimit.ERROR_KIND.equals(attempt.errorKind())) {
+                            log.info("Outbox row {} ({}) was not sent: {}. It is left as failed.", row.id(),
+                                    sender.channel(), attempt.errorKind());
+                        } else {
+                            log.warn("Outbox row {} ({}) was not sent: {}. It is left as failed.", row.id(),
+                                    sender.channel(), attempt.errorKind());
+                        }
                         sender.forget(row.id());
                     }
                     case FAILED -> {
