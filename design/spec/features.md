@@ -40,8 +40,8 @@
 | 13. 개인정보 (PII) | PII-1·2·6·8, 보관 기간 표 | `../archive/10b-privacy/rules.md`(10b 묶음) |
 | 18. 운영 경보와 시스템 상태 (OPS) | OPS-3 | `../archive/4b-delivery/rules.md`(4b 묶음) |
 | 1. 로그인과 계정 (AUTH) | AUTH-6 | `../archive/11-oidc/rules.md`(11번 묶음) |
-| 10. 알림 (MAIL) | MAIL-7, MAIL-1의 `Reply-To` 몫 | `../slices/12-mailin/rules.md`(12번 묶음) |
-| 11. 메일로 받기 (MAILIN) | MAILIN-1~9 | `../slices/12-mailin/rules.md`(12번 묶음) |
+| 10. 알림 (MAIL) | MAIL-7, MAIL-1의 `Reply-To` 몫 | `../archive/12-mailin/rules.md`(12번 묶음) |
+| 11. 메일로 받기 (MAILIN) | MAILIN-1~9 | `../archive/12-mailin/rules.md`(12번 묶음) |
 
 ## 0. 공통
 
@@ -70,7 +70,7 @@
 
 | ID | 규칙 |
 |---|---|
-| OPS-1 | 운영 경보: 다음 일이 생기면 관리자 전부의 알림함에 항목을 남긴다. 보내기 대기에 `failed` 행이 생김(MAIL-6 포함), 한 채널의 보내기 실패가 한 시간 넘게 이어짐, 정리 작업(OPS-2) 하나가 하루 넘게 돌지 않음, 첨부 총량이 한도의 80%를 넘음(ATT-3), 문의 자동 정리가 처음 켜짐(PII-6), 내보내기 실패(PII-8), 메일 받기 회차가 한 시간 넘게 실패함과 받은 메일 격리(12번, `../slices/12-mailin/acceptance.md` S12-AC-37). 같은 종류의 경보는 풀리기 전까지 하루에 한 건만 남긴다 |
+| OPS-1 | 운영 경보: 다음 일이 생기면 관리자 전부의 알림함에 항목을 남긴다. 보내기 대기에 `failed` 행이 생김(MAIL-6 포함), 한 채널의 보내기 실패가 한 시간 넘게 이어짐, 정리 작업(OPS-2) 하나가 하루 넘게 돌지 않음, 첨부 총량이 한도의 80%를 넘음(ATT-3), 문의 자동 정리가 처음 켜짐(PII-6), 내보내기 실패(PII-8), 메일 받기 회차가 한 시간 넘게 실패함과 받은 메일 격리(12번, `../archive/12-mailin/acceptance.md` S12-AC-37). 같은 종류의 경보는 풀리기 전까지 하루에 한 건만 남긴다 |
 | OPS-2 | 정리 작업(보내기 대기의 `failed` 행, 임시 이미지, 첨부 파일, 세션, 받은·보낸 메일의 `Message-ID`, 비밀번호 재설정 토큰, `Idempotency-Key`, 감사 로그 보관, 문의 자동 정리, 휴지통 영구 삭제)마다 마지막으로 돈 시각과 지운 수를 DB에 남기고 지표로도 낸다 |
 
 메일 받기의 줄은 12번에서 채운다. OIDC의 시스템 상태 줄은 11번 묶음 `acceptance.md` S11-AC-30에 있다.

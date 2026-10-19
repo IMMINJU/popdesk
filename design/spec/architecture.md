@@ -220,7 +220,7 @@ Spring Modulith로 모듈 경계를 정하고, 경계를 넘는 호출은 테스
 
 - 설정이 있으면 1분마다 IMAP 메일함(`IMAP_FOLDER`, 기본 `INBOX`)의 메일을 읽는다. `Message-ID`(없으면 원문 해시)는 문의·댓글을 만드는 트랜잭션에 함께 저장하고 유니크 제약으로 두 번 처리하지 않는다. 커밋한 뒤에 메일을 처리됨 폴더로 옮긴다. 다섯 번 실패한 메일은 격리 폴더로 옮긴다(MAILIN-6·8).
 - 보내는 알림 메일마다 `Message-ID`를 만들어 저장한다. 답장의 `In-Reply-To`·`References`가 그 값을 가리키면 그 문의의 댓글로 잇는다. 머리글이 없으면 제목의 `[문의 키]`로 찾는다.
-- 규칙은 `slices/12-mailin/rules.md`(MAILIN)에 있고, 만드는 법은 같은 폴더의 `design.md`와 D-67에 있다.
+- 규칙은 `archive/12-mailin/rules.md`(MAILIN)에 있고, 만드는 법은 같은 폴더의 `design.md`와 D-67에 있다.
 
 ## 5. 로그인과 세션
 
