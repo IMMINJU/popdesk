@@ -22,3 +22,13 @@ server io/popdesk/auth/OidcStatusTest.java
 server io/popdesk/auth/OidcUnlinkAccessTest.java
 server io/popdesk/auth/OidcUnlinkTest.java
 server io/popdesk/deploy/OidcSampleTest.java
+web **/C1Login.11.test.tsx
+web **/C10MemberList.11.test.tsx
+web **/C18SystemStatus.11.test.tsx
+web **/C12AuditLog.11.test.tsx
+web **/P1Login.11.test.tsx
+web **/OidcSignIn.11.test.tsx
+web **/auditWords.words.test.ts
+web **/C12AuditLog.filters.test.tsx
+web **/C12AuditLog.test.tsx
+web ../../../console/**/Screens11.overflow.stories.tsx

@@ -1,3 +1,9 @@
 # 처음부터 통과해도 되는 테스트 | 까닭
 io.popdesk.auth.OidcOffTest.signInOptionsSayOff | C-4 껍데기가 {oidc:false}를 주고, OIDC 설정이 없는 공용 컨텍스트에서는 그 값이 맞다
 io.popdesk.auth.OidcStatusOffTest.statusSaysOff | C-4 껍데기가 꺼진 oidc 값을 주고, OIDC 설정이 없는 공용 컨텍스트에서는 그 값이 맞다
+src/screens/C1Login.11.test.tsx.C-1 로그인의 OIDC 오류 띠 (11 묶음) > S11-AC-32 C-1 ?oidc=other(모르는 값): OIDC 오류 띠가 없다 | 모르는 oidc 값에 띠가 없음만 보는 기준(S11-AC-32)이라 지금 화면도 맞다
+src/screens/C1Login.11.test.tsx.C-1 로그인의 OIDC 오류 띠 (11 묶음) > S11-AC-32 C-1 ?oidc=FAILED(모르는 값): OIDC 오류 띠가 없다 | 모르는 oidc 값에 띠가 없음만 보는 기준(S11-AC-32)이라 지금 화면도 맞다
+src/screens/C1Login.11.test.tsx.C-1 로그인의 OIDC 오류 띠 (11 묶음) > S11-AC-32 C-1 ?oidc=(모르는 값): OIDC 오류 띠가 없다 | 모르는 oidc 값에 띠가 없음만 보는 기준(S11-AC-32)이라 지금 화면도 맞다
+src/screens/P1Login.11.test.tsx.P-1 로그인의 OIDC 오류 띠 (11 묶음) > S11-AC-32 P-1 ?oidc=other(모르는 값): OIDC 오류 띠가 없다 | 모르는 oidc 값에 띠가 없음만 보는 기준(S11-AC-32)이라 지금 화면도 맞다
+src/screens/P1Login.11.test.tsx.P-1 로그인의 OIDC 오류 띠 (11 묶음) > S11-AC-32 P-1 ?oidc=FAILED(모르는 값): OIDC 오류 띠가 없다 | 모르는 oidc 값에 띠가 없음만 보는 기준(S11-AC-32)이라 지금 화면도 맞다
+src/screens/P1Login.11.test.tsx.P-1 로그인의 OIDC 오류 띠 (11 묶음) > S11-AC-32 P-1 ?oidc=(모르는 값): OIDC 오류 띠가 없다 | 모르는 oidc 값에 띠가 없음만 보는 기준(S11-AC-32)이라 지금 화면도 맞다
