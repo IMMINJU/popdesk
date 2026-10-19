@@ -25,6 +25,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -40,6 +42,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 class ImapMailbox {
+
+    private static final Logger log = LoggerFactory.getLogger(ImapMailbox.class);
 
     private final MailInSetup setup;
 
@@ -213,7 +217,8 @@ class ImapMailbox {
         /**
          * Deletes the mail of the processed and the quarantine folder that the server received before
          * {@code before} ({@code INTERNALDATE}): flagged {@code \Deleted}, then a {@code UID EXPUNGE} of those alone
-         * (S12-AC-43). Without UIDPLUS nothing is deleted.
+         * (S12-AC-43). Without UIDPLUS nothing is deleted, and a warning names the two folders: the mail there is
+         * for the administrator to delete.
          *
          * @return how many were deleted
          */
@@ -221,6 +226,9 @@ class ImapMailbox {
             int deleted = 0;
             try {
                 if (!uidPlus) {
+                    log.warn("The IMAP server does not offer UIDPLUS, so popdesk does not delete the mail older than 90 "
+                            + "days from the folders {} and {}; delete it there yourself (docs/operate/privacy.md).",
+                            processed.getFullName(), quarantine.getFullName());
                     return 0;
                 }
                 for (Folder folder : List.of(processed, quarantine)) {

@@ -33,7 +33,7 @@ popdesk does not keep IP addresses: sign-in limits are counted in memory only. I
 | Images uploaded for content and not used | 24 hours |
 | Sessions | 8 hours after the sign-in |
 | Records of received email (hash, outcome, sender address) | 90 days, also while receiving email is off |
-| Received email in the processed and quarantine folders of the mailbox | 90 days from the day the mail server received it; popdesk deletes it once a day while receiving email is on. Mail left in the incoming folder is not deleted |
+| Received email in the processed and quarantine folders of the mailbox | 90 days from the day the mail server received it; popdesk deletes it once a day while receiving email is on. On a mail server without `UIDPLUS`, popdesk does not delete it and logs a warning once a day; delete it in the mailbox yourself. Mail left in the incoming folder is not deleted |
 | `Message-ID` of sent notification email | 90 days; a reply after that is found by the `[issue key]` in its subject only |
 | Password reset tokens | Until used or expired (1 hour) |
 | `Idempotency-Key` of a filing | 24 hours |
