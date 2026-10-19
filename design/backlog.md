@@ -51,7 +51,7 @@
 | 번호 | 무엇 | 출처 |
 |---|---|---|
 | 바-1 | 화면 전체의 영어 문구. 지금 화면은 한국어뿐이고(콘솔·포털 `src`에서 `@popdesk/i18n`을 가져오는 파일이 없다) 계정의 언어는 메일에만 쓰인다. 편집기 문구(`IMAGE_TEXT`)도 이때 옮긴다 | 1a 5절, 5 9절 |
-| 바-2 | 서버 패키지 순환 `account` ↔ `company` 하나(`package-cycles.txt`). 초대나 구성원을 고치는 묶음에서 끊는다 | D-57 |
+| 바-2 | 끝났다(`bc74a62`, `d69e5bf`, 2026-10-20). `account`가 가진 `AccountCompanies`를 `CompanyRepository`가 구현해 `account → company`를 없앴고 기준선 `package-cycles.txt`가 비었다. 길은 crosscheck(서브에이전트 둘)로 골랐다 | D-57 |
 
 ## 11월 Actions 초기화 뒤
 
