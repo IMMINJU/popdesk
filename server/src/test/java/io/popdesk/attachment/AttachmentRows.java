@@ -18,6 +18,10 @@ import java.util.UUID;
  * test made through the API: the one table (other than {@code attachment_content}) with a row whose
  * column, read as text, equals the attachment ID, and which has a column holding one of the four
  * states. States are read case-insensitively from a text or enum column.
+ *
+ * <p>Looking a value up in every column of every table costs a query each. So the first lookup by
+ * ID that finds exactly one row remembers its table and column, and later lookups by ID read only
+ * that column: one query, however many tables there are.
  */
 final class AttachmentRows {
 
@@ -53,7 +57,18 @@ final class AttachmentRows {
         }
     }
 
+    private static final Set<String> ID_TYPES = Set.of("uuid", "text", "character varying");
+
+    /** A table and the column in it where a value was found. */
+    private record Place(String table, String column) {}
+
+    /** A row {@link #find} found, and the column that held the value. */
+    private record Hit(Row row, String column) {}
+
     private final DbInspector db;
+
+    /** Where the first lookup by ID found its one row; null until then. */
+    private Place idPlace;
 
     AttachmentRows(DbInspector db) {
         this.db = db;
@@ -61,7 +76,7 @@ final class AttachmentRows {
 
     /** The metadata row of an attachment, by its ID. */
     Row byId(String id) {
-        List<Row> found = find(id, Set.of("uuid", "text", "character varying"));
+        List<Row> found = findId(id);
         if (found.size() != 1) {
             throw new AssertionError("Expected one attachment row with ID " + id + " and a file state, found: " + found);
         }
@@ -70,7 +85,7 @@ final class AttachmentRows {
 
     /** The metadata row of an attachment, or empty when there is none (a row that was removed). */
     Optional<Row> findById(String id) {
-        List<Row> found = find(id, Set.of("uuid", "text", "character varying"));
+        List<Row> found = findId(id);
         if (found.size() > 1) {
             throw new AssertionError("More than one attachment row with ID " + id + ": " + found);
         }
@@ -98,7 +113,7 @@ final class AttachmentRows {
 
     /** Metadata rows whose text columns hold {@code fileName}. Empty when there is none. */
     List<Row> byFileName(String fileName) {
-        return find(fileName, Set.of("text", "character varying"));
+        return find(fileName, Set.of("text", "character varying")).stream().map(Hit::row).toList();
     }
 
     /** The {@code bytea} column of {@code attachment_content}. Fails with an AssertionError when there is none. */
@@ -128,23 +143,41 @@ final class AttachmentRows {
                 .toList();
     }
 
-    private List<Row> find(String value, Set<String> types) {
-        List<Row> out = new ArrayList<>();
+    /** Rows by ID: in the remembered place, else found in every table, remembering the place of one. */
+    private List<Row> findId(String id) {
+        if (idPlace != null) {
+            return rowsAt(idPlace, id).stream().map(Hit::row).toList();
+        }
+        List<Hit> found = find(id, ID_TYPES);
+        if (found.size() == 1) {
+            idPlace = new Place(found.getFirst().row().table(), found.getFirst().column());
+        }
+        return found.stream().map(Hit::row).toList();
+    }
+
+    private List<Hit> find(String value, Set<String> types) {
+        List<Hit> out = new ArrayList<>();
         for (String table : db.tables()) {
             if (table.equals(CONTENT_TABLE)) {
                 continue;
             }
             for (DbInspector.Column column : db.columns(table)) {
-                if (!types.contains(column.dataType())) {
-                    continue;
+                if (types.contains(column.dataType())) {
+                    out.addAll(rowsAt(new Place(table, column.name()), value));
                 }
-                for (Map<String, Object> values : db.rows("select * from " + quote(table) + " where "
-                        + quote(column.name()) + "::text = ?", value)) {
-                    Row row = new Row(table, values);
-                    if (hasState(row)) {
-                        out.add(row);
-                    }
-                }
+            }
+        }
+        return out;
+    }
+
+    /** Rows of the place's table with a file state whose column, read as text, equals {@code value}. */
+    private List<Hit> rowsAt(Place place, String value) {
+        List<Hit> out = new ArrayList<>();
+        for (Map<String, Object> values : db.rows("select * from " + quote(place.table()) + " where "
+                + quote(place.column()) + "::text = ?", value)) {
+            Row row = new Row(place.table(), values);
+            if (hasState(row)) {
+                out.add(new Hit(row, place.column()));
             }
         }
         return out;

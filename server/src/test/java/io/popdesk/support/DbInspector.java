@@ -8,6 +8,7 @@ import java.sql.Statement;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.function.Function;
 import javax.sql.DataSource;
 import org.springframework.jdbc.core.ColumnMapRowMapper;
@@ -24,7 +25,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * this class sets that schema, so unqualified table names in {@link #rows} and {@link #count} find
  * the app's tables.
  *
- * <p>Reads run on a read-only connection of their own, outside the app's pool. Do not use this to
+ * <p>Reads run on a read-only connection of their own, outside the app's pool, one per thread and
+ * kept between reads. Do not use this to
  * create business data; fixtures go through the API ({@link Fixtures}). The one write it allows is
  * {@link #schemaFixture}, for tests about the schema or migration state itself.
  */
@@ -39,6 +41,10 @@ public final class DbInspector {
     private final PostgreSQLContainer postgres;
     private final DataSource appDataSource;
     private volatile String schema;
+
+    private static final int VALID_SECONDS = 5;
+
+    private final ThreadLocal<Connection> readConnection = new ThreadLocal<>();
 
     public DbInspector(PostgreSQLContainer postgres, DataSource appDataSource) {
         this.postgres = postgres;
@@ -139,18 +145,50 @@ public final class DbInspector {
     }
 
     private <T> T read(Function<JdbcTemplate, T> work) {
-        try (Connection c = connect()) {
-            c.setReadOnly(true);
-            return work.apply(new JdbcTemplate(new SingleConnectionDataSource(c, true)));
+        try {
+            return work.apply(new JdbcTemplate(new SingleConnectionDataSource(readConnection(), true)));
         } catch (SQLException e) {
             throw new IllegalStateException("Database read failed", e);
         }
     }
 
+    /**
+     * This thread's read-only connection. Opening one per read made a helper that sends a query per
+     * table and column take seconds, so each thread keeps one and reads go one after another on it.
+     * It is opened again when it is closed or no longer answers (a test ended its backend, the
+     * database went away). Autocommit stays on, so a read holds no transaction between calls.
+     */
+    private Connection readConnection() throws SQLException {
+        Connection c = readConnection.get();
+        if (c != null && c.isValid(VALID_SECONDS)) {
+            return c;
+        }
+        if (c != null) {
+            try {
+                c.close();
+            } catch (SQLException ignored) {
+                // A broken connection; the new one replaces it.
+            }
+        }
+        Properties props = new Properties();
+        // No server-side prepared statements: a plan kept across calls could outlive a schema
+        // fixture that changes a table, as a connection per read never did.
+        props.setProperty("prepareThreshold", "0");
+        Connection fresh = connect(props);
+        fresh.setReadOnly(true);
+        readConnection.set(fresh);
+        return fresh;
+    }
+
     private Connection connect() throws SQLException {
+        return connect(new Properties());
+    }
+
+    private Connection connect(Properties props) throws SQLException {
         String appSchema = schema();
-        Connection c = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(),
-                postgres.getPassword());
+        props.setProperty("user", postgres.getUsername());
+        props.setProperty("password", postgres.getPassword());
+        Connection c = DriverManager.getConnection(postgres.getJdbcUrl(), props);
         c.setSchema(appSchema);
         return c;
     }
