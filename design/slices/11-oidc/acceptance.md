@@ -78,7 +78,7 @@
 | ID | 기준 |
 |---|---|
 | S11-AC-24 | When OIDC로 로그인하면, the system shall 감사 `SIGN_IN_SUCCEEDED`(바뀐 값 `{method: "OIDC"}`)를 남긴다. 처음 묶으면 그 앞에 `OIDC_LINKED`(대상 그 계정, 바뀐 값 `issuer`)를, 수락 전 계정을 켰으면 `OIDC_LINKED` 뒤에 `INVITATION_ACCEPTED`(바뀐 값 `{method: "OIDC"}`)를 남긴다. 맞춘 계정이 있는데 S11-AC-17로 실패하면 `SIGN_IN_FAILED`(바뀐 값 `{method: "OIDC"}`)를 남긴다. 감사 값에 `sub`, 토큰, 코드는 넣지 않는다. (AUTH-6, AUDIT-1, 5절 8) |
-| S11-AC-25 | The system shall 로그에 코드, `state`, `nonce`, PKCE 값, 토큰, 클라이언트 비밀, `sub`를 남기지 않고, 이메일은 첫 글자 뒤로 가린다. 실패 로그는 계정 ID(있으면)와 까닭 이름만 남긴다. 제공자가 준 `error`는 `[a-z_]{1,64}`에 맞을 때만 남기고 `error_description`은 남기지 않는다. (PII-2, TM-69) |
+| S11-AC-25 | The system shall 로그에 코드, `state`, `nonce`, PKCE 값, 토큰, 클라이언트 비밀, `sub`를 남기지 않고, 이메일은 첫 글자 뒤로 가린다. 실패 로그는 계정 ID(있으면)와 까닭 이름만 남긴다. 제공자가 준 `error`는 `[a-z_]{1,64}`에 맞으면 남기고(맞지 않으면 그 값 없이 "모르는 꼴"로 남김) `error_description`은 남기지 않는다. (PII-2, TM-69) |
 
 ### 2.7 관리
 
@@ -88,7 +88,7 @@
 | S11-AC-27 | When 관리자가 `DELETE /api/console/accounts/{id}/oidc-link`를 부르면, the system shall 그 계정의 묶음을 모두 지우고 그 계정의 세션을 모두 끝내고 204로 답하고 감사 `OIDC_UNLINKED`(대상 그 계정)를 남긴다. 묶음이 없으면 404다. 다음 OIDC 로그인은 S11-AC-16대로 다시 묶는다. (AUTH-6, 5절 3) |
 | S11-AC-28 | The system shall 묶음 풀기를 관리자만 하게 한다: 상담원 403, 로그인 없음 401, 고객 호스트 404(D-43), CSRF 없는 쓰기 403, 없는 계정 404. 익명 계정은 묶음이 없으므로 404다. (AUTH-6, 권한) |
 | S11-AC-29 | When 관리자가 계정을 익명화하면(PII-4), the system shall 같은 트랜잭션에서 그 계정의 묶음을 지운다. 같은 이메일로 다시 초대한 사람은 OIDC로 옛 계정에 들어가지 않는다. 감사 `OIDC_UNLINKED`는 따로 남기지 않는다(`ACCOUNT_ANONYMIZED`가 남는다). (PII-4, AUTH-6) |
-| S11-AC-30 | When 관리자가 `GET /api/console/system/status`를 부르면, the system shall `oidc`에 켜짐 여부, 켜진 앱 목록, 마지막 OIDC 로그인 성공 시각, 앱이 뜬 뒤 제공자 쪽 실패 수(정보 받기, 토큰 바꾸기, ID 토큰 확인), 마지막 실패의 종류(`DISCOVERY`, `TOKEN`, `ID_TOKEN` 가운데 하나 또는 `null`)와 시각을 준다. 메모리에서 세며 앱이 다시 뜨면 비어 있다. 계정 쪽 실패(S11-AC-17)는 세지 않는다. (OPS-3, 5절 10) |
+| S11-AC-30 | When 관리자가 `GET /api/console/system/status`를 부르면, the system shall `oidc`에 켜짐 여부, 켜진 앱 목록, 마지막 OIDC 로그인 성공 시각, 앱이 뜬 뒤 제공자 쪽 실패 수(정보 받기, 토큰 바꾸기, ID 토큰 확인), 마지막 실패의 종류(`DISCOVERY`, `TOKEN`, `ID_TOKEN` 가운데 하나 또는 `null`)와 시각을 준다. 메모리에서 세며 앱이 다시 뜨면 비어 있다. 계정 쪽 실패(S11-AC-17)와, 기억해 둔 발견 실패로 제공자에 접속하지 않고 거절한 시작은 세지 않는다. 시각과 30초 기억은 주입한 `Clock`으로 잰다. (OPS-3, 5절 10) |
 
 ### 2.8 화면
 
@@ -146,3 +146,4 @@
 | 14 | 보안 검토(2026-10-19, 서브에이전트)에서 받은 것: 발견 실패 30초 기억과 연결 3초, 로그인 요청 전체 상한 10,000과 `next` 512자, `azp`가 있으면 늘 확인, 알고리즘 RS256·ES256만, https에서 `__Host-` 쿠키, 잠근 행에서 다시 보기, 묶음 풀기에 세션 끝내기, OIDC 이메일은 ASCII만(PostgreSQL `lower()`가 켈빈 기호 같은 글자를 ASCII로 접는다), `error`도 `state` 확인 뒤, 토큰 주소 5xx·429는 `unavailable`, 발견 주소의 끝 `/`, https 발급자의 http 주소 거절, 단추는 주소 옮기기, 제공자 `error` 글은 꼴을 본 뒤에만 로그 | OIDC Core 3.1.3.7, RFC 9700의 권고와 이 앱의 CSP·세션 꼴에 맞춘다. IPv6를 /64로 묶어 세는 것은 `IpRateLimit` 전체의 일이라 넣지 않았다(넘긴 일) | 검토 전 판 |
 | 15 | C-5 테스트 탭 질문: 흐름 테스트는 토큰 시각을 앱 시계로 맞춰 보낸다. 대소문자만 다른 이메일은 맞춘다. 발견 실패(S11-AC-07)와 `DISCOVERY` 수(S11-AC-30)는 닫힌 포트 앱의 `unavailable`만 HTTP로 보고 나머지는 단위 테스트와 C-7이 본다. 전체 상한 10,000(S11-AC-08)은 HTTP로 보지 않는다. 흐름 도움 `OidcAppTest.account()`는 계정 목록에서 찾는다 | 공용 테스트 시계가 실제와 11일 다르다. 발견 문서 1시간 기억과 실패 30초 기억이 같은 컨텍스트의 다른 테스트로 번진다. 상한을 채우면 10분 동안 그 컨텍스트의 모든 시작이 `busy`가 된다. 콘솔에 계정 하나를 읽는 경로가 없다 | 컨텍스트 더 만들기 |
 | 16 | 웹: 로그인 단추 조각은 `@popdesk/app`의 `OidcSignIn`(props `next`, `navigate`)이다. 포털 로그인의 넘침 story는 두지 않고 같은 조각을 쓰는 C-1 story로 갈음한다. C-18이 꺼짐이면 "꺼짐"만 보이고 아래 설명도 없다 | jsdom은 `location.assign`의 주소를 남기지 않아 조각 테스트가 옮기는 함수를 넘겨 본다. story 실행기는 콘솔 화면만 잡고 콘솔은 포털을 가져오지 못한다(D-57) | 포털 story 자리 만들기 |
+| 17 | C-7 서버 점검: 서명·알고리즘·`azp`·`kid`, 발견 실패 기억, `DISCOVERY` 수, 한 앱만 켠 설정은 테스트 안에서 ID 토큰을 직접 만들어 주는 작은 OIDC 서버(`support/`, JDK `HttpServer`, 웹훅 받는 쪽과 같은 실제 대역)와 그것을 쓰는 둘째 OIDC 컨텍스트(`OIDC_APPS=console`)로 HTTP에서 본다. 돌아오기 302의 `no-store`와 실패 갈래의 로그도 더한다. `BoundaryList`의 묶음 풀기 줄은 `OidcUnlinkAccessTest`를 가리킨다 | 시험 제공자는 늘 바른 토큰만 만들고, 단위 테스트 `IdTokenClaims`는 서명을 보지 않는다. 서명은 센 검증을 받는 기준이라 HTTP 테스트가 있어야 한다 | 디코더 단위 테스트만 |
