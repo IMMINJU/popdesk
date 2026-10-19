@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,12 +30,15 @@ class OutboxDelivery {
     private final OutboxRepository outbox;
     private final OpsAlerts alerts;
     private final OutboxMetrics metrics;
+    private final MailSentRepository mailSent;
     private final Clock clock;
 
-    OutboxDelivery(OutboxRepository outbox, OpsAlerts alerts, OutboxMetrics metrics, Clock clock) {
+    OutboxDelivery(OutboxRepository outbox, OpsAlerts alerts, OutboxMetrics metrics, MailSentRepository mailSent,
+            Clock clock) {
         this.outbox = outbox;
         this.alerts = alerts;
         this.metrics = metrics;
+        this.mailSent = mailSent;
         this.clock = clock;
     }
 
@@ -54,6 +58,15 @@ class OutboxDelivery {
         outbox.updateLastSuccess(row.channel(), now());
         alerts.resolve(OpsAlerts.Kind.stalled(row.channel()));
         metrics.sent(row.channel());
+    }
+
+    /**
+     * Records the {@code Message-ID} of a sent email and its issue (S12-AC-05), in a transaction of its own after the
+     * one of {@link #sent}: when this fails, the row is gone all the same and the email is not sent twice.
+     */
+    @Transactional
+    public void recordSent(String messageId, UUID issueId) {
+        mailSent.insert(messageId, issueId, now());
     }
 
     /** The row is not to be sent. */

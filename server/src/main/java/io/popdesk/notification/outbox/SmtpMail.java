@@ -1,5 +1,6 @@
 package io.popdesk.notification.outbox;
 
+import io.popdesk.notification.MailInState;
 import io.popdesk.notification.Sandbox;
 import io.popdesk.notification.outbox.MailText.Message;
 import jakarta.mail.AuthenticationFailedException;
@@ -15,11 +16,13 @@ import java.net.NoRouteToHostException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
@@ -40,6 +43,10 @@ import org.springframework.stereotype.Component;
  * (S4B-AC-02); whether the email is to be sent at all was decided before, for the recipient it was
  * meant for. And an address that had its 50 emails this hour gets no more ({@link MailLimit}), counted
  * by the address the email really goes to.
+ *
+ * <p>Every email gets a {@code Message-ID} popdesk makes, 32 random bytes as lower-case hex at the domain of
+ * {@code MAIL_INBOUND_ADDRESS}, else of the sender (S12-AC-04), so that a reply to it can be matched and nobody can
+ * guess another person's. And it gets the {@code Auto-Submitted} and {@code Reply-To} of its {@link Headers}.
  */
 @Component
 class SmtpMail {
@@ -68,15 +75,40 @@ class SmtpMail {
     /** One email as it came out: the attempt, and what the SMTP server said when it refused, else null. */
     record Result(Attempt attempt, String serverReply) {}
 
+    /**
+     * What goes on an email besides its text (RFC 3834, S12-AC-04, S12-AC-05): {@code Auto-Submitted}, and the
+     * {@code Reply-To} address or null for none.
+     */
+    record Headers(String autoSubmitted, String replyTo) {
+
+        /** {@code Auto-Submitted: auto-generated}, no {@code Reply-To}: every email but the ones below. */
+        static final Headers GENERATED = new Headers("auto-generated", null);
+
+        /** {@code Auto-Submitted: auto-replied}: an email that answers one popdesk received. */
+        static final Headers REPLIED = new Headers("auto-replied", null);
+
+        /** {@code Auto-Submitted: auto-generated} and replies to {@code replyTo}. */
+        static Headers replyTo(String replyTo) {
+            return new Headers(GENERATED.autoSubmitted(), replyTo);
+        }
+    }
+
+    /** The random bytes of a {@code Message-ID}. */
+    static final int MESSAGE_ID_BYTES = 32;
+
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     private final Environment environment;
     private final Sandbox sandbox;
     private final MailLimit limit;
+    private final MailInState mailIn;
     private final Clock clock;
 
-    SmtpMail(Environment environment, Sandbox sandbox, MailLimit limit, Clock clock) {
+    SmtpMail(Environment environment, Sandbox sandbox, MailLimit limit, MailInState mailIn, Clock clock) {
         this.environment = environment;
         this.sandbox = sandbox;
         this.limit = limit;
+        this.mailIn = mailIn;
         this.clock = clock;
     }
 
@@ -99,9 +131,10 @@ class SmtpMail {
      *
      * @param recipientAccountId the account the email is for
      * @param to that account's address
+     * @return the attempt; a sent one has the email's {@code Message-ID}
      */
-    Attempt send(long recipientAccountId, String to, Message message) {
-        return deliver(recipientAccountId, to, message).attempt();
+    Attempt send(long recipientAccountId, String to, Message message, Headers headers) {
+        return deliver(recipientAccountId, to, message, headers).attempt();
     }
 
     /**
@@ -112,10 +145,10 @@ class SmtpMail {
      * answer: what the mail library says of a connection that failed names the SMTP host and port.
      */
     Result sendForReply(long recipientAccountId, String to, Message message) {
-        return deliver(recipientAccountId, to, message);
+        return deliver(recipientAccountId, to, message, Headers.GENERATED);
     }
 
-    private Result deliver(long recipientAccountId, String recipient, Message original) {
+    private Result deliver(long recipientAccountId, String recipient, Message original, Headers headers) {
         if (sandbox.mailOff()) {
             return new Result(Attempt.dropped(), null);
         }
@@ -150,21 +183,65 @@ class SmtpMail {
         }
         Session session = Session.getInstance(properties);
         try {
-            MimeMessage mime = new MimeMessage(session);
-            mime.setFrom(sender(from(user), message.senderName()));
+            String from = from(user);
+            String messageId = newMessageId(mailIn.messageIdDomain().orElseGet(() -> domainOf(from)));
+            MimeMessage mime = new OwnIdMessage(session, messageId);
+            mime.setFrom(sender(from, message.senderName()));
             mime.setRecipient(jakarta.mail.Message.RecipientType.TO, new InternetAddress(to, true));
             mime.setSubject(message.subject(), "UTF-8");
             mime.setText(message.text(), "UTF-8");
             mime.setSentDate(Date.from(clock.instant()));
+            mime.setHeader("Auto-Submitted", headers.autoSubmitted());
+            if (headers.replyTo() != null) {
+                mime.setReplyTo(new InternetAddress[] {new InternetAddress(headers.replyTo(), true)});
+            }
             if (user == null) {
                 Transport.send(mime);
             } else {
                 Transport.send(mime, user, password);
             }
             limit.sent(to);
-            return new Result(Attempt.sent(), null);
+            return new Result(Attempt.sent(messageId), null);
         } catch (MessagingException e) {
             return new Result(Attempt.failed(kind(e)), serverReply(e, user, password, to));
+        }
+    }
+
+    /** A new {@code Message-ID} without its angle brackets: {@value #MESSAGE_ID_BYTES} random bytes at the domain. */
+    static String newMessageId(String domain) {
+        byte[] bytes = new byte[MESSAGE_ID_BYTES];
+        RANDOM.nextBytes(bytes);
+        return HexFormat.of().formatHex(bytes) + "@" + domain;
+    }
+
+    /** The domain of a {@code From} address ({@code Name <address>} or the address), in lower case. */
+    static String domainOf(String from) {
+        String address;
+        try {
+            address = new InternetAddress(from).getAddress();
+        } catch (MessagingException e) {
+            address = from;
+        }
+        int at = address == null ? -1 : address.lastIndexOf('@');
+        return at < 0 || at == address.length() - 1 ? "localhost" : address.substring(at + 1).toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * A message with the {@code Message-ID} popdesk made. The mail library gives a message a new one each time it is
+     * saved, as {@code Transport.send} does; this keeps the one made, so the recorded value is the sent one.
+     */
+    private static final class OwnIdMessage extends MimeMessage {
+
+        private final String messageId;
+
+        OwnIdMessage(Session session, String messageId) {
+            super(session);
+            this.messageId = messageId;
+        }
+
+        @Override
+        protected void updateMessageID() throws MessagingException {
+            setHeader("Message-ID", "<" + messageId + ">");
         }
     }
 

@@ -8,6 +8,7 @@ import io.popdesk.notification.InvitationLinks;
 import io.popdesk.notification.IssueAccess;
 import io.popdesk.notification.IssueFacts;
 import io.popdesk.notification.IssueFacts.Issue;
+import io.popdesk.notification.MailInState;
 import io.popdesk.notification.MailKind;
 import io.popdesk.notification.PasswordResetLinks;
 import io.popdesk.notification.Recipients;
@@ -15,6 +16,7 @@ import io.popdesk.notification.Recipients.Recipient;
 import io.popdesk.notification.Recipients.Status;
 import io.popdesk.notification.TaskFacts;
 import io.popdesk.notification.outbox.MailText.Message;
+import io.popdesk.notification.outbox.SmtpMail.Headers;
 import io.popdesk.notification.outbox.OutboxRepository.OutboxRow;
 import java.util.Map;
 import java.util.Optional;
@@ -37,7 +39,9 @@ import org.springframework.stereotype.Component;
  * the email instead is {@link SmtpMail}'s business (S4B-AC-05).
  *
  * <p>The link to an issue is that of the recipient's app: the portal for a customer, the console for
- * staff (MAIL-1).
+ * staff (MAIL-1). While receiving email is on, an email about an issue to a customer replies to
+ * {@code MAIL_INBOUND_ADDRESS} and is recorded with its {@code Message-ID} once sent (S12-AC-05); staff's
+ * email and email about no issue are neither.
  *
  * <p>An invitation or password reset email gets a new token when it is first tried, since the database
  * keeps only the token's hash; retries of that row send the same link. The link is kept in memory only
@@ -59,11 +63,12 @@ class MailSender implements Sender {
     private final PublicAddress address;
     private final SmtpMail smtp;
     private final BrandingName branding;
+    private final MailInState mailIn;
     private final Map<Long, String> links = new ConcurrentHashMap<>();
 
     MailSender(Recipients recipients, IssueFacts issues, IssueAccess access, CommentFacts comments,
             TaskFacts tasks, OutboxRepository outbox, InvitationLinks invitations, PasswordResetLinks passwordResets,
-            PublicAddress address, SmtpMail smtp, BrandingName branding) {
+            PublicAddress address, SmtpMail smtp, BrandingName branding, MailInState mailIn) {
         this.recipients = recipients;
         this.issues = issues;
         this.access = access;
@@ -75,6 +80,7 @@ class MailSender implements Sender {
         this.address = address;
         this.smtp = smtp;
         this.branding = branding;
+        this.mailIn = mailIn;
     }
 
     @Override
@@ -143,7 +149,10 @@ class MailSender implements Sender {
         if (message.isEmpty()) {
             return Attempt.dropped();
         }
-        return smtp.send(row.recipientAccountId(), recipient.email(), message.get().from(desk));
+        Headers headers = issue != null && recipient.app() == App.PORTAL
+                ? mailIn.replyTo().map(Headers::replyTo).orElse(Headers.GENERATED) : Headers.GENERATED;
+        Attempt attempt = smtp.send(row.recipientAccountId(), recipient.email(), message.get().from(desk), headers);
+        return headers.replyTo() == null ? attempt : attempt.recordedAbout(row.issueId());
     }
 
     @Override

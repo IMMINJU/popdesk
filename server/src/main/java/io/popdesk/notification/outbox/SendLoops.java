@@ -115,6 +115,9 @@ class SendLoops implements SmartLifecycle {
                     case SENT -> {
                         delivery.sent(row);
                         sender.forget(row.id());
+                        if (attempt.recordIssueId() != null) {
+                            recordSent(row, attempt);
+                        }
                     }
                     case DROPPED -> {
                         delivery.dropped(row);
@@ -136,6 +139,20 @@ class SendLoops implements SmartLifecycle {
                         }
                     }
                 }
+            }
+        }
+
+        /**
+         * The sent-mail record of a sent email, after the row is gone (design.md 0절 2). When it fails the email is
+         * not sent again; a reply to it is matched by the issue key in its subject only. The exception's class
+         * only, never its message.
+         */
+        private void recordSent(OutboxRow row, Attempt attempt) {
+            try {
+                delivery.recordSent(attempt.messageId(), attempt.recordIssueId());
+            } catch (RuntimeException e) {
+                log.warn("The sent-mail record of outbox row {} was not written ({}). A reply to that email is matched "
+                        + "by the issue key in its subject only.", row.id(), e.getClass().getSimpleName());
             }
         }
 
