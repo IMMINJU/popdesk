@@ -375,14 +375,13 @@
   padding: var(--space-8);
 }
 
-/* P-3 filter row: the parts line up on their bottoms and wrap onto more lines, so a part
-   without a label line sits beside the inputs and at the top when it starts a line.
+/* P-3 filter row: the parts line up on the search input and wrap onto more lines.
    At mobile width only the search shows; 필터 opens the rest as a column. */
 
 .pd-filters {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: var(--space-3) var(--space-4);
 }
 
@@ -416,10 +415,13 @@
   min-height: var(--field-height);
 }
 
-/* As tall as an input, so the checkbox and the link stand level with the inputs. */
+/* As tall as an input and at the bottom of their line, so the checkbox and the link stand level
+   with the inputs beside them and at the top of a line they start (b6 screens.md 3절). Only these
+   two: the whole row at the bottom would put 상태 under the search input's help line. */
 .pd-filters-more > .pd-check,
 .pd-filters-clear {
   display: inline-flex;
+  align-self: flex-end;
   align-items: center;
   min-height: var(--field-height);
 }
@@ -566,6 +568,11 @@ a.pd-issue-row:focus-visible {
 
   .pd-filters-more > .pd-field[data-pd='Select'] {
     width: 100%;
+  }
+
+  .pd-filters-more > .pd-check,
+  .pd-filters-clear {
+    align-self: auto;
   }
 
   .pd-issue-row-title-text {
