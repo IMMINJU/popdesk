@@ -8,6 +8,8 @@
 - 이름 칸(`.pd-person`)은 줄바꿈하지 않는다. 긴 이름(견본의 `LONG_PERSON`)이 칸을 넘으면 줄임표로 자르고 `title`로 전체를 보인다. 이름 칸에 최대 너비를 준다(구현 탭이 정하고 보고에 적는다).
 - 상태·담당자 칸의 배지는 줄 하나다.
 - 동작 칸(`.pd-row-actions`)의 단추는 글이 줄 하나다(`white-space: nowrap`). 단추가 둘이고 칸이 좁으면 위아래로 쌓고 오른쪽으로 맞춘다.
+- 구현에서 정한 것: 좁은 표는 표 구역의 container query로 가른다(틀 800px 아래 쌓기, 480px 아래는 예전처럼 틀 안에서 민다). 이름 칸 최대 너비 10rem, 좁은 표 9rem.
+- 영어 담당자 단추는 "Set as manager", "Unset manager"다(메인이 닫을 때 줄였다. "Remove as company manager"가 820px에서 이메일 칸을 53px로 눌렀다). 칸 머리와 배지는 "Company manager" 그대로다.
 - 담당 상담원 표, 가입 요청 표도 같은 꼴이면 같은 규칙을 받는다. 이 둘은 기준에 넣지 않는다(구현 탭이 820px에서 한 번 본다).
 - 360px는 바뀌지 않는다(표 틀 안에서 민다). 구현 탭이 브라우저로 한 번 본다.
 
@@ -19,7 +21,7 @@
 
 ## 3. P-3 필터 줄 (B6-AC-04)
 
-- PC 폭의 필터 줄(`.pd-filters-more`가 `display: contents`인 줄)을 `align-items: flex-end`로 맞춘다. `.pd-filters-more > .pd-check`의 `margin-top`을 지운다. "필터 지우기" 링크(`.pd-filters-clear`)도 같다.
+- `.pd-filters-more > .pd-check`와 "필터 지우기" 링크(`.pd-filters-clear`)의 `margin-top`을 지우고, 이 둘에만 `align-self: flex-end`를 준다. 줄 전체(`align-items`)는 위쪽 맞춤 그대로다. 구현 때 바꿨다: 줄 전체를 아래쪽으로 맞추면 검색 칸 밑 도움말 때문에 첫 줄의 상태 묶음이 13px 내려갔다.
 - 칸 이름이 있는 입력 칸과 칸 이름이 없는 체크·링크가 한 줄에 서면 아래쪽이 맞는다. 체크가 줄의 첫 칸이 되면 위쪽에 붙는다.
 - 360px의 접힌 필터(세로로 쌓음)는 그대로다.
 

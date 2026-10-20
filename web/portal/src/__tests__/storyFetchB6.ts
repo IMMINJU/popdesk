@@ -1,4 +1,4 @@
-// A fake server for the portal screen stories of slice b6 (design/slices/b6-small screens.md 3절). The
+// A fake server for the portal screen stories of slice b6 (design/archive/b6-small screens.md 3절). The
 // stories run in a real browser where MSW's node server does not work, so this replaces `fetch` and
 // answers the portal API for P-3: a customer of two companies (so the company filter shows) whose
 // language the story sets, Korean or English (`Me.locale`, b5), and an empty issue list.

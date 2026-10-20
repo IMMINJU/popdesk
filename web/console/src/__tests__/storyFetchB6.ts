@@ -1,4 +1,4 @@
-// The C-9 customer answers for the slice b6 screen stories (design/slices/b6-small screens.md 1절): the
+// The C-9 customer answers for the slice b6 screen stories (design/archive/b6-small screens.md 1절): the
 // customers of a company with a 67-character email, a long name, an anonymized account and rows with and
 // without the company manager mark. storyFetch.ts answers the rest of the console API; this file wraps the
 // `fetch` in place and answers the customer list (`listCompanyCustomers`) from a scenario the story sets.
