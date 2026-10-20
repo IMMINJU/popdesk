@@ -328,9 +328,9 @@
   white-space: nowrap;
 }
 
-/* A narrow table (C-9 at 1280 px, both at 820 px with the side menu folded): the buttons go one
-   above the other, the column names may break between words, and the cells sit closer. */
-@container pd-row-table (max-width: 60rem) {
+/* A narrow table (820 px with the side menu folded): the buttons go one above the other, the
+   column names may break between words, and the cells sit closer. */
+@container pd-row-table (max-width: 50rem) {
   .pd-row-actions {
     flex-direction: column;
     align-items: flex-end;
@@ -338,6 +338,7 @@
 
   .pd-table th {
     white-space: normal;
+    word-break: keep-all;
   }
 
   .pd-table :is(th, td) {
@@ -364,10 +365,10 @@
 }
 
 .pd-company-members .pd-person {
-  max-width: 12rem;
+  max-width: 10rem;
 }
 
-@container pd-row-table (max-width: 60rem) {
+@container pd-row-table (max-width: 50rem) {
   .pd-company-members .pd-person {
     max-width: 9rem;
   }
@@ -414,7 +415,12 @@
   overflow-wrap: anywhere;
 }
 
-@container pd-row-table (max-width: 60rem) {
+/* The other columns take the width first; a short name such as "Admin" still stays whole. */
+.pd-trash .pd-table td:nth-child(5) {
+  min-width: 4rem;
+}
+
+@container pd-row-table (max-width: 50rem) {
   .pd-trash .pd-table .pd-trash-issue {
     min-width: 0;
   }
@@ -422,6 +428,20 @@
 
 .pd-trash .pd-table td:is(:nth-child(3), :nth-child(4), :nth-child(6), :nth-child(7)) {
   white-space: nowrap;
+}
+
+/* At phone width the tables scroll sideways inside their frames as before (b6 screens.md 1절, 2절):
+   nothing breaks inside a word, and 문의 keeps its width. */
+@container pd-row-table (max-width: 30rem) {
+  .pd-company-members .pd-table :is(th, td):nth-child(2),
+  .pd-company-requests .pd-two-lines > .pd-muted,
+  .pd-trash .pd-table td:is(:nth-child(2), :nth-child(5)) {
+    overflow-wrap: normal;
+  }
+
+  .pd-trash .pd-table .pd-trash-issue {
+    min-width: 14rem;
+  }
 }
 
 .pd-audit-filters > .pd-field[data-pd='Select'] {
