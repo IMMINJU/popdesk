@@ -35,10 +35,10 @@ final class InboxSteps {
 
     /**
      * The fields of a console inbox item: those of {@link #ITEM_FIELDS}, the task (slice 6b), the linked issue
-     * (slice 6c), and the SLA summary (slice 8b, the contract).
+     * (slice 6c), the SLA summary (slice 8b), and the retention count and days (slice 10b, the contract).
      */
     static final Set<String> CONSOLE_ITEM_FIELDS = Set.of("id", "kind", "issue", "companyCode", "commentId", "actor",
-            "createdAt", "readAt", "task", "linkedIssue", "slaSummary");
+            "createdAt", "readAt", "task", "linkedIssue", "slaSummary", "retentionCount", "retentionDays");
 
     private final Fixtures fixtures;
     private final IssueFlow flow;

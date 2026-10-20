@@ -48,10 +48,10 @@ public final class SlaAlertSteps {
 
     /**
      * The fields of a console inbox item from slice 8b on: those of {@code inbox.InboxSteps.CONSOLE_ITEM_FIELDS}
-     * with {@code slaSummary}.
+     * with {@code slaSummary}, and from slice 10b {@code retentionCount} and {@code retentionDays}.
      */
     public static final Set<String> CONSOLE_ITEM_FIELDS = Set.of("id", "kind", "issue", "companyCode", "commentId",
-            "actor", "createdAt", "readAt", "task", "linkedIssue", "slaSummary");
+            "actor", "createdAt", "readAt", "task", "linkedIssue", "slaSummary", "retentionCount", "retentionDays");
 
     /** A title with a line break and quotes, the one of the {@code notify/__snapshots__} files. */
     public static final String SNAPSHOT_TITLE = "Printer \"B2\" jams\nafter toner change";
@@ -134,7 +134,8 @@ public final class SlaAlertSteps {
         assertThat(TalkFlow.kind(item)).as("kind of %s", item).isEqualTo(kind);
         assertThat(item.path("issue").path("key").asString(null)).as("issue.key of %s", item).isEqualTo(key);
         assertThat(item.path("companyCode").asString(null)).as("companyCode of %s", item).isEqualTo(companyCode);
-        for (String field : List.of("actor", "commentId", "task", "linkedIssue", "slaSummary")) {
+        for (String field : List.of("actor", "commentId", "task", "linkedIssue", "slaSummary", "retentionCount",
+                "retentionDays")) {
             assertThat(TalkFlow.isNull(item, field)).as("%s is null in %s", field, item).isTrue();
         }
     }

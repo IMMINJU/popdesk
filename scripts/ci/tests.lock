@@ -297,7 +297,7 @@ c0b15ff1ca7972261a9baff23be3ab643aeeff3346ca6400c155e6921d977418  server/src/tes
 eba01141ca1667892f907cc462687651bfe23afd66d9a7ae02647802f5d48e8c  server/src/test/java/io/popdesk/inbox/InboxReadTest.java
 6fff2c0683b54a3f40ae540fa60677589c8d4e4503df963506ec68a84c02e740  server/src/test/java/io/popdesk/inbox/InboxRecipientsTest.java
 91c97806626b4a67bdce54e77ddc6a5dfb67c53b6edcb45a0d26afe850ffb6a5  server/src/test/java/io/popdesk/inbox/InboxRulesTest.java
-859bdd3153072f09c28fbbc79ef7b69a642f90d4aa892dbd3c9b9f0899e93e39  server/src/test/java/io/popdesk/inbox/InboxSteps.java
+9f6b175186275d795f86b66ecf684b008cdb3c202f0e404bba190c4e3ba207cc  server/src/test/java/io/popdesk/inbox/InboxSteps.java
 69191c5155df3cb4fc29e45b7a9f7ec6f1b736e26f70f444912df6411d789e1c  server/src/test/java/io/popdesk/inbox/PortalNotificationContractTest.java
 c5c4d9479f64729c228fbe755f69406c4c282c7a747de37aebe5a56dfd0b66ec  server/src/test/java/io/popdesk/inbox/TaskInboxTest.java
 136936240ae603b7fb795ef27de439fd3b6a73bb084235311077659b70f890eb  server/src/test/java/io/popdesk/issue/AssigneeChangeRaceTest.java
@@ -579,7 +579,7 @@ e05faffe8316c40003b9bb6acb313bb2c3cd16a59b1fe453dc9ca6c86441345d  server/src/tes
 2d8206df613acfcb5c311b730495106250d3204dde3fbd091fc86e2ef3b282db  server/src/test/java/io/popdesk/project/ProjectChecks.java
 34bbbb17158ff1290cf8952927f13fe1b8cf2f830b5150c23aefb0a02001cf97  server/src/test/java/io/popdesk/sla/SlaAlertMailTest.java
 f0292393639db3b85e48708d2e074c6782c04d19c8e6637f1e46a7ff04cce6a9  server/src/test/java/io/popdesk/sla/SlaAlertSchemaTest.java
-507b0bc018937ebb2e83847fa06eb29c2c16c8af6ff04497b560fe23da983d93  server/src/test/java/io/popdesk/sla/SlaAlertSteps.java
+e19276dbe3172dc3e1eb895cac475782c0587ea4dd0ff4790d22870ca3d5d269  server/src/test/java/io/popdesk/sla/SlaAlertSteps.java
 2f7468e1fa1a9a6f5ca4d75972364848d1841759f5d0ba4f1e407f98f7c76db0  server/src/test/java/io/popdesk/sla/SlaAlertTest.java
 d91306f4a08e81539bbaefeb533bfc13f19ca7ea2d9ad1073bef86aaec949283  server/src/test/java/io/popdesk/sla/SlaAppTest.java
 108e52ee340e371f887f1b630f9a67e3b86109ac4bbd6045f20ce93e2557657f  server/src/test/java/io/popdesk/sla/SlaBusinessHoursTest.java
