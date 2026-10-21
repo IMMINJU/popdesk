@@ -279,6 +279,8 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
   const active = useRef<Mark | null>(null);
   const alive = useRef(true);
   const latest = useRef({ value: props.value, onChange: props.onChange, onImageUpload: props.onImageUpload, onImageBusyChange: props.onImageBusyChange });
+  /** Where the cursor goes back to when the value with an image in it is drawn. */
+  const caret = useRef<{ value: string; start: number; end: number } | null>(null);
 
   const marks = () => new Set([...(active.current ? [active.current] : []), ...queue.current.map((item) => item.mark)]);
 
@@ -287,6 +289,11 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
     if (before !== props.value) {
       for (const mark of marks()) mark.at = movedPosition(mark.at, before, props.value);
     }
+    // Setting the value moves the cursor to the end; it goes back in the same commit, before the
+    // writer can type or move it. A value other than the one with the image drops it.
+    const back = caret.current;
+    if (back && props.value === back.value) area.current?.setSelectionRange(back.start, back.end);
+    if (back && (props.value === back.value || before !== props.value)) caret.current = null;
     latest.current = { value: props.value, onChange: props.onChange, onImageUpload: props.onImageUpload, onImageBusyChange: props.onImageBusyChange };
   });
 
@@ -313,15 +320,8 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
     mark.at = at + inserted.length;
     latest.current.value = next;
     const el = area.current;
-    const selection = el ? ([after(el.selectionStart), after(el.selectionEnd)] as const) : null;
+    caret.current = el ? { value: next, start: after(el.selectionStart), end: after(el.selectionEnd) } : null;
     onChange(next);
-    if (!selection) return;
-    // Setting the value moves the cursor to the end; put it back where the writer had it. If the
-    // writer typed before the frame, the cursor is already where they type.
-    requestAnimationFrame(() => {
-      const current = area.current;
-      if (current?.value === next) current.setSelectionRange(selection[0], selection[1]);
-    });
   };
 
   const drain = async () => {
