@@ -8,7 +8,7 @@
 
 - 그 표의 상태 칸은 첫 묶음 무렵에 적은 것이라 지금과 다를 수 있다.
 - 위협 모델 6절의 받은 메일 DMARC 확인은 12번에서 정했다(D-68). OIDC를 켠 설치에서 비밀번호 로그인을 끌지는 11번에서 끄지 않기로 정했다(D-65).
-- 설치할 사람이 생기거나 레포를 공개할 때 하는 것은 D절 끝에 있다.
+- 이미지는 0.5.1부터 `release.yml`로 ghcr에 올린다(D-69). 순서는 D절 끝에 있다.
 
 ## C. 묶음마다 반복
 
@@ -205,10 +205,10 @@
 - 끝난 묶음만 넣는다. `main`은 늘 통과 상태다.
 - 지난 릴리스 2~3개에서 올라오는 업그레이드 테스트(데이터를 채운 DB).
 - 릴리스 노트: 바뀐 설정 키, 되돌릴 수 없는 마이그레이션 표시, "업그레이드 전에 백업하세요".
-- SBOM은 CI가 만들어 릴리스마다 붙인다(D-29). 이미지 서명은 여력이 될 때. `SECURITY.md` 신고 경로는 처음부터.
+- SBOM은 `release.yml`이 만들어 릴리스마다 붙이고, 이미지는 cosign으로 서명한다(D-29, D-69). `SECURITY.md` 신고 경로는 처음부터.
 - RTO 실측 값(`docs/operate/`)을 다시 잰다(D-33).
 
-### 지금은 태그와 견본만 남기고 이미지는 올리지 않는다 (2026-10-10 사람이 정함)
+### 0.5.0까지는 태그와 견본만 남기고 이미지는 올리지 않았다 (2026-10-10 사람이 정함)
 
 다른 곳에서 설치할 사람이 없어 ghcr에 올리기를 미뤘다. 0.1.0을 이 범위로 했고, 0.2.0, 0.3.0, 0.4.0도 같은 범위와 같은 순서로 했다(사람이 맡겨 메인이 정함. 0.3.0은 2번과 3번을, 0.4.0은 4a와 4b를 묶었다).
 
@@ -226,12 +226,12 @@
 
 버전을 올릴 때 고치는 곳: `server/pom.xml`, `OpenApiConfig.CONTRACT_VERSION`(계약 파일과 생성 클라이언트를 다시 만든다), `deploy/compose.yml`의 이미지 태그, README 둘의 상태 줄, `docs/operate/upgrade.md`의 "다음 판" 제목(판 번호로 바꾸고 그 앵커를 가리키는 링크도 고친다), `deploy/upgrade/README.md`와 `samples/README.md`의 견본 줄. 0.3.0의 기록은 `archive/3-issues/verify.md` 9절에, 0.4.0의 기록은 `archive/4b-delivery/verify.md` 10절에 있다.
 
-설치할 사람이 생기거나 레포를 공개할 때 하는 것:
+0.5.1부터 이미지를 올린다 (2026-10-22, D-69):
 
-- 릴리스 워크플로: amd64·arm64 빌드(D-45), ghcr에 올리기, SBOM(D-29), compose 파일을 릴리스에 붙이기.
-- 올린 이미지로 trivy를 다시 돌리고, 견본에 `sample.repodigest`를 붙인다.
-- RTO를 재서 `docs/operate/`에 적는다(D-33). 지금은 잰 값이 문서에 없다.
-- 문서의 "popdesk is not released yet" 줄(`configuration.md`, `upgrade.md`, `conventions.md`, `permissions.md`)을 고친다.
+- 태그 CI가 통과하면 GitHub 릴리스(프리릴리스)를 `compose.yml`과 노트로 만들고, `gh workflow run release.yml -f tag=vX.Y.Z`로 이미지를 올린다. 작업흐름이 태그 CI 결과, 릴리스가 있는지, 같은 판의 이미지가 이미 있는지를 먼저 본다. 판 하나는 한 번만 올린다.
+- 작업흐름은 amd64 이미지를 trivy로 본 뒤 amd64·arm64를 올리고, cosign으로 서명하고, SBOM과 다이제스트를 릴리스에 붙이고, arm64 머신에서 compose로 띄워 본다.
+- 올린 뒤 이 PC에서 로그인 없이 받아 설치 문서 순서대로 띄우고, `cosign verify`와 trivy를 돌린다. 0.5.1의 기록은 `archive/b6-small/verify.md` 8절에 있다.
+- 남은 것: RTO를 재서 `docs/operate/`에 적는다(D-33, 지금은 잰 값이 문서에 없다). 다음에 스키마가 바뀌는 판의 견본부터 `sample.repodigest`를 붙인다.
 
 ## 산출물 처리 (D-27)
 
