@@ -18,6 +18,23 @@ Customers raise and follow requests in a customer portal; agents answer, track i
 
 On `main` and coming in 0.5.0: inline images and S3 storage for attachments, labels, due dates, internal tasks with assignees and due dates, linked duplicate and related requests across companies, trash and auto-close, per-company counts, SLA due times and alerts, branding, personal-data export and anonymization, OIDC sign-in, creating requests by email, and an English UI.
 
+## Try it
+
+No image is published yet, so build 0.4.0 from its tag. You need Docker with Compose.
+
+```
+git checkout v0.4.0
+docker build -t ghcr.io/imminju/popdesk:0.4.0 .
+cat > deploy/.env <<'EOF'
+POPDESK_DB_PASSWORD=choose-a-database-password
+POPDESK_ADMIN_EMAIL=admin@example.com
+POPDESK_ADMIN_PASSWORD=choose-a-long-admin-password
+EOF
+docker compose -f deploy/compose.yml up -d
+```
+
+Then open `http://console.localhost:8080` and sign in as the admin; customers use `http://portal.localhost:8080`. The settings, TLS, and backups are in [`docs/operate/`](docs/operate/configuration.md).
+
 ## Not goals
 
 Chat, phone, or messenger channels; self sign-up; SLA reporting; real-time push; native apps; multiple teams in one install (for now). See [`design/roadmap.md`](design/roadmap.md).

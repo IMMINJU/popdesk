@@ -2,3 +2,6 @@
 .claude/worktrees/
 .claude/settings.local.json
 __pycache__/
+
+# Settings for a local install (deploy/.env holds passwords)
+.env
