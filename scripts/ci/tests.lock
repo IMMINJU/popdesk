@@ -66,6 +66,7 @@ aac1e7301b6e54ee6410e171da1ad4307c81a31b90ce2e3ca123f6d1df82aafe  server/src/tes
 1d810d61043220b4b223f7dd0e2838242884160c14c6b60686a87dc0ac84293d  server/src/test/java/io/popdesk/audit/AuditForwardTest.java
 92d408603201a7de7963f13c527ea182f3d675970387718ae03289b43af3e191  server/src/test/java/io/popdesk/audit/AuditLogAccessTest.java
 ed1bce8aefea9baa436c265d9d740bd745f92faaca957bbc8ecf51d6fc057371  server/src/test/java/io/popdesk/audit/AuditLogViewTest.java
+3cd72c3b59595d810ea92cb858334dff673ba0ee91405bb8f063c4da71c71514  server/src/test/java/io/popdesk/audit/AuditRetentionBatchTest.java
 0d7b7398371f3caa443cbdbfccd33a016108fed81b959178392aee4ce95810c1  server/src/test/java/io/popdesk/audit/AuditRetentionTest.java
 df78c931a11a93507a71c492760a6d24230147cbda994745c64e9c4eaa96c134  server/src/test/java/io/popdesk/audit/AuditRetryTest.java
 51a259064cf75a5bbc1ae1b04a4bb74672bf3b74f268f0be4c71261ff26783e1  server/src/test/java/io/popdesk/audit/AuditSteps.java
@@ -74,6 +75,7 @@ a9b5d2b3974e8325e884d8016eb2117f83ffad13dee82c0c5d7115c74ef3a4fd  server/src/tes
 ee3f121b16736a721ffe372369f604f2661e4720cb54f1fb115684b0e3e21f17  server/src/test/java/io/popdesk/audit/ClearAssignmentsAuditTest.java
 174f4f276d18e6442c0940a7e477ce8ea6b28f8d6c94bdc6c71d27cb381880f7  server/src/test/java/io/popdesk/audit/IssueTrashAuditTest.java
 a378893164d4300cc9af1867f1e47b9acf38214a32d0a7cf107da2b0c9b63c6e  server/src/test/java/io/popdesk/audit/LabelAuditTest.java
+1a57ac15e89fc51234b1629ceaad8c17c16aaa2f96aee36feb214964169e445e  server/src/test/java/io/popdesk/audit/RetentionBatchSteps.java
 d7d094d29681f37988ab0c230afaf146128943fc2cc4f202ba80c67917ce6588  server/src/test/java/io/popdesk/audit/TaskClearAuditTest.java
 fbecd2494f12d0d9a913279dcf2ffc9d6f8050583f04397bb56d30e881eae9ad  server/src/test/java/io/popdesk/auth/AccountStatus.java
 dfcc7123513a2e8df898ddc2fbce200643595f54657c1f019a0471a35c687a4d  server/src/test/java/io/popdesk/auth/AuthChecks.java
@@ -384,6 +386,8 @@ f50bf20815677c957a4d20a4a4e70eaf3d88ec733f4610c612777fb541327212  server/src/tes
 beb557addf43073563a8f9c435f89465be625c12e86ac31f5d01e8911b2c793d  server/src/test/java/io/popdesk/mailin/SentMailHeadersOffTest.java
 37592036b942e4c177db0257b9c0d51e5d81a392e828ab5b7e2e0f9a47a252e6  server/src/test/java/io/popdesk/mailin/SentMailHeadersTest.java
 151e0e14720643587b61ac77487f51334578fa328495e0f2d6b4522eb5e020e5  server/src/test/java/io/popdesk/mailin/UnknownSenderTest.java
+0debd6728b463cd36df82ec4a6134856d10013c6672c0b645c97b2bb977e043f  server/src/test/java/io/popdesk/mailin/UnreadableMailLogTest.java
+357da95c24bd1b20500c4b6817479141b6db2a772466ea257d271f2740442f16  server/src/test/java/io/popdesk/mailin/UnreadableMailTest.java
 2d4cb68b7ca97480fdb374c7b3c07682820bd37f6d654e23e888f1352829f6ee  server/src/test/java/io/popdesk/manager/ManagerAuditTest.java
 f5b9cf50a980ac3985d32f8529ffa197f70ce47524ca94226e83d5ad4734e99f  server/src/test/java/io/popdesk/manager/ManagerConcurrencyTest.java
 c33dacb14e9c8ec2d438c69ab91804684e1fe5a66df20712d637547fb09be8e9  server/src/test/java/io/popdesk/manager/ManagerIssueScopeTest.java
@@ -665,7 +669,7 @@ e5ad00a56f6a0cc31999f2b70adb1db35ebb395a5d3c73b8aec9005189e68e6b  server/src/tes
 a09a16630812e487b95e3aa531de8351c38689a7d0a7d3dc567ee19bc83cd74d  server/src/test/java/io/popdesk/support/Fixtures.java
 fb96d453b5eb75a7922966a72202bec1c30b6aac6917ca63bcd0291624be3f27  server/src/test/java/io/popdesk/support/HeldWrite.java
 f39671fdb8db9b594cedead0aff7506f221dcaf262cbb472eef8a1da10096b02  server/src/test/java/io/popdesk/support/JdkHttp.java
-aa295ff6f043a2d653c8bcc57443d8ad7f7b9195b6c19338dacf3344063a4f29  server/src/test/java/io/popdesk/support/MailInServer.java
+0b291845cf6e52fd003c70ee396a71a8270cedcdc1a4ae8b44ce15bf99871010  server/src/test/java/io/popdesk/support/MailInServer.java
 2f38b25c3f3648bca79df9ce2f878aec37eee713625708070c77e7ce5f675928  server/src/test/java/io/popdesk/support/MailServer.java
 6e01eb63066dc251724f0d26dd9976c659f5266ae4922650ffa535019397203b  server/src/test/java/io/popdesk/support/ManagementContextCloser.java
 abfdbf78c164255bd2be7c0add6df39fc168a08f4f47b44da9e289b52813f527  server/src/test/java/io/popdesk/support/OidcProvider.java
