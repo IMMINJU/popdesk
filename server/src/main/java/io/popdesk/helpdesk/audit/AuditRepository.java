@@ -113,7 +113,16 @@ class AuditRepository {
                 cutoff.atOffset(ZoneOffset.UTC)).stream().findFirst();
     }
 
-    /** Deletes the entries up to {@code seq}; returns how many. The retention period's only. */
+    /** The last entry whose {@code seq} is {@code seq} or lower. */
+    Optional<AuditRow> lastUpTo(long seq) {
+        return jdbc.query("select " + COLUMNS + " from audit_log where seq <= ? order by seq desc limit 1",
+                (rs, n) -> row(rs), seq).stream().findFirst();
+    }
+
+    /**
+     * Deletes the entries up to {@code seq}, row by row; returns how many. The retention period's only,
+     * a batch at a time.
+     */
     long deleteUpTo(long seq) {
         return jdbc.update("delete from audit_log where seq <= ?", seq);
     }

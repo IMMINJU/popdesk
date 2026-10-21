@@ -8,6 +8,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -31,8 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
  * </ol>
  *
  * <p>The two parts run while this class's lock is held ({@link #alone}). The retention period takes the
- * same lock ({@link AuditService#removeOlderThan}), so the start of the chain stays where it is while
- * the first part runs, and one anonymization runs at a time. The app is one instance (ADR D-23).
+ * same lock for each batch it removes ({@link AuditService#removeOlderThan}), so the start of the chain
+ * stays where it is while the first part runs. One anonymization runs at a time; one that comes while a
+ * batch runs waits for that batch, and the lock is fair, so it goes before the next batch (B7-AC-06).
+ * The app is one instance (ADR D-23).
  *
  * <p>Both parts check every entry they pass as it was, with the integrity check's function
  * ({@link AuditChain#holds}), and the second part the head too. A break is refused with 409
@@ -44,7 +47,11 @@ public class AuditRechain {
 
     private static final Logger log = LoggerFactory.getLogger(AuditRechain.class);
 
-    private final ReentrantLock lock = new ReentrantLock();
+    /** Fair: a thread that waits gets it before one that asks later, so batches let a waiting one in. */
+    private final ReentrantLock lock = new ReentrantLock(true);
+
+    /** Taken by an anonymization from before it waits for the lock until it lets it go. */
+    private final AtomicBoolean anonymizing = new AtomicBoolean();
     private final AuditRepository repository;
     private final AuditCopies copies;
     private final Clock clock;
@@ -76,22 +83,31 @@ public class AuditRechain {
 
     /**
      * Runs {@code work} while holding the lock of the recalculation, which the retention period shares;
-     * throws what {@code busy} gives, without running it, while another thread holds the lock
-     * (S10A-AC-21). Call it outside any transaction: the lock is let go after the work's transaction
+     * throws what {@code busy} gives, without running it, while another anonymization runs or waits
+     * (S10A-AC-21). While a batch of the retention period holds the lock it waits for that batch
+     * (B7-AC-06). Call it outside any transaction: the lock is let go after the work's transaction
      * ended.
      */
     public <T> T alone(Supplier<T> work, Supplier<? extends RuntimeException> busy) {
-        if (!lock.tryLock()) {
+        if (!anonymizing.compareAndSet(false, true)) {
             throw busy.get();
         }
         try {
-            return work.get();
+            lock.lock();
+            try {
+                return work.get();
+            } finally {
+                lock.unlock();
+            }
         } finally {
-            lock.unlock();
+            anonymizing.set(false);
         }
     }
 
-    /** Runs {@code work} once the lock is free, holding it meanwhile: for the retention period. */
+    /**
+     * Runs {@code work} once the lock is free, holding it meanwhile: for one batch of the retention
+     * period. An anonymization that waits for the batch gets the lock before the next batch.
+     */
     <T> T waiting(Supplier<T> work) {
         lock.lock();
         try {

@@ -32,6 +32,9 @@ public class AuditService {
     /** How many exports run at once (S1B-AC-28). Each holds a database connection while it streams. */
     static final int EXPORTS = 2;
 
+    /** How many entries the retention period removes in one transaction (B7-AC-01). */
+    static final int RETENTION_BATCH = 1000;
+
     /** Seconds a refused client waits before it tries again. */
     static final long RETRY_AFTER = 1;
 
@@ -205,27 +208,51 @@ public class AuditService {
      * as far as they follow one another (S1B-AC-19, S1B-AC-21): an old entry behind a newer one stays
      * until that one is old too, so the chain never loses its middle. An entry can be behind a newer
      * one because its time is taken when it is recorded and its place when its transaction commits.
+     * Where to stop is found once, at the start (B7-AC-01, B7-AC-05): entries appended later are not
+     * that old, and an anonymization changes hashes, not places or times.
      *
-     * <p>One transaction: the chain's row is locked first, as appending locks it, then the entries go,
-     * and the chain's starting point becomes the place and hash of the last one removed. The integrity
-     * check reads a snapshot, so it sees the chain before or after, never in between.
+     * <p>Up to {@value #RETENTION_BATCH} entries at a time, each batch in a transaction of its own: the
+     * chain's row is locked first, as appending locks it, then the batch's last entry is read, the
+     * entries go, and the chain's starting point becomes that entry's place and hash. Appending waits
+     * for one batch, never the whole run. The integrity check reads a snapshot, so it sees the chain
+     * between two batches, never inside one. When a batch fails, the ones before it stay removed and the
+     * run fails (B7-AC-04); the next run goes on from where the chain then starts.
      *
-     * <p>It waits while an anonymization computes the chain again ({@link AuditRechain}, S10A-AC-22): that
-     * one walks from an entry it found without locking the chain, so the front must not move meanwhile.
+     * <p>Each batch waits while an anonymization computes the chain again ({@link AuditRechain},
+     * S10A-AC-22): that one walks from an entry it found without locking the chain, so the front must
+     * not move meanwhile. An anonymization that comes during a batch goes before the next (B7-AC-06).
      *
      * @return how many entries were removed
      */
     public long removeOlderThan(Instant cutoff) {
-        return rechain.waiting(() -> transactions.run(() -> {
-            repository.lockChain();
-            Optional<AuditRow> last = repository.lastOfFrontBefore(cutoff);
-            if (last.isEmpty()) {
-                return 0L;
+        Optional<AuditRow> last = transactions.run(() -> repository.lastOfFrontBefore(cutoff));
+        if (last.isEmpty()) {
+            return 0;
+        }
+        long end = last.get().seq();
+        long removed = 0;
+        while (true) {
+            Long batch = rechain.waiting(() -> transactions.run(() -> removeBatch(end)));
+            if (batch == null) {
+                return removed;
             }
-            long removed = repository.deleteUpTo(last.get().seq());
-            repository.updateAnchor(last.get().seq(), last.get().hash());
-            return removed;
-        }));
+            removed += batch;
+        }
+    }
+
+    /** One batch of {@link #removeOlderThan}: how many entries it removed, or null when none was left. */
+    private Long removeBatch(long end) {
+        Chain chain = repository.lockChain();
+        if (chain.anchorSeq() >= end) {
+            return null;
+        }
+        Optional<AuditRow> boundary = repository.lastUpTo(Math.min(end, chain.anchorSeq() + RETENTION_BATCH));
+        if (boundary.isEmpty() || boundary.get().seq() <= chain.anchorSeq()) {
+            return null;
+        }
+        long removed = repository.deleteUpTo(boundary.get().seq());
+        repository.updateAnchor(boundary.get().seq(), boundary.get().hash());
+        return removed;
     }
 
     /** The walk along the chain: the entry before, and the first entry that does not follow. */
