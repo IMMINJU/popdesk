@@ -47,4 +47,6 @@ The app closes every live `RESOLVED` issue 7 days after its time to close from (
 
 0.1.0 to 0.5.0 were tagged without publishing an image. Their samples were made from an image built locally from the tag, so they have `sample.image` and no `sample.repodigest`. To get such an image again, build the tag (`docker build -t ghcr.io/imminju/popdesk:0.1.0 .` at `v0.1.0`); the base images are pinned by digest.
 
+0.5.1 is the first published image. It has no sample of its own: it runs no migration, so its database is the one of the 0.5.0 sample. The first sample with a `sample.repodigest` comes with the next release that changes the schema.
+
 The self test is `server/src/test/java/io/popdesk/deploy/UpgradeHarnessTest.java`: a broken migration `V999` must make every check fail.

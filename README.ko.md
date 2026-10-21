@@ -5,7 +5,7 @@
 
 [English](README.md) · 영어판이 정본입니다. 둘이 다르면 영어판을 따릅니다.
 
-> **지금은 0.5.0입니다.** 고객사와 구성원, 첨부와 본문 이미지가 있는 문의, 멘션이 되는 댓글, 알림함, 메일과 팀 웹훅, 해시 사슬로 이어진 감사 로그가 있습니다. 0.5.0에서 첨부의 폴더·S3 저장, 라벨, 마감일, 내부 작업, 문의 연결, 휴지통과 자동 종료, 고객사별 건수, SLA 기한과 알림, 브랜딩, 개인정보 내보내기와 익명화, OIDC 로그인, 메일로 문의 받기, 영어 화면이 들어갔습니다. 이미지는 아직 레지스트리에 올리지 않았으니 태그에서 직접 빌드합니다([릴리스 노트](docs/release-notes/0.5.0.md)). 운영에 쓸 수 있는 상태가 아닙니다. 계획과 결정은 [`design/`](design/)에 있습니다.
+> **지금은 0.5.1입니다.** 고객사와 구성원, 첨부와 본문 이미지가 있는 문의, 멘션이 되는 댓글, 알림함, 메일과 팀 웹훅, 해시 사슬로 이어진 감사 로그가 있습니다. 0.5에서 첨부의 폴더·S3 저장, 라벨, 마감일, 내부 작업, 문의 연결, 휴지통과 자동 종료, 고객사별 건수, SLA 기한과 알림, 브랜딩, 개인정보 내보내기와 익명화, OIDC 로그인, 메일로 문의 받기, 영어 화면이 들어갔습니다. 이미지는 `amd64`와 `arm64`로 올라가 있습니다([릴리스 노트](docs/release-notes/0.5.1.md), [0.5.0](docs/release-notes/0.5.0.md)). 운영에 쓸 수 있는 상태가 아닙니다. 계획과 결정은 [`design/`](design/)에 있습니다.
 
 ## 목표
 
@@ -16,13 +16,12 @@
 
 ## 써 보기
 
-이미지를 아직 올리지 않았으니 0.5.0을 태그에서 빌드합니다. Git과 Compose가 있는 Docker가 필요합니다.
+Compose가 있는 Docker가 필요합니다. 이미지는 `amd64`와 `arm64`로 올라가 있습니다.
 
 ```
-git clone https://github.com/IMMINJU/popdesk.git
+mkdir -p popdesk/deploy
 cd popdesk
-git checkout v0.5.0
-docker build -t ghcr.io/imminju/popdesk:0.5.0 .
+curl -fL -o deploy/compose.yml https://github.com/IMMINJU/popdesk/releases/download/v0.5.1/compose.yml
 cat > deploy/.env <<'EOF'
 POPDESK_DB_PASSWORD=choose-a-database-password
 POPDESK_ADMIN_EMAIL=admin@example.com

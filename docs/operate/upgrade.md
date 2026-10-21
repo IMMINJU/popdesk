@@ -2,7 +2,7 @@
 
 How popdesk changes its database when you install a new version, and what to do when that fails.
 
-This page describes the code on the `main` branch. The latest release is 0.5.0. If you run an older version, read the docs at its tag, such as [`v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs); a page missing there did not exist yet.
+This page describes the code on the `main` branch. The latest release is 0.5.1. If you run an older version, read the docs at its tag, such as [`v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs); a page missing there did not exist yet.
 
 ## Before you upgrade
 
@@ -102,6 +102,10 @@ It also adds the search of issues, their assignee and history, and the keys that
 - **`POPDESK_SANDBOX=true` also turns off receiving email**, although the `IMAP_` settings are there ([configuration.md](configuration.md#a-sandbox)).
 - **New cleanup job**: `mail-record-cleanup`, once a day, also while receiving email is off. **New inbox items for admins**: `MAIL_IN_STALLED` and `MAIL_IN_QUARANTINED`.
 - A receiver of the audit copy or of exports that lists the kinds it knows needs every new kind of audit entry above, and a receiver of the cleanup metrics that lists the jobs it knows needs every new cleanup job.
+
+## Upgrading to 0.5.1
+
+0.5.1 runs no migration and adds no setting. It is the first version whose image is published (`amd64` and `arm64`): take the Compose file attached to the 0.5.1 release and start it as before; Compose pulls the image. From 0.4.0, read [Upgrading to 0.5.0](#upgrading-to-050) first: you go straight to 0.5.1 and its migrations run then. An installation on 0.5.0 that you built from the tag can go back to that image, since the database is the same.
 
 ## A migration failed
 

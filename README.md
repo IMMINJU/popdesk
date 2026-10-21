@@ -5,7 +5,7 @@ Customers raise and follow requests (called issues in the docs and the API) in a
 
 [한국어](README.ko.md)
 
-> **Status: 0.5.0.** Customer companies and their people, requests with attachments and inline images, comments with mentions, notification inboxes, email and a team webhook, and an audit log with a hash chain. New in 0.5.0: attachments in a folder or S3, labels, due dates, internal tasks, linked requests, trash and auto-close, per-company counts, SLA due times and alerts, branding, personal-data export and anonymization, OIDC sign-in, requests by email, and an English UI. The image is not published yet; build it from the tag ([release notes](docs/release-notes/0.5.0.md)). Not ready for production. The plan and decisions live in [`design/`](design/).
+> **Status: 0.5.1.** Customer companies and their people, requests with attachments and inline images, comments with mentions, notification inboxes, email and a team webhook, and an audit log with a hash chain. New in 0.5: attachments in a folder or S3, labels, due dates, internal tasks, linked requests, trash and auto-close, per-company counts, SLA due times and alerts, branding, personal-data export and anonymization, OIDC sign-in, requests by email, and an English UI. The image is published for `amd64` and `arm64` ([release notes](docs/release-notes/0.5.1.md), [0.5.0](docs/release-notes/0.5.0.md)). Not ready for production. The plan and decisions live in [`design/`](design/).
 
 ## What it aims to be
 
@@ -16,13 +16,12 @@ Customers raise and follow requests (called issues in the docs and the API) in a
 
 ## Try it
 
-No image is published yet, so build 0.5.0 from its tag. You need Git and Docker with Compose.
+You need Docker with Compose. The image is published for `amd64` and `arm64`.
 
 ```
-git clone https://github.com/IMMINJU/popdesk.git
+mkdir -p popdesk/deploy
 cd popdesk
-git checkout v0.5.0
-docker build -t ghcr.io/imminju/popdesk:0.5.0 .
+curl -fL -o deploy/compose.yml https://github.com/IMMINJU/popdesk/releases/download/v0.5.1/compose.yml
 cat > deploy/.env <<'EOF'
 POPDESK_DB_PASSWORD=choose-a-database-password
 POPDESK_ADMIN_EMAIL=admin@example.com

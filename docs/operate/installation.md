@@ -2,25 +2,29 @@
 
 How to install popdesk with Docker Compose, start it for the first time, and set up the first people and customer companies.
 
-This page describes the code on the `main` branch. The latest release is 0.5.0, and the steps below install it; they were checked on 0.5.0.
+This page describes the code on the `main` branch. The latest release is 0.5.1, and the steps below install it; they were checked on 0.5.1.
 
 ## What you need
 
 - Docker Engine 25 or later with Compose v2 ([Docker Compose](configuration.md#docker-compose)).
-- Git, to check out the release tag. No image is published yet, so you build it yourself.
 - About 1 GB of memory for the two containers. Measured before the first release: the app used up to about 0.6 GB and PostgreSQL up to about 0.35 GB ([Memory and JVM options](configuration.md#memory-and-jvm-options)).
 
 The Compose file runs two containers: `app` (popdesk) and `db` (PostgreSQL 16). To use a database you run yourself, read [A database you run yourself](configuration.md#a-database-you-run-yourself) first.
 
-## Get the release and build the image
+## Get the Compose file
 
-Take the Compose file from the tag of the release you install, not from the `main` branch. The Compose file of a release names the image of that exact version, so build the image under that name:
+Take the Compose file attached to the release you install, not the one on the `main` branch. It names the image of that exact version, `ghcr.io/imminju/popdesk:0.5.1`, which is published for `amd64` and `arm64`. The steps on this page keep it in a `deploy` folder:
 
 ```
-git clone https://github.com/IMMINJU/popdesk.git
+mkdir -p popdesk/deploy
 cd popdesk
-git checkout v0.5.0
-docker build -t ghcr.io/imminju/popdesk:0.5.0 .
+curl -fL -o deploy/compose.yml https://github.com/IMMINJU/popdesk/releases/download/v0.5.1/compose.yml
+```
+
+The image is signed with [cosign](https://docs.sigstore.dev/) by the release workflow of this repository, and the release has its SBOM (`popdesk-0.5.1.cdx.json`, CycloneDX). To check the signature before you start:
+
+```
+cosign verify ghcr.io/imminju/popdesk:0.5.1   --certificate-identity-regexp '^https://github.com/IMMINJU/popdesk/\.github/workflows/release\.yml@'   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 ## Write the settings

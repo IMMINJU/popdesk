@@ -2,7 +2,7 @@
 
 Where to find how to back up popdesk, restore it, and check the attachment files afterwards. The steps themselves are in [configuration.md](configuration.md), so they are kept in one place.
 
-This page describes the code on the `main` branch. The latest release is 0.5.0. If you run an older version, read the docs at its tag, such as [`v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs); a page missing there did not exist yet.
+This page describes the code on the `main` branch. The latest release is 0.5.1. If you run an older version, read the docs at its tag, such as [`v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs); a page missing there did not exist yet.
 
 ## What a backup holds
 
