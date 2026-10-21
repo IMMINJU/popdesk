@@ -56,6 +56,6 @@
 | 바-1 | 끝났다(`archive/b5-english/`, main `29fe104`, 2026-10-20). 화면 글 약 1,300개를 `@popdesk/i18n`으로 옮겼다 | 1a 5절, 5 9절 |
 | 바-2 | 끝났다(`bc74a62`, `d69e5bf`, 2026-10-20). `account`가 가진 `AccountCompanies`를 `CompanyRepository`가 구현해 `account → company`를 없앴고 기준선 `package-cycles.txt`가 비었다. 길은 crosscheck(서브에이전트 둘)로 골랐다 | D-57 |
 
-## 11월 Actions 초기화 뒤
+## 0.5.0을 낼 때
 
 넘긴 일과 따로, 로컬 커밋을 올리고 CI 결과를 본 뒤 5번부터 b6까지를 0.5.0 하나로 낸다(`process.md` D, 2026-10-20 메인이 정함). 릴리스 노트 재료는 각 보관본 `verify.md`에 있다. 견본(`make-sample.py`)과 `deploy/upgrade/README.md`의 "견본에 든 것"은 릴리스 때 만든다.
