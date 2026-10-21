@@ -69,6 +69,7 @@ The counts are kept in memory, so they start again when popdesk restarts.
 | Emails read in one round | 100, once a minute | [Receiving email](configuration.md#receiving-email) |
 | One email | 30 MB, 200 parts, parts nested 10 deep; over that it is quarantined | [Receiving email](configuration.md#receiving-email) |
 | Tries before an email is quarantined | 5 | [Receiving email](configuration.md#receiving-email) |
+| An email the IMAP server will not give | Skipped, and quarantined after 5 rounds (`UNREADABLE`); without its header too, counted in memory with no record, so a restart counts again | [Receiving email](configuration.md#receiving-email) |
 | Issues and comments from email | Count toward the sender's rate limits; over them, the email is quarantined | [Rate limits (COM-8)](../integrate/conventions.md#rate-limits-com-8) |
 
 ## At the same time
