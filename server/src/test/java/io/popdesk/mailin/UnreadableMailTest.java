@@ -13,6 +13,7 @@ import io.popdesk.support.Unique;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -134,6 +135,37 @@ class UnreadableMailTest extends MailInAppTest {
         } finally {
             mailIn().answerAll();
             mailIn().remove(unreadable.messageId());
+        }
+    }
+
+    @Test
+    @DisplayName("B7-AC-11 two skipped mails without a Message-ID from one sender get a record each, keyed by their own header (CONTENT), with one try and no outcome")
+    void skippedMailsWithoutMessageIdAreCountedApart() {
+        Session sender = customer(company().code());
+        Inbound first = mailFrom(sender).noMessageId().subject(Unique.text("No id one")).text("One " + Unique.number());
+        Inbound second = mailFrom(sender).noMessageId().subject(Unique.text("No id two")).text("Two " + Unique.number());
+        long lastId = db.count("select coalesce(max(id), 0) from mail_received");
+        try {
+            mailIn().refuseBySubject(first.subject(), Request.FIRST_PART, Answer.NO);
+            mailIn().refuseBySubject(second.subject(), Request.FIRST_PART, Answer.NO);
+            send(first);
+            send(second);
+
+            rounds.next();
+
+            assertThat(mailIn().withSubject(Folder.INBOUND, first.subject())).as("the first mail in the incoming folder")
+                    .hasSize(1);
+            assertThat(mailIn().withSubject(Folder.INBOUND, second.subject()))
+                    .as("the second mail in the incoming folder").hasSize(1);
+            List<Map<String, Object>> records = db.rows("select * from mail_received where id > ? and key_source = "
+                    + "'CONTENT' and outcome is null", lastId);
+            assertThat(records).as("new records of mail without a Message-ID").hasSize(2);
+            assertThat(records).as("attempts of the two records")
+                    .allSatisfy(r -> assertThat(((Number) r.get("attempts")).intValue()).isEqualTo(1));
+        } finally {
+            mailIn().answerAll();
+            mailIn().removeWithSubject(first.subject());
+            mailIn().removeWithSubject(second.subject());
         }
     }
 

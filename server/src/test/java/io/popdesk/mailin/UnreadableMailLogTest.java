@@ -44,6 +44,7 @@ class UnreadableMailLogTest extends MailInAppTest {
             if (refused == Refused.RAW_AND_HEADER_NO) {
                 mailIn().refuse(mail.messageId(), Request.HEADER, Answer.NO);
             }
+            pushUidsPast(100);
             send(mail);
             long uid = mailIn().withMessageId(Folder.INBOUND, mail.messageId()).getFirst().uid();
             Pattern uidWord = Pattern.compile("\\b" + uid + "\\b");
@@ -67,6 +68,22 @@ class UnreadableMailLogTest extends MailInAppTest {
         } finally {
             mailIn().answerAll();
             mailIn().remove(mail.messageId());
+        }
+    }
+
+    /**
+     * Puts mail into the incoming folder and takes it out again until its next UID is over {@code floor}, so the UID
+     * of the test's mail is a number no other word of a warning is likely to be. No round runs meanwhile: rounds wait
+     * for the test to move the clock.
+     */
+    private void pushUidsPast(long floor) {
+        String marker = Unique.text("Uid filler");
+        byte[] filler = Inbound.mail().from("filler@mail.example").subject(marker).text("Filler").bytes();
+        long uid = 0;
+        while (uid < floor) {
+            send(filler);
+            uid = mailIn().withSubject(Folder.INBOUND, marker).getFirst().uid();
+            mailIn().removeWithSubject(marker);
         }
     }
 }

@@ -136,11 +136,6 @@ final class RetentionBatchSteps {
         return AuditSteps.entries(admin, query).stream().map(entry -> number(entry, "seq")).sorted().toList();
     }
 
-    /** The {@code seq} of the lines, in their order. */
-    static List<Long> seqs(List<JsonNode> lines) {
-        return lines.stream().map(line -> number(line, "seq")).toList();
-    }
-
     private static final Set<Thread.State> WAITING = EnumSet.of(Thread.State.WAITING, Thread.State.TIMED_WAITING,
             Thread.State.BLOCKED);
 

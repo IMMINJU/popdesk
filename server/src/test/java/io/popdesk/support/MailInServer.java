@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -244,12 +245,21 @@ public final class MailInServer {
      * A test that put in a large mail removes it at its end, so the mailbox of the JVM does not keep it.
      */
     public void remove(String messageId) {
+        removeEach(folder -> withMessageId(folder, messageId));
+    }
+
+    /** As {@link #remove}, for the mail whose subject holds {@code text}: for mail without a {@code Message-ID}. */
+    public void removeWithSubject(String text) {
+        removeEach(folder -> withSubject(folder, text));
+    }
+
+    private void removeEach(Function<Folder, List<Stored>> found) {
         for (Folder folder : Folder.values()) {
             MailFolder f = folder(folder);
             if (f == null) {
                 continue;
             }
-            for (Stored m : withMessageId(folder, messageId)) {
+            for (Stored m : found.apply(folder)) {
                 try {
                     f.setFlags(new Flags(Flags.Flag.DELETED), true, m.uid(), null, false);
                 } catch (FolderException e) {
@@ -353,6 +363,17 @@ public final class MailInServer {
         refusals.computeIfAbsent(messageId, k -> new ConcurrentHashMap<>()).put(request, answer);
     }
 
+    /**
+     * As {@link #refuse}, for the mail in the incoming folder whose subject holds {@code subjectText}: for mail without
+     * a {@code Message-ID}.
+     */
+    public void refuseBySubject(String subjectText, Request request, Answer answer) {
+        refusals.computeIfAbsent(BY_SUBJECT + subjectText, k -> new ConcurrentHashMap<>()).put(request, answer);
+    }
+
+    /** The prefix of a {@link #refusals} key that names a subject text, not a {@code Message-ID}. */
+    private static final String BY_SUBJECT = "subject:";
+
     /** Ends every {@link #refuse}: GreenMail answers every request again. */
     public void answerAll() {
         refusals.clear();
@@ -408,7 +429,11 @@ public final class MailInServer {
             if (answer == null) {
                 continue;
             }
-            for (Stored mail : withMessageId(Folder.INBOUND, refusal.getKey())) {
+            String key = refusal.getKey();
+            List<Stored> refused = key.startsWith(BY_SUBJECT)
+                    ? withSubject(Folder.INBOUND, key.substring(BY_SUBJECT.length()))
+                    : withMessageId(Folder.INBOUND, key);
+            for (Stored mail : refused) {
                 long mine;
                 try {
                     mine = byUid ? mail.uid() : inbound.getMsn(mail.uid());

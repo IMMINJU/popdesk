@@ -1,3 +1,3 @@
 io.popdesk.audit.AuditRetentionBatchTest.oneRunDeletesMoreThanABatch | 지금 코드는 한 문장으로 기간 지난 앞 항목을 모두 지운다. 한 실행에 1,000개 넘게 지우기와 deleted_count는 이미 맞다
-io.popdesk.audit.AuditRetentionBatchTest.entryBehindOneInsideThePeriodStaysInBatches | 지금 코드는 끝을 한 번만 정한다(lastOfFrontBefore). 묶음마다 끝을 다시 찾는 구현을 잡으려는 테스트다
+io.popdesk.audit.AuditRetentionBatchTest.entryBehindOneInsideThePeriodStaysInBatches | 지금 코드는 사슬로 이어진 앞쪽 끝(lastOfFrontBefore)까지만 지운다. 묶음 안에서 occurred_at < cutoff인 것만 골라 지우는 구현(이어지지 않은 끝)을 잡으려는 테스트다
 io.popdesk.mailin.UnreadableMailTest.connectionGoneWhileReading(Request)[1] | 원문을 받는 중에 연결이 끊기면 지금도 회차가 CONNECT로 실패하고 시도 수를 세지 않는다(B7-AC-14는 지금 동작을 지키라는 기준)
