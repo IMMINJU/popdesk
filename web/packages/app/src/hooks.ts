@@ -73,6 +73,14 @@ export function useLoad<T>(load: () => Promise<Result<T>>, key: string): Load<T>
     };
   }, [key, run]);
 
+  // An answer that comes after the screen went away is dropped.
+  useEffect(
+    () => () => {
+      latest.current += 1;
+    },
+    [],
+  );
+
   const current = answer?.key === key ? answer : null;
   const status: Load<T>['status'] = current === null ? (answer?.data === undefined ? 'loading' : 'ready') : current.ok ? 'ready' : 'failed';
   return {
@@ -95,7 +103,8 @@ export function useCooldown() {
   const [now, setNow] = useState(() => Date.now());
   const [ended, setEnded] = useState(false);
 
-  useEffect(() => {
+  // A layout effect, so the count runs from the moment the band is drawn.
+  useLayoutEffect(() => {
     if (until === 0) return undefined;
     const timer = setInterval(() => {
       const current = Date.now();
