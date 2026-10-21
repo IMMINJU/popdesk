@@ -40,6 +40,7 @@ final class MailInSettings {
 
     static final String CONNECT_TIMEOUT_MILLIS = "10000";
     static final String TIMEOUT_MILLIS = "30000";
+    static final String FETCH_SIZE_BYTES = "1048576";
 
     /** One address: something on each side of one {@code @}, and nothing that could start a second address. */
     private static final Pattern ADDRESS = Pattern.compile("[^\\s@,;:<>()\"\\\\]+@[^\\s@,;:<>()\"\\\\]+");
@@ -259,6 +260,9 @@ final class MailInSettings {
         properties.setProperty("mail.imap.writetimeout", TIMEOUT_MILLIS);
         properties.setProperty("mail.imap.ssl.checkserveridentity", "true");
         properties.setProperty("mail.imap.peek", "true");
+        // A mail is read in parts of 1 MB, not the library's 16 KB: a mail near the size limit took
+        // hundreds of requests and over 15 seconds.
+        properties.setProperty("mail.imap.fetchsize", FETCH_SIZE_BYTES);
         properties.setProperty("mail.debug", "false");
         if (port == IMPLICIT_TLS_PORT) {
             properties.setProperty("mail.imap.ssl.enable", "true");
