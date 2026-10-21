@@ -58,4 +58,6 @@
 
 ## 0.5.0을 낼 때
 
+2026-10-21에 `v0.5.0`으로 냈다. 기록은 `archive/b6-small/verify.md` 끝에 있다.
+
 넘긴 일과 따로, 로컬 커밋을 올리고 CI 결과를 본 뒤 5번부터 b6까지를 0.5.0 하나로 낸다(`process.md` D, 2026-10-20 메인이 정함). 릴리스 노트 재료는 각 보관본 `verify.md`에 있다. 견본(`make-sample.py`)과 `deploy/upgrade/README.md`의 "견본에 든 것"은 릴리스 때 만든다.

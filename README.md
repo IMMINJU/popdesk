@@ -5,9 +5,7 @@ Customers raise and follow requests (called issues in the docs and the API) in a
 
 [한국어](README.ko.md)
 
-> **Status: 0.4.0.** An empty install, the first admin, an invitation, a request with attachments, an agent's answer, and the email and webhook that follow; managing people and customer companies, password reset, and an audit log with a hash chain; customer managers, and for requests the filters, search, editing, assignee, status changes, closing and reopening, history, and filing on behalf of a customer; editing and deleting comments, mentions, a notification inbox in both apps, more emails, and tools for the operator to see and repair sending. The image is not published yet; build it from the tag ([release notes](docs/release-notes/0.4.0.md)). Not ready for production. The plan and decisions live in [`design/`](design/).
->
-> `main` is ahead of 0.4.0 and works toward 0.5.0, which is not released yet. To try popdesk, check out the tag `v0.4.0`.
+> **Status: 0.5.0.** Customer companies and their people, requests with attachments and inline images, comments with mentions, notification inboxes, email and a team webhook, and an audit log with a hash chain. New in 0.5.0: attachments in a folder or S3, labels, due dates, internal tasks, linked requests, trash and auto-close, per-company counts, SLA due times and alerts, branding, personal-data export and anonymization, OIDC sign-in, requests by email, and an English UI. The image is not published yet; build it from the tag ([release notes](docs/release-notes/0.5.0.md)). Not ready for production. The plan and decisions live in [`design/`](design/).
 
 ## What it aims to be
 
@@ -16,17 +14,15 @@ Customers raise and follow requests (called issues in the docs and the API) in a
 - **Clear boundaries.** A customer never sees another customer company's requests. Internal comments and assignees never reach customers.
 - **Traceable.** Every request keeps its conversation, status history, and internal work log in one place. Admin actions are audited.
 
-On `main` and coming in 0.5.0: inline images and S3 storage for attachments, labels, due dates, internal tasks with assignees and due dates, linked duplicate and related requests across companies, trash and auto-close, per-company counts, SLA due times and alerts, branding, personal-data export and anonymization, OIDC sign-in, creating requests by email, and an English UI.
-
 ## Try it
 
-No image is published yet, so build 0.4.0 from its tag. You need Git and Docker with Compose.
+No image is published yet, so build 0.5.0 from its tag. You need Git and Docker with Compose.
 
 ```
 git clone https://github.com/IMMINJU/popdesk.git
 cd popdesk
-git checkout v0.4.0
-docker build -t ghcr.io/imminju/popdesk:0.4.0 .
+git checkout v0.5.0
+docker build -t ghcr.io/imminju/popdesk:0.5.0 .
 cat > deploy/.env <<'EOF'
 POPDESK_DB_PASSWORD=choose-a-database-password
 POPDESK_ADMIN_EMAIL=admin@example.com

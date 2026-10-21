@@ -2,7 +2,7 @@
 
 The size, length, rate, and concurrency limits of popdesk in one table, with a link to where each is explained. Unless the table says so, a limit is fixed and has no setting.
 
-This page describes the code on the `main` branch, which will be released as 0.5.0. If you run 0.4.0, read the [docs at the tag `v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs) instead; a page missing there did not exist yet.
+This page describes the code on the `main` branch. The latest release is 0.5.0. If you run an older version, read the docs at its tag, such as [`v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs); a page missing there did not exist yet.
 
 ## Files and request size
 

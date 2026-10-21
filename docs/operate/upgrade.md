@@ -2,7 +2,7 @@
 
 How popdesk changes its database when you install a new version, and what to do when that fails.
 
-This page describes the code on the `main` branch, which will be released as 0.5.0. If you run 0.4.0, read the [docs at the tag `v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs) instead; a page missing there did not exist yet.
+This page describes the code on the `main` branch. The latest release is 0.5.0. If you run an older version, read the docs at its tag, such as [`v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs); a page missing there did not exist yet.
 
 ## Before you upgrade
 
@@ -68,9 +68,9 @@ It also adds the search of issues, their assignee and history, and the keys that
 - **New inbox items for admins**: `MAIL_STALLED`, `WEBHOOK_STALLED`, and `AUDIT_FORWARD_STALLED`, when a channel has only failed for over an hour. An installation whose queue holds only messages that were given up gets none.
 - **New kinds of audit entry**: `DELIVERY_RESENT` and `TEST_MAIL_SENT` ([audit-log.md](audit-log.md#sending-again-and-test-emails-in-the-log)). A receiver of the audit copy or of exports that lists the kinds it knows needs these two.
 
-## Upgrading to the next version
+## Upgrading to 0.5.0
 
-The next version runs migrations 13 to 25. Each runs in its own transaction, adds tables, columns, and indexes, and changes no row that is there unless a bullet below says so. The next version also stores attachment files in a folder (`POPDESK_STORAGE=disk`) or in an S3 bucket (`POPDESK_STORAGE=s3`) as well as in the database. Until now popdesk did not start with either value.
+0.5.0 runs migrations 13 to 25. Each runs in its own transaction, adds tables, columns, and indexes, and changes no row that is there unless a bullet below says so. 0.5.0 also stores attachment files in a folder (`POPDESK_STORAGE=disk`) or in an S3 bucket (`POPDESK_STORAGE=s3`) as well as in the database. Until now popdesk did not start with either value.
 
 - **There is no way back to the old image.** After these migrations the 0.4.0 image does not start on the database (see [below](#the-database-is-newer-than-the-app)). To go back, restore the backup you took before the upgrade; what was written after it is lost.
 - **Images in content (migration 13).** The migration adds one column on every attachment (whether it was uploaded as a content image; `false` for every attachment that is there), changes one check so a temporary image can be stored without an issue, and adds an index. Nothing has to be set. **New cleanup job**: `temporary-image-cleanup`, every 10 minutes, deletes temporary images older than 24 hours ([configuration.md](configuration.md#attachments)).

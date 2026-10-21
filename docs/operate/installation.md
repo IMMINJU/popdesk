@@ -2,7 +2,7 @@
 
 How to install popdesk with Docker Compose, start it for the first time, and set up the first people and customer companies.
 
-This page describes the code on the `main` branch, which will be released as 0.5.0. The latest release is 0.4.0, and the steps below install it; they were checked on 0.4.0. A few settings named here are new on `main`; the [0.4.0 configuration](https://github.com/IMMINJU/popdesk/blob/v0.4.0/docs/operate/configuration.md) lists what 0.4.0 reads.
+This page describes the code on the `main` branch. The latest release is 0.5.0, and the steps below install it; they were checked on 0.5.0.
 
 ## What you need
 
@@ -19,8 +19,8 @@ Take the Compose file from the tag of the release you install, not from the `mai
 ```
 git clone https://github.com/IMMINJU/popdesk.git
 cd popdesk
-git checkout v0.4.0
-docker build -t ghcr.io/imminju/popdesk:0.4.0 .
+git checkout v0.5.0
+docker build -t ghcr.io/imminju/popdesk:0.5.0 .
 ```
 
 ## Write the settings
