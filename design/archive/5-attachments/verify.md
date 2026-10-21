@@ -1,6 +1,6 @@
 # 5번 묶음(본문 이미지와 첨부 이력) 검증 (C-10)
 
-> 구현이 끝난 뒤 본 것과 아직 못 본 것을 적는다. 탭 보고는 `C:\Users\minju\.claude\popdesk\tasks\s5-*-report.md`에 있다.
+> 구현이 끝난 뒤 본 것과 아직 못 본 것을 적는다. 탭 보고는 `~\.claude\popdesk\tasks\s5-*-report.md`에 있다.
 > 상태: 2026-10-13 밤부터 14일 새벽에 봤다. 이 묶음의 설계(C-1~3)는 사용자가 메인에게 맡겨 메인이 정했다(`acceptance.md` 5절, `design.md` 0절, `screens.md` 5절). 사용자 확인 전이다.
 > **GitHub Actions의 10월분을 다 써서 CI 없이 이 PC에서만 봤다(2절).** 커밋은 `origin/main`에 올리지 않았다. 릴리스는 5b(저장소)까지 묶어 0.5.0으로 낸다.
 
@@ -17,7 +17,7 @@
 
 ## 2. CI 없이 이 PC에서 본 것
 
-`scripts/local-ci.sh`로 합친 main(`53b442a`)을 돌렸다. 결과는 `C:\Users\minju\.claude\popdesk\local-ci\summary.txt`에 있다. 그 뒤의 main 커밋은 테스트 넷, 검사 스크립트 둘, 문서다.
+`scripts/local-ci.sh`로 합친 main(`53b442a`)을 돌렸다. 결과는 `~\.claude\popdesk\local-ci\summary.txt`에 있다. 그 뒤의 main 커밋은 테스트 넷, 검사 스크립트 둘, 문서다.
 
 | 단계 | 결과 | 걸린 시간 |
 |---|---|---|

@@ -2,7 +2,7 @@
 
 > 2026-10-18~19 메인이 이 PC에서 했다. GitHub Actions 10월분을 다 써서 CI는 돌지 않았다.
 > C-10은 닿은 부분만 돈다(`process.md` C-10 첫 줄). 뺀 것은 2절 끝에 적었다.
-> 숫자는 각 실행의 로그(`C:\Users\minju\.claude\popdesk\tasks\s10a-ci\`, `s10a-oom\`)와 탭 보고에서 옮겼다.
+> 숫자는 각 실행의 로그(`~\.claude\popdesk\tasks\s10a-ci\`, `s10a-oom\`)와 탭 보고에서 옮겼다.
 
 ## 1. 구현 탭 셋이 끝났고 맡은 테스트는 모두 통과한다
 

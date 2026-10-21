@@ -1,6 +1,6 @@
 # 1b 묶음 검증 (C-10)
 
-> 구현이 끝난 뒤 본 것과 아직 못 본 것을 적는다. 탭 보고는 `C:\Users\minju\.claude\popdesk\tasks\s1b-*-report.md`에 있다.
+> 구현이 끝난 뒤 본 것과 아직 못 본 것을 적는다. 탭 보고는 `~\.claude\popdesk\tasks\s1b-*-report.md`에 있다.
 > 상태: 2026-10-12에 봤다.
 
 ## 1. 구현 탭 셋이 끝났고 테스트는 모두 통과한다

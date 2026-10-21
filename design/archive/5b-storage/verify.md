@@ -14,7 +14,7 @@
 
 ## 2. CI 없이 이 PC에서 본 것
 
-`local-ci.sh`를 단계별로 돌렸다(`C:\Users\minju\.claude\popdesk\verify-steps.sh`, 커밋 `a03ca60`). 웹은 이 묶음에서 바뀌지 않아 돌리지 않았다.
+`local-ci.sh`를 단계별로 돌렸다(`~\.claude\popdesk\verify-steps.sh`, 커밋 `a03ca60`). 웹은 이 묶음에서 바뀌지 않아 돌리지 않았다.
 
 | 단계 | 결과 | 테스트 | 시간 |
 |---|---|---|---|

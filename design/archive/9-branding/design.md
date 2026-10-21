@@ -1,6 +1,6 @@
 # 9번 묶음 설계
 
-> `acceptance.md`의 기준을 어떻게 만드는지 적는다. 조사 메모 `C:\Users\minju\.claude\popdesk\notes\s9-survey.md`.
+> `acceptance.md`의 기준을 어떻게 만드는지 적는다. 조사 메모 `~\.claude\popdesk\notes\s9-survey.md`.
 > 상태: **메인이 정함, 사용자 확인 전**(2026-10-17). C-1~3 검토(crosscheck 서브에이전트 둘: 서버, 웹)를 반영했다(검토 글은 메인 세션 스크래치 `9-review-server.md`, `9-review-web.md`).
 
 ## 0. 메인이 정한 것

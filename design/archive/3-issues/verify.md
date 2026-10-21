@@ -1,6 +1,6 @@
 # 3번 묶음 검증 (C-10)
 
-> 구현이 끝난 뒤 본 것과 아직 못 본 것을 적는다. 탭 보고는 `C:\Users\minju\.claude\popdesk\tasks\s3-*-report.md`에 있다.
+> 구현이 끝난 뒤 본 것과 아직 못 본 것을 적는다. 탭 보고는 `~\.claude\popdesk\tasks\s3-*-report.md`에 있다.
 > 상태: 2026-10-12에 봤다. 이 묶음의 설계(C-1~3)는 사용자가 메인에게 맡겨 메인이 정했다(`acceptance.md` 5절, `design.md` 0절, `screens.md`). 사용자 확인 전이다.
 
 ## 1. 구현 탭 다섯이 끝났고 맡은 테스트는 모두 통과한다

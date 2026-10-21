@@ -1,7 +1,7 @@
 # 6a 묶음(라벨과 마감일) 검증 (C-10)
 
 > 2026-10-15 메인이 이 PC에서 했다. GitHub Actions 10월분을 다 써서 CI는 돌지 않았다.
-> 숫자는 각 실행의 로그(`C:\Users\minju\.claude\popdesk\local-ci\`)와 탭 보고에서 옮겼다.
+> 숫자는 각 실행의 로그(`~\.claude\popdesk\local-ci\`)와 탭 보고에서 옮겼다.
 
 ## 1. 구현 탭 둘이 끝났고 맡은 테스트는 모두 통과한다
 
@@ -38,7 +38,7 @@
 
 ## 4. 메인이 브라우저로 본 것
 
-진짜 서버(`popdesk:test`, `POPDESK_TIMEZONE=Asia/Seoul`), 견본은 API로 넣었다(고객사 셋: 라벨 여덟인 ACME, 라벨 200개인 LOTS, 라벨 둘 넣고 보관한 BETA). 구현 탭이 못 본 것을 골라 봤다. 스크린샷은 `C:\Users\minju\.claude\popdesk\tasks\shots\s6a-verify\`.
+진짜 서버(`popdesk:test`, `POPDESK_TIMEZONE=Asia/Seoul`), 견본은 API로 넣었다(고객사 셋: 라벨 여덟인 ACME, 라벨 200개인 LOTS, 라벨 둘 넣고 보관한 BETA). 구현 탭이 못 본 것을 골라 봤다. 스크린샷은 `~\.claude\popdesk\tasks\shots\s6a-verify\`.
 
 | 화면 | 폭, 테마 | 본 것 | 결과 |
 |---|---|---|---|

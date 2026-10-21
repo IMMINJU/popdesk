@@ -2,7 +2,7 @@
 
 > 2026-10-19 메인이 이 PC에서 했다. GitHub Actions 10월분을 다 써서 CI는 돌지 않았다.
 > C-10은 닿은 부분만 돈다(`process.md` C-10 첫 줄).
-> 숫자는 각 실행의 로그(`C:\Users\minju\.claude\popdesk\tasks\s11-ci\`)와 탭 보고에서 옮겼다.
+> 숫자는 각 실행의 로그(`~\.claude\popdesk\tasks\s11-ci\`)와 탭 보고에서 옮겼다.
 
 ## 1. 구현 탭 둘이 끝났고 맡은 테스트는 모두 통과한다
 
@@ -66,7 +66,7 @@
 | C-18 OIDC 구역 | 1280 밝게, 820 어둡게 | 채널 표 바로 뒤에 "OIDC 로그인"과 `꺼짐` 배지만. 가로 넘침 없음 |
 
 - 콘솔 오류: 로그인 전 401 둘과 메인이 일부러 부른 시작의 404 하나.
-- 스크린샷: `C:\Users\minju\.claude\popdesk\shots\s11-main\`, 웹 탭 것은 `C:\Users\minju\.claude\popdesk\tasks\shots\s11-i-web\`. 설치는 `down -v`로 지웠다.
+- 스크린샷: `~\.claude\popdesk\shots\s11-main\`, 웹 탭 것은 `~\.claude\popdesk\tasks\shots\s11-i-web\`. 설치는 `down -v`로 지웠다.
 - 아무도 화면으로 보지 못한 것: 연결 풀기의 404·그 밖의 실패와 늦은 답, 단추의 "이동 중…"과 뒤로 가기(`pageshow`)로 되돌아옴, 비밀번호 로그인 시도로 띠가 지워짐. 모두 잠긴 웹 테스트가 본다.
 
 ## 6. 정한 것 (메인이 정함, 사용자 확인 전)

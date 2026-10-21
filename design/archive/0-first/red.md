@@ -279,50 +279,50 @@
 - `io.popdesk.boundary.StaffIdentityTest.commentsHoldNoStaff`: Expected 204 from GET /api/public/csrf on console.popdesk.test but got 501: {"timestamp":"2026-10-09T03:46:52.173Z","status":501,"error":"Not Implemented","path
 - `io.popdesk.boundary.StaffIdentityTest.attachmentsHoldNoStaff`: Expected 204 from GET /api/public/csrf on console.popdesk.test but got 501: {"timestamp":"2026-10-09T03:46:52.182Z","status":501,"error":"Not Implemented","path
 - `io.popdesk.boundary.StaffIdentityTest.issuesHoldNoStaff`: Expected 204 from GET /api/public/csrf on console.popdesk.test but got 501: {"timestamp":"2026-10-09T03:46:52.191Z","status":501,"error":"Not Implemented","path
-- `io.popdesk.deploy.AttachmentLoadTest.tenUploadsAndTenDownloadsAtOnce`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.AttachmentLoadTest.collectorComesFromTheImage`: Earlier, starting the image with -Xmx384m failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-4
-- `io.popdesk.deploy.BackupRestoreTest.backupWhileAppRuns`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.BackupRestoreTest.dumpMatchesServer`: Earlier, starting an installation failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.BackupRestoreTest.restoreRefusedWhileAppRuns`: Earlier, starting an installation failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.BackupRestoreTest.restoreRefusedIntoNonEmptyDatabase`: Earlier, starting an installation failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.BackupRestoreTest.restoreRefusedWhileLockHeld`: Earlier, starting an installation failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.BackupRestoreTest.restoreIntoEmptyDatabase`: Earlier, starting an installation failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.DevComposeTest.invitationReachesMailpit`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.DevComposeTest.releaseHasNoMailpit`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.DevComposeTest.devPointsSmtpAtMailpit`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ImplicitTlsMailTest.port465UsesImplicitTls`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ImplicitTlsMailTest.plainPortWithoutStartTlsSendsNothing`: Earlier, starting the app with GreenMail on 465 failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, A
-- `io.popdesk.deploy.ObservabilityComposeTest.addsOneLgtmService`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.AttachmentLoadTest.tenUploadsAndTenDownloadsAtOnce`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.AttachmentLoadTest.collectorComesFromTheImage`: Earlier, starting the image with -Xmx384m failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-4
+- `io.popdesk.deploy.BackupRestoreTest.backupWhileAppRuns`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.BackupRestoreTest.dumpMatchesServer`: Earlier, starting an installation failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.BackupRestoreTest.restoreRefusedWhileAppRuns`: Earlier, starting an installation failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.BackupRestoreTest.restoreRefusedIntoNonEmptyDatabase`: Earlier, starting an installation failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.BackupRestoreTest.restoreRefusedWhileLockHeld`: Earlier, starting an installation failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.BackupRestoreTest.restoreIntoEmptyDatabase`: Earlier, starting an installation failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.DevComposeTest.invitationReachesMailpit`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.DevComposeTest.releaseHasNoMailpit`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.DevComposeTest.devPointsSmtpAtMailpit`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ImplicitTlsMailTest.port465UsesImplicitTls`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ImplicitTlsMailTest.plainPortWithoutStartTlsSendsNothing`: Earlier, starting the app with GreenMail on 465 failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, A
+- `io.popdesk.deploy.ObservabilityComposeTest.addsOneLgtmService`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
 - `io.popdesk.deploy.ObservabilityComposeTest.dashboardsQueryTheMetrics`: [deploy/grafana] 
-- `io.popdesk.deploy.ObservabilityComposeTest.startsOneMoreContainer`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ObservabilityComposeTest.grafanaHasTheMetrics`: Earlier, starting compose.yml with compose.obs.yml failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file
-- `io.popdesk.deploy.ObservabilityComposeTest.grafanaHasTheDashboards`: Earlier, starting compose.yml with compose.obs.yml failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file
-- `io.popdesk.deploy.ReleaseComposeTest.postgresSixteen(String)[1]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.postgresSixteen(String)[2]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.restartPolicy(String)[1]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.restartPolicy(String)[2]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.exactImages(String)[1]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.exactImages(String)[2]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.appAndDb(String)[1]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.appAndDb(String)[2]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.namedVolumes(String)[1]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.namedVolumes(String)[2]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.onlyAppPort(String)[1]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.onlyAppPort(String)[2]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.logLimit(String)[1]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ReleaseComposeTest.logLimit(String)[2]`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ResetPasswordTest.unknownEmail`: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ResetPasswordTest.notAnAdmin`: Earlier, starting an installation failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ResetPasswordTest.passwordBreaksRules`: Earlier, starting an installation failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ResetPasswordTest.noTerminal`: Earlier, starting an installation failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.ResetPasswordTest.resetsWithTerminal`: Earlier, starting an installation failed: [deploy/compose.yml: C:\Users\minju\popdesk\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
-- `io.popdesk.deploy.UpgradeHarnessTest.sampleExpectsSomething`: [deploy/upgrade/make-sample.py: C:\Users\minju\popdesk\deploy\upgrade\make-sample.py should exist (the sample data generator; see the deploy test README)] 
-- `io.popdesk.deploy.UpgradeHarnessTest.sampleRecordsItsImage`: Earlier, make-sample.py failed: [deploy/upgrade/make-sample.py: C:\Users\minju\popdesk\deploy\upgrade\make-sample.py should exist (the sample data generator; se
-- `io.popdesk.deploy.UpgradeHarnessTest.sampleFillsEveryTable`: Earlier, make-sample.py failed: [deploy/upgrade/make-sample.py: C:\Users\minju\popdesk\deploy\upgrade\make-sample.py should exist (the sample data generator; se
-- `io.popdesk.deploy.UpgradeHarnessTest.sampleHasBoundaryValues`: Earlier, make-sample.py failed: [deploy/upgrade/make-sample.py: C:\Users\minju\popdesk\deploy\upgrade\make-sample.py should exist (the sample data generator; se
-- `io.popdesk.deploy.UpgradeHarnessTest.harnessPassesOnTheSameImage`: Earlier, make-sample.py failed: [deploy/upgrade/make-sample.py: C:\Users\minju\popdesk\deploy\upgrade\make-sample.py should exist (the sample data generator; se
-- `io.popdesk.deploy.UpgradeHarnessTest.newerSchemaDoesNotStart`: Earlier, make-sample.py failed: [deploy/upgrade/make-sample.py: C:\Users\minju\popdesk\deploy\upgrade\make-sample.py should exist (the sample data generator; se
-- `io.popdesk.deploy.UpgradeHarnessTest.brokenMigrationFailsTheHarness`: Earlier, make-sample.py failed: [deploy/upgrade/make-sample.py: C:\Users\minju\popdesk\deploy\upgrade\make-sample.py should exist (the sample data generator; se
+- `io.popdesk.deploy.ObservabilityComposeTest.startsOneMoreContainer`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ObservabilityComposeTest.grafanaHasTheMetrics`: Earlier, starting compose.yml with compose.obs.yml failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file
+- `io.popdesk.deploy.ObservabilityComposeTest.grafanaHasTheDashboards`: Earlier, starting compose.yml with compose.obs.yml failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file
+- `io.popdesk.deploy.ReleaseComposeTest.postgresSixteen(String)[1]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.postgresSixteen(String)[2]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.restartPolicy(String)[1]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.restartPolicy(String)[2]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.exactImages(String)[1]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.exactImages(String)[2]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.appAndDb(String)[1]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.appAndDb(String)[2]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.namedVolumes(String)[1]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.namedVolumes(String)[2]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.onlyAppPort(String)[1]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.onlyAppPort(String)[2]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.logLimit(String)[1]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ReleaseComposeTest.logLimit(String)[2]`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ResetPasswordTest.unknownEmail`: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ResetPasswordTest.notAnAdmin`: Earlier, starting an installation failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ResetPasswordTest.passwordBreaksRules`: Earlier, starting an installation failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ResetPasswordTest.noTerminal`: Earlier, starting an installation failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.ResetPasswordTest.resetsWithTerminal`: Earlier, starting an installation failed: [deploy/compose.yml: <repo>\deploy\compose.yml should exist (the release Compose file, ADR D-45)] 
+- `io.popdesk.deploy.UpgradeHarnessTest.sampleExpectsSomething`: [deploy/upgrade/make-sample.py: <repo>\deploy\upgrade\make-sample.py should exist (the sample data generator; see the deploy test README)] 
+- `io.popdesk.deploy.UpgradeHarnessTest.sampleRecordsItsImage`: Earlier, make-sample.py failed: [deploy/upgrade/make-sample.py: <repo>\deploy\upgrade\make-sample.py should exist (the sample data generator; se
+- `io.popdesk.deploy.UpgradeHarnessTest.sampleFillsEveryTable`: Earlier, make-sample.py failed: [deploy/upgrade/make-sample.py: <repo>\deploy\upgrade\make-sample.py should exist (the sample data generator; se
+- `io.popdesk.deploy.UpgradeHarnessTest.sampleHasBoundaryValues`: Earlier, make-sample.py failed: [deploy/upgrade/make-sample.py: <repo>\deploy\upgrade\make-sample.py should exist (the sample data generator; se
+- `io.popdesk.deploy.UpgradeHarnessTest.harnessPassesOnTheSameImage`: Earlier, make-sample.py failed: [deploy/upgrade/make-sample.py: <repo>\deploy\upgrade\make-sample.py should exist (the sample data generator; se
+- `io.popdesk.deploy.UpgradeHarnessTest.newerSchemaDoesNotStart`: Earlier, make-sample.py failed: [deploy/upgrade/make-sample.py: <repo>\deploy\upgrade\make-sample.py should exist (the sample data generator; se
+- `io.popdesk.deploy.UpgradeHarnessTest.brokenMigrationFailsTheHarness`: Earlier, make-sample.py failed: [deploy/upgrade/make-sample.py: <repo>\deploy\upgrade\make-sample.py should exist (the sample data generator; se
 - `io.popdesk.issue.CommentTest.staffSeeAuthorNames`: Expected 204 from GET /api/public/csrf on console.popdesk.test but got 501: {"timestamp":"2026-10-09T03:46:52.452Z","status":501,"error":"Not Implemented","path
 - `io.popdesk.issue.CommentTest.reporterAndStaffComment`: Expected 204 from GET /api/public/csrf on console.popdesk.test but got 501: {"timestamp":"2026-10-09T03:46:52.462Z","status":501,"error":"Not Implemented","path
 - `io.popdesk.issue.CommentTest.customerSeesSupportTeam`: Expected 204 from GET /api/public/csrf on console.popdesk.test but got 501: {"timestamp":"2026-10-09T03:46:52.471Z","status":501,"error":"Not Implemented","path

@@ -1,6 +1,6 @@
 # 4b 묶음(보내기 운영) 검증 (C-10)
 
-> 구현이 끝난 뒤 본 것과 아직 못 본 것을 적는다. 탭 보고는 `C:\Users\minju\.claude\popdesk\tasks\s4b-*-report.md`에 있다.
+> 구현이 끝난 뒤 본 것과 아직 못 본 것을 적는다. 탭 보고는 `~\.claude\popdesk\tasks\s4b-*-report.md`에 있다.
 > 상태: 2026-10-13에 봤다. 이 묶음의 설계(C-1~3)는 사용자가 메인에게 맡겨 메인이 정했다(`acceptance.md` 5절 열다섯, `design.md` 0절, `screens.md` 6절 열넷). 사용자 확인 전이다.
 > 4a(`../4-talk/`)와 합쳐 한 번에 검증하고 푸시했다. 4a의 검증은 `../4-talk/verify.md`에 있다.
 

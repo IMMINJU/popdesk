@@ -1,7 +1,7 @@
 # 8a 묶음 설계
 
 > 수용 기준은 같은 폴더 `acceptance.md`, 사고와 막는 것은 `premortem.md`, 화면은 `screens.md`다.
-> 지금 코드에 대한 문장은 2026-10-16 `e4fce44`에서 읽은 것이다(조사 메모 `C:\Users\minju\.claude\popdesk\notes\s8-survey.md`, crosscheck 검토가 줄 번호를 다시 봄). [소스]는 그 파일을 읽고 적었다는 표시다.
+> 지금 코드에 대한 문장은 2026-10-16 `e4fce44`에서 읽은 것이다(조사 메모 `~\.claude\popdesk\notes\s8-survey.md`, crosscheck 검토가 줄 번호를 다시 봄). [소스]는 그 파일을 읽고 적었다는 표시다.
 > 상태: **메인이 정함, 사용자 확인 전**(2026-10-16).
 
 ## 0. 메인이 정한 것

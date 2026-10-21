@@ -1,7 +1,7 @@
 # 8a 묶음(SLA 정책과 기한) 검증 (C-10)
 
 > 2026-10-16~17 메인이 이 PC에서 했다. GitHub Actions 10월분을 다 써서 CI는 돌지 않았다.
-> 숫자는 각 실행의 로그(`C:\Users\minju\.claude\popdesk\tasks\s8a-ci*\`, `s8a-*.log`)와 탭 보고에서 옮겼다.
+> 숫자는 각 실행의 로그(`~\.claude\popdesk\tasks\s8a-ci*\`, `s8a-*.log`)와 탭 보고에서 옮겼다.
 
 ## 1. 구현 탭 둘이 끝났고 맡은 테스트는 모두 통과한다
 
@@ -44,7 +44,7 @@
 
 ## 4. 메인이 브라우저로 본 것
 
-진짜 서버(`popdesk:test`, 개발용 Mailpit), 견본은 API와 SQL로. 웹 탭이 못 본 것과 고친 뒤 다시 빌드해 볼 것을 골랐다. 스크린샷 `C:\Users\minju\.claude\popdesk\tasks\shots\s8a-verify\`(웹 탭 것은 `shots\s8a-i-web\`).
+진짜 서버(`popdesk:test`, 개발용 Mailpit), 견본은 API와 SQL로. 웹 탭이 못 본 것과 고친 뒤 다시 빌드해 볼 것을 골랐다. 스크린샷 `~\.claude\popdesk\tasks\shots\s8a-verify\`(웹 탭 것은 `shots\s8a-i-web\`).
 
 | 화면 | 폭 | 만든 법 | 결과 |
 |---|---|---|---|

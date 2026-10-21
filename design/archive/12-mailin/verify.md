@@ -2,7 +2,7 @@
 
 > 2026-10-19 메인이 이 PC에서 했다. GitHub Actions 10월분을 다 써서 CI는 돌지 않았다.
 > C-10은 닿은 부분만 돈다(`process.md` C-10 첫 줄).
-> 숫자는 각 실행의 로그(`C:\Users\minju\.claude\popdesk\local-ci\`, `tasks\s12-*`)와 탭 보고에서 옮겼다.
+> 숫자는 각 실행의 로그(`~\.claude\popdesk\local-ci\`, `tasks\s12-*`)와 탭 보고에서 옮겼다.
 
 ## 1. 구현 탭 넷이 끝났고 맡은 테스트는 모두 통과한다
 
@@ -54,7 +54,7 @@
 
 ## 5. 브라우저
 
-웹 탭(`popdesk:s12-i-web`, GreenMail SMTP·IMAP, 콘솔 1280·820px, 밝게·어둡게, 스크린샷 9장 `C:\Users\minju\.claude\popdesk\tasks\shots\s12-i-web\`):
+웹 탭(`popdesk:s12-i-web`, GreenMail SMTP·IMAP, 콘솔 1280·820px, 밝게·어둡게, 스크린샷 9장 `~\.claude\popdesk\tasks\shots\s12-i-web\`):
 - 메일 한 통이 다음 회차에 문의가 됨, C-4 "받은 경로: 메일"
 - C-18 켜짐과 마지막 성공, GreenMail을 멈춘 `CONNECT` 실패, 부분 205개 메일의 격리 1통
 - C-7 `MAIL_IN_QUARANTINED`(누르면 `/system`), IMAP 없이 띄운 "설정 없음"과 `#receiving-email` 링크

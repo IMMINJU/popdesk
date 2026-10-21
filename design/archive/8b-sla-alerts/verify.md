@@ -1,7 +1,7 @@
 # 8b 묶음(SLA 알림과 통계) 검증 (C-10)
 
 > 2026-10-17 메인이 이 PC에서 했다. GitHub Actions 10월분을 다 써서 CI는 돌지 않았다.
-> 숫자는 각 실행의 로그(`C:\Users\minju\.claude\popdesk\tasks\s8b-local-ci\`, `s8b-*.log`)와 탭 보고에서 옮겼다.
+> 숫자는 각 실행의 로그(`~\.claude\popdesk\tasks\s8b-local-ci\`, `s8b-*.log`)와 탭 보고에서 옮겼다.
 
 ## 1. 구현 탭 둘이 끝났고 맡은 테스트는 모두 통과한다
 

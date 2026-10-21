@@ -1,6 +1,6 @@
 # 4번 묶음(4a, 대화와 알림) 검증 (C-10)
 
-> 구현이 끝난 뒤 본 것과 아직 못 본 것을 적는다. 탭 보고는 `C:\Users\minju\.claude\popdesk\tasks\s4-*-report.md`에 있다.
+> 구현이 끝난 뒤 본 것과 아직 못 본 것을 적는다. 탭 보고는 `~\.claude\popdesk\tasks\s4-*-report.md`에 있다.
 > 상태: 2026-10-12에 봤다. 이 묶음의 설계(C-1~3)는 사용자가 메인에게 맡겨 메인이 정했다(`acceptance.md` 5절, `design.md` 0절, `screens.md`). 사용자 확인 전이다.
 > 푸시와 CI는 4b(`../4b-delivery/`)와 합쳐 한 번 한다. 그때 6절을 채우고 폴더를 archive로 옮긴다.
 

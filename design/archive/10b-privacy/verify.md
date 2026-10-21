@@ -2,7 +2,7 @@
 
 > 2026-10-19 메인이 이 PC에서 했다. GitHub Actions 10월분을 다 써서 CI는 돌지 않았다.
 > C-10은 닿은 부분만 돈다(`process.md` C-10 첫 줄).
-> 숫자는 각 실행의 로그(`C:\Users\minju\.claude\popdesk\tasks\s10b-ci\`)와 탭 보고에서 옮겼다.
+> 숫자는 각 실행의 로그(`~\.claude\popdesk\tasks\s10b-ci\`)와 탭 보고에서 옮겼다.
 
 ## 1. 구현 탭 둘이 끝났고 맡은 테스트는 모두 통과한다
 
@@ -70,7 +70,7 @@
 | C-7 알림함 | 820 어둡게 | 끝남 셋, 실패 둘, 자동 정리 켜짐 하나 |
 
 - UNEXPECTED 둘은 메인이 `comment` 표를 잠가 둔 채 만든 것이다(잠금 시간 초과).
-- 스크린샷: `C:\Users\minju\.claude\popdesk\shots\s10b-main\`. 설치는 `down -v`로 지웠다.
+- 스크린샷: `~\.claude\popdesk\shots\s10b-main\`. 설치는 `down -v`로 지웠다.
 - 메인이 보지 않은 것: 503(잠금을 잃게 만들 수 없었다), 대화상자의 503 문장(웹 테스트만).
 
 ## 6. 메인이 코드로 본 것
