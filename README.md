@@ -1,7 +1,7 @@
 # popdesk
 
 A self-hosted helpdesk that one support team runs for many customer companies.
-Customers raise and follow requests in a customer portal; agents answer, track internal work, and hand off in an agent console.
+Customers raise and follow requests (called issues in the docs and the API) in a customer portal; agents answer, track internal work, and hand off in an agent console.
 
 [한국어](README.ko.md)
 
@@ -12,17 +12,19 @@ Customers raise and follow requests in a customer portal; agents answer, track i
 ## What it aims to be
 
 - **Two containers.** One application image and one PostgreSQL. `docker compose up` and you have a helpdesk.
-- **Small machine friendly.** Develops and runs on a 16 GB laptop.
-- **Clear boundaries.** A customer never sees another customer company's requests. Internal notes, tasks, and assignees never reach customers.
+- **Small machine friendly.** The app and its database use about 1 GB of memory. popdesk is built on a 16 GB laptop.
+- **Clear boundaries.** A customer never sees another customer company's requests. Internal comments and assignees never reach customers.
 - **Traceable.** Every request keeps its conversation, status history, and internal work log in one place. Admin actions are audited.
 
 On `main` and coming in 0.5.0: inline images and S3 storage for attachments, labels, due dates, internal tasks with assignees and due dates, linked duplicate and related requests across companies, trash and auto-close, per-company counts, SLA due times and alerts, branding, personal-data export and anonymization, OIDC sign-in, creating requests by email, and an English UI.
 
 ## Try it
 
-No image is published yet, so build 0.4.0 from its tag. You need Docker with Compose.
+No image is published yet, so build 0.4.0 from its tag. You need Git and Docker with Compose.
 
 ```
+git clone https://github.com/IMMINJU/popdesk.git
+cd popdesk
 git checkout v0.4.0
 docker build -t ghcr.io/imminju/popdesk:0.4.0 .
 cat > deploy/.env <<'EOF'
@@ -33,7 +35,9 @@ EOF
 docker compose -f deploy/compose.yml up -d
 ```
 
-Then open `http://console.localhost:8080` and sign in as the admin; customers use `http://portal.localhost:8080`. The settings, TLS, and backups are in [`docs/operate/`](docs/operate/configuration.md).
+The admin password must be 10 to 72 characters. Then open `http://console.localhost:8080` and sign in as the admin; customers use `http://portal.localhost:8080`. These addresses only work in a browser on the same machine. Without mail settings popdesk sends no email, and the console shows each invitation link so you can pass it on.
+
+To install it on a server, with your own host names, TLS, and email, follow [Installation](docs/operate/installation.md). Who may do what (admins, agents, customers, customer managers) is in [permissions.md](docs/use/permissions.md).
 
 ## Not goals
 

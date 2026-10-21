@@ -2,7 +2,7 @@
 
 How popdesk changes its database when you install a new version, and what to do when that fails.
 
-This page describes the `main` branch, which will become 0.5.0. For an installed release, read this page at that release's tag.
+This page describes the code on the `main` branch, which will be released as 0.5.0. If you run 0.4.0, read the [docs at the tag `v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs) instead; a page missing there did not exist yet.
 
 ## Before you upgrade
 

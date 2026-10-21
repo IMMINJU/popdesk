@@ -17,7 +17,7 @@ We work in feature slices. Each slice goes through the same steps: acceptance cr
 |---|---|
 | Small (fits in one sentence) | Tests, code, and green CI |
 | One feature | Acceptance criteria, contract, tests, then code |
-| Touches a database migration, the customer-company boundary, personal data, a public contract (settings, compose, documented API), or a shared UI component API | The same as one feature, plus a design review before code. Mention it in the pull request |
+| Touches a database migration, the customer-company boundary, personal data, a public contract (settings, compose, documented API), or a shared UI component API | The same as one feature, plus a design review before code: describe the design in the issue and wait for the maintainer's answer. Mention it in the pull request |
 
 Rules that apply to every change:
 
@@ -45,7 +45,7 @@ You need JDK 25, Node 24.12 or newer, pnpm (the version in `web/package.json`), 
 - Repository checks, from the root: `python scripts/ci/tests-lock.py check` and `python scripts/ci/check-test-style.py`.
 - The container image: `docker build -t popdesk:dev .` from the root.
 
-Tests are locked (`scripts/ci/tests.lock`): a pull request that changes a test says why, and the maintainer relocks it. Structure is kept by checks (no new cycle between server packages, no import between the two web apps, a limit on duplicated web code); when one fails, move the code instead of editing the baseline.
+Tests are locked (`scripts/ci/tests.lock`): a pull request that changes a test says why, and the maintainer (@IMMINJU) relocks it after review. Until then the CI job "Locked tests and test style" fails on that pull request; that is expected. Structure is kept by checks (no new cycle between server packages, no import between the two web apps, a limit on duplicated web code); when one fails, move the code instead of editing the baseline.
 
 ## Documentation
 
