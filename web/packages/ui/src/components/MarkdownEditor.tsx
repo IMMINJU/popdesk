@@ -316,9 +316,11 @@ export function MarkdownEditor({ ref, ...props }: MarkdownEditorProps) {
     const selection = el ? ([after(el.selectionStart), after(el.selectionEnd)] as const) : null;
     onChange(next);
     if (!selection) return;
-    // Setting the value moves the cursor to the end; put it back where the writer had it.
+    // Setting the value moves the cursor to the end; put it back where the writer had it. If the
+    // writer typed before the frame, the cursor is already where they type.
     requestAnimationFrame(() => {
-      area.current?.setSelectionRange(selection[0], selection[1]);
+      const current = area.current;
+      if (current?.value === next) current.setSelectionRange(selection[0], selection[1]);
     });
   };
 
