@@ -2,7 +2,7 @@
 
 How long audit entries are kept, what the integrity check can and cannot tell you, and how to keep a copy of the log outside popdesk. The settings are in [configuration.md](configuration.md); the formats are in [the API conventions](../integrate/conventions.md#audit-log-hash-chain).
 
-popdesk is not released yet. Values here are the planned contract and may change before the first release.
+This page describes the `main` branch, which will become 0.5.0. For an installed release, read this page at that release's tag.
 
 ## How long entries are kept
 

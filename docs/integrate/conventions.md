@@ -2,7 +2,7 @@
 
 Rules that every popdesk API endpoint follows. This is a canonical document: code, tests, and the generated OpenAPI files follow it. Rule IDs in parentheses (for example `COM-3`) are used in test names and in other documents.
 
-popdesk is not released yet. Each endpoint follows these rules from the slice that ships it.
+This page describes the `main` branch, which will become 0.5.0. For an installed release, read this page at that release's tag.
 
 ## API paths and contract files
 
@@ -12,7 +12,7 @@ The API is split by app (ADR D-43):
 |---|---|---|
 | `/api/portal/**` | The customer portal | Portal host only |
 | `/api/console/**` | The agent console (agents and admins) | Console host only |
-| `/api/public/**` | Before sign-in: branding, accepting an invitation, sign-in (password and OIDC) | Both hosts |
+| `/api/public/**` | Before sign-in: branding, the CSRF token, accepting an invitation, password reset, the sign-in options, sign-in (password and OIDC), and sign-out | Both hosts |
 
 A request for a path that its host does not serve gets 404. Customer and staff endpoints use separate request and response types; customer types have no internal fields or filters (D-41).
 
@@ -69,7 +69,7 @@ popdesk can read a mailbox over IMAP and turn the emails into issues and comment
 
 ## Invitation links
 
-An invitation link has the form `{scheme}://{host}[:{port}]/invite#token={token}` (INVITE-2). The host is the portal host for customers and the console host for agents and admins, and the port is left out when it is the default for the scheme (S0-AC-20). The token is only in the fragment after `#`, so browsers and proxies never send it in a request line or a `Referer`. The page reads it and sends it in the body of `POST /api/public/invitations/accept`.
+An invitation link has the form `{scheme}://{host}[:{port}]/invite#token={token}` (INVITE-2). The host is the portal host for customers and the console host for agents and admins, and the port is left out when it is the default for the scheme. The token is only in the fragment after `#`, so browsers and proxies never send it in a request line or a `Referer`. The page reads it and sends it in the body of `POST /api/public/invitations/accept`.
 
 ## Branding
 
@@ -77,7 +77,7 @@ An installation has one branding (BRAND-1): a display name, an accent color, and
 
 - `GET /api/public/branding` answers on both hosts without a session, before sign-in too (BRAND-5). It has the display name, the values made from the accent color (`colors`, null without one), and the two logo addresses, and nothing else: no version, no one who changed it, no contrast, no logo size. With a logo for one theme only, both addresses point at it; with none, both are null. Like any other API response it is `no-store`; the apps read it once when they start.
 - A logo address is `/api/public/branding/logos/{theme}?v={fingerprint}`, `theme` being `light` or `dark`. The answer is always a PNG that popdesk made, with `X-Content-Type-Options: nosniff` and a strong `ETag` (the fingerprint); `If-None-Match` with it gets 304. When `v` is the logo's fingerprint the answer is `Cache-Control: public, max-age=31536000, immutable`, otherwise `no-cache`: a new logo has a new fingerprint, so the address in the branding changes with it and a browser never keeps an old logo. A theme without a logo, or a `theme` other than the two, is 404; the logo of the other theme is never given in its place. `HEAD` has the same headers.
-- Admins change the branding under `/api/console/branding/**`; agents get 403 there, checked before anything in the request (S9-AC-35). `PUT /api/console/branding` saves the display name and the accent color together with the `version` read (409 `VERSION_CONFLICT` otherwise). `GET /api/console/branding/accent?color=%23RRGGBB` gives the values a color would make and their contrast without saving it.
+- Admins change the branding under `/api/console/branding/**`; agents get 403 there, checked before anything in the request. `PUT /api/console/branding` saves the display name and the accent color together with the `version` read (409 `VERSION_CONFLICT` otherwise). `GET /api/console/branding/accent?color=%23RRGGBB` gives the values a color would make and their contrast without saving it.
 - popdesk makes the eight values (`accent`, `accentHover`, `onAccent`, `accentSubtle` of each theme) from the one color: the light `accent` is the color as given, the dark one has its OKLCH lightness moved (ADR D-50, D-61). A color is taken when the `accent` of each theme is 4.5:1 or more on every background it is text on; otherwise 400 with `accent` `LOW_CONTRAST`. The accent color changes only these four values of each theme, never focus rings, status colors, or error colors.
 - A logo is uploaded and removed on its own, `PUT` and `DELETE /api/console/branding/logos/{theme}`, and is saved at once. It is `PUT`, where a profile photo is `POST`, because each theme has one logo that the request puts in place. A logo change does not change the branding's `version`, so an admin editing the name meanwhile gets no 409. The file is a PNG, JPEG, or WebP of up to 512 KB (524,288 bytes), judged by its content; an SVG is not taken. popdesk turns it by its EXIF orientation, scales it to fit 512 by 128 px, and keeps only that copy as a PNG without metadata. The same file always makes the same PNG, so uploading it again changes nothing, its address included. An upload is checked in this order: role (403); a request without the `file` part is 400 `file` `REQUIRED` before anything else in it is looked at; then the rate limit (429, refused uploads count too), `theme` (404), the size of the file (413), a place among the images being decoded (503), and the file's first bytes and pixel count (400). A refused upload leaves the logo there was.
 
@@ -217,7 +217,7 @@ Each endpoint lists the codes it can return in the OpenAPI files. A new code is 
 | 413 | `PAYLOAD_TOO_LARGE` | The request is over the app's upload limit, a profile photo is over 2 MB (2,097,152 bytes), a branding logo is over 512 KB (524,288 bytes), or the JSON of a new issue (the body, or the `issue` part of a multipart request) is over 256 KB (262,144 bytes). The headers of one multipart part, which carry the file name, are limited to 4 KB: a file name far over 255 characters gets this 413, not the 400 `TOO_LONG`. A proxy in front may answer 413 first with its own body |
 | 429 | `RATE_LIMITED` | Over a rate limit (`COM-8`). `Retry-After` says when to try again |
 | 500 | `INTERNAL_ERROR` | An unexpected server error |
-| 501 | `NOT_IMPLEMENTED` | The endpoint is in the contract but not built yet. Only before a slice is finished; never in a release |
+| 501 | `NOT_IMPLEMENTED` | The endpoint is in the contract but not built yet. Never in a release |
 | 503 | `SERVER_BUSY` | 16 uploads, or 16 downloads, are already running, 2 images (profile photos and branding logos together) are already being decoded, 2 audit log exports are already running, or 2 account exports are. Or the app has lost its single-instance lock (a company export cannot start) while it takes the lock again, for example after the database connection broke. `Retry-After` says when to try again |
 | 503 | `SETUP_REQUIRED` | The first admin could not be created, or `POPDESK_LOCALE` or `POPDESK_TIMEZONE` is not a value popdesk takes, so the app takes no requests yet. The log says what to set |
 

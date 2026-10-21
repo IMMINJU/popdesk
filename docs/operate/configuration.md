@@ -2,7 +2,7 @@
 
 How to configure a popdesk installation: environment variables, the Docker Compose layout, and TLS.
 
-popdesk is not released yet. Values here are the planned contract and may change before the first release.
+This page describes the `main` branch, which will become 0.5.0. For an installed release, read this page at that release's tag.
 
 ## Environment variables
 
@@ -57,7 +57,8 @@ The names and meanings of the variables above are a public contract. When one is
 These values are secrets: `POPDESK_DB_PASSWORD`, `POPDESK_ADMIN_PASSWORD`, `SMTP_PASSWORD`, `IMAP_PASSWORD`, `NOTIFY_WEBHOOK_URL`, `S3_SECRET_KEY`, `OIDC_CLIENT_SECRET`, `AUDIT_FORWARD_URL`, `AUDIT_FORWARD_TOKEN`.
 
 - popdesk has no default for any of them.
-- Each can also be given as a file: set `<NAME>_FILE` to a path (for example `POPDESK_DB_PASSWORD_FILE=/run/secrets/db_password`) and popdesk reads the value from it. Setting both is an error. One line break at the end of the file (`\n` or `\r\n`) is removed, because most editors and secret tools add one; anything else in the file, including other whitespace, is part of the value. Use this for Docker secrets, or when a value contains `$`, which Compose would otherwise substitute.
+- The bundled Compose file needs `POPDESK_DB_PASSWORD` itself, because the database container uses the same value; give it in `.env`, not as a file.
+- Each can also be given as a file: set `<NAME>_FILE` to a path (for example `SMTP_PASSWORD_FILE=/run/secrets/smtp_password`) and popdesk reads the value from it. Setting both is an error. One line break at the end of the file (`\n` or `\r\n`) is removed, because most editors and secret tools add one; anything else in the file, including other whitespace, is part of the value. Use this for Docker secrets, or when a value contains `$`, which Compose would otherwise substitute.
 - popdesk never writes them to the log or the database.
 - Keep them in an `.env` file or your secret store, not in the Compose file.
 
@@ -74,11 +75,11 @@ These names and values are a public contract (ADR D-45).
 | Volumes | `popdesk-db` (database files), `popdesk-attachments` (attachment files when `POPDESK_STORAGE=disk`, mounted at `/data/attachments`) |
 | Restart policy | `unless-stopped` for both services |
 | Logs | JSON lines on standard output, with a size limit per container (`max-size: 10m`, `max-file: 5`) |
-| Images | Each release publishes `amd64` and `arm64` images. The Compose file attached to a release points at that exact version; do not use `latest` |
+| Images | The Compose file of a release points at that exact version; do not use `latest`. No image is published yet: build it from the release tag under that name ([README](../../README.md#try-it)) |
 
 Volume names are set explicitly in the Compose file, so they do not change with the Compose project name.
 
-Get the Compose file from the release you install, not from the `main` branch.
+Take the Compose file from the tag of the release you install, not from the `main` branch.
 
 popdesk runs as one app instance (ADR D-23). On start it takes a database lock; a second instance waits briefly and then stops with a message. On Kubernetes, use the `Recreate` strategy.
 
@@ -335,9 +336,9 @@ The port is left out when it is the scheme's default (443 for https, 80 for http
 - popdesk does not reach for the provider while it starts, so a provider that is down does not keep it from starting. The first sign-in reads the discovery document and keeps it for an hour; a document that cannot be read is tried again 30 seconds later at the earliest. Each request to the provider has 3 seconds to connect and 10 to answer.
 - An `http` issuer gets a warning at startup: the code and the tokens travel without encryption. With an `https` issuer, every endpoint of the discovery document must be `https` too.
 - **The email.** The first OIDC sign-in of an account matches it by the email of the ID token, so the provider must put `email` and `email_verified` (`true`) into the ID token itself; popdesk does not ask the `userinfo` endpoint. Providers that do with the `email` scope: Google, Keycloak, Okta, Auth0. Microsoft Entra ID does not give `email_verified`, so with it no account can be linked; it is not supported yet. The email must be ASCII. popdesk trusts the provider to say who holds an email: a provider admin who can give anyone any verified email can sign in as any account that is not linked yet.
-- After the first sign-in the account is linked to the provider's `iss` and `sub`, and only those count, whatever email later tokens carry. When the provider makes the person again with a new `sub`, an admin removes the link in the member list (C-10), and the next sign-in links by email again. OIDC makes no account: people are invited as before. An invited account whose invitation is less than 7 days old becomes active at its first OIDC sign-in, without a password; the person can set one with "Forgot password".
+- After the first sign-in the account is linked to the provider's `iss` and `sub`, and only those count, whatever email later tokens carry. When the provider makes the person again with a new `sub`, an admin removes the link in the member list, and the next sign-in links by email again. OIDC makes no account: people are invited as before. An invited account whose invitation is less than 7 days old becomes active at its first OIDC sign-in, without a password; the person can set one with "Forgot password".
 - **The clock.** ID tokens are checked against the host's clock with 60 seconds of leeway. Keep the host's clock set by NTP; a clock further off refuses every sign-in, and the system status counts it as an `ID_TOKEN` failure.
-- The system status (C-18) shows whether OIDC is on, for which apps, the last OIDC sign-in, and the provider's failures since the app started.
+- The system status shows whether OIDC is on, for which apps, the last OIDC sign-in, and the provider's failures since the app started.
 
 ## SLA due times
 

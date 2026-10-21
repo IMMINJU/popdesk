@@ -2,7 +2,7 @@
 
 What personal data popdesk keeps and for how long, how to answer a person who asks for their data or for its deletion, what an anonymization changes and what it leaves, how to export one company's data, and how closed issues can be cleaned up on their own. The API is in [the API conventions](../integrate/conventions.md#account-export-and-anonymization-pii-3-pii-4) and its [company export](../integrate/conventions.md#company-export-pii-8).
 
-popdesk is not released yet. Values here are the planned contract and may change before the first release.
+This page describes the `main` branch, which will become 0.5.0. For an installed release, read this page at that release's tag.
 
 ## What popdesk keeps
 
@@ -44,7 +44,7 @@ Copies outside the database hold the same data: backups (`popdesk backup`), file
 
 ## Answering a request for deletion
 
-An admin does this in the console, member list (C-10), row menu of the person:
+An admin does this in the console, member list, row menu of the person:
 
 1. **Export, if the person wants their data.** The export downloads one JSON file: the account, the profile photo, the issues they reported, and the comments and attachment names they wrote. It holds nobody else's name, email, or account ID. Send it to the person by a channel you trust; popdesk keeps no copy.
 2. **Anonymize the account.** The anonymization asks for the person's email to be typed in, then makes the change at once. It cannot be undone.
@@ -64,7 +64,7 @@ Tell the person that the deletion is delayed and why, as the law that applies to
 
 ## Exporting a company's data
 
-When a customer company leaves, or asks for what it gave you, an admin exports the company in the console: company detail (C-9), section "Export".
+When a customer company leaves, or asks for what it gave you, an admin exports the company in the console: company detail, section "Export".
 
 1. **Choose what goes in.** Every export has the company's issues, their public comments, the files of both, and the company's member customers (email and name). Two choices add more, both off by default: private issues (other customers of the company cannot see them, so the person you send the ZIP to would see what their colleagues could not), and internal comments and tasks with their files. Staff are always "support team" in the ZIP, also in internal comments and tasks, but a name written inside the text of a comment goes out as written: read the internal comments before you choose them.
 2. **Wait for the ZIP.** popdesk writes it in the background. One export runs at a time in the installation. The list shows it as running; when it is done, the admin who asked gets an inbox item, and when it fails every admin does, with the reason in the list (`STORAGE`: the attachment storage could not be read; `DISK`: the ZIP could not be written; `INTERRUPTED`: the app stopped meanwhile). A file the storage no longer has is left out and named in `manifest.json`.

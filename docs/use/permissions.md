@@ -2,7 +2,7 @@
 
 Who can see and do what in popdesk. This is the canonical permission model: code, tests, and other documents follow it. Rule IDs in parentheses (for example `ISSUE-6`) point to the builders' notes in `design/`.
 
-popdesk is not released yet. Each feature follows this table from the slice that ships it.
+This page describes the `main` branch, which will become 0.5.0. For an installed release, read this page at that release's tag.
 
 ## Roles
 

@@ -37,7 +37,7 @@ Then open `http://console.localhost:8080` and sign in as the admin; customers us
 
 ## Not goals
 
-Chat, phone, or messenger channels; self sign-up; SLA reporting; real-time push; native apps; multiple teams in one install (for now). See [`design/roadmap.md`](design/roadmap.md).
+Chat, phone, or messenger channels; self sign-up; real-time push and browser notifications; native apps and offline use; branding per customer company; multiple teams in one install (for now). See [`design/roadmap.md`](design/roadmap.md).
 
 ## Repository layout
 

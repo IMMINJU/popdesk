@@ -18,9 +18,26 @@
 
 `main`에 있고 0.5.0에 들어갈 것: 본문 이미지와 첨부의 S3 저장, 라벨, 마감일, 담당자와 마감일이 있는 내부 작업, 고객사를 넘는 문의 연결(중복·관련), 휴지통과 자동 종료, 고객사별 건수, SLA 기한과 알림, 브랜딩, 개인정보 내보내기와 익명화, OIDC 로그인, 메일로 문의 받기, 영어 화면.
 
+## 써 보기
+
+이미지를 아직 올리지 않았으니 0.4.0을 태그에서 빌드합니다. Compose가 있는 Docker가 필요합니다.
+
+```
+git checkout v0.4.0
+docker build -t ghcr.io/imminju/popdesk:0.4.0 .
+cat > deploy/.env <<'EOF'
+POPDESK_DB_PASSWORD=choose-a-database-password
+POPDESK_ADMIN_EMAIL=admin@example.com
+POPDESK_ADMIN_PASSWORD=choose-a-long-admin-password
+EOF
+docker compose -f deploy/compose.yml up -d
+```
+
+그다음 `http://console.localhost:8080`을 열어 관리자로 로그인합니다. 고객은 `http://portal.localhost:8080`을 씁니다. 설정, TLS, 백업은 [`docs/operate/`](docs/operate/configuration.md)에 있습니다(영어).
+
 ## 하지 않을 것
 
-채팅·전화·메신저 채널, 자가 가입, SLA 통계, 실시간 푸시, 네이티브 앱, 설치 하나에 여러 팀(당분간). [`design/roadmap.md`](design/roadmap.md)를 보세요.
+채팅·전화·메신저 채널, 자가 가입, 실시간 푸시와 브라우저 알림, 네이티브 앱과 오프라인 동작, 고객사별 브랜딩, 설치 하나에 여러 팀(당분간). [`design/roadmap.md`](design/roadmap.md)를 보세요.
 
 ## 레포 짜임
 
