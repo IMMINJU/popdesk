@@ -1,0 +1,153 @@
+name: Release image
+
+# Publishes the image of a release tag to ghcr.io for amd64 and arm64 (ADR D-45), signs it with
+# cosign (keyless, the workflow's GitHub identity), and attaches a CycloneDX SBOM to the GitHub
+# release (D-29). Started by hand once the tag's CI run has passed and the release exists
+# (design/process.md section D). A tag is published once: a release image is never replaced.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, such as v0.5.0
+        required: true
+      allow_failed_ci:
+        description: Publish even though the tag's CI run did not pass (say why in the release record)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/imminju/popdesk
+  # The version the release checks on the dev PC used, pinned to its digest.
+  TRIVY_IMAGE: aquasec/trivy:0.76.0@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222
+
+jobs:
+  publish:
+    name: Build, scan, push, sign
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write   # the SBOM goes on the release
+      packages: write   # the image goes to ghcr.io
+      id-token: write   # cosign keyless signing
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - id: check
+        name: The tag, its release, its CI run, and no image yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          ALLOW_FAILED_CI: ${{ inputs.allow_failed_ci }}
+        run: |
+          echo "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::Not a release tag: $TAG"; exit 1; }
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null || { echo "::error::No GitHub release for $TAG"; exit 1; }
+          ci=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch "$TAG" --event push --limit 1 --json conclusion --jq '.[0].conclusion // "none"')
+          echo "CI run of $TAG: $ci"
+          if [ "$ci" != "success" ] && [ "$ALLOW_FAILED_CI" != "true" ]; then
+            echo "::error::The CI run of $TAG did not pass ($ci)"; exit 1
+          fi
+          version="${TAG#v}"
+          if docker manifest inspect "$IMAGE:$version" > /dev/null 2>&1; then
+            echo "::error::$IMAGE:$version is already published"; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      # The amd64 image is scanned before anything is pushed; the push below reuses its layers.
+      - name: Build the amd64 image
+        run: docker buildx build --platform linux/amd64 --cache-to type=gha,mode=max --load -t popdesk:scan .
+      - name: No fixable HIGH or CRITICAL vulnerability
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" image \
+            --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --no-progress popdesk:scan
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: push
+        name: Build and push amd64 and arm64
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.check.outputs.version }}
+          cache-from: type=gha
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.check.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=Apache-2.0
+          annotations: |
+            index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            index:org.opencontainers.image.description=popdesk, a helpdesk for a small team that supports business customers
+            index:org.opencontainers.image.licenses=Apache-2.0
+          provenance: false
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign the image
+        run: cosign sign --yes "$IMAGE@${{ steps.push.outputs.digest }}"
+      - name: SBOM (CycloneDX) on the release
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE }}@${{ steps.push.outputs.digest }}
+          format: cyclonedx-json
+          output-file: popdesk-${{ steps.check.outputs.version }}.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+      - name: Attach the SBOM and the digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.check.outputs.version }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          echo "$IMAGE:$VERSION@$DIGEST" > "popdesk-$VERSION.digest"
+          gh release upload "${{ inputs.tag }}" --repo "$GITHUB_REPOSITORY" --clobber \
+            "popdesk-$VERSION.cdx.json" "popdesk-$VERSION.digest"
+
+  # The arm64 image starts with the release's Compose file on an arm64 machine and serves both apps.
+  arm64:
+    name: arm64 image starts
+    needs: publish
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Start with Compose
+        run: |
+          {
+            echo "POPDESK_DB_PASSWORD=$(openssl rand -hex 16)"
+            echo "POPDESK_ADMIN_EMAIL=admin@example.com"
+            echo "POPDESK_ADMIN_PASSWORD=$(openssl rand -hex 16)"
+          } > deploy/.env
+          docker compose -f deploy/compose.yml up -d --wait --wait-timeout 300
+          docker image inspect --format '{{.Architecture}}' "$IMAGE:${{ needs.publish.outputs.version }}" | grep -qx arm64
+      - name: Both apps answer
+        run: |
+          for host in portal.localhost console.localhost; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $host" http://localhost:8080/)
+            echo "$host $code"; [ "$code" = 200 ]
+          done
+      - name: App log on failure
+        if: failure()
+        run: docker compose -f deploy/compose.yml logs app | tail -100

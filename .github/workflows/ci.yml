@@ -246,5 +246,5 @@ jobs:
   #   @Transactional not on controllers or repositories, no-console). Still to add: unused code
   #   (Error Prone), SpotBugs with FindSecBugs, PMD CPD for new duplication on the server,
   #   playwright no-wait-for-timeout
-  # On release tags only (all == 'true'): every job above in full, upgrade tests,
-  # SBOM (D-29), multi-arch image build (D-45)
+  # On release tags only (all == 'true'): every job above in full, upgrade tests.
+  # The amd64 and arm64 images (D-45), their signature, and the SBOM (D-29) come from release.yml.

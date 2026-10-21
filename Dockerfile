@@ -3,9 +3,11 @@
 #   docker build -t popdesk:test .
 # Base images are pinned to exact versions and to the digest of their multi-arch index (amd64 and
 # arm64), so a rebuild of a release tag starts from the same layers.
+# The web and server stages give files that do not depend on the CPU, so they run on the machine that
+# builds ($BUILDPLATFORM); only the runtime stage is built once for each architecture.
 
 # 1. The customer portal and the agent console (Vite builds).
-FROM node:24.18.1-alpine3.24@sha256:f70403e87646dc51b45295f4b8b70cdad0b63d2297c4c9899119b03f7af7a6b3 AS web
+FROM --platform=$BUILDPLATFORM node:24.18.1-alpine3.24@sha256:f70403e87646dc51b45295f4b8b70cdad0b63d2297c4c9899119b03f7af7a6b3 AS web
 WORKDIR /web
 RUN corepack enable
 COPY web/ ./
@@ -16,7 +18,7 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 # 2. The server, with the two builds as its static files (io.popdesk.AppScreens), extracted into a
 #    thin jar plus lib/ for a faster start. The Maven image has the version mvnw names; the JDK image
 #    has no download tool for mvnw.
-FROM maven:3.9.16-eclipse-temurin-25-noble@sha256:93b8a14ea2f412782e4e842651273b4d903e35cc496284f178fbbe2d67d00976 AS server
+FROM --platform=$BUILDPLATFORM maven:3.9.16-eclipse-temurin-25-noble@sha256:93b8a14ea2f412782e4e842651273b4d903e35cc496284f178fbbe2d67d00976 AS server
 WORKDIR /build
 COPY server/ ./
 COPY --from=web /web/portal/dist/ src/main/resources/static/portal/
