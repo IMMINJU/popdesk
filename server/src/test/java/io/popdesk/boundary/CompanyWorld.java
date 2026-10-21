@@ -54,7 +54,9 @@ record CompanyWorld(Session admin, Session agentOfA, Session agentOfB, Side a, S
     }
 
     static CompanyWorld build(Fixtures fixtures) {
-        Session admin = fixtures.signInAdmin();
+        // An admin of its own: the first admin is shared by every test of the context, and its per-account
+        // limits (COM-8) would fill up on a clock that stands still.
+        Session admin = fixtures.admin(fixtures.signInAdmin());
         Company a = fixtures.createCompany(admin);
         Company b = fixtures.createCompany(admin);
         Session agent = fixtures.agent(admin, a.code());
