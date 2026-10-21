@@ -78,8 +78,11 @@ class MailInProcessor {
         STAY
     }
 
-    /** One email as the round hands it over: its bytes, or its header block alone when it is over 30 MB. */
-    record Incoming(byte[] raw, boolean tooLarge) {}
+    /**
+     * One email as the round hands it over: its bytes, or its header block alone when it is over 30 MB
+     * ({@code tooLarge}) or when the server did not give its bytes ({@code unreadable}, B7-AC-11).
+     */
+    record Incoming(byte[] raw, boolean tooLarge, boolean unreadable) {}
 
     private final MailInSetup setup;
     private final MailReceivedRepository records;
@@ -128,7 +131,9 @@ class MailInProcessor {
 
     /**
      * Handles the email (design.md 0절 9) and says where it goes. An app or database error is thrown: the email
-     * stays and is tried again next round; its try was counted before.
+     * stays and is tried again next round; its try was counted before. An email whose bytes the server did not give
+     * is keyed by its header, as one over 30 MB: its try is counted and it stays, and after five tries it is
+     * quarantined as {@code UNREADABLE} (B7-AC-11, B7-AC-12).
      */
     Destination handle(Incoming incoming) {
         MailMessage message = MailMessage.of(incoming.raw());
@@ -139,13 +144,18 @@ class MailInProcessor {
             return destinationOf(known.get().outcome());
         }
         if (known.isPresent() && known.get().outcome() == null && known.get().attempts() >= MAX_ATTEMPTS) {
-            return quarantine(known.get().id(), "QUARANTINED", "FAILED", null, null);
+            return quarantine(known.get().id(), "QUARANTINED", incoming.unreadable() ? "UNREADABLE" : "FAILED", null,
+                    null);
         }
         Optional<Received> counted = transactions.run(() -> records.attempt(key.value(), key.source(), now()));
         if (counted.isEmpty()) {
             return known.map(r -> destinationOf(r.outcome())).orElse(Destination.STAY);
         }
         long id = counted.get().id();
+        if (incoming.unreadable()) {
+            log.info("Received email {}: unread, try {}.", id, counted.get().attempts());
+            return Destination.STAY;
+        }
         if (incoming.tooLarge()) {
             return quarantine(id, "QUARANTINED", "TOO_LARGE", null, null);
         }
@@ -203,6 +213,15 @@ class MailInProcessor {
         metrics.message(outcome);
         log.info("Received email {}: {}{}.", id, outcome, reason == null ? "" : " (" + reason + ")");
         return Destination.QUARANTINE;
+    }
+
+    /**
+     * An email of which the server gave neither the bytes nor the header in five rounds was moved to the quarantine
+     * folder with no record (B7-AC-13): {@code MAIL_IN_QUARANTINED} is raised as for any quarantine (S12-AC-37).
+     */
+    void quarantinedUnrecorded() {
+        transactions.run(() -> alerts.raise(OpsAlerts.Kind.MAIL_IN_QUARANTINED));
+        metrics.message("QUARANTINED");
     }
 
     /** The email of an active customer: a comment, a new issue, or a notice. */

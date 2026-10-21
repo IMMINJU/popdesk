@@ -7,23 +7,25 @@ import jakarta.mail.AuthenticationFailedException;
 import jakarta.mail.FetchProfile;
 import jakarta.mail.Flags;
 import jakarta.mail.Folder;
+import jakarta.mail.FolderClosedException;
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.Store;
+import jakarta.mail.StoreClosedException;
 import jakarta.mail.UIDFolder;
 import jakarta.mail.search.ComparisonTerm;
 import jakarta.mail.search.FlagTerm;
 import jakarta.mail.search.ReceivedDateTerm;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.nio.charset.StandardCharsets;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +70,31 @@ class ImapMailbox {
 
     /** One mail of the incoming folder: its UID and {@code RFC822.SIZE}. */
     record Mail(long uid, long size) {}
+
+    /** The bytes of one {@code FETCH} of a mail's raw bytes, as {@code mail.imap.fetchsize}. */
+    static final int PART = Integer.parseInt(MailInSettings.FETCH_SIZE_BYTES);
+
+    /** How the server did not give a section of a mail (B7-AC-15): a {@code NO}, an error, or no bytes. */
+    enum Unread {
+        NO,
+        ERROR,
+        EMPTY
+    }
+
+    /**
+     * A mail as {@link Connection#read} read it: the email to handle, null when neither its raw bytes nor its header
+     * came; and how its raw bytes and its header did not come, each null when it came or was not asked for.
+     */
+    record Read(Incoming incoming, Unread raw, Unread header) {
+
+        /** Whether a section did not come, so the mail is skipped this round. */
+        boolean skipped() {
+            return raw != null || header != null;
+        }
+    }
+
+    /** A section of a mail: its bytes, or how it did not come. */
+    private record Section(byte[] bytes, Unread unread) {}
 
     /**
      * Signs in and opens the incoming folder for writing, after making the processed and quarantine folders when they
@@ -160,31 +187,102 @@ class ImapMailbox {
             }
         }
 
+        /** The UIDVALIDITY of the incoming folder: with a UID, it names one mail across rounds. */
+        long uidValidity() {
+            try {
+                return ((UIDFolder) inbound).getUIDValidity();
+            } catch (MessagingException e) {
+                throw new RoundFailure(failure(e), e);
+            }
+        }
+
         /**
-         * The mail's raw bytes ({@code BODY.PEEK[]}); over {@code maxSize} only its header block, and
-         * {@code tooLarge}. Empty when the mail is gone.
+         * The mail's raw bytes ({@code BODY.PEEK[]}, in parts of {@link #PART}); over {@code maxSize} only its header
+         * block ({@code BODY.PEEK[HEADER]}), and {@code tooLarge}. When the server does not give the raw bytes while
+         * the connection is up, the header block in their place (B7-AC-10, B7-AC-11); when it gives neither, no
+         * email (B7-AC-13). Null when the mail is gone. A connection that broke fails the round (B7-AC-14).
          */
-        Incoming read(Mail mail, long maxSize) {
+        Read read(Mail mail, long maxSize) {
             try {
                 Message m = ((UIDFolder) inbound).getMessageByUID(mail.uid());
                 if (m == null) {
                     return null;
                 }
                 if (mail.size() > maxSize) {
-                    StringBuilder header = new StringBuilder();
-                    for (Enumeration<String> lines = ((jakarta.mail.internet.MimeMessage) m).getAllHeaderLines();
-                            lines.hasMoreElements();) {
-                        header.append(lines.nextElement()).append("\r\n");
-                    }
-                    header.append("\r\n");
-                    return new Incoming(header.toString().getBytes(StandardCharsets.UTF_8), true);
+                    Section header = section(m, "HEADER", 0);
+                    return new Read(header.bytes() == null ? null : new Incoming(header.bytes(), true, false), null,
+                            header.unread());
                 }
-                ByteArrayOutputStream raw = new ByteArrayOutputStream((int) Math.max(1024, mail.size()));
-                m.writeTo(raw);
-                return new Incoming(raw.toByteArray(), false);
-            } catch (MessagingException | IOException e) {
+                Section raw = section(m, "", (int) Math.max(1024, mail.size()));
+                if (raw.bytes() != null) {
+                    return new Read(new Incoming(raw.bytes(), false, false), null, null);
+                }
+                Section header = section(m, "HEADER", 0);
+                return new Read(header.bytes() == null ? null : new Incoming(header.bytes(), false, true),
+                        raw.unread(), header.unread());
+            } catch (MessagingException e) {
                 throw new RoundFailure(FailureKind.CONNECT, e);
             }
+        }
+
+        /**
+         * One section of the mail ({@code ""} for the raw bytes, {@code HEADER} for the header block), with
+         * {@code BODY.PEEK}. The raw bytes come in parts of {@link #PART} until a shorter one, as the mail library
+         * reads them; {@code expected} sizes their buffer, and 0 asks for the section whole in one request. A
+         * {@code NO}, an error while the connection is up ({@code BAD} among them), or no bytes is an unread section;
+         * an error with the connection gone is thrown.
+         *
+         * <p>The section is read here, not by {@code Message.writeTo}: the mail library takes a {@code NO} for a part
+         * as the end of the mail and gives the bytes so far (b7 acceptance.md 1절).
+         */
+        private Section section(Message m, String section, int expected) throws MessagingException {
+            ByteArrayOutputStream out = new ByteArrayOutputStream(Math.max(1024, expected));
+            try {
+                if (expected == 0) {
+                    byte[] all = body(m, section, -1);
+                    if (all == null) {
+                        return new Section(null, Unread.NO);
+                    }
+                    out.writeBytes(all);
+                } else {
+                    for (int start = 0;;) {
+                        byte[] part = body(m, section, start);
+                        if (part == null) {
+                            return new Section(null, Unread.NO);
+                        }
+                        out.writeBytes(part);
+                        if (part.length < PART) {
+                            break;
+                        }
+                        start += part.length;
+                    }
+                }
+            } catch (MessagingException e) {
+                if (e instanceof FolderClosedException || e instanceof StoreClosedException || !up()) {
+                    throw e;
+                }
+                return new Section(null, Unread.ERROR);
+            }
+            return out.size() == 0 ? new Section(null, Unread.EMPTY) : new Section(out.toByteArray(), null);
+        }
+
+        /**
+         * One {@code FETCH} of the section ({@link #peekBody}): its bytes, empty when it has none, or null for a
+         * {@code NO}.
+         */
+        private byte[] body(Message m, String section, int start) throws MessagingException {
+            Object body = peekBody(inbound, m, section, start);
+            if (body == null) {
+                return null;
+            }
+            ByteArrayInputStream in = (ByteArrayInputStream) extension(body, "getByteArrayInputStream",
+                    new Class<?>[0]);
+            return in == null ? new byte[0] : in.readAllBytes();
+        }
+
+        /** Whether the connection is up: the store connected and the incoming folder open (b7 acceptance.md 2절). */
+        private boolean up() {
+            return inbound.isOpen() && store.isConnected();
         }
 
         /**
@@ -281,6 +379,46 @@ class ImapMailbox {
                 }
             }
         }
+    }
+
+    /**
+     * {@code IMAPProtocol.peekBody} of the message's section through {@code IMAPFolder.doCommand}, which holds the
+     * folder's lock and turns a broken connection into {@link FolderClosedException}: from {@code start} for at most
+     * {@link #PART} bytes, or whole for a negative {@code start}. The message is named by its sequence number on the
+     * server as the folder keeps it, which a move earlier in the round changes ({@code IMAPMessage.getSequenceNumber},
+     * as the mail library's own reading does; {@code Message.getMessageNumber} is not it). The command is a proxy of
+     * {@code IMAPFolder.ProtocolCommand}: the provider is not there when this is compiled ({@link #extension}).
+     *
+     * @return the {@code BODY} item, or null for a {@code NO}
+     */
+    private static Object peekBody(Folder folder, Message message, String section, int start)
+            throws MessagingException {
+        ClassLoader loader = folder.getClass().getClassLoader();
+        Class<?> command;
+        Method sequenceNumber;
+        try {
+            command = Class.forName("org.eclipse.angus.mail.imap.IMAPFolder$ProtocolCommand", false, loader);
+            sequenceNumber = Class.forName("org.eclipse.angus.mail.imap.IMAPMessage", false, loader)
+                    .getDeclaredMethod("getSequenceNumber");
+            sequenceNumber.setAccessible(true);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("The IMAP provider has no ProtocolCommand or sequence number", e);
+        }
+        Object proxy = Proxy.newProxyInstance(command.getClassLoader(), new Class<?>[] {command}, (self, m, a) -> {
+            if (!m.getName().equals("doCommand")) {
+                throw new UnsupportedOperationException(m.getName());
+            }
+            try {
+                int number = (Integer) sequenceNumber.invoke(message);
+                return start < 0
+                        ? a[0].getClass().getMethod("peekBody", int.class, String.class).invoke(a[0], number, section)
+                        : a[0].getClass().getMethod("peekBody", int.class, String.class, int.class, int.class)
+                                .invoke(a[0], number, section, start, PART);
+            } catch (InvocationTargetException e) {
+                throw e.getCause();
+            }
+        });
+        return extension(folder, "doCommand", new Class<?>[] {command}, proxy);
     }
 
     /** Whether the IMAP server named the capability (Angus {@code IMAPStore.hasCapability}). */

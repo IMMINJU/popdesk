@@ -3,6 +3,7 @@ package io.popdesk.helpdesk.mailin;
 import io.popdesk.InstanceLock;
 import io.popdesk.helpdesk.mailin.ImapMailbox.Connection;
 import io.popdesk.helpdesk.mailin.ImapMailbox.Mail;
+import io.popdesk.helpdesk.mailin.ImapMailbox.Read;
 import io.popdesk.helpdesk.mailin.ImapMailbox.RoundFailure;
 import io.popdesk.helpdesk.mailin.MailInProcessor.Destination;
 import io.popdesk.helpdesk.mailin.MailInProcessor.Incoming;
@@ -11,7 +12,12 @@ import io.popdesk.notification.OpsAlerts;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -67,6 +73,12 @@ class MailInLoop implements SmartLifecycle {
     private Instant lastRoundAt;
     private Instant lastDailyAt;
     private Instant failingSince;
+
+    /**
+     * The rounds each mail with neither bytes nor header was skipped in, by UIDVALIDITY and UID (B7-AC-13). Only the
+     * rounds' thread uses it; it starts empty when the app starts.
+     */
+    private final Map<String, Integer> skippedRounds = new HashMap<>();
     private volatile ScheduledExecutorService scheduler;
 
     MailInLoop(MailInSetup setup, ImapMailbox mailbox, MailInProcessor processor, MailInStatus status,
@@ -126,16 +138,28 @@ class MailInLoop implements SmartLifecycle {
 
     private void round(Instant start) {
         try (Connection connection = mailbox.open()) {
-            for (Mail mail : connection.next(MAILS_PER_ROUND)) {
-                Incoming incoming = connection.read(mail, MailInProcessor.MAX_SIZE);
-                if (incoming == null) {
+            List<Mail> mails = connection.next(MAILS_PER_ROUND);
+            Set<String> seen = new HashSet<>();
+            for (Mail mail : mails) {
+                Read read = connection.read(mail, MailInProcessor.MAX_SIZE);
+                if (read == null) {
                     continue;
                 }
-                Destination destination = handle(incoming);
+                if (read.skipped()) {
+                    log.warn("Mail-in skipped the email with UID {} in this round: {}.", mail.uid(), unread(read));
+                }
+                if (read.incoming() == null) {
+                    String name = connection.uidValidity() + "/" + mail.uid();
+                    seen.add(name);
+                    unrecorded(connection, mail, name);
+                    continue;
+                }
+                Destination destination = handle(read.incoming());
                 if (destination != Destination.STAY) {
                     connection.move(mail, destination);
                 }
             }
+            skippedRounds.keySet().retainAll(seen);
             Instant now = clock.instant();
             if (lastDailyAt == null || !now.isBefore(lastDailyAt.plus(DAILY))) {
                 daily(connection, now);
@@ -148,6 +172,34 @@ class MailInLoop implements SmartLifecycle {
         failingSince = null;
         alerts.resolve(OpsAlerts.Kind.MAIL_IN_STALLED);
         status.succeeded();
+    }
+
+    /**
+     * A mail whose bytes and header the server did not give (B7-AC-13): it has no key, so its skipped rounds are
+     * counted here by UIDVALIDITY and UID, and the round after five of them moves it to the quarantine folder.
+     */
+    private void unrecorded(Connection connection, Mail mail, String name) {
+        int skipped = skippedRounds.getOrDefault(name, 0);
+        if (skipped < MailInProcessor.MAX_ATTEMPTS) {
+            skippedRounds.put(name, skipped + 1);
+            return;
+        }
+        connection.move(mail, Destination.QUARANTINE);
+        skippedRounds.remove(name);
+        processor.quarantinedUnrecorded();
+        log.warn("Mail-in quarantined the email with UID {}: it could not be read in {} rounds.", mail.uid(),
+                MailInProcessor.MAX_ATTEMPTS + 1);
+    }
+
+    /** What did not come of a skipped mail and how, for the log: no text of the server (B7-AC-15). */
+    private static String unread(Read read) {
+        if (read.raw() == null) {
+            return "its header did not come (" + read.header() + ")";
+        }
+        if (read.header() == null) {
+            return "its raw bytes did not come (" + read.raw() + ")";
+        }
+        return "its raw bytes (" + read.raw() + ") and its header (" + read.header() + ") did not come";
     }
 
     /**
