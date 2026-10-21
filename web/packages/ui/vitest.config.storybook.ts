@@ -15,7 +15,9 @@ export default defineConfig({
     browser: {
       enabled: true,
       headless: true,
-      provider: playwright(),
+      // A Korean browser, as on the dev machine: a screen drawn before sign in takes the browser's
+      // language, and the CI runner's is English.
+      provider: playwright({ contextOptions: { locale: 'ko-KR' } }),
       instances: [{ browser: 'chromium' }],
     },
   },

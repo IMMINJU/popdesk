@@ -60,7 +60,7 @@ export const consoleAdminEn: Record<keyof typeof consoleAdminKo, string> = {
   'trash.restored': 'Restored.',
   'trash.open': 'Open {key}',
   'trash.restore': 'Restore',
-  'trash.purge': 'Delete permanently',
+  'trash.purge': 'Delete forever',
   'trash.issue': 'Issue',
   'trash.company': 'Company',
   'trash.status': 'Status',
