@@ -6,6 +6,8 @@ Customers raise and follow requests in a customer portal; agents answer, track i
 [한국어](README.ko.md)
 
 > **Status: 0.4.0.** An empty install, the first admin, an invitation, a request with attachments, an agent's answer, and the email and webhook that follow; managing people and customer companies, password reset, and an audit log with a hash chain; customer managers, and for requests the filters, search, editing, assignee, status changes, closing and reopening, history, and filing on behalf of a customer; editing and deleting comments, mentions, a notification inbox in both apps, more emails, and tools for the operator to see and repair sending. The image is not published yet; build it from the tag ([release notes](docs/release-notes/0.4.0.md)). Not ready for production. The plan and decisions live in [`design/`](design/).
+>
+> `main` is ahead of 0.4.0 and works toward 0.5.0, which is not released yet. To try popdesk, check out the tag `v0.4.0`.
 
 ## What it aims to be
 
@@ -14,7 +16,7 @@ Customers raise and follow requests in a customer portal; agents answer, track i
 - **Clear boundaries.** A customer never sees another customer company's requests. Internal notes, tasks, and assignees never reach customers.
 - **Traceable.** Every request keeps its conversation, status history, and internal work log in one place. Admin actions are audited.
 
-Planned features: requests with public and private visibility, public and internal comments, mentions, attachments and inline images, labels, due dates, internal tasks with assignees and due dates, linked duplicate and related requests across companies, status history, trash and auto-close, per-company counts, in-app inbox, email notifications, team webhooks (Slack, Teams, Mattermost), OIDC sign-in, and creating requests by email.
+On `main` and coming in 0.5.0: inline images and S3 storage for attachments, labels, due dates, internal tasks with assignees and due dates, linked duplicate and related requests across companies, trash and auto-close, per-company counts, SLA due times and alerts, branding, personal-data export and anonymization, OIDC sign-in, creating requests by email, and an English UI.
 
 ## Not goals
 

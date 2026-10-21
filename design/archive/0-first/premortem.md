@@ -43,7 +43,7 @@
 | 항목 | 내용 |
 |---|---|
 | 장면 | 운영자가 오류 로그를 바깥 지원 채널에 붙였는데, 그 안에 고객 이메일 원문이 있었다 |
-| 원인 | pgjdbc는 기본값(`logServerErrorDetail=true`)에서 서버 오류의 DETAIL(`Key (email)=(kim@a.com) already exists.`)을 예외 메시지에 넣는다. Hibernate `SqlExceptionHelper`가 이 메시지를 WARN으로 남기고, Spring 예외 메시지에도 이어진다 [소스]. S0-AC-86의 로그 검사는 정상 흐름 E2E를 지나므로 409·500 경로를 거치지 않는다 |
+| 원인 | pgjdbc는 기본값(`logServerErrorDetail=true`)에서 서버 오류의 DETAIL(`Key (email)=(kim@a.example) already exists.`)을 예외 메시지에 넣는다. Hibernate `SqlExceptionHelper`가 이 메시지를 WARN으로 남기고, Spring 예외 메시지에도 이어진다 [소스]. S0-AC-86의 로그 검사는 정상 흐름 E2E를 지나므로 409·500 경로를 거치지 않는다 |
 | 막는 법 | JDBC URL에 `logServerErrorDetail=false`. 오류 처리기는 DB 예외를 제약 이름으로 `code`에 옮기고 `getMessage()`를 로그·응답에 쓰지 않는다. `SqlExceptionHelper` 로거는 WARN에서 끈다. 로그 출력 단계에 이메일 모양을 가리는 필터를 마지막 방어선으로 둔다(스택 추적 포함). 로그 규칙은 PII-2 하나로 맞췄다(`AGENTS.md`도 고침) |
 | 확인 테스트 | S0-AC-86의 로그 검사에 중복 초대 409, 고객사 코드 중복 409, 일부러 낸 500 경로를 더한다. 원문, 퍼센트 인코딩(`%40`), JSON 이스케이프 세 형태를 모두 찾는다. 스택 추적 필드까지 본다 |
 | 옮길 곳 | S0-AC-85·86, `architecture.md` 로그 절, `docs/operate/configuration.md`(JDBC URL 기본값) |

@@ -1,6 +1,6 @@
 # Contributing to popdesk
 
-Thank you for your interest. popdesk is in the design phase, so the most useful contributions right now are questions and comments on the plan.
+Thank you for your interest. popdesk is young and not ready for production. Questions, bug reports, and comments on the plan are as welcome as code.
 
 ## Before you start
 
@@ -38,7 +38,14 @@ This adds `Signed-off-by: Your Name <you@example.com>` and states that you have 
 
 ## Development setup
 
-There is no code yet. This section will describe how to build and run tests once the first slice lands.
+You need JDK 25, Node 24.12 or newer, pnpm (the version in `web/package.json`), Python 3, and Docker. Many server tests start PostgreSQL in a container.
+
+- Server, in `server/`: `./mvnw -B test -Dtest=ClassA,ClassB` runs the named test classes. The whole suite takes hours on a laptop; run the classes your change touches and let CI run the rest.
+- Web, in `web/`: `pnpm install`, then `pnpm --filter @popdesk/console test` (or `portal`, `ui`), `pnpm typecheck`, `pnpm lint`, and `pnpm dup`.
+- Repository checks, from the root: `python scripts/ci/tests-lock.py check` and `python scripts/ci/check-test-style.py`.
+- The container image: `docker build -t popdesk:dev .` from the root.
+
+Tests are locked (`scripts/ci/tests.lock`): a pull request that changes a test says why, and the maintainer relocks it. Structure is kept by checks (no new cycle between server packages, no import between the two web apps, a limit on duplicated web code); when one fails, move the code instead of editing the baseline.
 
 ## Documentation
 

@@ -1,8 +1,6 @@
 # Changes to these paths need review from the repository owner.
 # They hold what defines "done" and what protects data: tests, snapshots,
 # migrations, permission code, contract files, canonical documents, and the CI gates.
-# Paths that do not exist yet follow design/spec/architecture.md section 2.
-# Check them when the code lands.
 
 # CI gates and repository rules
 /.github/                                   @IMMINJU
@@ -16,17 +14,16 @@
 /design/adr.md                              @IMMINJU
 
 # Migrations (forward only, D-24; tenant_id, D-18)
-# Check the path when the code lands.
 /server/src/main/resources/db/migration/    @IMMINJU
 
 # Server tests
-# Check the path when the code lands.
 /server/src/test/                           @IMMINJU
 
 # Permission code: security config, host routing (D-43), customer-company boundary
-# Check the paths when the code lands; the package names are a guess.
-/server/src/main/java/**/security/          @IMMINJU
-/server/src/main/java/**/permission/        @IMMINJU
+/server/src/main/java/io/popdesk/HostRoutingFilter.java                    @IMMINJU
+/server/src/main/java/io/popdesk/helpdesk/account/SecurityConfiguration.java @IMMINJU
+/server/src/main/java/io/popdesk/helpdesk/issue/ReporterAccess.java         @IMMINJU
+/server/src/main/java/io/popdesk/notification/IssueAccess.java              @IMMINJU
 
 # Contract files (D-21, D-43) and the generated clients
 /docs/integrate/openapi-portal.json         @IMMINJU

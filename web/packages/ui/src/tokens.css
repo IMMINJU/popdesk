@@ -115,7 +115,7 @@
 }
 
 :root {
-  /* Type. Pretendard is bundled with the app (D-41), not loaded from a CDN. */
+  /* Type. Pretendard is used when the system has it; it is not loaded from a CDN (D-41). */
   --font-sans: 'Pretendard Variable', system-ui, -apple-system, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'D2Coding', monospace;
 

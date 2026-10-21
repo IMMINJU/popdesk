@@ -27,7 +27,7 @@ Until 1.0, only the latest release receives security fixes. Upgrade to the lates
 
 ## Scope
 
-In scope: the popdesk server, the customer portal, the agent console, and the official container image and compose files.
+In scope: the popdesk server, the customer portal, the agent console, and the container image built from this repository, and the compose files.
 
 Out of scope: issues that need an already compromised host or database, missing hardening on a deployment that does not follow the operating guide, and reports produced only by automated scanners without a demonstrated impact.
 
