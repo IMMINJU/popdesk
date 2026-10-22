@@ -317,15 +317,16 @@ public class IssueRepository {
         }
         if (filter.q() != null) {
             if (filter.q().codePointCount(0, filter.q().length()) <= 2) {
-                // The trigram index cannot serve one or two characters; the gram index picks the rows first
-                // (offset 0 keeps the planner from calling the function on every row another filter leaves),
-                // and ilike below keeps the result what it was (slice b8 acceptance section 3).
+                // The trigram index cannot serve one or two characters, so the gram index picks the rows (offset 0
+                // keeps the planner from calling the function on every row another filter leaves). No ilike recheck:
+                // on a multibyte database ilike compares lower() of both sides, the same test; it cost 1.4 s (b8 verify).
                 sql.append(" and i.id in (select g.id from (select id from issue"
                         + " where (issue_search_grams(search_text) collate \"C\") @> array[lower(cast(? as text))] offset 0) g)");
                 params.add(filter.q());
+            } else {
+                sql.append(" and i.search_text ilike ? escape '\\'");
+                params.add(AccountRepository.containing(filter.q()));
             }
-            sql.append(" and i.search_text ilike ? escape '\\'");
-            params.add(AccountRepository.containing(filter.q()));
         }
         if (!filter.labelIds().isEmpty()) {
             sql.append(" and exists (select 1 from issue_label il where il.issue_id = i.id and il.label_id = any(?))");
