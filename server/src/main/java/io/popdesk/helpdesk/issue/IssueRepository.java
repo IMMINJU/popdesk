@@ -316,6 +316,14 @@ public class IssueRepository {
             params.add(filter.reporterId());
         }
         if (filter.q() != null) {
+            if (filter.q().codePointCount(0, filter.q().length()) <= 2) {
+                // The trigram index cannot serve one or two characters; the gram index picks the rows first
+                // (offset 0 keeps the planner from calling the function on every row another filter leaves),
+                // and ilike below keeps the result what it was (slice b8 acceptance section 3).
+                sql.append(" and i.id in (select g.id from (select id from issue"
+                        + " where (issue_search_grams(search_text) collate \"C\") @> array[lower(cast(? as text))] offset 0) g)");
+                params.add(filter.q());
+            }
             sql.append(" and i.search_text ilike ? escape '\\'");
             params.add(AccountRepository.containing(filter.q()));
         }
