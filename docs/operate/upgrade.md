@@ -151,3 +151,13 @@ Either run the newer version again, or restore the backup taken before the upgra
 ## Another instance holds the lock
 
 popdesk runs as one instance (ADR D-23). A starting instance waits `POPDESK_INSTANCE_LOCK_WAIT` (default 30 seconds) for the lock and then stops with a message that another instance is running. Stop the other instance, or wait until it has stopped, and start again. On Kubernetes, use the `Recreate` deployment strategy so the old pod stops before the new one starts.
+
+## Upgrading to the next version (on `main`)
+
+Migration 26 adds an index that lets a search text of one or two characters find issues without reading every issue. Search results do not change.
+
+- **How long it takes.** On a development machine with 100,000 issues of about 2,300 characters each, migration 26 took 8 minutes 31 seconds. It grows with the number of issues and the length of their title and content. The ports stay closed meanwhile, so the health check shows the app as starting: with more issues than that, or a slow disk, raise the health check's `start_period` before you upgrade, and do not stop the app while the migration runs. If it is stopped, the migration is undone and runs again from the start on the next start.
+- **The database grows.** In the same measurement the index took 395 MB, on top of the trigram index of [0.3.0](#upgrading-to-030). Check the size of the issue table with `SELECT pg_size_pretty(pg_total_relation_size('issue'));` and make sure the disk has room for about that much more.
+- **Searching.** In the same measurement, a text of two characters that 10 issues hold took 0.4 milliseconds in the database, one that 20,000 hold 89 milliseconds, and a character every issue holds 0.33 seconds. Before, each took about 2 to 5 seconds.
+- **Filing and editing an issue** costs about 8 milliseconds more in the database. Now and then one write takes about half a second, when PostgreSQL moves the index's pending entries into the index.
+- `popdesk restore` builds the index again after it loads the data, so a restore takes about as long more as the migration does.
