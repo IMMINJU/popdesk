@@ -2,7 +2,7 @@
 
 How popdesk changes its database when you install a new version, and what to do when that fails.
 
-This page describes the code on the `main` branch. The latest release is 0.5.1. If you run an older version, read the docs at its tag, such as [`v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs); a page missing there did not exist yet.
+This page describes the code on the `main` branch. The latest release is 0.6.0. If you run an older version, read the docs at its tag, such as [`v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs); a page missing there did not exist yet.
 
 ## Before you upgrade
 
@@ -50,7 +50,7 @@ It also adds the search of issues, their assignee and history, and the keys that
 - **How long it takes.** Measured on a development machine with 100,000 issues of about 2,000 characters each: migration 9 took 1.5 seconds, migration 10 took 13 seconds, and migration 11 took 51 seconds, 78 seconds from start to healthy. It grows with the number of issues and the length of their content; count them with `SELECT count(*) FROM issue;`. The ports stay closed meanwhile, as in the 0.2.0 upgrade above: with some hundreds of thousands of issues, or a slow disk, raise the health check's `start_period` before you upgrade. Each of the three migrations runs in its own transaction. If the app is stopped in between, the next start goes on with the first one that is not done.
 - **The database grows.** The search text is a second copy of every issue's text, and the index comes on top. In the measurement above the issue table with its indexes went from 279 MB to 722 MB (191 MB of it the search index), and the whole database from 289 MB to 748 MB. Make sure the database's disk has room for about twice the size of the issue table more before you upgrade. Check it with `SELECT pg_size_pretty(pg_total_relation_size('issue'));`.
 - **There is no way back to the old image**, as above.
-- **Searching.** A search text of three or more characters uses the index: in the measurement, a text that 10 of the 100,000 issues hold took 1 millisecond in the database, and one that 20,000 hold took 0.55 seconds. Up to 0.5.x a text of one or two characters could not use it and read every issue, about 2 seconds there; migration 26, in the version after 0.5.1, adds an index for them. An account can send 60 searches a minute.
+- **Searching.** A search text of three or more characters uses the index: in the measurement, a text that 10 of the 100,000 issues hold took 1 millisecond in the database, and one that 20,000 hold took 0.55 seconds. Up to 0.5.x a text of one or two characters could not use it and read every issue, about 2 seconds there; migration 26 in [0.6.0](#upgrading-to-060) adds an index for them. An account can send 60 searches a minute.
 - A dump taken with `popdesk backup` from this version on names the extension. `popdesk restore` restores it into an empty database when the app's database user may create the extension, or when the extension is there already.
 
 ## Upgrading to 0.4.0
@@ -107,6 +107,20 @@ It also adds the search of issues, their assignee and history, and the keys that
 
 0.5.1 runs no migration and adds no setting. It is the first version whose image is published (`amd64` and `arm64`): take the Compose file attached to the 0.5.1 release and start it as before; Compose pulls the image. From 0.4.0, read [Upgrading to 0.5.0](#upgrading-to-050) first: you go straight to 0.5.1 and its migrations run then. An installation on 0.5.0 that you built from the tag can go back to that image, since the database is the same.
 
+## Upgrading to 0.6.0
+
+Migration 26 adds an index that lets a search text of one or two characters find issues without reading every issue. Search results do not change.
+
+From 0.5.0 or 0.5.1, take the Compose file attached to the 0.6.0 release. From 0.4.0, read [Upgrading to 0.5.0](#upgrading-to-050) first. Back up before you upgrade: migration 26 cannot be undone, and 0.5.x does not start on the upgraded database.
+
+- **How long it takes.** On a development machine with 100,000 issues of about 2,300 characters each, migration 26 took 8 minutes 31 seconds. It grows with the number of issues and the length of their title and content. The ports stay closed meanwhile, so the health check shows the app as starting: with more issues than that, or a slow disk, raise the health check's `start_period` before you upgrade, and do not stop the app while the migration runs. If it is stopped, the migration is undone and runs again from the start on the next start.
+- **The database grows.** In the same measurement the index took 395 MB, on top of the trigram index of [0.3.0](#upgrading-to-030). Check the size of the issue table with `SELECT pg_size_pretty(pg_total_relation_size('issue'));` and make sure the disk has room for about that much more.
+- **Searching.** In the same measurement, a text of two characters that 10 issues hold took 0.4 milliseconds in the database, one that 20,000 hold 89 milliseconds, and a character every issue holds 0.33 seconds. Before, each took about 2 to 5 seconds.
+- **Filing and editing an issue** costs about 8 milliseconds more in the database. Now and then one write takes about half a second, when PostgreSQL moves the index's pending entries into the index.
+- `popdesk restore` builds the index again after it loads the data, so a restore takes about as long more as the migration does.
+- **Receiving email.** An email whose content the IMAP server will not give is no longer taken as empty or cut off: popdesk leaves it in the incoming folder and quarantines it after 5 rounds with the reason `UNREADABLE` ([Receiving email](configuration.md#receiving-email)).
+- **Audit retention** deletes old entries 1,000 at a time, each batch in its own transaction, so requests that write an audit entry wait for one batch instead of the whole run, and an anonymization no longer fails with 409 while it runs.
+
 ## A migration failed
 
 popdesk stops and logs a line like this:
@@ -151,13 +165,3 @@ Either run the newer version again, or restore the backup taken before the upgra
 ## Another instance holds the lock
 
 popdesk runs as one instance (ADR D-23). A starting instance waits `POPDESK_INSTANCE_LOCK_WAIT` (default 30 seconds) for the lock and then stops with a message that another instance is running. Stop the other instance, or wait until it has stopped, and start again. On Kubernetes, use the `Recreate` deployment strategy so the old pod stops before the new one starts.
-
-## Upgrading to the next version (on `main`)
-
-Migration 26 adds an index that lets a search text of one or two characters find issues without reading every issue. Search results do not change.
-
-- **How long it takes.** On a development machine with 100,000 issues of about 2,300 characters each, migration 26 took 8 minutes 31 seconds. It grows with the number of issues and the length of their title and content. The ports stay closed meanwhile, so the health check shows the app as starting: with more issues than that, or a slow disk, raise the health check's `start_period` before you upgrade, and do not stop the app while the migration runs. If it is stopped, the migration is undone and runs again from the start on the next start.
-- **The database grows.** In the same measurement the index took 395 MB, on top of the trigram index of [0.3.0](#upgrading-to-030). Check the size of the issue table with `SELECT pg_size_pretty(pg_total_relation_size('issue'));` and make sure the disk has room for about that much more.
-- **Searching.** In the same measurement, a text of two characters that 10 issues hold took 0.4 milliseconds in the database, one that 20,000 hold 89 milliseconds, and a character every issue holds 0.33 seconds. Before, each took about 2 to 5 seconds.
-- **Filing and editing an issue** costs about 8 milliseconds more in the database. Now and then one write takes about half a second, when PostgreSQL moves the index's pending entries into the index.
-- `popdesk restore` builds the index again after it loads the data, so a restore takes about as long more as the migration does.

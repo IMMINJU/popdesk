@@ -5,7 +5,7 @@
 
 [English](README.md) · 영어판이 정본입니다. 둘이 다르면 영어판을 따릅니다.
 
-> **지금은 0.5.1입니다.** 고객사와 구성원, 첨부와 본문 이미지가 있는 문의, 멘션이 되는 댓글, 알림함, 메일과 팀 웹훅, 해시 사슬로 이어진 감사 로그가 있습니다. 0.5에서 첨부의 폴더·S3 저장, 라벨, 마감일, 내부 작업, 문의 연결, 휴지통과 자동 종료, 고객사별 건수, SLA 기한과 알림, 브랜딩, 개인정보 내보내기와 익명화, OIDC 로그인, 메일로 문의 받기, 영어 화면이 들어갔습니다. 이미지는 `amd64`와 `arm64`로 올라가 있습니다([릴리스 노트](docs/release-notes/0.5.1.md), [0.5.0](docs/release-notes/0.5.0.md)). 운영에 쓸 수 있는 상태가 아닙니다. 계획과 결정은 [`design/`](design/)에 있습니다.
+> **지금은 0.6.0입니다.** 고객사와 구성원, 첨부와 본문 이미지가 있는 문의, 멘션이 되는 댓글, 알림함, 메일과 팀 웹훅, 해시 사슬로 이어진 감사 로그가 있습니다. 0.5에서 첨부의 폴더·S3 저장, 라벨, 마감일, 내부 작업, 문의 연결, 휴지통과 자동 종료, 고객사별 건수, SLA 기한과 알림, 브랜딩, 개인정보 내보내기와 익명화, OIDC 로그인, 메일로 문의 받기, 영어 화면이 들어갔습니다. 이미지는 `amd64`와 `arm64`로 올라가 있습니다. 0.6.0에서 한두 글자 검색이 색인을 쓰고, 메일 서버가 내주지 않는 메일을 버리지 않습니다([릴리스 노트](docs/release-notes/0.6.0.md), [0.5.0](docs/release-notes/0.5.0.md)). 운영에 쓸 수 있는 상태가 아닙니다. 계획과 결정은 [`design/`](design/)에 있습니다.
 
 ## 목표
 
@@ -21,7 +21,7 @@ Compose가 있는 Docker가 필요합니다. 이미지는 `amd64`와 `arm64`로 
 ```
 mkdir -p popdesk/deploy
 cd popdesk
-curl -fL -o deploy/compose.yml https://github.com/IMMINJU/popdesk/releases/download/v0.5.1/compose.yml
+curl -fL -o deploy/compose.yml https://github.com/IMMINJU/popdesk/releases/download/v0.6.0/compose.yml
 cat > deploy/.env <<'EOF'
 POPDESK_DB_PASSWORD=choose-a-database-password
 POPDESK_ADMIN_EMAIL=admin@example.com

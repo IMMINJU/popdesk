@@ -2,7 +2,7 @@
 
 popdesk can post a short message to one address when something happens to an issue, for example to a channel of your team chat. There is one webhook for the whole installation, set with `NOTIFY_WEBHOOK_URL`.
 
-This page describes the code on the `main` branch. The latest release is 0.5.1. If you run an older version, read the docs at its tag, such as [`v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs); a page missing there did not exist yet.
+This page describes the code on the `main` branch. The latest release is 0.6.0. If you run an older version, read the docs at its tag, such as [`v0.4.0`](https://github.com/IMMINJU/popdesk/tree/v0.4.0/docs); a page missing there did not exist yet.
 
 ## Turning it on
 

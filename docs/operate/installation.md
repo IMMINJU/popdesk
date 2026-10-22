@@ -2,7 +2,7 @@
 
 How to install popdesk with Docker Compose, start it for the first time, and set up the first people and customer companies.
 
-This page describes the code on the `main` branch. The latest release is 0.5.1, and the steps below install it; they were checked on 0.5.1.
+This page describes the code on the `main` branch. The latest release is 0.6.0, and the steps below install it; they were checked on 0.6.0.
 
 ## What you need
 
@@ -13,18 +13,18 @@ The Compose file runs two containers: `app` (popdesk) and `db` (PostgreSQL 16). 
 
 ## Get the Compose file
 
-Take the Compose file attached to the release you install, not the one on the `main` branch. It names the image of that exact version, `ghcr.io/imminju/popdesk:0.5.1`, which is published for `amd64` and `arm64`. The steps on this page keep it in a `deploy` folder:
+Take the Compose file attached to the release you install, not the one on the `main` branch. It names the image of that exact version, `ghcr.io/imminju/popdesk:0.6.0`, which is published for `amd64` and `arm64`. The steps on this page keep it in a `deploy` folder:
 
 ```
 mkdir -p popdesk/deploy
 cd popdesk
-curl -fL -o deploy/compose.yml https://github.com/IMMINJU/popdesk/releases/download/v0.5.1/compose.yml
+curl -fL -o deploy/compose.yml https://github.com/IMMINJU/popdesk/releases/download/v0.6.0/compose.yml
 ```
 
-The image is signed with [cosign](https://docs.sigstore.dev/) by the release workflow of this repository, and the release has its SBOM (`popdesk-0.5.1.cdx.json`, CycloneDX). To check the signature before you start:
+The image is signed with [cosign](https://docs.sigstore.dev/) by the release workflow of this repository, and the release has its SBOM (`popdesk-0.6.0.cdx.json`, CycloneDX). To check the signature before you start:
 
 ```
-cosign verify ghcr.io/imminju/popdesk:0.5.1   --certificate-identity-regexp '^https://github.com/IMMINJU/popdesk/\.github/workflows/release\.yml@'   --certificate-oidc-issuer https://token.actions.githubusercontent.com
+cosign verify ghcr.io/imminju/popdesk:0.6.0   --certificate-identity-regexp '^https://github.com/IMMINJU/popdesk/\.github/workflows/release\.yml@'   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 ## Write the settings
