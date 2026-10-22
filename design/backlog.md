@@ -36,6 +36,7 @@
 | 라-9 | 끝났다(b6). 첫 로드 동안 탭 제목이 `index.html`의 한국어로 잠깐 보인다 | b5 `verify.md` 8절 |
 | 라-10 | 구현 쪽 가드(impl-guard)가 커밋한 적 없는 새 마이그레이션 파일도 고치기, 지우기, `git add`를 막는다. 새 마이그레이션을 더하는 구현 탭은 모두 걸린다. git이 추적하는 마이그레이션만 막게 고친다(가드 설정이라 사용자 확인) | b8 `verify.md` 2절 |
 | 라-11 | 포털 `layout.inbox.test.tsx:119`(S4-AC-64) 첫 단언이 CI에서 가끔 실패한다(안 읽은 수를 두 번 받음). 이 PC에서는 통과 | b8 `verify.md` 6절 |
+| 라-12 | `release.yml`이 태그 CI 결과를 `gh run list --branch 태그 --event push`로 찾는데, GitHub이 가끔 빈 목록을 준다(0.6.0에서 두 번 "none"으로 멈춤, 이 PC에서 다섯 번 중 한 번). 태그 커밋으로 찾고 빈 값이면 몇 번 다시 묻게 고친다 | 0.6.0 릴리스(`archive/b8-search/verify.md` 8절) |
 
 ## 마. 규모가 커지면 본다
 
