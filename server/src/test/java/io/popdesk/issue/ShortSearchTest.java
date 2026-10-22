@@ -88,7 +88,8 @@ class ShortSearchTest extends BareAppTest {
                 file(w.reporter(), w.code(), "Rate 100x axb cd", "Plain words"),
                 file(w.reporter(), w.code(), "결제 오류", "환불 요청😀끝"),
                 file(w.reporter(), w.code(), "Ok", "Xy"),
-                file(w.reporter(), w.code(), "QQ", "zz"));
+                file(w.reporter(), w.code(), "QQ", "zz"),
+                file(w.reporter(), w.code(), "Éclair Жалоба", "Ñandú"));
         Map<String, String> needles = new LinkedHashMap<>();
         needles.put("a letter", "x");
         needles.put("a letter in capitals", "X");
@@ -109,6 +110,10 @@ class ShortSearchTest extends BareAppTest {
         needles.put("a Hangul syllable and a character outside the basic plane", "청😀");
         needles.put("a character outside the basic plane and a Hangul syllable", "😀끝");
         needles.put("the end of the title and the start of the content", "kx");
+        needles.put("a Latin letter with an accent, small", "é");
+        needles.put("a Latin letter with an accent, in capitals", "É");
+        needles.put("two Cyrillic letters, small", "жа");
+        needles.put("two letters with an accent of the content in capitals", "ÑA");
         needles.put("two letters no issue has", "jq");
         needles.put("three characters", "100");
         needles.put("three characters with _", "a_b");
@@ -118,6 +123,8 @@ class ShortSearchTest extends BareAppTest {
         softly.assertThat(holding(filed, "%")).as("issues the rule finds with %").hasSize(1);
         softly.assertThat(holding(filed, "kx")).as("issues the rule finds with kx").isEmpty();
         softly.assertThat(holding(filed, "청😀")).as("issues the rule finds with 청😀").hasSize(1);
+        softly.assertThat(holding(filed, "é")).as("issues the rule finds with é").hasSize(1);
+        softly.assertThat(holding(filed, "жа")).as("issues the rule finds with жа").hasSize(1);
         needles.forEach((what, q) -> {
             List<String> expected = holding(filed, q);
             ApiResponse page = list(viewer, "q", q);

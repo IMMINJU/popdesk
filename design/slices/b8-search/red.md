@@ -24,3 +24,9 @@
 - `io.popdesk.deploy.ShortSearchUpgradeTest.gramExpressionWorksWithAnEmptySearchPath`: [issue_search_grams_idx in pg_index] 
 - `io.popdesk.deploy.ShortSearchUpgradeTest.migrationMakesAnImmutableGramIndex`: [issue_search_grams_idx in pg_index after the upgrade] 
 - `io.popdesk.issue.ShortSearchTest.gramIndex`: [indexes of issue] 
+
+## C-7 점검 뒤 (메인)
+
+`ShortSearchTest.oneOrTwoCharactersFindWhatTheyDidBefore`에 대소문자가 있는 비ASCII 글자(É, Ж, Ñ)의 문의 하나와 검색어 넷을 더했다. 색인 식이 함수 안의 `lower()`에 `collate "C"`를 물려주면 ASCII만 접어 그 문의가 빠지는 잘못을 잡는다. 지금 코드에서 그대로 통과한다(다시 돌림, `gramIndex`만 실패).
+
+테스트로 못 잡는 틀린 구현(검증에서 본다): 조각 색인으로 고른 행을 `ilike`로 다시 거르지 않기(테스트 데이터에 `lower()`와 `ilike`가 다르게 접는 글자가 없다), 짧은 길을 UTF-16 길이로 고르기(결과는 같고 느릴 뿐), 질의에서 `collate "C"` 빠뜨리기.

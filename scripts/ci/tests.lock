@@ -344,7 +344,7 @@ e43b49f2c386df1c7bbd9b71b26605ea7de3e8ab1b54a4a514e4d7348fc28046  server/src/tes
 5b7f4381ae7acd3548ede0231046cccd29530ad349e4eb976612a7bcc3909334  server/src/test/java/io/popdesk/issue/PortalIssueFieldsTest.java
 ba85ae5c95d9fc85f86dfd5cd8d890e0617f7cee210c1e30e188d1ca24534d69  server/src/test/java/io/popdesk/issue/PortalIssueFilterTest.java
 cb28a74005b60a6846a5694287176a6b1b4192ae48ba669919660c50ef7e15cb  server/src/test/java/io/popdesk/issue/SearchRateLimitTest.java
-e61f2550e456bb44696c1ba86f02736edda0cc645b5864248878212a53402ac2  server/src/test/java/io/popdesk/issue/ShortSearchTest.java
+ab0f7da90d97612591813ee741d033a66309b6c85a08853ac68fd7b9cdaf9fde  server/src/test/java/io/popdesk/issue/ShortSearchTest.java
 a4aac1c0ad70fe9a18e0e8d522e4a0fd71e57a4c7330fe26704bd897b16661f5  server/src/test/java/io/popdesk/issue/StatementLog.java
 80eda94ceedeed5815b5340786b9d4deefd3601224bf84b6f30b4d3e7b5c907b  server/src/test/java/io/popdesk/issue/TalkFlow.java
 cbcdf3be397cefb98f18bc5b99607e84977989ea9af00190e0ca089af08b26bc  server/src/test/java/io/popdesk/issue/TaskClearAssignmentsTest.java
