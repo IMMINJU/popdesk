@@ -25,6 +25,57 @@ Keep the dump somewhere other than the Docker host. Backups hold personal data; 
 - [Check the attachment files](configuration.md#check-the-attachment-files): once the restored app runs again, `docker compose exec app popdesk attachments check` lists every file that is missing or has another size. It only reports; a missing file has to come back from your file backup.
 - [Attachment storage](configuration.md#attachment-storage): the marker, the volume, and the start check.
 - [Commands](configuration.md#commands): the `popdesk` command and what each subcommand does.
+- [Back up on a schedule](#back-up-on-a-schedule): a script for cron or a systemd timer that keeps a set number of dumps.
+
+## Back up on a schedule
+
+`deploy/backup.sh` does the three steps of [Back up](configuration.md#back-up) in one go, for cron or a systemd timer. It needs bash and Docker with Compose v2. Take it from the repository and copy it next to your Compose file. It writes the dump inside the app container with `popdesk backup`, copies it out with `docker compose cp`, deletes it in the container, and keeps it as `popdesk-YYYYMMDD-HHMMSS.dump` (UTC) in its folder. Then it deletes the oldest dumps so that a set number is left.
+
+| Option | Environment variable | Default |
+|---|---|---|
+| `-f FILE` (more than once) | `POPDESK_BACKUP_COMPOSE_FILES` (separated by `:`) | `compose.yml` next to the script |
+| `-p PROJECT` | `POPDESK_BACKUP_PROJECT` | what Compose picks (the folder name) |
+| `-e ENV_FILE` | `POPDESK_BACKUP_ENV_FILE` | the `.env` next to the first Compose file |
+| `-d DIR` | `POPDESK_BACKUP_DIR` | `./backups` |
+| `-k KEEP` | `POPDESK_BACKUP_KEEP` | `24` |
+
+When a step fails, the script ends with a non-zero exit code and leaves no dump under its final name: it copies to a hidden `.partial` file first and renames it only when the copy worked, and it deletes the file in the container either way. Dumps are written readable by their owner only. The script deletes only files named `popdesk-*.dump` in its folder, so give it a folder of its own.
+
+Hourly, with cron, keeping a day of dumps:
+
+```
+0 * * * * cd /opt/popdesk/deploy && ./backup.sh -d /var/backups/popdesk -k 24 >> /var/log/popdesk-backup.log 2>&1
+```
+
+With a systemd timer, as `/etc/systemd/system/popdesk-backup.service` and `popdesk-backup.timer`:
+
+```ini
+[Unit]
+Description=popdesk database backup
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/popdesk/deploy
+ExecStart=/opt/popdesk/deploy/backup.sh -d /var/backups/popdesk -k 24
+```
+
+```ini
+[Unit]
+Description=popdesk database backup every hour
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Then `systemctl enable --now popdesk-backup.timer`. A failed run shows in `systemctl status popdesk-backup.service` and in the journal.
+
+- **Move the dumps off the host.** A dump on the Docker host is lost with the host. Copy the folder to other storage after each run, for example with `rsync` or your backup tool, and keep it as carefully as other personal data.
+- **Back up the attachment files too.** With `POPDESK_STORAGE` set to `disk` or `s3` (now or ever before), the dump does not hold the files. Back up the folder or the bucket right after the dump, in the same job, so the two match ([What a backup holds](#what-a-backup-holds)).
+- **Restore one now and then.** A backup is known to work only once it was restored. From time to time, restore a recent dump into a separate installation ([Restore](configuration.md#restore)), start the app on it, and run `popdesk attachments check`.
 
 ## Before an upgrade
 
