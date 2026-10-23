@@ -1,0 +1,1 @@
+io.popdesk.issue.ShortSearchPlanTest.commonShortWordReadsTheGramIndex(PlanMode)[2] | 값을 모르는 계획(force_generic_plan)은 고치기 전에도 issue_search_grams_idx를 탄다(b10 plan.md 1절, 600건에 추정 3행)
