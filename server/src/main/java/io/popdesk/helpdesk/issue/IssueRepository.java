@@ -320,8 +320,11 @@ public class IssueRepository {
                 // The trigram index cannot serve one or two characters, so the gram index picks the rows (offset 0
                 // keeps the planner from calling the function on every row another filter leaves). No ilike recheck:
                 // on a multibyte database ilike compares lower() of both sides, the same test; it cost 1.4 s (b8 verify).
+                // The word sits in a scalar subquery so no plan sees its value: with the value known, a word most issues
+                // hold made the planner scan issue and call the function on every row (4,649 issues, 1.76 s in b9).
                 sql.append(" and i.id in (select g.id from (select id from issue"
-                        + " where (issue_search_grams(search_text) collate \"C\") @> array[lower(cast(? as text))] offset 0) g)");
+                        + " where (issue_search_grams(search_text) collate \"C\") @> (select array[lower(cast(? as text))])"
+                        + " offset 0) g)");
                 params.add(filter.q());
             } else {
                 sql.append(" and i.search_text ilike ? escape '\\'");
