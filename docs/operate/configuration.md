@@ -75,7 +75,7 @@ These names and values are a public contract (ADR D-45).
 | Volumes | `popdesk-db` (database files), `popdesk-attachments` (attachment files when `POPDESK_STORAGE=disk`, mounted at `/data/attachments`) |
 | Restart policy | `unless-stopped` for both services |
 | Logs | JSON lines on standard output, with a size limit per container (`max-size: 10m`, `max-file: 5`) |
-| Images | The Compose file of a release points at that exact version; do not use `latest`. No image is published yet: build it from the release tag under that name ([README](../../README.md#try-it)) |
+| Images | The Compose file of a release points at that exact version; do not use `latest`. The images are on `ghcr.io/imminju/popdesk`, for amd64 and arm64, signed with cosign ([installation.md](installation.md)) |
 
 Volume names are set explicitly in the Compose file, so they do not change with the Compose project name.
 
@@ -121,7 +121,7 @@ popdesk starts in this order: it takes the single-instance database lock, runs d
 
 ### Memory and JVM options
 
-The image sets its JVM options itself, so the app behaves the same on every host: the G1 garbage collector and a heap of at most 384 MB. Measured before the first release, on a development machine: the app container used about 0.4 GB right after start and up to about 0.6 GB with 20 transfers of 10 MB at once; PostgreSQL up to about 0.35 GB. To change the heap, set `JDK_JAVA_OPTIONS` (for example `JDK_JAVA_OPTIONS=-Xmx768m`); an `-Xmx` there wins over the image's default. The heap does not shrink to a container memory limit, so if you set one (`mem_limit`, Kubernetes `resources.limits.memory`), give the app at least 0.75 GB or lower `-Xmx` with it.
+The image sets its JVM options itself, so the app behaves the same on every host: the G1 garbage collector and a heap of at most 384 MB. Measured before the first release, on a development machine: the app container used about 0.4 GB right after start and up to about 0.6 GB with 20 transfers of 10 MB at once; PostgreSQL up to about 0.35 GB. In a 24-hour run of 0.6.0 behind Caddy (a small team: 3 companies, 4 agents, 30 customers, about one request a second), the app container grew from 0.53 GB to 0.57 GB and leveled off, the heap after garbage collection stayed at about 50 MB, and PostgreSQL used up to 0.18 GB. To change the heap, set `JDK_JAVA_OPTIONS` (for example `JDK_JAVA_OPTIONS=-Xmx768m`); an `-Xmx` there wins over the image's default. The heap does not shrink to a container memory limit, so if you set one (`mem_limit`, Kubernetes `resources.limits.memory`), give the app at least 0.75 GB or lower `-Xmx` with it.
 
 Checking or setting a password computes an Argon2id hash that holds 19 MiB of heap while it runs. At most 4 are computed at once (76 MiB), a fixed limit without a setting; when many people sign in at the same moment, the rest wait their turn and get their answer a little later instead of an error.
 
@@ -138,7 +138,8 @@ popdesk serves plain HTTP only. Terminate TLS at a reverse proxy in front of it 
 
 - popdesk trusts `X-Forwarded-*` headers only from `POPDESK_TRUSTED_PROXIES`. If your proxy or load balancer has a public address, add it. An entry that is not an IP address or a CIDR range stops popdesk from starting, and the error names the key; host names are not looked up. Make sure clients cannot reach port `8080` from a trusted address without going through the proxy. If the proxy runs on the same machine, you can publish the port on the loopback address only (`127.0.0.1:8080:8080`).
 - The default trusts every private range. Without a proxy, a client on your office network, or any client when Docker Desktop or rootless Docker shows outside traffic as coming from a private gateway address, can set `X-Forwarded-For` and get around the sign-in rate limit per address. Without a proxy, set `POPDESK_TRUSTED_PROXIES` to an address nothing connects from (for example `127.0.0.1`); with a proxy, set it to the proxy's address only.
-- Use TLS 1.2 or later at the proxy and let it send `Strict-Transport-Security`. popdesk receives plain HTTP from the proxy, so it does not add that header itself.
+- The proxy's address is the one popdesk sees, which is not always the one the proxy has. A proxy on the host that connects to the published port `127.0.0.1:8080` reaches popdesk through Docker's port forwarding, so popdesk sees a gateway address of the Compose network, not `127.0.0.1`. With Docker Desktop and rootless Docker, traffic from outside comes from such a gateway address too, so trusting it trusts every client. In those setups run the proxy as a service in the same Compose project with a fixed address and trust only that address ([Caddy in the Compose project](#caddy-in-the-compose-project)).
+- Use TLS 1.2 or later at the proxy and let it send `Strict-Transport-Security`; the examples below do. popdesk receives plain HTTP from the proxy, so it does not add that header itself. Caddy and nginx do not send it unless you configure it.
 - Set `POPDESK_PUBLIC_SCHEME=https` and `POPDESK_PUBLIC_PORT=443`. With `https`, cookies get the `Secure` attribute and email links use `https`.
 - Search text travels in the address (`/api/portal/issues?q=...`), so the access log of your proxy records what people search for, which can be personal data such as a name or a phone number. popdesk itself logs no search text. Leave the query string out of the proxy's access log, or keep that log as carefully and as briefly as other personal data.
 - The proxy must pass the original host (`Host` or `X-Forwarded-Host`). A request for any other host gets a plain text 404 that names the two configured hosts and the host it came for.
@@ -149,6 +150,7 @@ Example with [Caddy](https://caddyserver.com/), which gets certificates automati
 
 ```caddyfile
 portal.example.com, console.example.com {
+	header Strict-Transport-Security "max-age=31536000"
 	reverse_proxy 127.0.0.1:8080
 }
 ```
@@ -161,6 +163,38 @@ POPDESK_CONSOLE_HOST=console.example.com
 POPDESK_PUBLIC_SCHEME=https
 POPDESK_PUBLIC_PORT=443
 ```
+
+### Caddy in the Compose project
+
+With Docker Desktop, rootless Docker, or when you want the trusted address to be exact, run Caddy next to the app. Put this file, `compose.caddy.yml`, next to the release file and start both with `docker compose -f compose.yml -f compose.caddy.yml up -d`. It takes port `8080` off the host's interfaces, so only Caddy reaches popdesk, and gives Caddy a fixed address on the Compose network:
+
+```yaml
+services:
+  app:
+    ports: !override
+      - "127.0.0.1:8080:8080"
+  caddy:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    networks:
+      default:
+        ipv4_address: 172.30.99.10
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.99.0/24
+volumes:
+  caddy-data:
+```
+
+In the `Caddyfile`, point Caddy at the service name: `reverse_proxy app:8080`. In `.env`, set `POPDESK_TRUSTED_PROXIES=172.30.99.10`. Pick another subnet if `172.30.99.0/24` is in use on your network. Keep the `caddy-data` volume: it holds the certificates and their keys. `!override` needs Compose 2.24.4 or later.
 
 ### Request body size at the proxy
 
@@ -180,6 +214,7 @@ server {
     server_name portal.example.com console.example.com;
     client_max_body_size 55m;
     proxy_request_buffering off;
+    add_header Strict-Transport-Security "max-age=31536000" always;
 
     location / {
         proxy_pass http://127.0.0.1:8080;

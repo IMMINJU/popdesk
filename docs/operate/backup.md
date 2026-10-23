@@ -29,7 +29,7 @@ Keep the dump somewhere other than the Docker host. Backups hold personal data; 
 
 ## Back up on a schedule
 
-`deploy/backup.sh` does the three steps of [Back up](configuration.md#back-up) in one go, for cron or a systemd timer. It needs bash and Docker with Compose v2. Take it from the repository and copy it next to your Compose file. It writes the dump inside the app container with `popdesk backup`, copies it out with `docker compose cp`, deletes it in the container, and keeps it as `popdesk-YYYYMMDD-HHMMSS.dump` (UTC) in its folder. Then it deletes the oldest dumps so that a set number is left.
+`deploy/backup.sh` does the three steps of [Back up](configuration.md#back-up) in one go, for cron or a systemd timer. It needs bash and Docker with Compose v2. Take it at the tag of the version you run, for example `https://raw.githubusercontent.com/IMMINJU/popdesk/v0.6.0/deploy/backup.sh`, put it next to your Compose file, and make it executable (`chmod +x backup.sh`). It writes the dump inside the app container with `popdesk backup`, copies it out with `docker compose cp`, deletes it in the container, and keeps it as `popdesk-YYYYMMDD-HHMMSS.dump` (UTC) in its folder. Then it deletes the oldest dumps so that a set number is left.
 
 | Option | Environment variable | Default |
 |---|---|---|
@@ -76,6 +76,12 @@ Then `systemctl enable --now popdesk-backup.timer`. A failed run shows in `syste
 - **Move the dumps off the host.** A dump on the Docker host is lost with the host. Copy the folder to other storage after each run, for example with `rsync` or your backup tool, and keep it as carefully as other personal data.
 - **Back up the attachment files too.** With `POPDESK_STORAGE` set to `disk` or `s3` (now or ever before), the dump does not hold the files. Back up the folder or the bucket right after the dump, in the same job, so the two match ([What a backup holds](#what-a-backup-holds)).
 - **Restore one now and then.** A backup is known to work only once it was restored. From time to time, restore a recent dump into a separate installation ([Restore](configuration.md#restore)), start the app on it, and run `popdesk attachments check`.
+
+## How long a restore takes
+
+Measured with 0.6.0 on a development machine (Docker Desktop, WSL 2), after a 24-hour run with hourly backups: 4,649 issues, 10,799 comments, 912 attachments in the database, a 105 MB database and a 96 MB dump. The [Restore](configuration.md#restore) steps took 34 seconds from stopping the app to a healthy app: 6 seconds for a new, empty database, 13 seconds for `popdesk restore`, and 15 seconds for the app to start. Afterwards the counts were the same, `popdesk attachments check` found nothing missing, and the audit log integrity check passed. Each hourly backup took 12 seconds while the app served requests.
+
+Most of the restore time grows with the issues: the restore builds the search indexes again. The index for searches of one or two characters took 8 minutes 31 seconds for 100,000 issues of about 2,300 characters each ([upgrade.md](upgrade.md#upgrading-to-060)), so plan for at least that much for a database of that size, and time a restore of your own data.
 
 ## Before an upgrade
 
